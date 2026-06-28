@@ -52,7 +52,7 @@ pnpm run verify
 - `packages/testing/`: fixtures, matchers, and local server helpers.
 - `packages/codex-bridge/`: Codex-style tool bridge helpers.
 - `packages/create-a2amesh/`: `create-a2amesh` scaffolder.
-- `cli/`: `a2amesh` command-line interface.
+- `packages/cli/`: `a2amesh` command-line interface.
 - `apps/`: demos and UI smoke surfaces.
 - `docs/`: canonical markdown documentation.
 - `docs-site/`: VitePress site that mirrors the canonical docs topics.
@@ -81,7 +81,7 @@ types/schemas -> core utilities -> protocol runtime -> transports -> client SDK 
 
 `packages/mcp` may import core/client public APIs and MCP-specific types only.
 
-`cli` may import public package APIs and must not import app internals.
+`packages/cli` may import public package APIs and must not import app internals.
 
 `apps/*` may depend on packages, never the reverse.
 
@@ -89,13 +89,13 @@ types/schemas -> core utilities -> protocol runtime -> transports -> client SDK 
 
 ## Public API Rules
 
-Every publishable package needs explicit `exports`, `types`, `files`, repository metadata, bugs URL, homepage, Apache-2.0 license, and version `1.0.0`.
+Every publishable package needs explicit `exports`, `types`, `files`, repository metadata, bugs URL, homepage, Apache-2.0 license, and a release-managed version matching `.release-please-manifest.json`.
 
 Public exports must match the checked-in `public-surface.json` inventories.
 
 Do not add accidental deep imports. If a new export is intentional, update the inventory and tests.
 
-Do not ship placeholder APIs, `NotImplementedError` equivalents, commented-out skeletons, or undocumented throws.
+Do not ship placeholder APIs, unimplemented stubs, commented-out skeletons, or undocumented throws.
 
 ## Docs Rules
 
@@ -117,7 +117,7 @@ Normal CI must not publish npm packages, push container images, create tags, or 
 
 Publishing is owner-triggered through `publish.yml` with explicit confirmation and npm Trusted Publishing/OIDC.
 
-Do not introduce long-lived npm registry token secrets, fallback registry token logic, private runners, or fail-open required checks.
+Do not introduce long-lived npm registry token secrets, fallback registry token logic, self-hosted release runners, or fail-open required checks.
 
 ## Identity Cleanup Checks
 
