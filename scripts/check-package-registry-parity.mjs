@@ -116,7 +116,7 @@ const summary = {
 };
 
 if (missing.length > 0) {
-  console.warn(`Packages not yet published: ${missing.join(', ')}`);
+  failures.push(`Packages not found on npm: ${missing.join(', ')}`);
 }
 
 if (failures.length > 0) {
