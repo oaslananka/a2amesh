@@ -1,8 +1,8 @@
 {
-  "packages/protocol": "0.1.0-alpha.0",
-  "packages/runtime": "0.1.0-alpha.0",
-  "packages/registry": "0.1.0-alpha.0",
-  "packages/mcp": "0.1.0-alpha.0",
-  "packages/cli": "0.1.0-alpha.0",
-  "packages/create-a2amesh": "0.1.0-alpha.0"
+  "packages/protocol": "0.2.0-alpha.0",
+  "packages/runtime": "0.2.0-alpha.0",
+  "packages/registry": "0.2.0-alpha.0",
+  "packages/mcp": "0.2.0-alpha.0",
+  "packages/cli": "0.2.0-alpha.0",
+  "packages/create-a2amesh": "0.2.0-alpha.0"
 }
