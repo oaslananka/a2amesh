@@ -225,12 +225,17 @@ async function main() {
   }
   console.log('  No stale references found. Repository is clean.');
 
-  // Live site check: if the site is not yet deployed, warn and skip.
+  // Live site check: report HTTP errors (broken links), skip connection errors (not deployed).
   const failures = await checkPublicDocsLinks();
-  if (failures.length > 0) {
-    const deployWarning =
-      'Docs site does not appear to be deployed yet (expected before GitHub Pages setup). Skipping live link check.';
-    console.warn(`WARNING: ${deployWarning}`);
+  const httpErrors = failures.filter((f) => /returned HTTP/.test(f));
+  const connectionErrors = failures.filter((f) => !/returned HTTP/.test(f));
+  if (httpErrors.length > 0) {
+    fail(`Found ${httpErrors.length} broken docs link(s):`, httpErrors);
+  }
+  if (connectionErrors.length > 0) {
+    console.warn(
+      `WARNING: Docs site does not appear to be deployed yet (expected before GitHub Pages setup). Skipping live link check.`,
+    );
   }
 }
 
