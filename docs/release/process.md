@@ -25,12 +25,6 @@ The canonical publish tag format is:
 @a2amesh/runtime-v<semver>
 ```
 
-For example:
-
-```text
-@a2amesh/runtime-v11.0.0
-```
-
 Do not create tags, GitHub Releases, npm publishes, or container pushes during
 rebuild work without owner instruction.
 
@@ -43,7 +37,7 @@ Linux/macOS:
 ```bash
 pnpm run verify
 pnpm run release:state
-pnpm run release:preflight -- --tag @a2amesh/runtime-v11.0.0
+pnpm run release:preflight -- --tag @a2amesh/runtime-v0.1.0-alpha.0
 pnpm run release:dry-run
 pnpm run release:artifacts
 pnpm run release:validate
@@ -54,7 +48,7 @@ PowerShell:
 ```powershell
 pnpm run verify
 pnpm run release:state
-pnpm run release:preflight -- --tag @a2amesh/runtime-v11.0.0
+pnpm run release:preflight -- --tag @a2amesh/runtime-v0.1.0-alpha.0
 pnpm run release:dry-run
 pnpm run release:artifacts
 pnpm run release:validate
@@ -71,31 +65,21 @@ coverage, and publish workflow OIDC/provenance guardrails.
 Each npm package must be configured in npm Trusted Publishing with this GitHub
 publisher identity:
 
-- Repository: `oaslananka/a2amesh`
+- Repository: `oaslananka/a2amesh` (GitHub owner/repo)
 - Workflow: `publish.yml`
 - Environment: `npm-publish`
 
-| Package                                | Path                          | Release mode                           | npm Trusted Publisher                                |
-| -------------------------------------- | ----------------------------- | -------------------------------------- | ---------------------------------------------------- |
-| `@a2amesh/runtime`                     | `packages/runtime`            | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/internal-adapters`           | `packages/adapters`           | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/internal-adapter-base`       | `packages/adapter-base`       | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/internal-adapter-openai`     | `packages/adapter-openai`     | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/internal-adapter-anthropic`  | `packages/adapter-anthropic`  | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/internal-adapter-langchain`  | `packages/adapter-langchain`  | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/internal-adapter-google-adk` | `packages/adapter-google-adk` | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/internal-adapter-llamaindex` | `packages/adapter-llamaindex` | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/internal-adapter-crewai`     | `packages/adapter-crewai`     | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/registry`                    | `packages/registry`           | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/cli`                         | `cli`                         | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `create-a2amesh`                       | `packages/create-a2amesh`     | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/mcp`                         | `packages/mcp`                | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/internal-transport-ws`       | `packages/transport-ws`       | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/internal-transport-grpc`     | `packages/transport-grpc`     | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/protocol`                    | `packages/protocol`           | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/protocol`                    | `packages/protocol`           | Release Please linked version          | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/internal-auth`               | `packages/auth`               | Independently versioned public package | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
-| `@a2amesh/internal-telemetry`          | `packages/telemetry`          | Independently versioned public package | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
+| Package             | Path                      | Release mode                  | npm Trusted Publisher                                |
+| ------------------- | ------------------------- | ----------------------------- | ---------------------------------------------------- |
+| `@a2amesh/protocol` | `packages/protocol`       | Release Please linked version | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
+| `@a2amesh/runtime`  | `packages/runtime`        | Release Please linked version | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
+| `@a2amesh/registry` | `packages/registry`       | Release Please linked version | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
+| `@a2amesh/mcp`      | `packages/mcp`            | Release Please linked version | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
+| `@a2amesh/cli`      | `packages/cli`            | Release Please linked version | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
+| `create-a2amesh`    | `packages/create-a2amesh` | Release Please linked version | `oaslananka/a2amesh` / `publish.yml` / `npm-publish` |
+
+Internal/private packages (`@a2amesh/internal-*`) are **not** published to npm
+during the first alpha. They are not part of the Trusted Publisher configuration.
 
 The preflight script can verify repository files and workflow guardrails, but it
 cannot read npm package Trusted Publisher settings without npm registry
