@@ -43,12 +43,12 @@ After install, run `a2amesh --help` to list commands.
 
 The following public packages are part of the A2A Mesh ecosystem:
 
-| Package             | Description                                       | Install Command                 |
-| ------------------- | ------------------------------------------------- | ------------------------------- |
-| `@a2amesh/protocol` | Protocol types and validators (zero dependencies) | `npm install @a2amesh/protocol` |
-| `@a2amesh/registry` | Registry server for agent capability discovery    | `npm install @a2amesh/registry` |
-| `@a2amesh/mcp`      | A2A ↔ MCP bridge and mapping helpers              | `npm install @a2amesh/mcp`      |
-| `create-a2amesh`    | Scaffolding tool to bootstrap new projects        | `npm create a2amesh`            |
+| Package                   | Description                                       | Install Command                                 |
+| ------------------------- | ------------------------------------------------- | ----------------------------------------------- |
+| `@a2amesh/protocol`       | Protocol types and validators (zero dependencies) | `npm install @a2amesh/protocol`                 |
+| `@a2amesh/registry`       | Registry server for agent capability discovery    | `npm install @a2amesh/registry`                 |
+| `@a2amesh/mcp`            | A2A ↔ MCP bridge and mapping helpers              | `npm install @a2amesh/mcp`                      |
+| `@a2amesh/create-a2amesh` | Scaffolding tool to bootstrap new projects        | `npm exec @a2amesh/create-a2amesh -- <project>` |
 
 ## Internal Packages
 

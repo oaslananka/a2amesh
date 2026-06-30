@@ -1,6 +1,5 @@
 import { readJson, readText, fail } from './check-utils.mjs';
 
-const ALPHA_VERSION = '0.1.0-alpha.0';
 const APPROVED_RELEASES = new Map([
   ['packages/protocol', '@a2amesh/protocol'],
   ['packages/runtime', '@a2amesh/runtime'],
@@ -15,10 +14,13 @@ const manifest = readJson('.release-please-manifest.json');
 const rootPackage = readJson('package.json');
 const failures = [];
 
-if (rootPackage.name !== 'a2amesh-workspace' || rootPackage.version !== ALPHA_VERSION) {
-  failures.push(`root package must be a2amesh-workspace@${ALPHA_VERSION}`);
+if (rootPackage.name !== 'a2amesh-workspace') {
+  failures.push('root package must be named a2amesh-workspace');
 }
 if (rootPackage.private !== true) failures.push('root package must remain private');
+if (typeof rootPackage.version !== 'string' || rootPackage.version.length === 0) {
+  failures.push('root package must keep a non-empty version');
+}
 
 const configuredPaths = Object.keys(config.packages ?? {}).sort();
 const approvedPaths = [...APPROVED_RELEASES.keys()].sort();
@@ -29,12 +31,23 @@ const manifestPaths = Object.keys(manifest).sort();
 if (JSON.stringify(manifestPaths) !== JSON.stringify(approvedPaths)) {
   failures.push(`release manifest paths must be exactly: ${approvedPaths.join(', ')}`);
 }
+const manifestVersions = approvedPaths.map((path) => manifest[path]);
+const uniqueManifestVersions = new Set(manifestVersions);
+if (manifestVersions.some((version) => typeof version !== 'string' || version.length === 0)) {
+  failures.push('release manifest versions must be non-empty strings');
+}
+if (uniqueManifestVersions.size > 1) {
+  failures.push(`linked public packages must share one release version, found: ${[...uniqueManifestVersions].join(', ')}`);
+}
 
 for (const [path, expectedName] of APPROVED_RELEASES) {
   const packageJson = readJson(`${path}/package.json`);
   const releaseConfig = config.packages?.[path];
+  const expectedVersion = manifest[path];
   if (packageJson.name !== expectedName) failures.push(`${path}: package name must be ${expectedName}`);
-  if (packageJson.version !== ALPHA_VERSION) failures.push(`${path}: version must be ${ALPHA_VERSION}`);
+  if (packageJson.version !== expectedVersion) {
+    failures.push(`${path}: version must match release manifest version ${expectedVersion}`);
+  }
   if (packageJson.private === true) failures.push(`${path}: approved public package must not be private`);
   if (packageJson.publishConfig?.access !== 'public') {
     failures.push(`${path}: publishConfig.access must be public`);
