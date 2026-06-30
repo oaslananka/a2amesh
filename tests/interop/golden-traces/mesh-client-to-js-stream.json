@@ -1,5 +1,5 @@
 {
-  "scenario": "warp-client-to-js-stream",
+  "scenario": "mesh-client-to-js-stream",
   "profile": "official-a2a-v1.0",
   "client": "a2amesh-client",
   "server": "official-js-server",

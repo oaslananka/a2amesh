@@ -1,5 +1,5 @@
 {
-  "scenario": "warp-client-to-python-callback-challenge",
+  "scenario": "mesh-client-to-python-callback-challenge",
   "profile": "official-a2a-v1.0",
   "client": "a2amesh-client",
   "server": "official-python-server",
