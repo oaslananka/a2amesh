@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Baggage, BaggageEntry } from '@opentelemetry/api';
+import type { Baggage, BaggageEntry, Context } from '@opentelemetry/api';
 
 interface MockBaggage extends Baggage {
   entries: Record<string, BaggageEntry>;
@@ -76,6 +76,7 @@ vi.mock('@opentelemetry/api', () => {
       getBaggage,
       createBaggage,
       setBaggage,
+      extract: vi.fn(),
     },
     trace: {
       getTracer,
@@ -84,7 +85,12 @@ vi.mock('@opentelemetry/api', () => {
 });
 
 import { baggageEntryMetadataFromString, propagation, trace } from '@opentelemetry/api';
-import { SpanStatusCode, a2aMeshTracer, withA2ABaggage } from '@a2amesh/runtime';
+import {
+  SpanStatusCode,
+  a2aMeshTracer,
+  extractA2AContext,
+  withA2ABaggage,
+} from '../src/telemetry/tracer.js';
 
 describe('tracer helpers', () => {
   beforeEach(() => {
@@ -135,5 +141,27 @@ describe('tracer helpers', () => {
     expect(trace.getTracer).toHaveBeenCalledWith('@a2amesh/runtime', '1.0.0');
     expect(SpanStatusCode.OK).toBe('OK');
     expect(SpanStatusCode.ERROR).toBe('ERROR');
+  });
+
+  it('extracts A2A context from single and repeated carrier headers', () => {
+    vi.mocked(propagation.extract).mockImplementation((_activeContext, carrier, getter) => {
+      expect(getter).toBeDefined();
+      const textMapGetter = getter ?? {
+        get: () => undefined,
+        keys: () => [],
+      };
+      return {
+        traceparent: textMapGetter.get(carrier, 'traceparent'),
+        keys: textMapGetter.keys(carrier),
+      } as unknown as Context;
+    });
+
+    const result = extractA2AContext({
+      traceparent: ['first', 'second'],
+      baggage: 'a2a.task_id=task-1',
+    }) as unknown as { traceparent: string; keys: string[] };
+
+    expect(result.traceparent).toBe('first');
+    expect(result.keys).toEqual(['traceparent', 'baggage']);
   });
 });

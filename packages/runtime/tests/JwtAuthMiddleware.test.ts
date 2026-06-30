@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { promises as dns } from 'node:dns';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
-import { JwtAuthMiddleware } from '@a2amesh/runtime';
+import { JwtAuthMiddleware } from '../src/auth/JwtAuthMiddleware.js';
 
 function encodeSegment(value: Record<string, unknown>): string {
   return Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -536,5 +536,248 @@ describe('JwtAuthMiddleware', () => {
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
+  });
+
+  it('attaches authenticated request context for api key credentials', async () => {
+    const req = {
+      header(name: string) {
+        return name === 'x-api-key' ? 'tenant-secret' : undefined;
+      },
+      query: {},
+    } as never as Record<string, unknown> & {
+      header(name: string): string | undefined;
+      query: Record<string, string>;
+    };
+    const middleware = new JwtAuthMiddleware({
+      securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+      apiKeys: {
+        'api-key': {
+          value: 'tenant-secret',
+          principalId: 'principal-1',
+          tenantId: 'tenant-1',
+          scopes: ['tasks:read'],
+          roles: ['operator'],
+          claims: { plan: 'pro' },
+        },
+      },
+    });
+
+    const context = await middleware.authenticateRequestContext(req as never);
+
+    expect(context.principalId).toBe('principal-1');
+    expect(context.tenantId).toBe('tenant-1');
+    expect((req['auth'] as { roles: string[] }).roles).toEqual(['operator']);
+  });
+
+  it('passes successful express middleware authentication to next', async () => {
+    const middleware = new JwtAuthMiddleware({
+      securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+      apiKeys: { 'api-key': 'secret' },
+    });
+    const req = {
+      header(name: string) {
+        return name === 'x-api-key' ? 'secret' : undefined;
+      },
+      body: { id: 'rpc-1' },
+      query: {},
+    } as never as Record<string, unknown>;
+    const next = vi.fn();
+    const response = { status: vi.fn(), json: vi.fn() };
+
+    await middleware.middleware()(req as never, response as never, next);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(req['auth']).toEqual(expect.objectContaining({ principalId: 'api-key:api-key' }));
+  });
+
+  it('continues to the next security requirement after a failed requirement', async () => {
+    const middleware = new JwtAuthMiddleware({
+      securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+      security: [{ missing: [] }, { 'api-key': [] }],
+      apiKeys: { 'api-key': 'secret' },
+    });
+
+    const result = await middleware.authenticateRequest({
+      header(name: string) {
+        return name === 'x-api-key' ? 'secret' : undefined;
+      },
+      query: {},
+    } as never);
+
+    expect(result.schemeId).toBe('api-key');
+  });
+
+  it('rejects missing and unconfigured api keys', async () => {
+    const unconfigured = new JwtAuthMiddleware({
+      securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+    });
+    await expect(
+      unconfigured.authenticateRequest({ header: () => 'secret', query: {} } as never),
+    ).rejects.toThrow('No API key configured');
+
+    const missing = new JwtAuthMiddleware({
+      securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'query', name: 'api_key' }],
+      apiKeys: { 'api-key': 'secret' },
+    });
+    await expect(
+      missing.authenticateRequest({
+        header: () => undefined,
+        query: { api_key: ['secret'] },
+      } as never),
+    ).rejects.toThrow('Invalid API key');
+  });
+
+  it('enforces outbound hostname policies before OIDC discovery fetches', async () => {
+    const makeMiddleware = (openIdConnectUrl: string, outboundPolicy: Record<string, unknown>) =>
+      new JwtAuthMiddleware({
+        securitySchemes: [
+          {
+            type: 'openIdConnect',
+            id: 'oidc',
+            openIdConnectUrl,
+            audience: '@a2amesh/runtime',
+          },
+        ],
+        outboundPolicy: outboundPolicy as never,
+        fetch: vi.fn(async () => new Response('{}', { status: 503 })) as never,
+      });
+
+    await expect(
+      makeMiddleware('not a url', {}).authenticateRequest({
+        header: () => 'Bearer a.b.c',
+        query: {},
+      } as never),
+    ).rejects.toThrow('Invalid URL format');
+
+    await expect(
+      makeMiddleware('https://metadata.internal/.well-known/openid-configuration', {
+        resolveHostname: async () => ['10.0.0.1'],
+      }).authenticateRequest({ header: () => 'Bearer a.b.c', query: {} } as never),
+    ).rejects.toThrow('Auth outbound policy rejected restricted address');
+
+    await expect(
+      makeMiddleware('https://unresolved.example/.well-known/openid-configuration', {
+        resolveHostname: async () => {
+          throw new Error('dns failed');
+        },
+      }).authenticateRequest({ header: () => 'Bearer a.b.c', query: {} } as never),
+    ).rejects.toThrow('Auth outbound policy could not resolve hostname');
+
+    await expect(
+      makeMiddleware('https://allowed.example/.well-known/openid-configuration', {
+        allowedHostnames: ['allowed.example'],
+      }).authenticateRequest({ header: () => 'Bearer a.b.c', query: {} } as never),
+    ).rejects.toThrow('Failed to fetch OIDC configuration: 503');
+  });
+
+  it.each([
+    ['10.1.2.3'],
+    ['172.16.0.1'],
+    ['172.31.255.255'],
+    ['192.168.1.1'],
+    ['169.254.1.1'],
+    ['100.64.0.1'],
+    ['0.0.0.0'],
+    ['::ffff:127.0.0.1'],
+    ['fe80::1'],
+    ['fc00::1'],
+    ['fd00::1'],
+  ])('rejects restricted DNS answers for auth outbound host %s', async (address) => {
+    const middleware = new JwtAuthMiddleware({
+      securitySchemes: [
+        {
+          type: 'openIdConnect',
+          id: 'oidc',
+          openIdConnectUrl: 'https://metadata.internal/.well-known/openid-configuration',
+          audience: '@a2amesh/runtime',
+        },
+      ],
+      outboundPolicy: {
+        resolveHostname: async () => [address],
+      },
+      fetch: vi.fn(async () => new Response('{}', { status: 503 })) as never,
+    });
+
+    await expect(
+      middleware.authenticateRequest({ header: () => 'Bearer a.b.c', query: {} } as never),
+    ).rejects.toThrow('Auth outbound policy rejected restricted address');
+  });
+
+  it.each([['8.8.8.8'], ['172.32.0.1'], ['100.128.0.1'], ['2001:db8::1']])(
+    'allows public DNS answers for auth outbound host %s',
+    async (address) => {
+      const middleware = new JwtAuthMiddleware({
+        securitySchemes: [
+          {
+            type: 'openIdConnect',
+            id: 'oidc',
+            openIdConnectUrl: 'https://issuer.example/.well-known/openid-configuration',
+            audience: '@a2amesh/runtime',
+          },
+        ],
+        outboundPolicy: {
+          resolveHostname: async () => [address],
+        },
+        fetch: vi.fn(async () => new Response('{}', { status: 503 })) as never,
+      });
+
+      await expect(
+        middleware.authenticateRequest({ header: () => 'Bearer a.b.c', query: {} } as never),
+      ).rejects.toThrow('Failed to fetch OIDC configuration: 503');
+    },
+  );
+
+  it('allows restricted auth outbound addresses when explicitly configured', async () => {
+    const middleware = new JwtAuthMiddleware({
+      securitySchemes: [
+        {
+          type: 'openIdConnect',
+          id: 'oidc',
+          openIdConnectUrl: 'https://metadata.internal/.well-known/openid-configuration',
+          audience: '@a2amesh/runtime',
+        },
+      ],
+      outboundPolicy: {
+        allowNetworkTargets: true,
+        resolveHostname: async () => ['10.1.2.3'],
+      },
+      fetch: vi.fn(async () => new Response('{}', { status: 503 })) as never,
+    });
+
+    await expect(
+      middleware.authenticateRequest({ header: () => 'Bearer a.b.c', query: {} } as never),
+    ).rejects.toThrow('Failed to fetch OIDC configuration: 503');
+  });
+
+  it('retries transient OIDC discovery responses according to outbound policy', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response('retry', { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response('{"issuer":"https://issuer.example"}', {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    const middleware = new JwtAuthMiddleware({
+      securitySchemes: [
+        {
+          type: 'openIdConnect',
+          id: 'oidc',
+          openIdConnectUrl: 'https://issuer.example/.well-known/openid-configuration',
+          audience: '@a2amesh/runtime',
+        },
+      ],
+      outboundPolicy: {
+        retries: 1,
+        allowedHostnames: ['issuer.example'],
+      },
+      fetch: fetchMock,
+    });
+
+    await expect(
+      middleware.authenticateRequest({ header: () => 'Bearer a.b.c', query: {} } as never),
+    ).rejects.toThrow('OIDC configuration is missing jwks_uri');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
