@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SqliteTaskStorage } from '../src/storage/SqliteTaskStorage.js';
+import { AsyncSqliteTaskStorage, SqliteTaskStorage } from '../src/storage/SqliteTaskStorage.js';
 import type { Task } from '../src/types/task.js';
 
 interface FakeSqliteStatement<TRow = unknown> {
@@ -222,6 +222,29 @@ describe('SqliteTaskStorage', () => {
     expect(storage.getPushNotification('task-1')).toEqual(config);
     expect(storage.getPushNotification('missing')).toBeUndefined();
 
+    expect(
+      storage.setPushNotificationConfig('task-1', 'email', {
+        url: 'https://example.com/email',
+      }),
+    ).toEqual({ url: 'https://example.com/email' });
+    expect(
+      storage.setPushNotificationConfig('task-1', 'pager', {
+        id: 'pager',
+        url: 'https://example.com/pager',
+      }),
+    ).toEqual({ id: 'pager', url: 'https://example.com/pager' });
+    expect(storage.listPushNotifications('task-1')).toEqual([
+      config,
+      { url: 'https://example.com/email' },
+      { id: 'pager', url: 'https://example.com/pager' },
+    ]);
+    expect(storage.getPushNotificationConfig('task-1', 'email')).toEqual({
+      url: 'https://example.com/email',
+    });
+    expect(storage.removePushNotificationConfig('task-1', 'email')).toBe(true);
+    expect(storage.removePushNotificationConfig('task-1', 'missing')).toBe(false);
+    expect(storage.getPushNotificationConfig('task-1', 'email')).toBeUndefined();
+
     expect(storage.count()).toBe(1);
     expect(storage.deleteTask('missing')).toBe(false);
     expect(storage.deleteTask('task-1')).toBe(true);
@@ -233,6 +256,73 @@ describe('SqliteTaskStorage', () => {
     expect(storage.count()).toBe(0);
 
     storage.close();
+    expect(database.closed).toBe(true);
+  });
+
+  it('serializes async sqlite push config operations and transactions', async () => {
+    const FakeDatabaseConstructor = class extends FakeDatabase {
+      static readonly instances: FakeDatabase[] = [];
+
+      constructor(readonly path: string) {
+        super();
+        FakeDatabaseConstructor.instances.push(this);
+      }
+    };
+
+    const storage = new AsyncSqliteTaskStorage(':memory:', FakeDatabaseConstructor);
+    const database = FakeDatabaseConstructor.instances[0];
+    if (!database) {
+      throw new Error('Expected fake async database to be constructed');
+    }
+
+    await storage.insertTask(createTask('async-task', 'ctx-async'));
+    await expect(storage.getAllTasks()).resolves.toHaveLength(1);
+    await expect(storage.getTasksByContextId('ctx-async')).resolves.toHaveLength(1);
+    await expect(
+      storage.setPushNotification('async-task', {
+        url: 'https://example.com/default',
+      }),
+    ).resolves.toEqual({ url: 'https://example.com/default' });
+    await expect(
+      storage.setPushNotificationConfig('async-task', 'email', {
+        url: 'https://example.com/email',
+      }),
+    ).resolves.toEqual({ url: 'https://example.com/email' });
+    await expect(storage.getPushNotification('async-task')).resolves.toEqual({
+      url: 'https://example.com/default',
+    });
+    await expect(storage.getPushNotificationConfig('async-task', 'email')).resolves.toEqual({
+      url: 'https://example.com/email',
+    });
+    await expect(storage.listPushNotifications('async-task')).resolves.toEqual([
+      { url: 'https://example.com/default' },
+      { url: 'https://example.com/email' },
+    ]);
+    await expect(storage.removePushNotificationConfig('async-task', 'email')).resolves.toBe(true);
+    await expect(storage.removePushNotification('async-task')).resolves.toBe(true);
+
+    await storage.transaction(async (transaction) => {
+      const task = await transaction.getTask('async-task');
+      if (!task) {
+        throw new Error('Expected async task in transaction');
+      }
+      task.extensions = ['urn:test:sqlite-async'];
+      await transaction.saveTask(task);
+    });
+    await expect(storage.getTask('async-task')).resolves.toEqual(
+      expect.objectContaining({ extensions: ['urn:test:sqlite-async'] }),
+    );
+
+    await expect(
+      storage.transaction(async () => {
+        throw new Error('rollback me');
+      }),
+    ).rejects.toThrow('rollback me');
+    expect(database.executedSql).toContain('ROLLBACK');
+
+    await storage.clear();
+    await expect(storage.count()).resolves.toBe(0);
+    await storage.close();
     expect(database.closed).toBe(true);
   });
 });

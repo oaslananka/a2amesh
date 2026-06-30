@@ -129,27 +129,64 @@ export class TaskManager extends EventEmitter {
     }
     assertTaskMutable(task, 'set push notification');
 
-    const storedConfig = this.storage.setPushNotification(taskId, config);
+    return this.setPushNotificationConfig(taskId, pushNotificationConfigId(config), config);
+  }
+
+  getPushNotification(taskId: string): PushNotificationConfig | undefined {
+    return this.getPushNotificationConfig(taskId, DEFAULT_PUSH_NOTIFICATION_CONFIG_ID);
+  }
+
+  listPushNotifications(taskId: string): PushNotificationConfig[] {
+    return this.storage.listPushNotifications?.(taskId) ?? [];
+  }
+
+  setPushNotificationConfig(
+    taskId: string,
+    configId: string,
+    config: PushNotificationConfig,
+  ): PushNotificationConfig | undefined {
+    const task = this.storage.getTask(taskId);
+    if (!task) {
+      return undefined;
+    }
+    assertTaskMutable(task, 'set push notification');
+
+    const storedConfig =
+      this.storage.setPushNotificationConfig?.(taskId, configId, config) ??
+      this.storage.setPushNotification(taskId, { ...config, id: configId });
     this.emitTaskUpdated(task, 'push-config');
     return storedConfig;
   }
 
-  getPushNotification(taskId: string): PushNotificationConfig | undefined {
-    return this.storage.getPushNotification(taskId);
+  getPushNotificationConfig(taskId: string, configId: string): PushNotificationConfig | undefined {
+    return (
+      this.storage.getPushNotificationConfig?.(taskId, configId) ??
+      (configId === DEFAULT_PUSH_NOTIFICATION_CONFIG_ID
+        ? this.storage.getPushNotification(taskId)
+        : undefined)
+    );
   }
 
-  removePushNotification(taskId: string): boolean {
+  removePushNotificationConfig(taskId: string, configId: string): boolean {
     const task = this.storage.getTask(taskId);
     if (!task) {
       return false;
     }
     assertTaskMutable(task, 'remove push notification');
 
-    const removed = this.storage.removePushNotification(taskId);
+    const removed =
+      this.storage.removePushNotificationConfig?.(taskId, configId) ??
+      (configId === DEFAULT_PUSH_NOTIFICATION_CONFIG_ID
+        ? this.storage.removePushNotification(taskId)
+        : false);
     if (removed) {
       this.emitTaskUpdated(task, 'push-config');
     }
     return removed;
+  }
+
+  removePushNotification(taskId: string): boolean {
+    return this.removePushNotificationConfig(taskId, DEFAULT_PUSH_NOTIFICATION_CONFIG_ID);
   }
   setTaskExtensions(taskId: string, extensions: string[]): Task | undefined {
     const task = this.storage.getTask(taskId);
@@ -174,4 +211,12 @@ export class TaskManager extends EventEmitter {
       ...(previousState ? { previousState } : {}),
     } satisfies TaskUpdatedEvent);
   }
+}
+
+const DEFAULT_PUSH_NOTIFICATION_CONFIG_ID = 'default';
+
+function pushNotificationConfigId(config: PushNotificationConfig): string {
+  return config.id && config.id.trim().length > 0
+    ? config.id.trim()
+    : DEFAULT_PUSH_NOTIFICATION_CONFIG_ID;
 }

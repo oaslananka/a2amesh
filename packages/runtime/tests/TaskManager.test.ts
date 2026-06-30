@@ -216,4 +216,41 @@ describe('TaskManager', () => {
 
     expect(() => manager.removePushNotification(task.id)).toThrow(/terminal task/i);
   });
+
+  it('manages multiple push notification configs independently', () => {
+    const manager = new TaskManager();
+    const task = manager.createTask();
+    const events: string[] = [];
+    manager.on('taskUpdated', (event) => events.push(event.reason));
+
+    expect(manager.listPushNotifications('missing')).toEqual([]);
+    expect(manager.getPushNotificationConfig(task.id, 'missing')).toBeUndefined();
+    expect(manager.removePushNotificationConfig(task.id, 'missing')).toBe(false);
+
+    expect(
+      manager.setPushNotificationConfig(task.id, 'email', {
+        url: 'https://example.com/email',
+      }),
+    ).toEqual({ url: 'https://example.com/email' });
+    expect(
+      manager.setPushNotificationConfig(task.id, 'pager', {
+        id: 'pager',
+        url: 'https://example.com/pager',
+      }),
+    ).toEqual({ id: 'pager', url: 'https://example.com/pager' });
+
+    expect(manager.listPushNotifications(task.id)).toEqual([
+      { url: 'https://example.com/email' },
+      { id: 'pager', url: 'https://example.com/pager' },
+    ]);
+    expect(manager.getPushNotificationConfig(task.id, 'email')).toEqual({
+      url: 'https://example.com/email',
+    });
+    expect(manager.removePushNotificationConfig(task.id, 'email')).toBe(true);
+    expect(manager.getPushNotificationConfig(task.id, 'email')).toBeUndefined();
+    expect(manager.listPushNotifications(task.id)).toEqual([
+      { id: 'pager', url: 'https://example.com/pager' },
+    ]);
+    expect(events.filter((reason) => reason === 'push-config')).toHaveLength(3);
+  });
 });

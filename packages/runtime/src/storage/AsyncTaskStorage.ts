@@ -13,6 +13,17 @@ export interface AsyncTaskStorageOperations {
     config: PushNotificationConfig,
   ): Promise<PushNotificationConfig | undefined>;
   getPushNotification(taskId: string): Promise<PushNotificationConfig | undefined>;
+  listPushNotifications?(taskId: string): Promise<PushNotificationConfig[]>;
+  setPushNotificationConfig?(
+    taskId: string,
+    configId: string,
+    config: PushNotificationConfig,
+  ): Promise<PushNotificationConfig | undefined>;
+  getPushNotificationConfig?(
+    taskId: string,
+    configId: string,
+  ): Promise<PushNotificationConfig | undefined>;
+  removePushNotificationConfig?(taskId: string, configId: string): Promise<boolean>;
   removePushNotification(taskId: string): Promise<boolean>;
   deleteTask(taskId: string): Promise<boolean>;
   clear(): Promise<void>;
@@ -69,6 +80,41 @@ export class SyncTaskStorageAdapter implements AsyncTaskStorage {
 
   getPushNotification(taskId: string): Promise<PushNotificationConfig | undefined> {
     return this.runOperation(() => this.storage.getPushNotification(taskId));
+  }
+
+  listPushNotifications(taskId: string): Promise<PushNotificationConfig[]> {
+    return this.runOperation(() => this.storage.listPushNotifications?.(taskId) ?? []);
+  }
+
+  setPushNotificationConfig(
+    taskId: string,
+    configId: string,
+    config: PushNotificationConfig,
+  ): Promise<PushNotificationConfig | undefined> {
+    return this.runOperation(
+      () =>
+        this.storage.setPushNotificationConfig?.(taskId, configId, config) ??
+        this.storage.setPushNotification(taskId, { ...config, id: configId }),
+    );
+  }
+
+  getPushNotificationConfig(
+    taskId: string,
+    configId: string,
+  ): Promise<PushNotificationConfig | undefined> {
+    return this.runOperation(
+      () =>
+        this.storage.getPushNotificationConfig?.(taskId, configId) ??
+        (configId === 'default' ? this.storage.getPushNotification(taskId) : undefined),
+    );
+  }
+
+  removePushNotificationConfig(taskId: string, configId: string): Promise<boolean> {
+    return this.runOperation(
+      () =>
+        this.storage.removePushNotificationConfig?.(taskId, configId) ??
+        (configId === 'default' ? this.storage.removePushNotification(taskId) : false),
+    );
   }
 
   removePushNotification(taskId: string): Promise<boolean> {

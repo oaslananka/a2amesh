@@ -51,20 +51,25 @@ export function bindTaskObservers(deps: TaskObserverDependencies): void {
 }
 
 async function sendPushNotification(task: Task, deps: TaskObserverDependencies): Promise<void> {
-  const pushConfig = deps.taskManager.getPushNotification(task.id);
-  if (!pushConfig) {
+  const pushConfigs = deps.taskManager.listPushNotifications(task.id);
+  if (pushConfigs.length === 0) {
     return;
   }
 
-  try {
-    await deps.pushNotificationService.retryWithBackoff(() =>
-      deps.pushNotificationService.sendNotification(pushConfig, task),
-    );
-  } catch (error: unknown) {
-    logger.error('Push notification delivery failed', {
-      taskId: task.id,
-      ...(task.contextId ? { contextId: task.contextId } : {}),
-      error,
-    });
-  }
+  await Promise.all(
+    pushConfigs.map(async (pushConfig) => {
+      try {
+        await deps.pushNotificationService.retryWithBackoff(() =>
+          deps.pushNotificationService.sendNotification(pushConfig, task),
+        );
+      } catch (error: unknown) {
+        logger.error('Push notification delivery failed', {
+          taskId: task.id,
+          pushNotificationConfigId: pushConfig.id,
+          ...(task.contextId ? { contextId: task.contextId } : {}),
+          error,
+        });
+      }
+    }),
+  );
 }

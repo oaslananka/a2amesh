@@ -178,6 +178,11 @@ export const PushNotificationConfigSchema = z.object({
   metadata: MetadataSchema.optional(),
 });
 
+export const TaskPushNotificationConfigSchema = z.object({
+  taskId: z.string(),
+  pushNotificationConfig: PushNotificationConfigSchema,
+});
+
 export const MessageRequestConfigurationSchema = z.object({
   blocking: z.boolean().optional(),
   returnImmediately: z.boolean().optional(),

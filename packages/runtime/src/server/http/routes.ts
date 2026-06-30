@@ -101,26 +101,30 @@ function registerRestBindingRoutes(deps: A2AHttpRouteDependencies): void {
   };
   const setPushHandler = async (req: Request, res: Response) => {
     const body = restBody(req);
-    await handleRestRpc(req, res, deps, 'tasks/pushNotification/set', {
+    const config = selectRestPushConfig(body);
+    await handleRestRpc(req, res, deps, 'tasks/pushNotificationConfig/create', {
       taskId: restParam(req, 0),
-      pushNotificationConfig: selectRestPushConfig(body),
+      configId: selectRestPushConfigId(body, config),
+      pushNotificationConfig: config,
     });
   };
   const getPushHandler = async (req: Request, res: Response) => {
-    await handleRestRpc(req, res, deps, 'tasks/pushNotification/get', {
+    await handleRestRpc(req, res, deps, 'tasks/pushNotificationConfig/get', {
       taskId: restParam(req, 0),
+      configId: restParam(req, 1),
     });
   };
   const listPushHandler = async (req: Request, res: Response) => {
     const task = await getAccessibleRestTask(req, res, deps);
     if (!task) return;
-    const config = deps.taskManager.getPushNotification(task.id);
-    res.type(pv.A2A_REST_MEDIA_TYPE).json({ configs: config ? [config] : [] });
+    res.type(pv.A2A_REST_MEDIA_TYPE).json({
+      configs: deps.taskManager.listPushNotifications(task.id),
+    });
   };
   const deletePushHandler = async (req: Request, res: Response) => {
     const task = await getAccessibleRestTask(req, res, deps);
     if (!task) return;
-    deps.taskManager.removePushNotification(task.id);
+    deps.taskManager.removePushNotificationConfig(task.id, restParam(req, 1) ?? 'default');
     res.status(204).end();
   };
 
@@ -209,6 +213,21 @@ function selectRestPushConfig(body: Record<string, unknown>): unknown {
   return (
     body['config'] ?? body['pushNotificationConfig'] ?? body['taskPushNotificationConfig'] ?? body
   );
+}
+
+function selectRestPushConfigId(
+  body: Record<string, unknown>,
+  config: unknown,
+): string | undefined {
+  const rawId = body['configId'] ?? body['id'];
+  if (typeof rawId === 'string' && rawId.trim().length > 0) {
+    return rawId.trim();
+  }
+  if (config && typeof config === 'object' && 'id' in config) {
+    const configId = (config as { id?: unknown }).id;
+    return typeof configId === 'string' && configId.trim().length > 0 ? configId.trim() : undefined;
+  }
+  return undefined;
 }
 
 async function getAccessibleRestTask(
