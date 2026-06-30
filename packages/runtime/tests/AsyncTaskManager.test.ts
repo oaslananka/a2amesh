@@ -238,4 +238,32 @@ describe('AsyncTaskManager', () => {
     ]);
     expect((await manager.getTask(task.id))?.history).toHaveLength(1);
   });
+
+  it('supports async multi push notification config CRUD', async () => {
+    const manager = new AsyncTaskManager(new SyncTaskStorageAdapter(new InMemoryTaskStorage()));
+    const task = await manager.createTask();
+
+    await expect(manager.listPushNotifications('missing')).resolves.toEqual([]);
+    await expect(manager.removePushNotificationConfig(task.id, 'missing')).resolves.toBe(false);
+    await expect(
+      manager.setPushNotificationConfig(task.id, 'email', {
+        url: 'https://example.com/email',
+      }),
+    ).resolves.toEqual({ url: 'https://example.com/email' });
+    await expect(
+      manager.setPushNotificationConfig(task.id, 'pager', {
+        id: 'pager',
+        url: 'https://example.com/pager',
+      }),
+    ).resolves.toEqual({ id: 'pager', url: 'https://example.com/pager' });
+    await expect(manager.getPushNotificationConfig(task.id, 'email')).resolves.toEqual({
+      url: 'https://example.com/email',
+    });
+    await expect(manager.listPushNotifications(task.id)).resolves.toEqual([
+      { url: 'https://example.com/email' },
+      { id: 'pager', url: 'https://example.com/pager' },
+    ]);
+    await expect(manager.removePushNotificationConfig(task.id, 'email')).resolves.toBe(true);
+    await expect(manager.getPushNotificationConfig(task.id, 'email')).resolves.toBeUndefined();
+  });
 });

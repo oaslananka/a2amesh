@@ -17,6 +17,7 @@ import type {
   MessageSendParams,
   PushNotificationConfig,
   Task,
+  TaskPushNotificationConfig,
   TaskListParams,
   TaskListResult,
 } from '../types/task.js';
@@ -254,6 +255,50 @@ export class A2AClient {
       {
         taskId,
       },
+    );
+  }
+
+  async createPushNotificationConfig(
+    taskId: string,
+    pushNotificationConfig: PushNotificationConfig,
+    configId = pushNotificationConfig.id,
+  ): Promise<PushNotificationConfig> {
+    return this.rpc<
+      PushNotificationConfig,
+      TaskPushNotificationConfig & { configId?: string | undefined }
+    >('tasks/pushNotificationConfig/create', {
+      taskId,
+      pushNotificationConfig,
+      ...(configId ? { configId } : {}),
+    });
+  }
+
+  async getPushNotificationConfig(
+    taskId: string,
+    configId = 'default',
+  ): Promise<PushNotificationConfig | null> {
+    return this.rpc<PushNotificationConfig | null, { taskId: string; configId: string }>(
+      'tasks/pushNotificationConfig/get',
+      { taskId, configId },
+    );
+  }
+
+  async listPushNotificationConfigs(
+    taskId: string,
+  ): Promise<{ configs: PushNotificationConfig[] }> {
+    return this.rpc<{ configs: PushNotificationConfig[] }, { taskId: string }>(
+      'tasks/pushNotificationConfig/list',
+      { taskId },
+    );
+  }
+
+  async deletePushNotificationConfig(
+    taskId: string,
+    configId = 'default',
+  ): Promise<{ deleted: boolean }> {
+    return this.rpc<{ deleted: boolean }, { taskId: string; configId: string }>(
+      'tasks/pushNotificationConfig/delete',
+      { taskId, configId },
     );
   }
 

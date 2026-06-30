@@ -23,6 +23,7 @@ export {
   PartSchema,
   PushNotificationConfigSchema,
   TaskListParamsSchema,
+  TaskPushNotificationConfigSchema,
 } from '../schemas/public.js';
 
 /**

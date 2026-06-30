@@ -49,6 +49,11 @@ export interface PushNotificationConfig {
   metadata?: Record<string, unknown>;
 }
 
+export interface TaskPushNotificationConfig {
+  taskId: string;
+  pushNotificationConfig: PushNotificationConfig;
+}
+
 export interface Artifact {
   artifactId: string;
   name?: string;

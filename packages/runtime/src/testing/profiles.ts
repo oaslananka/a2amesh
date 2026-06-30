@@ -1,9 +1,6 @@
 import type { ConformanceProtocolVersion } from './conformance.js';
 
-export type ConformanceProfileId =
-  | 'official-a2a-v1.0'
-  | 'legacy-a2amesh'
-  | 'experimental-a2a-v1.2';
+export type ConformanceProfileId = 'official-a2a-v1.0' | 'legacy-a2amesh' | 'experimental-a2a-v1.2';
 
 export type ConformanceProfileStatus = 'supported' | 'partial' | 'legacy-alias' | 'unsupported';
 
@@ -101,11 +98,11 @@ const officialA2aV1Requirements = [
     id: 'push.task-push-notification-config',
     area: 'push-notifications',
     name: 'TaskPushNotificationConfig create/get/list/delete surface',
-    status: 'legacy-alias',
+    status: 'supported',
     required: true,
     evidence:
-      'Existing JSON-RPC methods use tasks/pushNotification/set and get with pushNotificationConfig; official v1.0 uses taskPushNotificationConfig and config CRUD methods.',
-    trackedBy: '#315',
+      'Runtime supports legacy tasks/pushNotification set/get plus official tasks/pushNotificationConfig create/get/list/delete with taskPushNotificationConfig payloads and per-config ids.',
+    trackedBy: '#17',
   },
   {
     id: 'fields.send-message-configuration',

@@ -11,6 +11,14 @@ export interface ITaskStorage {
     config: PushNotificationConfig,
   ): PushNotificationConfig | undefined;
   getPushNotification(taskId: string): PushNotificationConfig | undefined;
+  listPushNotifications?(taskId: string): PushNotificationConfig[];
+  setPushNotificationConfig?(
+    taskId: string,
+    configId: string,
+    config: PushNotificationConfig,
+  ): PushNotificationConfig | undefined;
+  getPushNotificationConfig?(taskId: string, configId: string): PushNotificationConfig | undefined;
+  removePushNotificationConfig?(taskId: string, configId: string): boolean;
   removePushNotification(taskId: string): boolean;
   deleteTask(taskId: string): boolean;
   clear(): void;

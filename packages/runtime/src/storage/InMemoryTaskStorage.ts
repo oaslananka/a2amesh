@@ -4,7 +4,7 @@ import type { PushNotificationConfig, Task } from '../types/task.js';
 export class InMemoryTaskStorage implements ITaskStorage {
   private readonly tasks = new Map<string, Task>();
   private readonly contextIndex = new Map<string, Set<string>>();
-  private readonly pushNotifications = new Map<string, PushNotificationConfig>();
+  private readonly pushNotifications = new Map<string, Map<string, PushNotificationConfig>>();
   private readonly ttlTimers = new Map<string, NodeJS.Timeout>();
 
   insertTask(task: Task): Task {
@@ -50,18 +50,56 @@ export class InMemoryTaskStorage implements ITaskStorage {
       return undefined;
     }
 
-    const storedConfig = structuredClone(config);
-    this.pushNotifications.set(taskId, storedConfig);
-    return structuredClone(storedConfig);
+    return this.setPushNotificationConfig(taskId, pushNotificationConfigId(config), config);
   }
 
   getPushNotification(taskId: string): PushNotificationConfig | undefined {
-    const config = this.pushNotifications.get(taskId);
+    return this.getPushNotificationConfig(taskId, DEFAULT_PUSH_NOTIFICATION_CONFIG_ID);
+  }
+
+  listPushNotifications(taskId: string): PushNotificationConfig[] {
+    return Array.from(this.pushNotifications.get(taskId)?.values() ?? [], (config) =>
+      structuredClone(config),
+    );
+  }
+
+  setPushNotificationConfig(
+    taskId: string,
+    configId: string,
+    config: PushNotificationConfig,
+  ): PushNotificationConfig | undefined {
+    if (!this.tasks.has(taskId)) {
+      return undefined;
+    }
+
+    const normalizedConfig = structuredClone(config);
+    const taskConfigs =
+      this.pushNotifications.get(taskId) ?? new Map<string, PushNotificationConfig>();
+    taskConfigs.set(configId, normalizedConfig);
+    this.pushNotifications.set(taskId, taskConfigs);
+    return structuredClone(normalizedConfig);
+  }
+
+  getPushNotificationConfig(taskId: string, configId: string): PushNotificationConfig | undefined {
+    const config = this.pushNotifications.get(taskId)?.get(configId);
     return config ? structuredClone(config) : undefined;
   }
 
+  removePushNotificationConfig(taskId: string, configId: string): boolean {
+    const taskConfigs = this.pushNotifications.get(taskId);
+    if (!taskConfigs) {
+      return false;
+    }
+
+    const removed = taskConfigs.delete(configId);
+    if (taskConfigs.size === 0) {
+      this.pushNotifications.delete(taskId);
+    }
+    return removed;
+  }
+
   removePushNotification(taskId: string): boolean {
-    return this.pushNotifications.delete(taskId);
+    return this.removePushNotificationConfig(taskId, DEFAULT_PUSH_NOTIFICATION_CONFIG_ID);
   }
   deleteTask(taskId: string): boolean {
     const task = this.tasks.get(taskId);
@@ -132,4 +170,12 @@ export class InMemoryTaskStorage implements ITaskStorage {
     nextIds.add(taskId);
     this.contextIndex.set(nextContextId, nextIds);
   }
+}
+
+const DEFAULT_PUSH_NOTIFICATION_CONFIG_ID = 'default';
+
+function pushNotificationConfigId(config: PushNotificationConfig): string {
+  return config.id && config.id.trim().length > 0
+    ? config.id.trim()
+    : DEFAULT_PUSH_NOTIFICATION_CONFIG_ID;
 }

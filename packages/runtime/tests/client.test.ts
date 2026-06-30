@@ -150,6 +150,74 @@ describe('A2AClient', () => {
     await expect(client.getTask('missing')).rejects.toThrow('Task not found');
   });
 
+  it('calls official push notification config CRUD RPC methods', async () => {
+    const bodies: Array<{ method: string; params: Record<string, unknown> }> = [];
+    const results = [
+      { id: 'sms', url: 'https://example.com/sms' },
+      { id: 'sms', url: 'https://example.com/sms' },
+      { configs: [{ id: 'sms', url: 'https://example.com/sms' }] },
+      { deleted: true },
+    ];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as {
+        id: string;
+        method: string;
+        params: Record<string, unknown>;
+      };
+      bodies.push({ method: body.method, params: body.params });
+      return new Response(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          id: body.id,
+          result: results.shift(),
+        }),
+        { status: 200 },
+      );
+    });
+
+    const client = new A2AClient('http://localhost:3000');
+
+    await expect(
+      client.createPushNotificationConfig('task-1', {
+        id: 'sms',
+        url: 'https://example.com/sms',
+      }),
+    ).resolves.toEqual({ id: 'sms', url: 'https://example.com/sms' });
+    await expect(client.getPushNotificationConfig('task-1', 'sms')).resolves.toEqual({
+      id: 'sms',
+      url: 'https://example.com/sms',
+    });
+    await expect(client.listPushNotificationConfigs('task-1')).resolves.toEqual({
+      configs: [{ id: 'sms', url: 'https://example.com/sms' }],
+    });
+    await expect(client.deletePushNotificationConfig('task-1', 'sms')).resolves.toEqual({
+      deleted: true,
+    });
+
+    expect(bodies).toEqual([
+      {
+        method: 'tasks/pushNotificationConfig/create',
+        params: {
+          taskId: 'task-1',
+          configId: 'sms',
+          pushNotificationConfig: { id: 'sms', url: 'https://example.com/sms' },
+        },
+      },
+      {
+        method: 'tasks/pushNotificationConfig/get',
+        params: { taskId: 'task-1', configId: 'sms' },
+      },
+      {
+        method: 'tasks/pushNotificationConfig/list',
+        params: { taskId: 'task-1' },
+      },
+      {
+        method: 'tasks/pushNotificationConfig/delete',
+        params: { taskId: 'task-1', configId: 'sms' },
+      },
+    ]);
+  });
+
   it('sends RPC requests with interceptors and merged headers', async () => {
     const before = vi.fn(async ({ options }) => {
       options.headers = { ...(options.headers ?? {}), authorization: 'Bearer token' };

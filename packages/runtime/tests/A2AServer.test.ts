@@ -533,6 +533,81 @@ describe('A2AServer', () => {
       }),
     ).toEqual(pushConfig);
 
+    expect(
+      await server.callRpc({
+        jsonrpc: '2.0',
+        id: 'push-create-email',
+        method: 'tasks/pushNotificationConfig/create',
+        params: {
+          taskId: pending.id,
+          configId: 'email',
+          pushNotificationConfig: {
+            url: 'https://example.com/email-hook',
+            token: 'email-token',
+          },
+        },
+      }),
+    ).toEqual({ url: 'https://example.com/email-hook', token: 'email-token' });
+
+    expect(
+      await server.callRpc({
+        jsonrpc: '2.0',
+        id: 'push-create-pager',
+        method: 'tasks/pushNotificationConfig/create',
+        params: {
+          taskPushNotificationConfig: {
+            taskId: pending.id,
+            pushNotificationConfig: {
+              id: 'pager',
+              url: 'https://example.com/pager-hook',
+            },
+          },
+        },
+      }),
+    ).toEqual({ id: 'pager', url: 'https://example.com/pager-hook' });
+
+    expect(
+      await server.callRpc({
+        jsonrpc: '2.0',
+        id: 'push-get-email',
+        method: 'tasks/pushNotificationConfig/get',
+        params: { taskId: pending.id, configId: 'email' },
+      }),
+    ).toEqual({ url: 'https://example.com/email-hook', token: 'email-token' });
+
+    expect(
+      await server.callRpc({
+        jsonrpc: '2.0',
+        id: 'push-list-configs',
+        method: 'tasks/pushNotificationConfig/list',
+        params: { taskId: pending.id },
+      }),
+    ).toEqual({
+      configs: expect.arrayContaining([
+        pushConfig,
+        { url: 'https://example.com/email-hook', token: 'email-token' },
+        { id: 'pager', url: 'https://example.com/pager-hook' },
+      ]),
+    });
+
+    expect(
+      await server.callRpc({
+        jsonrpc: '2.0',
+        id: 'push-delete-email',
+        method: 'tasks/pushNotificationConfig/delete',
+        params: { taskId: pending.id, configId: 'email' },
+      }),
+    ).toEqual({ deleted: true });
+
+    expect(
+      await server.callRpc({
+        jsonrpc: '2.0',
+        id: 'push-get-email-after-delete',
+        method: 'tasks/pushNotificationConfig/get',
+        params: { taskId: pending.id, configId: 'email' },
+      }),
+    ).toBeNull();
+
     const listed = (await server.callRpc({
       jsonrpc: '2.0',
       id: 'list-all',
@@ -849,6 +924,34 @@ describe('A2AServer', () => {
       configs: [pushConfig],
     });
 
+    const setSmsPushResponse = await fetch(
+      `${baseUrl}/tasks/${pushTarget.id}/pushNotificationConfigs`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          configId: 'sms',
+          taskPushNotificationConfig: { url: 'https://example.com/sms-hook' },
+        }),
+      },
+    );
+    expect(setSmsPushResponse.status).toBe(200);
+    expect(await setSmsPushResponse.json()).toEqual({ url: 'https://example.com/sms-hook' });
+
+    const listMultiPushResponse = await fetch(
+      `${baseUrl}/tasks/${pushTarget.id}/pushNotificationConfigs`,
+    );
+    expect(listMultiPushResponse.status).toBe(200);
+    expect((await listMultiPushResponse.json()) as { configs: unknown[] }).toEqual({
+      configs: expect.arrayContaining([pushConfig, { url: 'https://example.com/sms-hook' }]),
+    });
+
+    const getSmsPushResponse = await fetch(
+      `${baseUrl}/tasks/${pushTarget.id}/pushNotificationConfigs/sms`,
+    );
+    expect(getSmsPushResponse.status).toBe(200);
+    expect(await getSmsPushResponse.json()).toEqual({ url: 'https://example.com/sms-hook' });
+
     const getPushResponse = await fetch(
       `${baseUrl}/tasks/${pushTarget.id}/pushNotificationConfigs/default`,
     );
@@ -860,6 +963,12 @@ describe('A2AServer', () => {
       { method: 'DELETE' },
     );
     expect(deletePushResponse.status).toBe(204);
+
+    const deleteSmsPushResponse = await fetch(
+      `${baseUrl}/tasks/${pushTarget.id}/pushNotificationConfigs/sms`,
+      { method: 'DELETE' },
+    );
+    expect(deleteSmsPushResponse.status).toBe(204);
 
     const listAfterDeleteResponse = await fetch(
       `${baseUrl}/tasks/${pushTarget.id}/pushNotificationConfigs`,

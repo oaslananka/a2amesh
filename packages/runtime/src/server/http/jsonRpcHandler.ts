@@ -239,6 +239,34 @@ function selectRawPushConfig(params: Record<string, unknown>): unknown {
   );
 }
 
+const DEFAULT_PUSH_NOTIFICATION_CONFIG_ID = 'default';
+
+function selectPushTaskId(params: Record<string, unknown>): unknown {
+  const wrapped = params['taskPushNotificationConfig'];
+  if (wrapped && typeof wrapped === 'object' && 'taskId' in wrapped) {
+    return (wrapped as Record<string, unknown>)['taskId'];
+  }
+  return params['taskId'];
+}
+
+function selectPushConfigId(
+  params: Record<string, unknown>,
+  config?: Pick<PushNotificationConfig, 'id'>,
+): string {
+  const rawId = params['configId'] ?? params['id'] ?? config?.id;
+  return typeof rawId === 'string' && rawId.trim().length > 0
+    ? rawId.trim()
+    : DEFAULT_PUSH_NOTIFICATION_CONFIG_ID;
+}
+
+function selectRawTaskPushNotificationConfig(params: Record<string, unknown>): unknown {
+  const wrapped = params['taskPushNotificationConfig'];
+  if (wrapped && typeof wrapped === 'object' && 'pushNotificationConfig' in wrapped) {
+    return (wrapped as Record<string, unknown>)['pushNotificationConfig'];
+  }
+  return selectRawPushConfig(params);
+}
+
 function shouldReturnImmediately(configuration: MessageRequestConfiguration | undefined): boolean {
   if (typeof configuration?.returnImmediately === 'boolean') return configuration.returnImmediately;
   if (typeof configuration?.return_immediately === 'boolean')
@@ -373,13 +401,17 @@ export async function handleRpcRequest(
         return task;
       }
 
-      case 'tasks/pushNotification/set': {
-        const rawPushNotificationConfig = selectRawPushConfig(params);
+      case 'tasks/pushNotification/set':
+      case 'tasks/pushNotificationConfig/create': {
+        const rawPushNotificationConfig =
+          req.method === 'tasks/pushNotificationConfig/create'
+            ? selectRawTaskPushNotificationConfig(params)
+            : selectRawPushConfig(params);
         if (!rawPushNotificationConfig || typeof rawPushNotificationConfig !== 'object') {
           throw new JsonRpcError(ErrorCodes.InvalidParams, 'Missing taskId or callback config');
         }
         const task = getTaskOrThrow(
-          params['taskId'],
+          selectPushTaskId(params),
           deps.taskManager,
           context.requestContext,
           (t, ctx) => canAccessTask(t, ctx, deps.authMiddleware),
@@ -390,17 +422,51 @@ export async function handleRpcRequest(
         ) as PushNotificationConfig;
         const normalizedPushNotificationConfig =
           await deps.normalizePushNotificationConfig(pushNotificationConfig);
-        return deps.taskManager.setPushNotification(task.id, normalizedPushNotificationConfig);
+        const configId =
+          req.method === 'tasks/pushNotificationConfig/create'
+            ? selectPushConfigId(params, normalizedPushNotificationConfig)
+            : pushNotificationConfigId(normalizedPushNotificationConfig);
+        return deps.taskManager.setPushNotificationConfig(
+          task.id,
+          configId,
+          normalizedPushNotificationConfig,
+        );
       }
 
-      case 'tasks/pushNotification/get': {
+      case 'tasks/pushNotification/get':
+      case 'tasks/pushNotificationConfig/get': {
         const task = getTaskOrThrow(
-          params['taskId'],
+          selectPushTaskId(params),
           deps.taskManager,
           context.requestContext,
           (t, ctx) => canAccessTask(t, ctx, deps.authMiddleware),
         );
-        return deps.taskManager.getPushNotification(task.id) ?? null;
+        const configId =
+          req.method === 'tasks/pushNotificationConfig/get'
+            ? selectPushConfigId(params)
+            : DEFAULT_PUSH_NOTIFICATION_CONFIG_ID;
+        return deps.taskManager.getPushNotificationConfig(task.id, configId) ?? null;
+      }
+
+      case 'tasks/pushNotificationConfig/list': {
+        const task = getTaskOrThrow(
+          selectPushTaskId(params),
+          deps.taskManager,
+          context.requestContext,
+          (t, ctx) => canAccessTask(t, ctx, deps.authMiddleware),
+        );
+        return { configs: deps.taskManager.listPushNotifications(task.id) };
+      }
+
+      case 'tasks/pushNotificationConfig/delete': {
+        const task = getTaskOrThrow(
+          selectPushTaskId(params),
+          deps.taskManager,
+          context.requestContext,
+          (t, ctx) => canAccessTask(t, ctx, deps.authMiddleware),
+        );
+        const configId = selectPushConfigId(params);
+        return { deleted: deps.taskManager.removePushNotificationConfig(task.id, configId) };
       }
 
       case 'tasks/list': {
@@ -625,4 +691,10 @@ function shouldEnforceTaskOwnership(
   authMiddleware: JwtAuthMiddleware | undefined,
 ): boolean {
   return Boolean(authMiddleware) || context.authMethod !== 'anonymous';
+}
+
+function pushNotificationConfigId(config: PushNotificationConfig): string {
+  return config.id && config.id.trim().length > 0
+    ? config.id.trim()
+    : DEFAULT_PUSH_NOTIFICATION_CONFIG_ID;
 }

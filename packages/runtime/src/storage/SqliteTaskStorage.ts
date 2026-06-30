@@ -28,6 +28,10 @@ interface PushNotificationRow {
   config_json: string;
 }
 
+interface PushNotificationCollection {
+  configs: Record<string, PushNotificationConfig>;
+}
+
 function parseTask(row: TaskRow | undefined): Task | undefined {
   return row ? (JSON.parse(row.task_json) as Task) : undefined;
 }
@@ -35,7 +39,45 @@ function parseTask(row: TaskRow | undefined): Task | undefined {
 function parsePushNotification(
   row: PushNotificationRow | undefined,
 ): PushNotificationConfig | undefined {
-  return row ? (JSON.parse(row.config_json) as PushNotificationConfig) : undefined;
+  if (!row) {
+    return undefined;
+  }
+  const configs = parsePushNotificationConfigs(row);
+  return configs.get(DEFAULT_PUSH_NOTIFICATION_CONFIG_ID) ?? configs.values().next().value;
+}
+
+function parsePushNotificationConfigs(
+  row: PushNotificationRow | undefined,
+): Map<string, PushNotificationConfig> {
+  if (!row) {
+    return new Map();
+  }
+
+  const parsed = JSON.parse(row.config_json) as PushNotificationConfig | PushNotificationCollection;
+  if (isPushNotificationCollection(parsed)) {
+    return new Map(
+      Object.entries(parsed.configs).map(([id, config]) => [id, structuredClone(config)]),
+    );
+  }
+
+  const id = pushNotificationConfigId(parsed);
+  return new Map([[id, { ...parsed, id }]]);
+}
+
+function isPushNotificationCollection(value: unknown): value is PushNotificationCollection {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    'configs' in value &&
+    (value as PushNotificationCollection).configs !== null &&
+    typeof (value as PushNotificationCollection).configs === 'object'
+  );
+}
+
+function serializePushNotificationConfigs(configs: Map<string, PushNotificationConfig>): string {
+  return JSON.stringify({
+    configs: Object.fromEntries(configs),
+  } satisfies PushNotificationCollection);
 }
 
 function initializeSqliteTaskStorage(db: SqliteDatabase): void {
@@ -93,15 +135,32 @@ function setPushNotificationInSqlite(
   taskId: string,
   config: PushNotificationConfig,
 ): PushNotificationConfig | undefined {
+  return setPushNotificationConfigInSqlite(db, taskId, pushNotificationConfigId(config), config);
+}
+
+function setPushNotificationConfigInSqlite(
+  db: SqliteDatabase,
+  taskId: string,
+  configId: string,
+  config: PushNotificationConfig,
+): PushNotificationConfig | undefined {
   if (!getTaskFromSqlite(db, taskId)) {
     return undefined;
   }
 
+  const configs = parsePushNotificationConfigs(
+    db
+      .prepare<PushNotificationRow>('SELECT config_json FROM push_notifications WHERE task_id = ?')
+      .get(taskId),
+  );
+  const storedConfig = structuredClone(config);
+  configs.set(configId, storedConfig);
+
   db.prepare(
     'INSERT INTO push_notifications (task_id, config_json) VALUES (?, ?) ON CONFLICT(task_id) DO UPDATE SET config_json = excluded.config_json',
-  ).run(taskId, JSON.stringify(config));
+  ).run(taskId, serializePushNotificationConfigs(configs));
 
-  return structuredClone(config);
+  return structuredClone(storedConfig);
 }
 
 function getPushNotificationFromSqlite(
@@ -115,9 +174,58 @@ function getPushNotificationFromSqlite(
   );
 }
 
+function listPushNotificationsFromSqlite(
+  db: SqliteDatabase,
+  taskId: string,
+): PushNotificationConfig[] {
+  const configs = parsePushNotificationConfigs(
+    db
+      .prepare<PushNotificationRow>('SELECT config_json FROM push_notifications WHERE task_id = ?')
+      .get(taskId),
+  );
+  return Array.from(configs.values(), (config) => structuredClone(config));
+}
+
+function getPushNotificationConfigFromSqlite(
+  db: SqliteDatabase,
+  taskId: string,
+  configId: string,
+): PushNotificationConfig | undefined {
+  const configs = parsePushNotificationConfigs(
+    db
+      .prepare<PushNotificationRow>('SELECT config_json FROM push_notifications WHERE task_id = ?')
+      .get(taskId),
+  );
+  const config = configs.get(configId);
+  return config ? structuredClone(config) : undefined;
+}
+
+function removePushNotificationConfigFromSqlite(
+  db: SqliteDatabase,
+  taskId: string,
+  configId: string,
+): boolean {
+  const row = db
+    .prepare<PushNotificationRow>('SELECT config_json FROM push_notifications WHERE task_id = ?')
+    .get(taskId);
+  const configs = parsePushNotificationConfigs(row);
+  const removed = configs.delete(configId);
+  if (!removed) {
+    return false;
+  }
+
+  if (configs.size === 0) {
+    db.prepare('DELETE FROM push_notifications WHERE task_id = ?').run(taskId);
+  } else {
+    db.prepare(
+      'INSERT INTO push_notifications (task_id, config_json) VALUES (?, ?) ON CONFLICT(task_id) DO UPDATE SET config_json = excluded.config_json',
+    ).run(taskId, serializePushNotificationConfigs(configs));
+  }
+  return true;
+}
+
 function removePushNotificationFromSqlite(db: SqliteDatabase, taskId: string): boolean {
-  const result = db.prepare('DELETE FROM push_notifications WHERE task_id = ?').run(taskId);
-  return getSqliteChanges(result) > 0;
+  return removePushNotificationConfigFromSqlite(db, taskId, DEFAULT_PUSH_NOTIFICATION_CONFIG_ID);
 }
 function deleteTaskFromSqlite(db: SqliteDatabase, taskId: string): boolean {
   db.prepare('DELETE FROM push_notifications WHERE task_id = ?').run(taskId);
@@ -173,6 +281,26 @@ export class SqliteTaskStorage implements ITaskStorage {
 
   getPushNotification(taskId: string): PushNotificationConfig | undefined {
     return getPushNotificationFromSqlite(this.db, taskId);
+  }
+
+  listPushNotifications(taskId: string): PushNotificationConfig[] {
+    return listPushNotificationsFromSqlite(this.db, taskId);
+  }
+
+  setPushNotificationConfig(
+    taskId: string,
+    configId: string,
+    config: PushNotificationConfig,
+  ): PushNotificationConfig | undefined {
+    return setPushNotificationConfigInSqlite(this.db, taskId, configId, config);
+  }
+
+  getPushNotificationConfig(taskId: string, configId: string): PushNotificationConfig | undefined {
+    return getPushNotificationConfigFromSqlite(this.db, taskId, configId);
+  }
+
+  removePushNotificationConfig(taskId: string, configId: string): boolean {
+    return removePushNotificationConfigFromSqlite(this.db, taskId, configId);
   }
 
   removePushNotification(taskId: string): boolean {
@@ -242,6 +370,33 @@ export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
     return this.runOperation(() => getPushNotificationFromSqlite(this.db, taskId));
   }
 
+  listPushNotifications(taskId: string): Promise<PushNotificationConfig[]> {
+    return this.runOperation(() => listPushNotificationsFromSqlite(this.db, taskId));
+  }
+
+  setPushNotificationConfig(
+    taskId: string,
+    configId: string,
+    config: PushNotificationConfig,
+  ): Promise<PushNotificationConfig | undefined> {
+    return this.runOperation(() =>
+      setPushNotificationConfigInSqlite(this.db, taskId, configId, config),
+    );
+  }
+
+  getPushNotificationConfig(
+    taskId: string,
+    configId: string,
+  ): Promise<PushNotificationConfig | undefined> {
+    return this.runOperation(() => getPushNotificationConfigFromSqlite(this.db, taskId, configId));
+  }
+
+  removePushNotificationConfig(taskId: string, configId: string): Promise<boolean> {
+    return this.runOperation(() =>
+      removePushNotificationConfigFromSqlite(this.db, taskId, configId),
+    );
+  }
+
   deleteTask(taskId: string): Promise<boolean> {
     return this.runOperation(() => deleteTaskFromSqlite(this.db, taskId));
   }
@@ -300,4 +455,12 @@ function getSqliteChanges(result: unknown): number {
     return typeof changes === 'number' ? changes : 0;
   }
   return 0;
+}
+
+const DEFAULT_PUSH_NOTIFICATION_CONFIG_ID = 'default';
+
+function pushNotificationConfigId(config: PushNotificationConfig): string {
+  return config.id && config.id.trim().length > 0
+    ? config.id.trim()
+    : DEFAULT_PUSH_NOTIFICATION_CONFIG_ID;
 }

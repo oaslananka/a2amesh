@@ -143,7 +143,10 @@ export class AsyncTaskManager extends EventEmitter {
       }
       assertTaskMutable(task, 'set push notification');
 
-      const storedConfig = await storage.setPushNotification(taskId, config);
+      const configId = pushNotificationConfigId(config);
+      const storedConfig =
+        (await storage.setPushNotificationConfig?.(taskId, configId, config)) ??
+        (await storage.setPushNotification(taskId, { ...config, id: configId }));
       return {
         result: storedConfig,
         ...(storedConfig ? { event: { task, reason: 'push-config' } } : {}),
@@ -152,7 +155,69 @@ export class AsyncTaskManager extends EventEmitter {
   }
 
   getPushNotification(taskId: string): Promise<PushNotificationConfig | undefined> {
-    return this.storage.getPushNotification(taskId);
+    return this.getPushNotificationConfig(taskId, DEFAULT_PUSH_NOTIFICATION_CONFIG_ID);
+  }
+
+  async listPushNotifications(taskId: string): Promise<PushNotificationConfig[]> {
+    return this.storage.listPushNotifications?.(taskId) ?? [];
+  }
+
+  async setPushNotificationConfig(
+    taskId: string,
+    configId: string,
+    config: PushNotificationConfig,
+  ): Promise<PushNotificationConfig | undefined> {
+    return this.runTaskMutation(async (storage) => {
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return { result: undefined };
+      }
+      assertTaskMutable(task, 'set push notification');
+
+      const storedConfig =
+        (await storage.setPushNotificationConfig?.(taskId, configId, config)) ??
+        (await storage.setPushNotification(taskId, { ...config, id: configId }));
+      return {
+        result: storedConfig,
+        ...(storedConfig ? { event: { task, reason: 'push-config' } } : {}),
+      };
+    });
+  }
+
+  async getPushNotificationConfig(
+    taskId: string,
+    configId: string,
+  ): Promise<PushNotificationConfig | undefined> {
+    return (
+      (await this.storage.getPushNotificationConfig?.(taskId, configId)) ??
+      (configId === DEFAULT_PUSH_NOTIFICATION_CONFIG_ID
+        ? await this.storage.getPushNotification(taskId)
+        : undefined)
+    );
+  }
+
+  async removePushNotificationConfig(taskId: string, configId: string): Promise<boolean> {
+    return this.runTaskMutation(async (storage) => {
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return { result: false };
+      }
+      assertTaskMutable(task, 'remove push notification');
+
+      const removed =
+        (await storage.removePushNotificationConfig?.(taskId, configId)) ??
+        (configId === DEFAULT_PUSH_NOTIFICATION_CONFIG_ID
+          ? await storage.removePushNotification(taskId)
+          : false);
+      return {
+        result: removed,
+        ...(removed ? { event: { task, reason: 'push-config' } } : {}),
+      };
+    });
+  }
+
+  removePushNotification(taskId: string): Promise<boolean> {
+    return this.removePushNotificationConfig(taskId, DEFAULT_PUSH_NOTIFICATION_CONFIG_ID);
   }
 
   async setTaskExtensions(taskId: string, extensions: string[]): Promise<Task | undefined> {
@@ -205,4 +270,12 @@ export class AsyncTaskManager extends EventEmitter {
       ...(previousState ? { previousState } : {}),
     } satisfies TaskUpdatedEvent);
   }
+}
+
+const DEFAULT_PUSH_NOTIFICATION_CONFIG_ID = 'default';
+
+function pushNotificationConfigId(config: PushNotificationConfig): string {
+  return config.id && config.id.trim().length > 0
+    ? config.id.trim()
+    : DEFAULT_PUSH_NOTIFICATION_CONFIG_ID;
 }
