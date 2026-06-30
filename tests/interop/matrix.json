@@ -68,44 +68,44 @@
   ],
   "scenarios": [
     {
-      "id": "js-client-to-warp-send",
+      "id": "js-client-to-mesh-send",
       "description": "Official JS client sends a blocking message to an A2A Mesh server.",
       "client": "official-js-client",
       "server": "a2amesh-server",
       "transport": "http-json",
       "capabilities": ["message-send", "task-lifecycle", "version-negotiation"],
-      "trace": "tests/interop/golden-traces/js-client-to-warp-send.json"
+      "trace": "tests/interop/golden-traces/js-client-to-mesh-send.json"
     },
     {
-      "id": "warp-client-to-js-stream",
+      "id": "mesh-client-to-js-stream",
       "description": "A2A Mesh client consumes a streaming response from an official JS server.",
       "client": "a2amesh-client",
       "server": "official-js-server",
       "transport": "http-json",
       "capabilities": ["message-stream", "task-lifecycle", "extension-negotiation"],
-      "trace": "tests/interop/golden-traces/warp-client-to-js-stream.json"
+      "trace": "tests/interop/golden-traces/mesh-client-to-js-stream.json"
     },
     {
-      "id": "python-client-to-warp-cancel",
-      "description": "Official Python client starts and cancels a Warp task.",
+      "id": "python-client-to-mesh-cancel",
+      "description": "Official Python client starts and cancels an A2A Mesh task.",
       "client": "official-python-client",
       "server": "a2amesh-server",
       "transport": "http-json",
       "capabilities": ["message-send", "cancellation", "task-lifecycle"],
-      "trace": "tests/interop/golden-traces/python-client-to-warp-cancel.json"
+      "trace": "tests/interop/golden-traces/python-client-to-mesh-cancel.json"
     },
     {
-      "id": "warp-client-to-python-callback-challenge",
+      "id": "mesh-client-to-python-callback-challenge",
       "description": "A2A Mesh client exercises callback configuration and auth challenge handling against a Python fixture.",
       "client": "a2amesh-client",
       "server": "official-python-server",
       "transport": "http-json",
       "capabilities": ["callback-config", "auth-challenge", "task-lifecycle"],
-      "trace": "tests/interop/golden-traces/warp-client-to-python-callback-challenge.json"
+      "trace": "tests/interop/golden-traces/mesh-client-to-python-callback-challenge.json"
     },
     {
       "id": "registry-discovers-official-js",
-      "description": "Warp registry imports and discovers an official JS agent card.",
+      "description": "A2A Mesh registry imports and discovers an official JS agent card.",
       "client": "a2amesh-registry",
       "server": "official-js-server",
       "transport": "registry-fixture",
@@ -114,7 +114,7 @@
     },
     {
       "id": "registry-discovers-official-python",
-      "description": "Warp registry imports and discovers an official Python agent card.",
+      "description": "A2A Mesh registry imports and discovers an official Python agent card.",
       "client": "a2amesh-registry",
       "server": "official-python-server",
       "transport": "registry-fixture",

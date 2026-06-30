@@ -1,5 +1,5 @@
 {
-  "scenario": "python-client-to-warp-cancel",
+  "scenario": "python-client-to-mesh-cancel",
   "profile": "official-a2a-v1.0",
   "client": "official-python-client",
   "server": "a2amesh-server",
