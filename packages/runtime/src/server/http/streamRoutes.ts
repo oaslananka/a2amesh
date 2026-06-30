@@ -11,6 +11,11 @@ import type { IdempotencyStoredResult, IdempotencyStore } from '../IdempotencySt
 import type { SSEStreamer } from '../SSEStreamer.js';
 import type { TaskManager, TaskUpdatedEvent } from '../TaskManager.js';
 import { decorateIdempotentResult, type IdempotencyResolution } from './idempotency.js';
+import {
+  A2A_VERSION_NOT_SUPPORTED_PROBLEM_TYPE,
+  SUPPORTED_A2A_PROTOCOL_VERSIONS,
+  assertSupportedA2AProtocolVersion,
+} from './protocolVersion.js';
 import { getTaskOrThrow } from './jsonRpcHandler.js';
 import { isTerminalTaskState } from './lifecycleErrors.js';
 
@@ -77,11 +82,35 @@ export function registerStreamRoutes(app: Express, deps: StreamSubscriptionDepen
   }
 }
 
+function assertStreamProtocolVersionOrSendProblem(req: Request, res: Response): boolean {
+  try {
+    assertSupportedA2AProtocolVersion(req);
+    return true;
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : 'Protocol version is not supported';
+    res
+      .status(400)
+      .type('application/problem+json')
+      .json({
+        type: A2A_VERSION_NOT_SUPPORTED_PROBLEM_TYPE,
+        title: 'Protocol Version Not Supported',
+        status: 400,
+        detail,
+        supportedVersions: [...SUPPORTED_A2A_PROTOCOL_VERSIONS],
+      });
+    return false;
+  }
+}
+
 async function handleStreamRequest(
   req: Request,
   res: Response,
   deps: StreamSubscriptionDependencies,
 ): Promise<void> {
+  if (!assertStreamProtocolVersionOrSendProblem(req, res)) {
+    return;
+  }
+
   const requestContext = await authenticateRequestOrSend401(
     req,
     res,

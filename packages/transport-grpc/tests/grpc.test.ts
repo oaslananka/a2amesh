@@ -210,9 +210,24 @@ describe('gRPC transport package', () => {
       'server proto failed',
     );
   });
+
+  it('rejects unary calls that request an unsupported A2A protocol version', async () => {
+    const session = await createGrpcSession();
+    const client = new GrpcClient(session.address, { protocolVersion: '9.9' });
+
+    try {
+      await expect(client.getAgentCard()).rejects.toThrow(
+        'A2A protocol version 9.9 is not supported',
+      );
+    } finally {
+      client.close();
+      await session.close();
+    }
+  });
 });
 
 interface GrpcSession {
+  address: string;
   adapter: EchoA2AServer;
   client: GrpcClient;
   server: GrpcServer;
@@ -239,6 +254,7 @@ async function createGrpcSession(adapter = new EchoA2AServer()): Promise<GrpcSes
   const client = new GrpcClient(address);
 
   return {
+    address,
     adapter,
     client,
     server,

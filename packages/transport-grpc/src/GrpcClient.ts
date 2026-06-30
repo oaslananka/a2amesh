@@ -36,25 +36,56 @@ interface GrpcClientLike extends grpc.Client {
     request: Record<string, never>,
     callback: (error: grpc.ServiceError | null, response: AgentCardResponse) => void,
   ): void;
+  GetAgentCard(
+    request: Record<string, never>,
+    metadata: grpc.Metadata,
+    callback: (error: grpc.ServiceError | null, response: AgentCardResponse) => void,
+  ): void;
   SendMessage(
     request: SendMessageRequest,
     callback: (error: grpc.ServiceError | null, response: TaskResponse) => void,
   ): void;
+  SendMessage(
+    request: SendMessageRequest,
+    metadata: grpc.Metadata,
+    callback: (error: grpc.ServiceError | null, response: TaskResponse) => void,
+  ): void;
   StreamMessage(request: SendMessageRequest): grpc.ClientReadableStream<TaskResponse>;
+  StreamMessage(
+    request: SendMessageRequest,
+    metadata: grpc.Metadata,
+  ): grpc.ClientReadableStream<TaskResponse>;
   GetTask(
     request: TaskRequest,
+    callback: (error: grpc.ServiceError | null, response: TaskResponse) => void,
+  ): void;
+  GetTask(
+    request: TaskRequest,
+    metadata: grpc.Metadata,
     callback: (error: grpc.ServiceError | null, response: TaskResponse) => void,
   ): void;
   CancelTask(
     request: TaskRequest,
     callback: (error: grpc.ServiceError | null, response: TaskResponse) => void,
   ): void;
+  CancelTask(
+    request: TaskRequest,
+    metadata: grpc.Metadata,
+    callback: (error: grpc.ServiceError | null, response: TaskResponse) => void,
+  ): void;
+}
+
+export interface GrpcClientOptions {
+  protocolVersion?: string;
 }
 
 export class GrpcClient {
   private readonly client: GrpcClientLike;
 
-  constructor(address: string) {
+  constructor(
+    address: string,
+    private readonly options: GrpcClientOptions = {},
+  ) {
     const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
       keepCase: true,
       longs: String,
@@ -74,30 +105,47 @@ export class GrpcClient {
 
   async getAgentCard(): Promise<AgentCard> {
     return new Promise<AgentCard>((resolve, reject) => {
-      this.client.GetAgentCard({}, (error, response) => {
+      const callback = (error: grpc.ServiceError | null, response: AgentCardResponse) => {
         if (error) {
           reject(error);
           return;
         }
         resolve(JSON.parse(response.json_card) as AgentCard);
-      });
+      };
+      const metadata = this.callMetadata();
+      if (metadata) {
+        this.client.GetAgentCard({}, metadata, callback);
+      } else {
+        this.client.GetAgentCard({}, callback);
+      }
     });
   }
 
   async sendMessage(messageText: string): Promise<Task | null> {
     return new Promise<Task | null>((resolve, reject) => {
-      this.client.SendMessage({ message_text: messageText }, (error, response) => {
+      const request = { message_text: messageText };
+      const callback = (error: grpc.ServiceError | null, response: TaskResponse) => {
         if (error) {
           reject(error);
           return;
         }
         resolve(JSON.parse(response.task_json) as Task | null);
-      });
+      };
+      const metadata = this.callMetadata();
+      if (metadata) {
+        this.client.SendMessage(request, metadata, callback);
+      } else {
+        this.client.SendMessage(request, callback);
+      }
     });
   }
 
   async *streamMessage(messageText: string): AsyncGenerator<Task> {
-    const call = this.client.StreamMessage({ message_text: messageText });
+    const request = { message_text: messageText };
+    const metadata = this.callMetadata();
+    const call = metadata
+      ? this.client.StreamMessage(request, metadata)
+      : this.client.StreamMessage(request);
     const queue: Task[] = [];
     let finished = false;
     let streamError: Error | undefined;
@@ -145,26 +193,50 @@ export class GrpcClient {
 
   async getTask(taskId: string): Promise<Task | null> {
     return new Promise<Task | null>((resolve, reject) => {
-      this.client.GetTask({ task_id: taskId }, (error, response) => {
+      const request = { task_id: taskId };
+      const callback = (error: grpc.ServiceError | null, response: TaskResponse) => {
         if (error) {
           reject(error);
           return;
         }
         resolve(JSON.parse(response.task_json) as Task | null);
-      });
+      };
+      const metadata = this.callMetadata();
+      if (metadata) {
+        this.client.GetTask(request, metadata, callback);
+      } else {
+        this.client.GetTask(request, callback);
+      }
     });
   }
 
   async cancelTask(taskId: string): Promise<Task | null> {
     return new Promise<Task | null>((resolve, reject) => {
-      this.client.CancelTask({ task_id: taskId }, (error, response) => {
+      const request = { task_id: taskId };
+      const callback = (error: grpc.ServiceError | null, response: TaskResponse) => {
         if (error) {
           reject(error);
           return;
         }
         resolve(JSON.parse(response.task_json) as Task | null);
-      });
+      };
+      const metadata = this.callMetadata();
+      if (metadata) {
+        this.client.CancelTask(request, metadata, callback);
+      } else {
+        this.client.CancelTask(request, callback);
+      }
     });
+  }
+
+  private callMetadata(): grpc.Metadata | undefined {
+    if (!this.options.protocolVersion) {
+      return undefined;
+    }
+
+    const metadata = new grpc.Metadata();
+    metadata.set('a2a-version', this.options.protocolVersion);
+    return metadata;
   }
 
   close(): void {

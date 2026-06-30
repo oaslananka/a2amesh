@@ -1,3 +1,4 @@
+import { once } from 'node:events';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { JsonRpcError, ErrorCodes } from '@a2amesh/runtime';
 import { WsClient } from '../src/WsClient.js';
@@ -41,5 +42,15 @@ describe('WsServer + WsClient', () => {
 
     await expect(client.request('unknown', {})).rejects.toThrow('Unknown method');
     await client.close();
+  });
+
+  it('closes connections that request an unsupported A2A protocol version', async () => {
+    const { default: WebSocket } = await import('ws');
+    const socket = new WebSocket(`ws://127.0.0.1:${port}/a2amesh-ws?A2A-Version=9.9`);
+
+    const [code, reason] = (await once(socket, 'close')) as [number, Buffer];
+
+    expect(code).toBe(1008);
+    expect(reason.toString()).toContain('A2A protocol version is not supported');
   });
 });

@@ -39,6 +39,8 @@ interface TaskResponse {
 }
 
 const TERMINAL_TASK_STATES = new Set(['COMPLETED', 'FAILED', 'CANCELED']);
+const A2A_VERSION_METADATA_KEY = 'a2a-version';
+const SUPPORTED_A2A_PROTOCOL_VERSIONS = ['1.0', '1.2', '0.3'] as const;
 
 interface ProtoDescriptor {
   a2a: {
@@ -59,12 +61,42 @@ function toGrpcMessage(text: string): Message {
   };
 }
 
+export interface GrpcServerOptions {
+  supportedProtocolVersions?: readonly string[];
+}
+
+function readProtocolVersion(metadata: grpc.Metadata): string | undefined {
+  const values = metadata.get(A2A_VERSION_METADATA_KEY);
+  const first = values[0];
+  if (typeof first === 'string' && first.trim().length > 0) {
+    return first.trim();
+  }
+  if (Buffer.isBuffer(first)) {
+    const value = first.toString('utf8').trim();
+    return value.length > 0 ? value : undefined;
+  }
+  return undefined;
+}
+
+function createUnsupportedProtocolVersionError(requestedVersion: string): grpc.ServiceError {
+  const message = `A2A protocol version ${requestedVersion} is not supported`;
+  return Object.assign(new Error(message), {
+    code: grpc.status.FAILED_PRECONDITION,
+    details: message,
+    metadata: new grpc.Metadata(),
+  });
+}
+
 export class GrpcServer {
   private readonly server: grpc.Server;
   private readonly agentCard: AgentCard;
   private readonly adapter: A2AServer;
 
-  constructor(adapter: A2AServer, agentCard: AgentCard) {
+  constructor(
+    adapter: A2AServer,
+    agentCard: AgentCard,
+    private readonly options: GrpcServerOptions = {},
+  ) {
     this.server = new grpc.Server();
     this.adapter = adapter;
     this.agentCard = agentCard;
@@ -88,9 +120,10 @@ export class GrpcServer {
 
     this.server.addService(service, {
       GetAgentCard: (
-        _call: grpc.ServerUnaryCall<EmptyRequest, AgentCardResponse>,
+        call: grpc.ServerUnaryCall<EmptyRequest, AgentCardResponse>,
         callback: grpc.sendUnaryData<AgentCardResponse>,
       ) => {
+        if (!this.assertSupportedProtocolVersion(call.metadata, callback)) return;
         callback(null, { json_card: JSON.stringify(this.agentCard) });
       },
       SendMessage: async (
@@ -98,6 +131,7 @@ export class GrpcServer {
         callback: grpc.sendUnaryData<TaskResponse>,
       ) => {
         try {
+          if (!this.assertSupportedProtocolVersion(call.metadata, callback)) return;
           const task = this.createGrpcTask(call.request.message_text ?? '');
           callback(null, { task_json: JSON.stringify(task) });
         } catch (error) {
@@ -114,6 +148,7 @@ export class GrpcServer {
         call: grpc.ServerUnaryCall<TaskRequest, TaskResponse>,
         callback: grpc.sendUnaryData<TaskResponse>,
       ) => {
+        if (!this.assertSupportedProtocolVersion(call.metadata, callback)) return;
         const task = this.getTaskManager().getTask(call.request.task_id);
         callback(null, { task_json: JSON.stringify(task ?? null) });
       },
@@ -121,10 +156,32 @@ export class GrpcServer {
         call: grpc.ServerUnaryCall<TaskRequest, TaskResponse>,
         callback: grpc.sendUnaryData<TaskResponse>,
       ) => {
+        if (!this.assertSupportedProtocolVersion(call.metadata, callback)) return;
         const task = this.getTaskManager().cancelTask(call.request.task_id);
         callback(null, { task_json: JSON.stringify(task ?? null) });
       },
     });
+  }
+
+  private assertSupportedProtocolVersion<TResponse>(
+    metadata: grpc.Metadata,
+    callback: grpc.sendUnaryData<TResponse>,
+  ): boolean {
+    const requestedVersion = readProtocolVersion(metadata);
+    if (!requestedVersion) {
+      return true;
+    }
+
+    if (this.supportedProtocolVersions().includes(requestedVersion)) {
+      return true;
+    }
+
+    callback(createUnsupportedProtocolVersionError(requestedVersion));
+    return false;
+  }
+
+  private supportedProtocolVersions(): readonly string[] {
+    return this.options.supportedProtocolVersions ?? SUPPORTED_A2A_PROTOCOL_VERSIONS;
   }
 
   public async bind(port: number): Promise<number> {
@@ -203,6 +260,12 @@ export class GrpcServer {
   }
 
   private streamGrpcTask(call: grpc.ServerWritableStream<SendMessageRequest, TaskResponse>): void {
+    const requestedVersion = readProtocolVersion(call.metadata);
+    if (requestedVersion && !this.supportedProtocolVersions().includes(requestedVersion)) {
+      call.destroy(createUnsupportedProtocolVersionError(requestedVersion));
+      return;
+    }
+
     const task = this.createGrpcTask(call.request.message_text ?? '');
     const taskManager = this.getTaskManager();
     let closed = false;
