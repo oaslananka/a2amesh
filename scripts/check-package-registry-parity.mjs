@@ -21,6 +21,11 @@ const publishable = Object.entries(config.packages ?? {})
 const failures = [];
 const missing = [];
 
+function expectedDistTag(version) {
+  const prerelease = /-([0-9A-Za-z-]+)/.exec(version);
+  return prerelease?.[1] ?? 'latest';
+}
+
 async function fetchRegistry(packageName) {
   const encoded = encodeURIComponent(packageName).replace(/^%40/, '@');
   const url = `${REGISTRY}/${encoded}`;
@@ -36,21 +41,22 @@ for (const pkg of publishable) {
     continue;
   }
 
-  const latestTag = registry['dist-tags']?.latest;
-  if (!latestTag) {
-    failures.push(`${pkg.packageName}: no latest dist-tag on npm`);
+  const expectedTag = expectedDistTag(pkg.manifestVersion);
+  const taggedVersion = registry['dist-tags']?.[expectedTag];
+  if (!taggedVersion) {
+    failures.push(`${pkg.packageName}: no ${expectedTag} dist-tag on npm`);
     continue;
   }
 
-  if (latestTag !== pkg.manifestVersion) {
+  if (taggedVersion !== pkg.manifestVersion) {
     failures.push(
-      `${pkg.packageName}: npm latest is ${latestTag}, manifest expects ${pkg.manifestVersion}`,
+      `${pkg.packageName}: npm ${expectedTag} is ${taggedVersion}, manifest expects ${pkg.manifestVersion}`,
     );
   }
 
-  const latestVersion = registry.versions?.[latestTag];
+  const latestVersion = registry.versions?.[taggedVersion];
   if (!latestVersion) {
-    failures.push(`${pkg.packageName}: no data for latest version ${latestTag}`);
+    failures.push(`${pkg.packageName}: no data for ${expectedTag} version ${taggedVersion}`);
     continue;
   }
 
