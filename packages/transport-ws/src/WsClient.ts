@@ -35,6 +35,7 @@ interface PendingRequest<TResult> {
 
 export interface WsClientOptions {
   protocols?: string | string[];
+  protocolVersion?: string;
   requestTimeoutMs?: number;
 }
 
@@ -60,6 +61,16 @@ export class WsClient {
     private readonly options: WsClientOptions = {},
   ) {}
 
+  private connectionUrl(): string {
+    if (!this.options.protocolVersion) {
+      return this.url;
+    }
+
+    const url = new URL(this.url);
+    url.searchParams.set('A2A-Version', this.options.protocolVersion);
+    return url.toString();
+  }
+
   async connect(): Promise<void> {
     if (this.socket && this.socket.readyState === this.socket.OPEN) {
       return;
@@ -68,7 +79,7 @@ export class WsClient {
     const WebSocketCtor = await loadWebSocket();
 
     await new Promise<void>((resolve, reject) => {
-      const socket = new WebSocketCtor(this.url, this.options.protocols);
+      const socket = new WebSocketCtor(this.connectionUrl(), this.options.protocols);
       const handleOpen = () => {
         cleanup();
         this.socket = socket;
@@ -159,7 +170,6 @@ export class WsClient {
   async listTasks(params: TaskListParams = {}): Promise<TaskListResult> {
     return this.request<TaskListResult>('tasks/list', params);
   }
-
   private handleMessage(payload: string): void {
     let parsed: JsonRpcResponse<unknown>;
     try {
@@ -188,7 +198,6 @@ export class WsClient {
 
     pending.resolve(parsed.result);
   }
-
   private rejectPending(error: Error): void {
     for (const [id, pending] of this.pending.entries()) {
       clearTimeout(pending.timeout);

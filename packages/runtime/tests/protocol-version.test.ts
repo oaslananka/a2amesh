@@ -73,4 +73,25 @@ describe('A2A protocol version negotiation', () => {
       }),
     );
   });
+
+  it('returns an A2A problem response for unsupported legacy SSE subscription versions', async () => {
+    const server = new VersionHarnessServer();
+    const listener = server.start(0);
+    handles.push(listener);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    const port = (listener.address() as { port: number }).port;
+    const response = await fetch(`http://localhost:${port}/stream?taskId=task-1`, {
+      headers: { 'A2A-Version': '0.5' },
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get('content-type')).toContain('application/problem+json');
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        status: 400,
+        supportedVersions: expect.arrayContaining(['1.0']),
+      }),
+    );
+  });
 });

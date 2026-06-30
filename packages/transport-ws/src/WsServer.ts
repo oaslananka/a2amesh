@@ -1,8 +1,12 @@
-import { createServer, type Server as HttpServer } from 'node:http';
+import { createServer, type IncomingMessage, type Server as HttpServer } from 'node:http';
 import type { JsonRpcRequest } from '@a2amesh/runtime';
 import { ErrorCodes, JsonRpcError } from '@a2amesh/runtime';
 import type WebSocket from 'ws';
 import type { WebSocketServer } from 'ws';
+
+const A2A_VERSION_HEADER = 'a2a-version';
+const SUPPORTED_A2A_PROTOCOL_VERSIONS = ['1.0', '1.2', '0.3'] as const;
+const WS_UNSUPPORTED_PROTOCOL_CLOSE_CODE = 1008;
 
 interface JsonRpcResponse {
   jsonrpc: '2.0';
@@ -19,6 +23,7 @@ export interface WsServerOptions {
   host?: string;
   port?: number;
   path?: string;
+  supportedProtocolVersions?: readonly string[];
   handleRequest: (request: JsonRpcRequest) => Promise<unknown>;
 }
 
@@ -86,7 +91,12 @@ export class WsServer {
       path: this.options.path ?? '/a2amesh-ws',
     });
 
-    this.websocketServer.on('connection', (socket) => {
+    this.websocketServer.on('connection', (socket, request) => {
+      if (!this.acceptsProtocolVersion(request)) {
+        socket.close(WS_UNSUPPORTED_PROTOCOL_CLOSE_CODE, 'A2A protocol version is not supported');
+        return;
+      }
+
       socket.on('message', async (payload) => {
         await this.handleSocketMessage(socket, String(payload));
       });
@@ -106,6 +116,36 @@ export class WsServer {
     }
 
     throw new Error('Unable to determine WebSocket server port');
+  }
+
+  private acceptsProtocolVersion(request: IncomingMessage): boolean {
+    const requestedVersion = this.getRequestedProtocolVersion(request);
+    if (!requestedVersion) {
+      return true;
+    }
+
+    return this.supportedProtocolVersions().includes(requestedVersion);
+  }
+  private getRequestedProtocolVersion(request: IncomingMessage): string | undefined {
+    const headerValue = request.headers[A2A_VERSION_HEADER];
+    if (Array.isArray(headerValue)) {
+      return headerValue[0]?.trim();
+    }
+    if (typeof headerValue === 'string' && headerValue.trim().length > 0) {
+      return headerValue.trim();
+    }
+
+    if (request.url) {
+      const url = new URL(request.url, 'ws://localhost');
+      return (
+        url.searchParams.get('A2A-Version') ?? url.searchParams.get(A2A_VERSION_HEADER) ?? undefined
+      );
+    }
+
+    return undefined;
+  }
+  private supportedProtocolVersions(): readonly string[] {
+    return this.options.supportedProtocolVersions ?? SUPPORTED_A2A_PROTOCOL_VERSIONS;
   }
 
   async close(): Promise<void> {
@@ -132,7 +172,6 @@ export class WsServer {
       });
     });
   }
-
   private async handleSocketMessage(socket: WebSocket, payload: string): Promise<void> {
     let requestId: string | null = null;
 
