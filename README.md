@@ -56,7 +56,7 @@ pnpm add @a2amesh/runtime
 ## Quickstart
 
 ```bash
-pnpm create @a2amesh/create-a2amesh demo
+pnpm dlx @a2amesh/create-a2amesh demo
 cd demo
 pnpm install
 pnpm run dev
@@ -65,7 +65,7 @@ pnpm run dev
 PowerShell:
 
 ```powershell
-pnpm create @a2amesh/create-a2amesh demo
+pnpm dlx @a2amesh/create-a2amesh demo
 Set-Location demo
 pnpm install
 pnpm run dev

@@ -6,17 +6,17 @@ are secondary channels with limited scope.
 ## npm (primary)
 
 All approved packages are prepared for first publication to the npm registry
-under the `@a2amesh` scope, except the `create-a2amesh` scaffolder (unscoped).
+under the `@a2amesh` scope, including the `@a2amesh/create-a2amesh` scaffolder.
 npm publication has not happened yet and requires explicit future approval.
 
-| Package         | npm name            |
-| --------------- | ------------------- |
-| Protocol types  | `@a2amesh/protocol` |
-| Core runtime    | `@a2amesh/runtime`  |
-| Registry server | `@a2amesh/registry` |
-| MCP bridge      | `@a2amesh/mcp`      |
-| CLI             | `@a2amesh/cli`      |
-| Scaffolder      | `create-a2amesh`    |
+| Package         | npm name                  |
+| --------------- | ------------------------- |
+| Protocol types  | `@a2amesh/protocol`       |
+| Core runtime    | `@a2amesh/runtime`        |
+| Registry server | `@a2amesh/registry`       |
+| MCP bridge      | `@a2amesh/mcp`            |
+| CLI             | `@a2amesh/cli`            |
+| Scaffolder      | `@a2amesh/create-a2amesh` |
 
 Install:
 
@@ -36,18 +36,18 @@ GitHub Actions workflow and commit that produced it.
 ### Version skew policy
 
 - All `@a2amesh/*` packages within a release share the same version number.
-- `create-a2amesh` is versioned independently.
+- `@a2amesh/create-a2amesh` participates in the linked public release train.
 - Forward compatibility: a newer minor version of the core runtime can work with
   an older minor version of an adapter. Breaking changes are signalled by a
   major version bump across the entire `@a2amesh/*` scope.
 
 ### Planned publication surface by ecosystem
 
-| Ecosystem | Packages approved for first publication                  | Publishing method                                        |
-| --------- | -------------------------------------------------------- | -------------------------------------------------------- |
-| npm       | Approved public `@a2amesh/*` + `create-a2amesh` packages | `publish.yml` via npm OIDC/Trusted Publishing (planned)  |
-| JSR       | None yet                                                 | Manual `npx jsr publish` (requires JSR token in secrets) |
-| Homebrew  | None yet                                                 | Manual formula update in `a2amesh/homebrew-tap`          |
+| Ecosystem | Packages approved for first publication | Publishing method                                        |
+| --------- | --------------------------------------- | -------------------------------------------------------- |
+| npm       | Approved public `@a2amesh/*` packages   | `publish.yml` via npm OIDC/Trusted Publishing (planned)  |
+| JSR       | None yet                                | Manual `npx jsr publish` (requires JSR token in secrets) |
+| Homebrew  | None yet                                | Manual formula update in `a2amesh/homebrew-tap`          |
 
 ## JSR (limited scope)
 
@@ -154,7 +154,7 @@ Formula location: `a2amesh/homebrew-tap/Formula/a2amesh.rb` (external repository
 | Homebrew formula update     | (same git tag)    | Manual after release     | `homebrew-tap` update  |
 
 All `@a2amesh/*` packages within the same release share the same `v<version>` tag.
-`create-a2amesh` uses its own version and tag (`create-a2amesh-v<version>`).
+`@a2amesh/create-a2amesh` uses the linked public release train and the canonical `@a2amesh/runtime-v<version>` publish tag.
 
 ## GitHub environments and secrets
 
