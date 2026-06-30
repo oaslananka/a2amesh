@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from 'express';
-import type { JwtAuthMiddleware } from '../../auth/index.js';
+import { attachRequestContext, type JwtAuthMiddleware } from '../../auth/index.js';
 import type { RuntimeMetrics } from '../../telemetry/index.js';
 import type { AgentCard } from '../../types/agent-card.js';
 import type { RequestContext } from '../../types/auth.js';
@@ -28,6 +28,10 @@ type FilterTasksByContext = (tasks: Task[], context: RequestContext) => Task[];
 type CanAccessTask = (task: Task, context: RequestContext) => boolean;
 type RestRouteHandler = (req: Request, res: Response) => Promise<void>;
 
+interface RequestWithRestTenant extends Request {
+  a2aRestTenantId?: string;
+}
+
 export interface A2AHttpRouteDependencies {
   app: Express;
   agentCard: AgentCard;
@@ -55,10 +59,9 @@ export function registerA2ARoutes(deps: A2AHttpRouteDependencies): void {
     getTaskCounts: () => deps.taskManager.getTaskCounts(),
   });
 
-  deps.app.get(
-    '/tasks',
-    restRoute((req, res) => handleTasksRoute(req, res, deps)),
-  );
+  const listTasksHandler = (req: Request, res: Response) => handleTasksRoute(req, res, deps);
+  deps.app.get('/tasks', restRoute(listTasksHandler));
+  deps.app.get(/^\/([^/]+)\/tasks$/, restRoute(tenantAware(listTasksHandler)));
 
   const jsonRpcHandler = createJsonRpcHttpHandler({
     authMiddleware: deps.authMiddleware,
@@ -129,9 +132,9 @@ function registerRestBindingRoutes(deps: A2AHttpRouteDependencies): void {
   };
 
   deps.app.post(/^\/message:send$/, restRoute(sendHandler));
-  deps.app.post(/^\/([^/]+)\/message:send$/, restRoute(sendHandler));
+  deps.app.post(/^\/([^/]+)\/message:send$/, restRoute(tenantAware(sendHandler)));
   deps.app.post(/^\/message:stream$/, restRoute(streamHandler));
-  deps.app.post(/^\/([^/]+)\/message:stream$/, restRoute(streamHandler));
+  deps.app.post(/^\/([^/]+)\/message:stream$/, restRoute(tenantAware(streamHandler)));
   deps.app.get(/^\/tasks\/([^/]+)$/, restRoute(getTaskHandler));
   deps.app.get(/^\/([^/]+)\/tasks\/([^/]+)$/, restRoute(tenantAware(getTaskHandler, 1)));
   deps.app.post(/^\/tasks\/([^/]+):cancel$/, restRoute(cancelTaskHandler));
@@ -187,17 +190,54 @@ function restRoute(handler: RestRouteHandler): (req: Request, res: Response) => 
 
 function tenantAware(
   handler: (req: Request, res: Response) => Promise<void>,
-  taskParamIndex: number,
+  taskParamIndex?: number,
 ): (req: Request, res: Response) => Promise<void> {
   return async (req: Request, res: Response) => {
-    const taskId = req.params[String(taskParamIndex)];
-    if (typeof taskId !== 'string') {
-      writeRestError(res, new JsonRpcError(ErrorCodes.InvalidParams, 'Missing task id'));
+    const tenantId = req.params['0'];
+    if (typeof tenantId !== 'string' || tenantId.trim().length === 0) {
+      writeRestError(res, new JsonRpcError(ErrorCodes.InvalidParams, 'Missing tenant id'));
       return;
     }
-    req.params[0] = taskId;
+
+    (req as RequestWithRestTenant).a2aRestTenantId = tenantId;
+
+    if (taskParamIndex !== undefined) {
+      const taskId = req.params[String(taskParamIndex)];
+      if (typeof taskId !== 'string') {
+        writeRestError(res, new JsonRpcError(ErrorCodes.InvalidParams, 'Missing task id'));
+        return;
+      }
+      req.params[0] = taskId;
+    }
+
     await handler(req, res);
   };
+}
+
+function applyRestTenantScope(
+  req: Request,
+  res: Response,
+  context: RequestContext,
+): RequestContext | null {
+  const tenantId = (req as RequestWithRestTenant).a2aRestTenantId;
+  if (!tenantId) {
+    return context;
+  }
+
+  if (context.tenantId && context.tenantId !== tenantId) {
+    writeRestError(
+      res,
+      new JsonRpcError(ErrorCodes.Unauthorized, 'Tenant path does not match authenticated tenant', {
+        requestedTenantId: tenantId,
+        authenticatedTenantId: context.tenantId,
+      }),
+    );
+    return null;
+  }
+
+  const scopedContext = { ...context, tenantId };
+  attachRequestContext(req, scopedContext);
+  return scopedContext;
 }
 
 function restParam(req: Request, index: number): string | undefined {
@@ -235,12 +275,14 @@ async function getAccessibleRestTask(
   res: Response,
   deps: A2AHttpRouteDependencies,
 ): Promise<Task | undefined> {
-  const requestContext = await authenticateRequestOrSend401(
+  const authenticatedContext = await authenticateRequestOrSend401(
     req,
     res,
     deps.authMiddleware,
     deps.runtimeMetrics,
   );
+  if (!authenticatedContext) return undefined;
+  const requestContext = applyRestTenantScope(req, res, authenticatedContext);
   if (!requestContext) return undefined;
 
   const taskId = restParam(req, 0);
@@ -270,12 +312,14 @@ async function handleRestRpc(
   method: string,
   params: Record<string, unknown>,
 ): Promise<void> {
-  const requestContext = await authenticateRequestOrSend401(
+  const authenticatedContext = await authenticateRequestOrSend401(
     req,
     res,
     deps.authMiddleware,
     deps.runtimeMetrics,
   );
+  if (!authenticatedContext) return;
+  const requestContext = applyRestTenantScope(req, res, authenticatedContext);
   if (!requestContext) return;
 
   try {
@@ -294,12 +338,14 @@ async function handleRestStream(
   method: string,
   params: Record<string, unknown>,
 ): Promise<void> {
-  const requestContext = await authenticateRequestOrSend401(
+  const authenticatedContext = await authenticateRequestOrSend401(
     req,
     res,
     deps.authMiddleware,
     deps.runtimeMetrics,
   );
+  if (!authenticatedContext) return;
+  const requestContext = applyRestTenantScope(req, res, authenticatedContext);
   if (!requestContext) return;
 
   try {
@@ -439,12 +485,16 @@ async function handleTasksRoute(
     'authMiddleware' | 'runtimeMetrics' | 'taskManager' | 'filterTasksByContext'
   >,
 ): Promise<void> {
-  const requestContext = await authenticateRequestOrSend401(
+  const authenticatedContext = await authenticateRequestOrSend401(
     req,
     res,
     deps.authMiddleware,
     deps.runtimeMetrics,
   );
+  if (!authenticatedContext) {
+    return;
+  }
+  const requestContext = applyRestTenantScope(req, res, authenticatedContext);
   if (!requestContext) {
     return;
   }
