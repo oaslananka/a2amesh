@@ -114,7 +114,12 @@ export abstract class A2AServer {
       }),
     );
     this.app.use(createRateLimiter(this.options.rateLimit ?? {}, this.rateLimitStore));
-    this.app.use(express.json({ limit: this.options.bodyLimit ?? '1mb' }));
+    this.app.use(
+      express.json({
+        limit: this.options.bodyLimit ?? '1mb',
+        type: ['application/json', 'application/*+json'],
+      }),
+    );
     this.app.use(jsonParseErrorHandler());
   }
 

@@ -863,6 +863,49 @@ describe('A2AServer', () => {
       }),
     );
   });
+
+  it('accepts official A2A +json media types for HTTP JSON bodies', async () => {
+    const server = new HarnessServer();
+    const listener = server.start(0);
+    handles.push(listener);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    const port = (listener.address() as { port: number }).port;
+    const baseUrl = `http://localhost:${port}`;
+    const message: Message = {
+      role: 'user',
+      parts: [{ type: 'text', text: 'hello a2a media type' }],
+      messageId: 'message-a2a-media-type',
+      timestamp: new Date().toISOString(),
+    };
+
+    const restResponse = await fetch(`${baseUrl}/message:send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/a2a+json' },
+      body: JSON.stringify({ message }),
+    });
+    expect(restResponse.status).toBe(200);
+    expect(restResponse.headers.get('content-type')).toContain('application/a2a+json');
+    expect(((await restResponse.json()) as Task).id).toBeTruthy();
+
+    const rpcResponse = await fetch(`${baseUrl}/a2a/jsonrpc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/a2a+json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'a2a-media-rpc',
+        method: 'message/send',
+        params: { message: { ...message, messageId: 'message-a2a-media-rpc' } },
+      }),
+    });
+    expect(rpcResponse.status).toBe(200);
+    expect((await rpcResponse.json()) as { result: Task }).toEqual(
+      expect.objectContaining({
+        result: expect.objectContaining({ id: expect.any(String) }),
+      }),
+    );
+  });
+
   it('serves A2A HTTP+JSON REST binding endpoints', async () => {
     const server = new HarnessServer();
     const listener = server.start(0);
