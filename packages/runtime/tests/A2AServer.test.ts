@@ -990,8 +990,12 @@ describe('A2AServer', () => {
     const firstTask = server.createTask('ctx-rest-list-a');
     server.createTask('ctx-rest-list-b');
 
-    const listResponse = await fetch(`${baseUrl}/tasks?limit=1`);
+    const listResponse = await fetch(`${baseUrl}/tasks?limit=1&offset=1`);
     expect(listResponse.status).toBe(200);
+    expect(listResponse.headers.get('content-type')).toContain('application/a2a+json');
+    expect(listResponse.headers.get('x-a2a-page-limit')).toBe('1');
+    expect(listResponse.headers.get('x-a2a-page-offset')).toBe('1');
+    expect(listResponse.headers.get('x-a2a-page-total')).toBe('2');
     expect((await listResponse.json()) as Task[]).toHaveLength(1);
 
     const tenantGetResponse = await fetch(`${baseUrl}/tenant-a/tasks/${firstTask.id}`);
@@ -1000,9 +1004,14 @@ describe('A2AServer', () => {
 
     const missingTaskResponse = await fetch(`${baseUrl}/tasks/missing-task`);
     expect(missingTaskResponse.status).toBe(404);
+    expect(missingTaskResponse.headers.get('content-type')).toContain('application/problem+json');
     expect(await missingTaskResponse.json()).toEqual(
       expect.objectContaining({
-        error: expect.objectContaining({ message: 'Task not found' }),
+        type: 'https://a2a-protocol.org/errors/task-not-found',
+        title: 'Task Not Found',
+        status: 404,
+        detail: 'Task not found',
+        code: ErrorCodes.TaskNotFound,
       }),
     );
 

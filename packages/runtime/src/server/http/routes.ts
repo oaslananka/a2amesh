@@ -192,7 +192,7 @@ function tenantAware(
   return async (req: Request, res: Response) => {
     const taskId = req.params[String(taskParamIndex)];
     if (typeof taskId !== 'string') {
-      res.status(400).json({ error: 'Missing task id' });
+      writeRestError(res, new JsonRpcError(ErrorCodes.InvalidParams, 'Missing task id'));
       return;
     }
     req.params[0] = taskId;
@@ -245,18 +245,18 @@ async function getAccessibleRestTask(
 
   const taskId = restParam(req, 0);
   if (!taskId) {
-    res.status(400).json({ error: 'Missing task id' });
+    writeRestError(res, new JsonRpcError(ErrorCodes.InvalidParams, 'Missing task id'));
     return undefined;
   }
 
   const task = deps.taskManager.getTask(taskId);
   if (!task) {
-    res.status(404).json({ error: 'Task not found' });
+    writeRestError(res, new JsonRpcError(ErrorCodes.TaskNotFound, 'Task not found'));
     return undefined;
   }
 
   if (!deps.canAccessTask(task, requestContext)) {
-    res.status(403).json({ error: 'Forbidden' });
+    writeRestError(res, new JsonRpcError(ErrorCodes.Unauthorized, 'Forbidden'));
     return undefined;
   }
 
@@ -326,16 +326,77 @@ function writeRestError(res: Response, error: unknown): void {
       return;
     }
 
-    res.status(restStatusForError(error.code)).json({
-      error: {
+    const status = restStatusForError(error.code);
+    res
+      .status(status)
+      .type('application/problem+json')
+      .json({
+        type: restProblemDetailsForError(error.code).type,
+        title: restProblemDetailsForError(error.code).title,
+        status,
+        detail: error.message,
         code: error.code,
-        message: error.message,
         ...(error.data !== undefined ? { data: error.data } : {}),
-      },
-    });
+      });
     return;
   }
-  res.status(500).json({ error: { code: ErrorCodes.InternalError, message: 'Internal Error' } });
+  res
+    .status(500)
+    .type('application/problem+json')
+    .json({
+      type: restProblemDetailsForError(ErrorCodes.InternalError).type,
+      title: restProblemDetailsForError(ErrorCodes.InternalError).title,
+      status: 500,
+      detail: 'Internal Error',
+      code: ErrorCodes.InternalError,
+    });
+}
+
+interface RestProblemDetails {
+  readonly type: string;
+  readonly title: string;
+}
+
+const INTERNAL_ERROR_PROBLEM: RestProblemDetails = {
+  type: 'https://a2a-protocol.org/errors/internal-error',
+  title: 'Internal Error',
+};
+
+const REST_PROBLEM_DETAILS_BY_CODE = new Map<number, RestProblemDetails>([
+  [
+    ErrorCodes.InvalidParams,
+    { type: 'https://a2a-protocol.org/errors/invalid-params', title: 'Invalid Parameters' },
+  ],
+  [
+    ErrorCodes.InvalidRequest,
+    { type: 'https://a2a-protocol.org/errors/invalid-request', title: 'Invalid Request' },
+  ],
+  [
+    ErrorCodes.TaskNotFound,
+    { type: 'https://a2a-protocol.org/errors/task-not-found', title: 'Task Not Found' },
+  ],
+  [
+    ErrorCodes.Unauthorized,
+    { type: 'https://a2a-protocol.org/errors/forbidden', title: 'Forbidden' },
+  ],
+  [
+    ErrorCodes.UnsupportedOperation,
+    {
+      type: 'https://a2a-protocol.org/errors/unsupported-operation',
+      title: 'Unsupported Operation',
+    },
+  ],
+  [
+    ErrorCodes.InvalidTaskTransition,
+    {
+      type: 'https://a2a-protocol.org/errors/invalid-task-transition',
+      title: 'Invalid Task Transition',
+    },
+  ],
+]);
+
+function restProblemDetailsForError(code: number): RestProblemDetails {
+  return REST_PROBLEM_DETAILS_BY_CODE.get(code) ?? INTERNAL_ERROR_PROBLEM;
 }
 
 function restStatusForError(code: number): number {
@@ -393,6 +454,22 @@ async function handleTasksRoute(
     (a, b) => new Date(b.status.timestamp).getTime() - new Date(a.status.timestamp).getTime(),
   );
 
-  const limit = Number(req.query['limit']) || 20;
-  res.type(pv.A2A_REST_MEDIA_TYPE).json(tasks.slice(0, limit));
+  const limit = parsePaginationNumber(req.query['limit'], 20);
+  const offset = parsePaginationNumber(req.query['offset'], 0);
+  const page = tasks.slice(offset, offset + limit);
+  res
+    .type(pv.A2A_REST_MEDIA_TYPE)
+    .setHeader('X-A2A-Page-Limit', String(limit))
+    .setHeader('X-A2A-Page-Offset', String(offset))
+    .setHeader('X-A2A-Page-Total', String(tasks.length));
+  if (offset + limit < tasks.length) {
+    res.setHeader('X-A2A-Page-Next-Offset', String(offset + limit));
+  }
+  res.json(page);
+}
+
+function parsePaginationNumber(value: unknown, fallback: number): number {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const parsed = typeof raw === 'string' ? Number.parseInt(raw, 10) : Number(raw);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
 }
