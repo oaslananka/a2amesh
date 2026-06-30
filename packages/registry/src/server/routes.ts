@@ -15,6 +15,7 @@ import type { RegistryAuthController } from './auth.js';
 import type { RegistryMetricsController } from './metrics.js';
 import { createRegistryOutboundPolicy } from './outboundPolicy.js';
 import type { RegistryPollingController } from './polling.js';
+import { writeRegistryProblem } from './problems.js';
 import type { RegistrySseController } from './sse.js';
 import type { RegistryTaskProjectionController } from './taskProjection.js';
 import {
@@ -93,7 +94,7 @@ export function registerRegistryRoutes(
     };
     const { agentUrl, agentCard, tenantId, isPublic } = body;
     if (!agentUrl || !agentCard) {
-      res.status(400).json({ error: 'Missing agentUrl or agentCard' });
+      writeRegistryProblem(res, 'bad-request', { detail: 'Missing agentUrl or agentCard' });
       return;
     }
 
@@ -152,12 +153,14 @@ export function registerRegistryRoutes(
 
     const parsed = RegistryExportDocumentSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({
-        error: 'Invalid registry export document',
-        issues: parsed.error.issues.map((issue) => ({
-          path: issue.path.join('.'),
-          message: issue.message,
-        })),
+      writeRegistryProblem(res, 'bad-request', {
+        detail: 'Invalid registry export document',
+        extensions: {
+          issues: parsed.error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+          })),
+        },
       });
       return;
     }
@@ -221,8 +224,8 @@ export function registerRegistryRoutes(
           : undefined;
 
     if (!skill && !tag && !name && !transport && !status && mcpCompatible === undefined) {
-      res.status(400).json({
-        error:
+      writeRegistryProblem(res, 'bad-request', {
+        detail:
           'At least one filter (skill, tag, name, transport, status, mcpCompatible) is required',
       });
       return;
@@ -253,13 +256,13 @@ export function registerRegistryRoutes(
   app.get('/agents/:id', async (req, res) => {
     const agentId = routeParam(req.params['id']);
     if (!agentId) {
-      res.status(400).json({ error: 'Missing agent id' });
+      writeRegistryProblem(res, 'bad-request', { detail: 'Missing agent id' });
       return;
     }
 
     const agent = await context.store.get(agentId);
     if (!agent) {
-      res.status(404).json({ error: 'Agent not found' });
+      writeRegistryProblem(res, 'not-found', { detail: 'Agent not found' });
       return;
     }
     if (!agent.isPublic) {
@@ -268,7 +271,7 @@ export function registerRegistryRoutes(
         return;
       }
       if (!auth.canAccessAgent(agent, requestContext)) {
-        res.status(403).json({ error: 'Forbidden' });
+        writeRegistryProblem(res, 'forbidden', { detail: 'Forbidden' });
         return;
       }
     }
@@ -301,7 +304,7 @@ export function registerRegistryRoutes(
     await handleAuthorizedAgentRequest(req, res, context, auth, async (agent, requestContext) => {
       const deleted = await context.store.delete(agent.id);
       if (!deleted) {
-        res.status(404).json({ error: 'Agent not found' });
+        writeRegistryProblem(res, 'not-found', { detail: 'Agent not found' });
         return;
       }
       const tenantId = requestContext.tenantId;
@@ -470,7 +473,7 @@ async function validateAgentUrl(
     return true;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    res.status(400).json({ error: `Invalid agentUrl: ${message}` });
+    writeRegistryProblem(res, 'bad-request', { detail: `Invalid agentUrl: ${message}` });
     return false;
   }
 }
@@ -484,7 +487,7 @@ async function handleAuthorizedAgentRequest(
 ) {
   const agentId = routeParam(req.params['id']);
   if (!agentId) {
-    res.status(400).json({ error: 'Missing agent id' });
+    writeRegistryProblem(res, 'bad-request', { detail: 'Missing agent id' });
     return;
   }
 
@@ -495,11 +498,11 @@ async function handleAuthorizedAgentRequest(
 
   const agent = await context.store.get(agentId);
   if (!agent) {
-    res.status(404).json({ error: 'Agent not found' });
+    writeRegistryProblem(res, 'not-found', { detail: 'Agent not found' });
     return;
   }
   if (!auth.canAccessAgent(agent, requestContext)) {
-    res.status(403).json({ error: 'Forbidden' });
+    writeRegistryProblem(res, 'forbidden', { detail: 'Forbidden' });
     return;
   }
 

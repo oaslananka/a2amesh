@@ -34,14 +34,22 @@ describe('Registry Integration', () => {
     const baseUrl = `http://localhost:${port}`;
     const client = new AgentRegistryClient(baseUrl);
 
-    await client.register('https://agent-1.com', {
-      protocolVersion: '1.0',
-      name: 'Agent 1',
-      description: 'Desc',
-      url: 'https://agent-1.com',
-      version: '1.0',
-      skills: [{ id: 's1', name: 'Web Search', description: 'desc', tags: ['search'] }],
+    const a2aJsonRegisterResponse = await fetch(`${baseUrl}/agents/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/a2a+json' },
+      body: JSON.stringify({
+        agentUrl: 'https://agent-1.com',
+        agentCard: {
+          protocolVersion: '1.0',
+          name: 'Agent 1',
+          description: 'Desc',
+          url: 'https://agent-1.com',
+          version: '1.0',
+          skills: [{ id: 's1', name: 'Web Search', description: 'desc', tags: ['search'] }],
+        },
+      }),
     });
+    expect(a2aJsonRegisterResponse.status).toBe(201);
 
     await client.register('https://agent-2.com', {
       protocolVersion: '1.0',
@@ -98,11 +106,37 @@ describe('Registry Integration', () => {
       body: JSON.stringify({}),
     });
     expect(invalidRegister.status).toBe(400);
+    expect(invalidRegister.headers.get('content-type')).toContain('application/problem+json');
+    expect(await invalidRegister.json()).toEqual(
+      expect.objectContaining({
+        type: 'https://a2a-protocol.org/errors/registry/bad-request',
+        title: 'Bad Request',
+        status: 400,
+        detail: 'Missing agentUrl or agentCard',
+      }),
+    );
 
     const invalidSearch = await fetch(`${baseUrl}/agents/search`);
     expect(invalidSearch.status).toBe(400);
+    expect(invalidSearch.headers.get('content-type')).toContain('application/problem+json');
+    expect(await invalidSearch.json()).toEqual(
+      expect.objectContaining({
+        type: 'https://a2a-protocol.org/errors/registry/bad-request',
+        status: 400,
+      }),
+    );
 
-    expect((await fetch(`${baseUrl}/agents/missing`)).status).toBe(404);
+    const missingAgent = await fetch(`${baseUrl}/agents/missing`);
+    expect(missingAgent.status).toBe(404);
+    expect(missingAgent.headers.get('content-type')).toContain('application/problem+json');
+    expect(await missingAgent.json()).toEqual(
+      expect.objectContaining({
+        type: 'https://a2a-protocol.org/errors/registry/not-found',
+        title: 'Not Found',
+        status: 404,
+        detail: 'Agent not found',
+      }),
+    );
     expect((await fetch(`${baseUrl}/agents/missing/heartbeat`, { method: 'POST' })).status).toBe(
       404,
     );

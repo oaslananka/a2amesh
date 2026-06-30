@@ -68,19 +68,19 @@
     "responses": {
       "BadRequest": {
         "content": {
-          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+          "application/problem+json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
         },
         "description": "Request validation failed."
       },
       "Forbidden": {
         "content": {
-          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+          "application/problem+json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
         },
         "description": "The caller cannot access the requested resource."
       },
       "NotFound": {
         "content": {
-          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+          "application/problem+json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
         },
         "description": "The requested resource was not found."
       },
@@ -94,13 +94,15 @@
       },
       "Unauthorized": {
         "content": {
-          "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+          }
         },
         "description": "Control-plane authentication failed."
       },
       "ValidationError": {
         "content": {
-          "application/json": {
+          "application/problem+json": {
             "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" }
           }
         },
@@ -179,18 +181,29 @@
       "AgentStatus": { "enum": ["healthy", "unhealthy", "unknown"], "type": "string" },
       "AgentTransport": { "enum": ["http", "sse", "ws", "grpc"], "type": "string" },
       "AuthErrorResponse": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
-          "error": { "enum": ["Unauthorized"], "type": "string" },
-          "reason": { "type": "string" }
+          "detail": { "type": "string" },
+          "reason": { "type": "string" },
+          "status": { "enum": [401], "type": "integer" },
+          "title": { "enum": ["Unauthorized"], "type": "string" },
+          "type": {
+            "enum": ["https://a2a-protocol.org/errors/registry/unauthorized"],
+            "type": "string"
+          }
         },
-        "required": ["error"],
+        "required": ["type", "title", "status", "detail"],
         "type": "object"
       },
       "ErrorResponse": {
         "additionalProperties": true,
-        "properties": { "error": { "type": "string" } },
-        "required": ["error"],
+        "properties": {
+          "detail": { "type": "string" },
+          "status": { "maximum": 599, "minimum": 400, "type": "integer" },
+          "title": { "type": "string" },
+          "type": { "pattern": "^https://a2a-protocol[.]org/errors/registry/", "type": "string" }
+        },
+        "required": ["type", "title", "status", "detail"],
         "type": "object"
       },
       "RateLimitErrorResponse": {
@@ -367,10 +380,19 @@
       "ValidationErrorResponse": {
         "additionalProperties": true,
         "properties": {
-          "error": { "type": "string" },
-          "issues": { "items": { "$ref": "#/components/schemas/ValidationIssue" }, "type": "array" }
+          "detail": { "type": "string" },
+          "issues": {
+            "items": { "$ref": "#/components/schemas/ValidationIssue" },
+            "type": "array"
+          },
+          "status": { "enum": [400], "type": "integer" },
+          "title": { "enum": ["Bad Request"], "type": "string" },
+          "type": {
+            "enum": ["https://a2a-protocol.org/errors/registry/bad-request"],
+            "type": "string"
+          }
         },
-        "required": ["error"],
+        "required": ["type", "title", "status", "detail"],
         "type": "object"
       },
       "ValidationIssue": {

@@ -22,7 +22,15 @@ describe('RegistryServer', () => {
       });
 
     expect(response.status).toBe(400);
-    expect(response.body.error).toContain('Invalid agentUrl');
+    expect(response.header['content-type']).toContain('application/problem+json');
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        type: 'https://a2a-protocol.org/errors/registry/bad-request',
+        title: 'Bad Request',
+        status: 400,
+        detail: expect.stringContaining('Invalid agentUrl'),
+      }),
+    );
   });
 
   it('allows registration with safe URL', async () => {
@@ -53,7 +61,15 @@ describe('RegistryServer', () => {
       });
 
     expect(response.status).toBe(400);
-    expect(response.body.error).toContain('Unsupported URL protocol');
+    expect(response.header['content-type']).toContain('application/problem+json');
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        type: 'https://a2a-protocol.org/errors/registry/bad-request',
+        title: 'Bad Request',
+        status: 400,
+        detail: expect.stringContaining('Unsupported URL protocol'),
+      }),
+    );
   });
 
   it('enforces authentication when required', async () => {

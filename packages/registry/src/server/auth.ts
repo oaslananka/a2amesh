@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { attachRequestContext, getRequestContext, type RequestContext } from '@a2amesh/runtime';
 import type { RegisteredAgent } from '../storage/IAgentStorage.js';
+import { writeRegistryProblem } from './problems.js';
 import type { RegistryServerContext } from './types.js';
 
 export interface RegistryAuthController {
@@ -41,7 +42,10 @@ export function createRegistryAuth(context: RegistryServerContext): RegistryAuth
       try {
         return await context.authMiddleware.authenticateRequestContext(req);
       } catch (error: unknown) {
-        res.status(401).json({ error: 'Unauthorized', reason: String(error) });
+        writeRegistryProblem(res, 'unauthorized', {
+          detail: 'Unauthorized',
+          extensions: { reason: String(error) },
+        });
         return null;
       }
     }
@@ -50,7 +54,7 @@ export function createRegistryAuth(context: RegistryServerContext): RegistryAuth
       const authHeader = req.headers.authorization;
       const expected = `Bearer ${context.options.registrationToken}`;
       if (!authHeader || !safeStringEquals(authHeader, expected)) {
-        res.status(401).json({ error: 'Unauthorized' });
+        writeRegistryProblem(res, 'unauthorized', { detail: 'Unauthorized' });
         return null;
       }
 
@@ -75,7 +79,7 @@ export function createRegistryAuth(context: RegistryServerContext): RegistryAuth
     }
 
     if (context.options.requireAuth) {
-      res.status(401).json({ error: 'Unauthorized' });
+      writeRegistryProblem(res, 'unauthorized', { detail: 'Unauthorized' });
       return null;
     }
 

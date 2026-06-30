@@ -18,6 +18,7 @@ import { createRegistryAuth } from './server/auth.js';
 import { createRegistryMetrics } from './server/metrics.js';
 import { createRegistryCorsMiddleware, isOriginAllowed } from './server/origin.js';
 import { createRegistryPolling, type RegistryPollingController } from './server/polling.js';
+import { writeRegistryProblem } from './server/problems.js';
 import { registerRegistryRoutes } from './server/routes.js';
 import { createRegistrySse, type RegistrySseController } from './server/sse.js';
 import { createRegistryTaskProjection } from './server/taskProjection.js';
@@ -74,13 +75,18 @@ export class RegistryServer {
     this.app.use((req, res, next) => {
       attachRequestContext(req, createAnonymousRequestContext(req));
       if (!isOriginAllowed(options, req)) {
-        res.status(403).json({ error: 'Forbidden origin' });
+        writeRegistryProblem(res, 'forbidden', { detail: 'Forbidden origin' });
         return;
       }
       next();
     });
     this.app.use(createRateLimiter(options.rateLimit ?? {}, this.context.rateLimitStore));
-    this.app.use(express.json({ limit: options.bodyLimit ?? '1mb' }));
+    this.app.use(
+      express.json({
+        limit: options.bodyLimit ?? '1mb',
+        type: ['application/json', 'application/*+json'],
+      }),
+    );
 
     registerRegistryRoutes(this.app, this.context, {
       auth,

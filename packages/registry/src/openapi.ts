@@ -39,6 +39,17 @@ const jsonResponse = (description: string, schema: SchemaObject) => ({
   content: jsonContent(schema),
 });
 
+const problemContent = (schema: SchemaObject) => ({
+  'application/problem+json': {
+    schema,
+  },
+});
+
+const problemResponse = (description: string, schema: SchemaObject) => ({
+  description,
+  content: problemContent(schema),
+});
+
 const stringArraySchema = {
   type: 'array',
   items: {
@@ -511,21 +522,24 @@ export const registryOpenApiDocument = {
       },
     },
     responses: {
-      BadRequest: jsonResponse('Request validation failed.', schemaRef('ErrorResponse')),
-      Forbidden: jsonResponse(
+      BadRequest: problemResponse('Request validation failed.', schemaRef('ErrorResponse')),
+      Forbidden: problemResponse(
         'The caller cannot access the requested resource.',
         schemaRef('ErrorResponse'),
       ),
-      NotFound: jsonResponse('The requested resource was not found.', schemaRef('ErrorResponse')),
+      NotFound: problemResponse(
+        'The requested resource was not found.',
+        schemaRef('ErrorResponse'),
+      ),
       RateLimited: jsonResponse(
         'The request was rejected by rate limiting.',
         schemaRef('RateLimitErrorResponse'),
       ),
-      Unauthorized: jsonResponse(
+      Unauthorized: problemResponse(
         'Control-plane authentication failed.',
         schemaRef('AuthErrorResponse'),
       ),
-      ValidationError: jsonResponse(
+      ValidationError: problemResponse(
         'The import document or request body failed validation.',
         schemaRef('ValidationErrorResponse'),
       ),
@@ -663,12 +677,23 @@ export const registryOpenApiDocument = {
       },
       AuthErrorResponse: {
         type: 'object',
-        additionalProperties: false,
-        required: ['error'],
+        additionalProperties: true,
+        required: ['type', 'title', 'status', 'detail'],
         properties: {
-          error: {
+          type: {
+            type: 'string',
+            enum: ['https://a2a-protocol.org/errors/registry/unauthorized'],
+          },
+          title: {
             type: 'string',
             enum: ['Unauthorized'],
+          },
+          status: {
+            type: 'integer',
+            enum: [401],
+          },
+          detail: {
+            type: 'string',
           },
           reason: {
             type: 'string',
@@ -678,9 +703,21 @@ export const registryOpenApiDocument = {
       ErrorResponse: {
         type: 'object',
         additionalProperties: true,
-        required: ['error'],
+        required: ['type', 'title', 'status', 'detail'],
         properties: {
-          error: {
+          type: {
+            type: 'string',
+            pattern: '^https://a2a-protocol[.]org/errors/registry/',
+          },
+          title: {
+            type: 'string',
+          },
+          status: {
+            type: 'integer',
+            minimum: 400,
+            maximum: 599,
+          },
+          detail: {
             type: 'string',
           },
         },
@@ -969,9 +1006,21 @@ export const registryOpenApiDocument = {
       ValidationErrorResponse: {
         type: 'object',
         additionalProperties: true,
-        required: ['error'],
+        required: ['type', 'title', 'status', 'detail'],
         properties: {
-          error: {
+          type: {
+            type: 'string',
+            enum: ['https://a2a-protocol.org/errors/registry/bad-request'],
+          },
+          title: {
+            type: 'string',
+            enum: ['Bad Request'],
+          },
+          status: {
+            type: 'integer',
+            enum: [400],
+          },
+          detail: {
             type: 'string',
           },
           issues: {
