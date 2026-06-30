@@ -1,0 +1,359 @@
+[
+  {
+    "title": "fix(release): remove hardcoded alpha version from release config validation",
+    "milestone": "M0 \u2014 Release Recovery & Repo Health",
+    "labels": ["priority:P0", "type:bug", "type:release", "area:release", "status:triaged"],
+    "body": "Release validation is out of sync with current package versions. Read expected public versions from the release manifest, compare public package manifests with that manifest, preserve linked release train checks, and keep internal packages out of release tracking."
+  },
+  {
+    "title": "fix(docs): restore package/docs parity for @a2amesh/create-a2amesh",
+    "milestone": "M0 \u2014 Release Recovery & Repo Health",
+    "labels": ["priority:P0", "type:bug", "type:docs", "area:docs", "area:dx", "status:triaged"],
+    "body": "The canonical scaffolder package is @a2amesh/create-a2amesh. Active architecture, install, and distribution docs must use that package consistently. Acceptance: docs check and identity lint pass."
+  },
+  {
+    "title": "fix(release): enable npm publish for @a2amesh/create-a2amesh with Trusted Publishing",
+    "milestone": "M0 \u2014 Release Recovery & Repo Health",
+    "labels": [
+      "priority:P0",
+      "type:bug",
+      "type:release",
+      "area:release",
+      "area:supply-chain",
+      "status:blocked"
+    ],
+    "body": "The publish workflow currently fails on the scoped scaffolder package. Configure the npm package scope and Trusted Publishing setup so the alpha package can be published with provenance."
+  },
+  {
+    "title": "fix(release): validate prerelease registry parity against dist-tags instead of latest",
+    "milestone": "M0 \u2014 Release Recovery & Repo Health",
+    "labels": ["priority:P0", "type:bug", "type:release", "area:release", "status:triaged"],
+    "body": "Registry parity must compare prereleases against their prerelease channel tag, such as alpha, instead of always comparing against latest. Stable releases should still validate latest."
+  },
+  {
+    "title": "fix(ci): restore unit coverage thresholds without lowering the quality gate",
+    "milestone": "M0 \u2014 Release Recovery & Repo Health",
+    "labels": [
+      "priority:P0",
+      "type:bug",
+      "area:ci",
+      "area:runtime",
+      "area:registry",
+      "area:dx",
+      "status:triaged"
+    ],
+    "body": "Unit tests pass functionally, but CI fails coverage thresholds. Add targeted tests for low coverage CLI, registry, auth, and telemetry paths without lowering the current gate."
+  },
+  {
+    "title": "fix(interop): rename stale warp golden traces and repair interop lab matrix",
+    "milestone": "M0 \u2014 Release Recovery & Repo Health",
+    "labels": [
+      "priority:P0",
+      "type:bug",
+      "type:conformance",
+      "area:interop",
+      "area:protocol",
+      "status:triaged"
+    ],
+    "body": "The interop matrix still references historical trace names. Rename scenario IDs and trace paths to mesh or a2amesh terminology and make the interop lab pass locally and in Actions."
+  },
+  {
+    "title": "fix(packaging): prevent bin wrapper chmod from dirtying the working tree",
+    "milestone": "M0 \u2014 Release Recovery & Repo Health",
+    "labels": [
+      "priority:P0",
+      "type:bug",
+      "type:release",
+      "area:release",
+      "area:ci",
+      "status:triaged"
+    ],
+    "body": "Release artifact checks should leave the working tree clean. Fix bin wrapper executable handling for the CLI and scaffolder packages while keeping packed tarballs runnable."
+  },
+  {
+    "title": "chore(governance): add branch ruleset and required checks for main",
+    "milestone": "M0 \u2014 Release Recovery & Repo Health",
+    "labels": [
+      "priority:P0",
+      "type:task",
+      "area:governance",
+      "area:ci",
+      "area:supply-chain",
+      "status:triaged"
+    ],
+    "body": "Add an active main branch ruleset with pull request review, no force push or deletion, and required checks that match the workflows protecting release quality."
+  },
+  {
+    "title": "chore(license): make GitHub detect the repository as Apache-2.0",
+    "milestone": "M0 \u2014 Release Recovery & Repo Health",
+    "labels": [
+      "priority:P0",
+      "type:task",
+      "area:governance",
+      "area:supply-chain",
+      "status:triaged"
+    ],
+    "body": "GitHub currently reports the license as Other even though project metadata says Apache-2.0. Make the top level license detectable while preserving SPDX and REUSE metadata."
+  },
+  {
+    "title": "feat(protocol): align task lifecycle and message send configuration with A2A v1.0",
+    "milestone": "M1 \u2014 A2A v1.0 Protocol Conformance",
+    "labels": [
+      "priority:P1",
+      "type:conformance",
+      "area:protocol",
+      "area:runtime",
+      "status:triaged"
+    ],
+    "body": "Align task states, lifecycle transitions, send configuration, metadata propagation, and error behavior with the strict A2A v1.0 profile. Historical source: 315."
+  },
+  {
+    "title": "epic(conformance): close strict official-a2a-v1.0 profile gaps and make them CI-blocking",
+    "milestone": "M1 \u2014 A2A v1.0 Protocol Conformance",
+    "labels": [
+      "priority:P1",
+      "type:epic",
+      "type:conformance",
+      "area:protocol",
+      "area:interop",
+      "area:ci",
+      "status:triaged"
+    ],
+    "body": "Inventory strict profile gaps, add fixtures, and make required A2A v1.0 regressions fail CI. Historical sources: 342 and 349."
+  },
+  {
+    "title": "feat(protocol): enforce A2A-Version negotiation across HTTP, SSE, WebSocket, and gRPC",
+    "milestone": "M1 \u2014 A2A v1.0 Protocol Conformance",
+    "labels": [
+      "priority:P1",
+      "type:conformance",
+      "area:protocol",
+      "area:runtime",
+      "area:interop",
+      "status:triaged"
+    ],
+    "body": "Verify protocol version negotiation across all public transports and streaming surfaces. Historical source: 343."
+  },
+  {
+    "title": "feat(protocol): finalize HTTP+JSON semantics, media types, errors, pagination, and tenant behavior",
+    "milestone": "M1 \u2014 A2A v1.0 Protocol Conformance",
+    "labels": [
+      "priority:P1",
+      "type:conformance",
+      "area:protocol",
+      "area:runtime",
+      "area:registry",
+      "status:triaged"
+    ],
+    "body": "Finalize public HTTP semantics, media type behavior, error envelopes, pagination, and tenant scoping across runtime and registry APIs. Historical source: 344."
+  },
+  {
+    "title": "feat(runtime): implement official TaskPushNotificationConfig multi-config CRUD",
+    "milestone": "M1 \u2014 A2A v1.0 Protocol Conformance",
+    "labels": [
+      "priority:P1",
+      "type:conformance",
+      "area:protocol",
+      "area:runtime",
+      "area:storage",
+      "status:triaged"
+    ],
+    "body": "Implement and test official push notification config CRUD with multi config storage and ownership checks. Historical source: 345."
+  },
+  {
+    "title": "security(runtime): make tenant isolation and task ownership default-deny",
+    "milestone": "M2 \u2014 Security & MCP Hardening",
+    "labels": [
+      "priority:P1",
+      "type:security",
+      "area:security",
+      "area:runtime",
+      "area:registry",
+      "status:triaged"
+    ],
+    "body": "Authenticated deployments should deny cross tenant and cross owner task access by default. Add negative tests and document safe defaults. Historical source: 348."
+  },
+  {
+    "title": "security(mcp): add OAuth audience validation and auth-boundary guardrails",
+    "milestone": "M2 \u2014 Security & MCP Hardening",
+    "labels": ["priority:P1", "type:security", "area:mcp", "area:security", "status:triaged"],
+    "body": "Add validation and boundary checks for MCP facing auth contexts, with safe audit output and documentation. Historical source: 355."
+  },
+  {
+    "title": "security(mcp): implement human approval gates, tool risk scoring, dry-run mode, and audit hooks",
+    "milestone": "M2 \u2014 Security & MCP Hardening",
+    "labels": [
+      "priority:P1",
+      "type:security",
+      "area:mcp",
+      "area:security",
+      "area:runtime",
+      "status:triaged"
+    ],
+    "body": "Add policy backed approval, risk classification, dry run support, and audit hooks for MCP tool calls. Historical source: 356."
+  },
+  {
+    "title": "security(runtime): defend against indirect instruction and tool-manifest abuse",
+    "milestone": "M2 \u2014 Security & MCP Hardening",
+    "labels": [
+      "priority:P1",
+      "type:security",
+      "area:security",
+      "area:mcp",
+      "area:runtime",
+      "status:triaged"
+    ],
+    "body": "Validate and document trust boundaries for agent cards, skills, and tool metadata so unsafe metadata is handled safely. Historical source: 357."
+  },
+  {
+    "title": "security(observability): protect metrics, health, logs, and sensitive-value redaction",
+    "milestone": "M2 \u2014 Security & MCP Hardening",
+    "labels": [
+      "priority:P1",
+      "type:security",
+      "area:security",
+      "area:runtime",
+      "area:registry",
+      "status:triaged"
+    ],
+    "body": "Audit operational endpoints, logs, diagnostics, and telemetry snapshots for safe redaction and production safe detail levels. Historical source: 353."
+  },
+  {
+    "title": "feat(storage): add production-grade task storage migrations, WAL/indexes, TTL, audit journal, and artifact handling",
+    "milestone": "M3 \u2014 Registry & Production Readiness",
+    "labels": [
+      "priority:P1",
+      "type:task",
+      "area:storage",
+      "area:runtime",
+      "area:registry",
+      "status:triaged"
+    ],
+    "body": "Define and implement production task storage expectations for migrations, indexing, retention, audit metadata, and large artifact boundaries. Historical source: 360."
+  },
+  {
+    "title": "feat(registry): harden tenant trust lifecycles and signed Agent Card handling",
+    "milestone": "M3 \u2014 Registry & Production Readiness",
+    "labels": [
+      "priority:P1",
+      "type:security",
+      "area:registry",
+      "area:security",
+      "area:protocol",
+      "status:triaged"
+    ],
+    "body": "Strengthen registry trust lifecycle, tenant aware discovery, and signed Agent Card verification metadata. Historical source: 361."
+  },
+  {
+    "title": "feat(registry): harden Redis storage and distributed health polling",
+    "milestone": "M3 \u2014 Registry & Production Readiness",
+    "labels": ["priority:P1", "type:task", "area:registry", "area:storage", "status:triaged"],
+    "body": "Harden Redis backed registry storage and distributed health polling for failure handling, stale state, and documented production assumptions. Historical source: 362."
+  },
+  {
+    "title": "feat(observability): publish dashboards, SLOs, semantic conventions, and diagnostic bundles",
+    "milestone": "M3 \u2014 Registry & Production Readiness",
+    "labels": [
+      "priority:P2",
+      "type:task",
+      "area:registry",
+      "area:runtime",
+      "area:docs",
+      "status:triaged"
+    ],
+    "body": "Publish operator facing observability guidance, metric conventions, SLO examples, and redacted diagnostic bundles. Historical source: 363."
+  },
+  {
+    "title": "chore(api): generate and diff JSON Schema, OpenAPI, protobuf, and TypeScript surfaces",
+    "milestone": "M3 \u2014 Registry & Production Readiness",
+    "labels": [
+      "priority:P1",
+      "type:task",
+      "type:conformance",
+      "area:protocol",
+      "area:registry",
+      "area:ci",
+      "status:triaged"
+    ],
+    "body": "Prevent public API drift by generating and diff checking JSON Schema, OpenAPI, protobuf, and TypeScript surfaces. Historical source: 373."
+  },
+  {
+    "title": "docs(trust): complete bestpractice.dev evidence and OpenSSF badge/readme signal set",
+    "milestone": "M4 \u2014 DX, Docs & Ecosystem Trust",
+    "labels": [
+      "priority:P1",
+      "type:docs",
+      "area:docs",
+      "area:supply-chain",
+      "area:governance",
+      "status:triaged"
+    ],
+    "body": "After P0 workflows are green, update README badges and bestpractice.dev evidence with truthful links to repository practices and automation."
+  },
+  {
+    "title": "feat(cli): strengthen doctor, conformance, and release-check commands as local release gates",
+    "milestone": "M4 \u2014 DX, Docs & Ecosystem Trust",
+    "labels": [
+      "priority:P1",
+      "type:task",
+      "area:cli",
+      "area:dx",
+      "area:release",
+      "area:ci",
+      "status:triaged"
+    ],
+    "body": "Make local CLI diagnostics mirror key CI and release gates with actionable output and tests. Historical source: 365."
+  },
+  {
+    "title": "docs(supply-chain): publish SBOM, provenance, and package verification guide",
+    "milestone": "M4 \u2014 DX, Docs & Ecosystem Trust",
+    "labels": [
+      "priority:P1",
+      "type:docs",
+      "area:supply-chain",
+      "area:release",
+      "area:docs",
+      "status:triaged"
+    ],
+    "body": "Document how users can verify packages, checksums, provenance, release tags, and prerelease channels. Historical source: 366."
+  },
+  {
+    "title": "epic(fleet): define post-1.0 Fleet orchestration control plane and routing architecture",
+    "milestone": "M5 \u2014 Fleet & Control Plane (Post-1.0)",
+    "labels": [
+      "priority:roadmap",
+      "type:epic",
+      "area:fleet",
+      "area:runtime",
+      "area:registry",
+      "status:triaged"
+    ],
+    "body": "Keep Fleet post 1.0 and define routing, worker discovery, failure handling, and ADR aligned control plane responsibilities. Historical source: 382."
+  },
+  {
+    "title": "epic(fleet): implement policy, artifacts, sandboxing, and safe side-effect boundaries",
+    "milestone": "M5 \u2014 Fleet & Control Plane (Post-1.0)",
+    "labels": [
+      "priority:roadmap",
+      "type:epic",
+      "type:security",
+      "area:fleet",
+      "area:security",
+      "status:triaged"
+    ],
+    "body": "Define policy, sandboxing, artifact handling, and approval boundaries before Fleet workers perform high impact operations. Historical sources: 393, 394, and 397."
+  },
+  {
+    "title": "epic(fleet): plan provider workers and Mission Control without unsafe session scraping",
+    "milestone": "M5 \u2014 Fleet & Control Plane (Post-1.0)",
+    "labels": [
+      "priority:roadmap",
+      "type:epic",
+      "area:fleet",
+      "area:dx",
+      "area:security",
+      "status:triaged"
+    ],
+    "body": "Plan provider workers and Mission Control using documented integration surfaces only, with a clear capability matrix and support policy. Historical sources: 400, 407, 414, 418, and 421."
+  }
+]
