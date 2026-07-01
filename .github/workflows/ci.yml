@@ -155,6 +155,20 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - run: pnpm run schemas:check
 
+  api-surfaces:
+    name: CI / api-surfaces
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: pnpm run api:surfaces:check
+
   mutation:
     name: CI / mutation
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
