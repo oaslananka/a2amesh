@@ -112,7 +112,8 @@ const conformanceMessages = {
     sessionId: 'session-a2a-1-0',
     contextId: 'ctx-a2a-1-0',
     configuration: {
-      blocking: true,
+      returnImmediately: false,
+      historyLength: 1,
       acceptedOutputModes: ['text/plain'],
       extensions: [
         {
@@ -144,7 +145,8 @@ const conformanceMessages = {
     sessionId: 'session-a2a-1-2',
     contextId: 'ctx-a2a-1-2',
     configuration: {
-      blocking: true,
+      returnImmediately: false,
+      historyLength: 1,
       acceptedOutputModes: ['text/plain', 'application/json'],
       extensions: [
         {

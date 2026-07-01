@@ -268,6 +268,52 @@ describe('A2AServer', () => {
     expect(pushConfig).toEqual(expect.objectContaining({ url: 'https://example.com/hook' }));
   });
 
+
+  it('applies canonical send configuration and keeps legacy blocking behavior', async () => {
+    const server = new HarnessServer('success');
+    const immediateTask = (await server.callRpc({
+      jsonrpc: '2.0',
+      id: 'send-canonical-config',
+      method: 'message/send',
+      params: {
+        message: {
+          role: 'user',
+          parts: [{ type: 'text', text: 'canonical config' }],
+          messageId: 'canonical-config-message',
+          timestamp: new Date().toISOString(),
+        },
+        configuration: {
+          returnImmediately: false,
+          historyLength: 1,
+          acceptedOutputModes: ['text/plain'],
+        },
+      },
+    })) as Task;
+
+    expect(immediateTask.status.state).toBe('COMPLETED');
+    expect(immediateTask.history).toHaveLength(1);
+    expect(immediateTask.history[0]?.messageId).toBe('canonical-config-message');
+
+
+    const blockingTask = (await server.callRpc({
+      jsonrpc: '2.0',
+      id: 'send-legacy-blocking-config',
+      method: 'message/send',
+      params: {
+        message: {
+          role: 'user',
+          parts: [{ type: 'text', text: 'legacy blocking config' }],
+          messageId: 'legacy-blocking-config-message',
+          timestamp: new Date().toISOString(),
+        },
+        configuration: { blocking: true, historyLength: 0 },
+      },
+    })) as Task;
+
+    expect(blockingTask.status.state).toBe('COMPLETED');
+    expect(blockingTask.history).toEqual([]);
+  });
+
   it('handles rpc task lifecycle, extension negotiation and auth errors', async () => {
     const server = new HarnessServer('success', {}, true);
     const message: Message = {

@@ -13,6 +13,20 @@ describe('TaskManager', () => {
 
     manager.updateTaskState(task.id, 'waiting-on-external');
     expect(manager.getTask(task.id)?.status.state).toBe('WAITING_ON_EXTERNAL');
+
+    const authTask = manager.createTask();
+    manager.updateTaskState(authTask.id, 'TASK_STATE_AUTH_REQUIRED');
+    expect(manager.getTask(authTask.id)?.status.state).toBe('AUTH_REQUIRED');
+    expect(manager.getTask(authTask.id)?.metadata).toEqual(
+      expect.objectContaining({ authRequiredAt: expect.any(String) }),
+    );
+
+    const rejectedTask = manager.createTask();
+    manager.updateTaskState(rejectedTask.id, 'TASK_STATE_REJECTED');
+    expect(manager.getTask(rejectedTask.id)?.status.state).toBe('REJECTED');
+    expect(manager.getTask(rejectedTask.id)?.metadata).toEqual(
+      expect.objectContaining({ rejectedAt: expect.any(String), endedAt: expect.any(String) }),
+    );
   });
 
   it('raises EventEmitter max listeners for high SSE fan-out', () => {

@@ -78,6 +78,12 @@ describe('conformance fixture runner', () => {
         required: true,
       }),
     );
+    expect(report.coverage).toContainEqual(
+      expect.objectContaining({ id: 'fields.send-message-configuration', status: 'supported' }),
+    );
+    expect(report.coverage).toContainEqual(
+      expect.objectContaining({ id: 'states.official-task-state-enum', status: 'supported' }),
+    );
     expect(report.summary.failed).toBe(0);
     expect(report.summary.passed).toBeGreaterThan(0);
     expect(report.skippedCapabilities.map((item) => item.capability)).toEqual([
@@ -95,6 +101,9 @@ describe('conformance fixture runner', () => {
     ]);
     expect(hasRequiredConformanceFailures(report)).toBe(false);
     expect(sentMessages[0]).toEqual(createConformanceMessageParams('1.0'));
+    expect(sentMessages[0]?.configuration).toEqual(
+      expect.objectContaining({ returnImmediately: false, historyLength: 1 }),
+    );
   });
 
   it('marks required cases as failed when a fixture-backed request fails', async () => {
@@ -172,6 +181,12 @@ describe('conformance fixture runner', () => {
 
     expect(report.protocolVersion).toBe('1.2');
     expect(report.endpoint.protocolVersion).toBe('1.2');
+    expect(report.coverage).toContainEqual(
+      expect.objectContaining({ id: 'fields.send-message-configuration', status: 'supported' }),
+    );
+    expect(report.coverage).toContainEqual(
+      expect.objectContaining({ id: 'states.official-task-state-enum', status: 'supported' }),
+    );
     expect(report.summary.failed).toBe(0);
     expect(sentMessages[0]).toEqual(createConformanceMessageParams('1.2'));
   });

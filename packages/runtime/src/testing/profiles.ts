@@ -108,21 +108,21 @@ const officialA2aV1Requirements = [
     id: 'fields.send-message-configuration',
     area: 'fields',
     name: 'SendMessageConfiguration returnImmediately and historyLength',
-    status: 'partial',
+    status: 'supported',
     required: true,
     evidence:
-      'Current local configuration exposes blocking and acceptedOutputModes; official v1.0 requires returnImmediately and historyLength semantics.',
-    trackedBy: '#315',
+      'Runtime accepts canonical returnImmediately/historyLength semantics, keeps blocking as a legacy alias, trims response history, and validates invalid history limits.',
+    trackedBy: '#13',
   },
   {
     id: 'states.official-task-state-enum',
     area: 'states',
     name: 'Official TaskState enum coverage',
-    status: 'partial',
+    status: 'supported',
     required: true,
     evidence:
-      'Local states cover submitted, working, completed, failed, canceled, and input-required; rejected and auth-required are tracked for compatibility.',
-    trackedBy: '#315',
+      'Runtime normalizes official TASK_STATE_* values, covers submitted, queued, working, input-required, auth-required, waiting-on-external, completed, failed, canceled, and rejected, and rejects terminal mutations.',
+    trackedBy: '#13',
   },
   {
     id: 'extensions.headers',
