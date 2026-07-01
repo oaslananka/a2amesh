@@ -1,4 +1,6 @@
 import { logger } from '../utils/logger.js';
+import { redactHeaders } from '../utils/redaction.js';
+export { redactHeaders } from '../utils/redaction.js';
 import { a2aMeshTracer, SpanStatusCode } from '../telemetry/index.js';
 
 export type FetchTelemetryLabels = Record<string, string | number | boolean>;
@@ -35,35 +37,6 @@ export class FetchTimeoutError extends Error {
 function calculateBackoff(attempt: number, base: number, max: number, jitter: boolean): number {
   const exponential = Math.min(max, base * Math.pow(2, attempt));
   return jitter ? Math.random() * exponential : exponential;
-}
-
-export function redactHeaders(headers: HeadersInit | undefined): Record<string, string> {
-  if (!headers) return {};
-  const redacted: Record<string, string> = {};
-
-  let entries: [string, string][];
-  if (headers instanceof Headers) {
-    entries = Array.from(headers.entries());
-  } else if (Array.isArray(headers)) {
-    entries = headers;
-  } else {
-    entries = Object.entries(headers) as [string, string][];
-  }
-
-  for (const [key, value] of entries) {
-    const lowerKey = key.toLowerCase();
-    if (
-      lowerKey === 'authorization' ||
-      lowerKey.includes('api-key') ||
-      lowerKey.includes('secret') ||
-      lowerKey.includes('token')
-    ) {
-      redacted[key] = '[REDACTED]';
-    } else {
-      redacted[key] = typeof value === 'string' ? value : String(value);
-    }
-  }
-  return redacted;
 }
 
 /**

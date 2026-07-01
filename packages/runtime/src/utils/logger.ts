@@ -3,6 +3,8 @@
  * Small structured logger with request/task/context correlation support.
  */
 
+import { redactRecord } from './redaction.js';
+
 export interface LogContext {
   requestId?: string;
   traceId?: string;
@@ -27,8 +29,6 @@ const LOG_LEVELS: Record<ConfiguredLogLevel, number> = {
   silent: Number.POSITIVE_INFINITY,
 };
 
-const REDACTED = '[REDACTED]';
-
 function resolveLogLevel(): ConfiguredLogLevel {
   const level = process.env['LOG_LEVEL']?.toLowerCase();
   if (
@@ -40,7 +40,6 @@ function resolveLogLevel(): ConfiguredLogLevel {
   ) {
     return level;
   }
-
   return 'info';
 }
 
@@ -56,59 +55,7 @@ function serializeError(error: unknown): Record<string, unknown> {
       stack: error.stack,
     };
   }
-
   return { error: String(error) };
-}
-
-function isSensitiveLogKey(key: string): boolean {
-  const normalized = key.toLowerCase();
-  return (
-    normalized.includes('authorization') ||
-    normalized.includes('api-key') ||
-    normalized.includes('apikey') ||
-    normalized.includes('api_key') ||
-    normalized.includes('token') ||
-    normalized.includes('secret') ||
-    normalized.includes('password')
-  );
-}
-
-function redactSensitiveText(value: string): string {
-  return value
-    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, `Bearer ${REDACTED}`)
-    .replace(
-      /\b(api[_-]?key|token|client[_-]?secret|secret|password)=([^&\s,;"}]+)/gi,
-      (_match, key: string) => `${key}=${REDACTED}`,
-    );
-}
-
-function redactLogValue(value: unknown, key?: string, seen = new WeakSet<object>()): unknown {
-  if (key && isSensitiveLogKey(key)) {
-    return REDACTED;
-  }
-  if (typeof value === 'string') {
-    return redactSensitiveText(value);
-  }
-  if (!value || typeof value !== 'object') {
-    return value;
-  }
-  if (seen.has(value)) {
-    return '[Circular]';
-  }
-  seen.add(value);
-  if (Array.isArray(value)) {
-    return value.map((entry) => redactLogValue(entry, undefined, seen));
-  }
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>).map(([entryKey, entryValue]) => [
-      entryKey,
-      redactLogValue(entryValue, entryKey, seen),
-    ]),
-  );
-}
-
-function redactLogContext(context: LogContext): LogContext {
-  return redactLogValue(context) as LogContext;
 }
 
 function formatPretty(level: LogLevel, message: string, context: LogContext): string {
@@ -127,7 +74,7 @@ function writeLog(level: LogLevel, message: string, context: LogContext): void {
     return;
   }
 
-  const redactedContext = redactLogContext(context);
+  const redactedContext = redactRecord(context);
   const payload = {
     timestamp: new Date().toISOString(),
     level,
