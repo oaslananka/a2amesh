@@ -21,6 +21,27 @@
   <a href="https://deepwiki.com/oaslananka/a2amesh">
     <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki" />
   </a>
+  <a href="https://github.com/oaslananka/a2amesh/actions/workflows/ci.yml">
+    <img src="https://github.com/oaslananka/a2amesh/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  </a>
+  <a href="https://github.com/oaslananka/a2amesh/actions/workflows/docs.yml">
+    <img src="https://github.com/oaslananka/a2amesh/actions/workflows/docs.yml/badge.svg" alt="Docs" />
+  </a>
+  <a href="https://github.com/oaslananka/a2amesh/actions/workflows/security.yml">
+    <img src="https://github.com/oaslananka/a2amesh/actions/workflows/security.yml/badge.svg" alt="Security" />
+  </a>
+  <a href="https://github.com/oaslananka/a2amesh/actions/workflows/codeql.yml">
+    <img src="https://github.com/oaslananka/a2amesh/actions/workflows/codeql.yml/badge.svg" alt="CodeQL" />
+  </a>
+  <a href="https://github.com/oaslananka/a2amesh/actions/workflows/scorecard.yml">
+    <img src="https://github.com/oaslananka/a2amesh/actions/workflows/scorecard.yml/badge.svg" alt="OpenSSF Scorecard" />
+  </a>
+  <a href="https://api.securityscorecards.dev/projects/github.com/oaslananka/a2amesh">
+    <img src="https://api.securityscorecards.dev/projects/github.com/oaslananka/a2amesh/badge" alt="OpenSSF Scorecard score" />
+  </a>
+  <a href="https://github.com/oaslananka/a2amesh/blob/main/docs/security/trust-evidence.md">
+    <img src="https://img.shields.io/badge/trust-evidence-blue.svg" alt="trust evidence" />
+  </a>
 </p>
 
 <p>
@@ -31,6 +52,10 @@
 
 </div>
 A2A Mesh is an independent TypeScript runtime and toolkit for the Agent2Agent (A2A) protocol. It is not an official Google, Linux Foundation, or a2aproject package.
+
+## Trust and Supply Chain
+
+A2A Mesh keeps public trust evidence in [`docs/security/trust-evidence.md`](docs/security/trust-evidence.md) and release package verification evidence in [`docs/release/package-verification.md`](docs/release/package-verification.md). The README badges link to workflow-backed signals only: CI, docs, security, CodeQL, OpenSSF Scorecard, npm package metadata, license, and package-manager constraints.
 
 ## What It Provides
 

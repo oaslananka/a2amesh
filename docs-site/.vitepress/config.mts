@@ -146,6 +146,7 @@ export default defineConfig({
             { text: 'Policy Engine', link: '/security/policy-engine' },
             { text: 'MCP Audit', link: '/security/mcp-audit' },
             { text: 'Threat Model', link: '/security/threat-model' },
+            { text: 'Trust Evidence', link: '/security/trust-evidence' },
           ],
         },
       ],
