@@ -54,11 +54,11 @@ Packages designed to interface with specific runtime environments or LLM provide
 
 ## Architecture and Non-goals
 
-See [ADR-0009: Fleet Architecture](../architecture/adr/0009-fleet-architecture.md) and [Fleet Control Plane Architecture](control-plane.md) for the integration boundaries. Crucially:
+See [ADR-0009: Fleet Architecture](/guide/architecture) and [Fleet Control Plane Architecture](/fleet/control-plane) for the integration boundaries. Crucially:
 
 - `packages/runtime` is provider-neutral.
 - Direct internal hacking or unsupported extraction methods are not permitted.
-- Human approval is required for external side effects (e.g., remote push, publish, issue close, PR merge, deploy). See [Fleet Policy, Sandbox, Artifact, and Approval Boundaries](policy-sandbox-artifacts.md).
+- Human approval is required for external side effects (e.g., remote push, publish, issue close, PR merge, deploy). See [Fleet Policy, Sandbox, Artifact, and Approval Boundaries](/fleet/policy-sandbox-artifacts).
 
 ## Additional Rules
 
