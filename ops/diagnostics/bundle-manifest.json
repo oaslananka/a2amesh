@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0",
+  "name": "a2amesh-diagnostic-bundle",
+  "classification": "redacted-operational-evidence",
+  "requiredFiles": [
+    "README.md",
+    "runtime-health.json",
+    "runtime-metrics.prom",
+    "registry-metrics.prom",
+    "registry-summary.json",
+    "version.txt",
+    "environment-redacted.txt"
+  ],
+  "redactionRules": [
+    "authorization-like headers and values",
+    "credential-like environment variables",
+    "session cookies",
+    "token query parameters",
+    "private task input values"
+  ],
+  "retentionRecommendationDays": 14
+}
