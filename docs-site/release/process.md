@@ -124,6 +124,12 @@ updated to accept that component tag.
 6. Builds, typechecks, tests, packs, validates artifacts, attests checksums and
    SBOM, publishes with `--provenance`, and checks npm registry visibility.
 
+## Package verification
+
+After a release or prerelease is published, follow the package verification guide to verify npm visibility, dist-tags, tarball checksums, SBOM output, and npm provenance before announcing the release.
+
+- Source docs: [Package Verification](./package-verification.md)
+
 ## Registry verification
 
 After publish, confirm npm shows the expected package versions and provenance.

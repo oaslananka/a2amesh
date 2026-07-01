@@ -152,7 +152,10 @@ export default defineConfig({
       '/release/': [
         {
           text: 'Release',
-          items: [{ text: 'Release Process', link: '/release/process' }],
+          items: [
+            { text: 'Release Process', link: '/release/process' },
+            { text: 'Package Verification', link: '/release/package-verification' },
+          ],
         },
       ],
       '/api/': [
