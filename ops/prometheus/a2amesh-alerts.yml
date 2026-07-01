@@ -1,21 +1,75 @@
 groups:
-  - name: a2amesh.rules
+  - name: a2amesh.runtime.rules
     rules:
-      - alert: A2AMeshHighErrorRate
+      - record: a2amesh:runtime_task_failure_ratio5m
         expr: |
-          (
-            sum(rate(a2a_requests_total{status="error"}[5m]))
-            / clamp_min(sum(rate(a2a_requests_total[5m])), 1)
-          ) > 0.05
+          sum(rate(a2a_runtime_task_failed_total[5m]))
+          /
+          clamp_min(sum(rate(a2a_runtime_task_started_total[5m])), 1)
+      - record: a2amesh:runtime_task_duration_p95_ms5m
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(a2a_runtime_task_duration_ms_bucket[5m]))
+          )
+      - alert: A2AMeshRuntimeHighTaskFailureRatio
+        expr: a2amesh:runtime_task_failure_ratio5m > 0.05
         for: 10m
         labels:
           severity: warning
+          service: a2amesh-runtime
         annotations:
-          summary: A2A Mesh error rate is elevated
-      - alert: A2AMeshNoHealthyAgents
-        expr: a2a_registry_agents{status="healthy"} == 0
+          summary: A2A Mesh runtime task failure ratio is elevated
+          description: More than 5% of started tasks have failed during the last 5 minutes.
+      - alert: A2AMeshRuntimeNoTaskThroughput
+        expr: sum(rate(a2a_runtime_task_started_total[15m])) == 0
+        for: 30m
+        labels:
+          severity: info
+          service: a2amesh-runtime
+        annotations:
+          summary: A2A Mesh runtime has no task throughput
+          description: No task started events were observed for 30 minutes. Verify traffic expectations before paging.
+      - alert: A2AMeshRuntimeAuthRejectSpike
+        expr: sum(rate(a2a_runtime_auth_rejected_total[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+          service: a2amesh-runtime
+        annotations:
+          summary: A2A Mesh runtime auth rejections increased
+          description: Authentication or authorization rejections are sustained above 1 request per second.
+      - alert: A2AMeshRuntimeSseConnectionPressure
+        expr: sum(a2a_runtime_sse_connections_active) > 500
+        for: 15m
+        labels:
+          severity: warning
+          service: a2amesh-runtime
+        annotations:
+          summary: A2A Mesh runtime has high active SSE connection count
+          description: Active SSE connections exceeded the starter threshold. Tune for the deployment size before using in production.
+  - name: a2amesh.registry.rules
+    rules:
+      - record: a2amesh:registry_healthy_agent_ratio
+        expr: |
+          sum(a2a_registry_healthy_agents)
+          /
+          clamp_min(sum(a2a_registry_agents), 1)
+      - alert: A2AMeshRegistryNoHealthyAgents
+        expr: sum(a2a_registry_agents) > 0 and sum(a2a_registry_healthy_agents) == 0
         for: 5m
         labels:
           severity: critical
+          service: a2amesh-registry
         annotations:
-          summary: No healthy agents are registered
+          summary: A2A Mesh registry has no healthy agents
+          description: Registered agents exist but none are currently healthy.
+      - alert: A2AMeshRegistryHealthyAgentRatioLow
+        expr: a2amesh:registry_healthy_agent_ratio < 0.8
+        for: 15m
+        labels:
+          severity: warning
+          service: a2amesh-registry
+        annotations:
+          summary: A2A Mesh registry healthy agent ratio is low
+          description: Less than 80% of registered agents are healthy.

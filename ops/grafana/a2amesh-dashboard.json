@@ -1,6 +1,37 @@
 {
-  "title": "A2A Mesh Overview",
+  "title": "A2A Mesh Operator Overview",
   "schemaVersion": 39,
-  "version": 1,
-  "panels": []
+  "version": 2,
+  "refresh": "30s",
+  "tags": ["a2amesh", "operations"],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Runtime active tasks",
+      "targets": [{ "expr": "sum(a2a_runtime_tasks_active)" }]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Task throughput",
+      "targets": [{ "expr": "sum(rate(a2a_runtime_task_started_total[5m]))" }]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Task duration p95",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(a2a_runtime_task_duration_ms_bucket[5m])))"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Registry healthy agents",
+      "targets": [{ "expr": "sum(a2a_registry_healthy_agents)" }]
+    }
+  ]
 }
