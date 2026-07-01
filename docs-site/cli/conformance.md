@@ -21,6 +21,8 @@ Options:
                                 --experimental-profiles) (default: "1.0")
   --experimental-profiles       Allow a2amesh experimental protocol fixture profiles such as 1.2
   --json                        Machine-readable JSON output
+  --gate                        Run as the local release gate using the strict official A2A v1.0
+                                profile
   --junit <path>                Write a JUnit XML report to a path
   --header <key:value...>       HTTP header to send; accepts one or more key:value entries
   --bearer-token <token>        Bearer token sent as Authorization: Bearer <token>
