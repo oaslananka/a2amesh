@@ -92,6 +92,26 @@ const registeredAgentArray = {
   items: schemaRef('RegisteredAgent'),
 };
 
+const paginationHeaders = {
+  'X-A2A-Registry-Page-Total': {
+    description: 'Total number of matching registered agents before pagination.',
+    schema: { type: 'integer', minimum: 0 },
+  },
+  'X-A2A-Registry-Page-Count': {
+    description: 'Number of registered agents returned in this response body.',
+    schema: { type: 'integer', minimum: 0 },
+  },
+  'X-A2A-Registry-Page-Next-Cursor': {
+    description: 'Cursor to request the next page. Omitted when there is no next page.',
+    schema: { type: 'string' },
+  },
+};
+
+const paginatedAgentArrayResponse = (description: string) => ({
+  ...jsonResponse(description, registeredAgentArray),
+  headers: paginationHeaders,
+});
+
 const authErrorResponses = {
   '401': responseRef('Unauthorized'),
   '403': responseRef('Forbidden'),
@@ -253,9 +273,13 @@ export const registryOpenApiDocument = {
         description:
           'When public=true is supplied this endpoint returns public agents without control-plane authentication. Otherwise it requires the registry control-plane bearer token or JWT middleware.',
         security: [{ bearerAuth: [] }, {}],
-        parameters: [parameterRef('PublicQuery')],
+        parameters: [
+          parameterRef('PublicQuery'),
+          parameterRef('LimitQuery'),
+          parameterRef('CursorQuery'),
+        ],
         responses: {
-          '200': jsonResponse('Registered agents visible to the caller.', registeredAgentArray),
+          '200': paginatedAgentArrayResponse('Registered agents visible to the caller.'),
           ...authErrorResponses,
         },
       },
@@ -290,9 +314,11 @@ export const registryOpenApiDocument = {
           parameterRef('StatusQuery'),
           parameterRef('McpCompatibleQuery'),
           parameterRef('PublicQuery'),
+          parameterRef('LimitQuery'),
+          parameterRef('CursorQuery'),
         ],
         responses: {
-          '200': jsonResponse('Matching registered agents.', registeredAgentArray),
+          '200': paginatedAgentArrayResponse('Matching registered agents.'),
           '400': responseRef('BadRequest'),
           ...authErrorResponses,
         },
@@ -451,6 +477,15 @@ export const registryOpenApiDocument = {
         },
         description: 'Registry agent id.',
       },
+      CursorQuery: {
+        name: 'cursor',
+        in: 'query',
+        required: false,
+        schema: {
+          type: 'string',
+        },
+        description: 'Pagination cursor returned by X-A2A-Registry-Page-Next-Cursor.',
+      },
       LimitQuery: {
         name: 'limit',
         in: 'query',
@@ -459,7 +494,7 @@ export const registryOpenApiDocument = {
           type: 'integer',
           minimum: 1,
         },
-        description: 'Maximum number of recent task events to return.',
+        description: 'Maximum number of recent task events or registered agents to return.',
       },
       McpCompatibleQuery: {
         name: 'mcpCompatible',

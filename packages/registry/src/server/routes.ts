@@ -10,6 +10,7 @@ import {
   type RegistryExportDocument,
   type RequestContext,
 } from '@a2amesh/runtime';
+import type { AgentListQuery, AgentListResult } from '../storage/indexing.js';
 import type { RegisteredAgent } from '../storage/IAgentStorage.js';
 import type { RegistryAuthController } from './auth.js';
 import type { RegistryMetricsController } from './metrics.js';
@@ -123,25 +124,26 @@ export function registerRegistryRoutes(
   app.post('/admin/agents/register', registerAgent);
 
   app.get('/agents', async (req, res) => {
+    const pagination = resolveAgentPagination(req);
     if (req.query['public'] === 'true') {
       const result = await context.store.list({
         isPublic: true,
-        limit: Number.MAX_SAFE_INTEGER,
+        ...pagination,
       });
-      res.json(result.items);
+      writeAgentList(res, result);
       return;
     }
 
-    const agents = await getAuthorizedAgents(req, res, context, auth);
+    const agents = await getAuthorizedAgents(req, res, context, auth, pagination);
     if (agents) {
-      res.json(agents);
+      writeAgentList(res, agents);
     }
   });
 
   app.get('/admin/agents/export', async (req, res) => {
     const agents = await getAuthorizedAgents(req, res, context, auth);
     if (agents) {
-      res.json(createRegistryExportDocument(agents));
+      res.json(createRegistryExportDocument(agents.items));
     }
   });
 
@@ -239,17 +241,17 @@ export function registerRegistryRoutes(
       ...(transport ? { transport } : {}),
       ...(status ? { status } : {}),
       ...(mcpCompatible !== undefined ? { mcpCompatible } : {}),
-      limit: Number.MAX_SAFE_INTEGER,
+      ...resolveAgentPagination(req),
     } as const;
 
     if (req.query['public'] === 'true') {
-      res.json((await context.store.list({ ...query, isPublic: true })).items);
+      writeAgentList(res, await context.store.list({ ...query, isPublic: true }));
       return;
     }
 
     const agents = await getAuthorizedAgents(req, res, context, auth, query);
     if (agents) {
-      res.json(agents);
+      writeAgentList(res, agents);
     }
   });
 
@@ -316,6 +318,31 @@ export function registerRegistryRoutes(
   };
   app.delete('/agents/:id', deleteAgent);
   app.delete('/admin/agents/:id', deleteAgent);
+}
+
+function resolveAgentPagination(req: Request): Pick<AgentListQuery, 'cursor' | 'limit'> {
+  const rawLimit = Array.isArray(req.query['limit']) ? req.query['limit'][0] : req.query['limit'];
+  const limit = typeof rawLimit === 'string' ? Number(rawLimit) : undefined;
+  const rawCursor = Array.isArray(req.query['cursor'])
+    ? req.query['cursor'][0]
+    : req.query['cursor'];
+  return {
+    ...(typeof rawCursor === 'string' && rawCursor.trim().length > 0
+      ? { cursor: rawCursor.trim() }
+      : {}),
+    ...(limit !== undefined && Number.isFinite(limit) && limit > 0
+      ? { limit: Math.floor(limit) }
+      : { limit: Number.MAX_SAFE_INTEGER }),
+  };
+}
+
+function writeAgentList(res: Response, result: AgentListResult): void {
+  res.setHeader('X-A2A-Registry-Page-Total', String(result.total));
+  res.setHeader('X-A2A-Registry-Page-Count', String(result.items.length));
+  if (result.nextCursor) {
+    res.setHeader('X-A2A-Registry-Page-Next-Cursor', result.nextCursor);
+  }
+  res.json(result.items);
 }
 
 function routeParam(value: string | string[] | undefined): string | undefined {
@@ -548,8 +575,8 @@ async function getAuthorizedAgents(
   res: Response,
   context: RegistryServerContext,
   auth: RegistryAuthController,
-  query: Record<string, unknown> = { limit: Number.MAX_SAFE_INTEGER },
-): Promise<RegisteredAgent[] | undefined> {
+  query: AgentListQuery = { limit: Number.MAX_SAFE_INTEGER },
+): Promise<AgentListResult | undefined> {
   const requestContext = await auth.authenticateControlPlane(req, res);
   if (!requestContext) {
     return undefined;
@@ -560,7 +587,13 @@ async function getAuthorizedAgents(
     ...(requestContext.tenantId ? { tenantId: requestContext.tenantId, includePublic: true } : {}),
   });
 
-  return auth.shouldEnforceTenantIsolation(requestContext)
-    ? auth.filterAgentsByContext(result.items, requestContext)
-    : result.items;
+  if (!auth.shouldEnforceTenantIsolation(requestContext)) {
+    return result;
+  }
+
+  const items = auth.filterAgentsByContext(result.items, requestContext);
+  return {
+    ...result,
+    items,
+  };
 }

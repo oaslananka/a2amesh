@@ -63,9 +63,32 @@ describe('Registry Integration', () => {
     const all = await client.listAgents();
     expect(all).toHaveLength(2);
 
+    const firstPage = await fetch(`${baseUrl}/agents?limit=1`);
+    expect(firstPage.status).toBe(200);
+    expect(firstPage.headers.get('x-a2a-registry-page-total')).toBe('2');
+    expect(firstPage.headers.get('x-a2a-registry-page-count')).toBe('1');
+    expect(firstPage.headers.get('x-a2a-registry-page-next-cursor')).toBe('1');
+    const firstPageAgents = (await firstPage.json()) as Array<{ id: string }>;
+    expect(firstPageAgents).toHaveLength(1);
+
+    const secondPage = await fetch(`${baseUrl}/agents?limit=1&cursor=1`);
+    expect(secondPage.status).toBe(200);
+    expect(secondPage.headers.get('x-a2a-registry-page-total')).toBe('2');
+    expect(secondPage.headers.get('x-a2a-registry-page-count')).toBe('1');
+    expect(secondPage.headers.get('x-a2a-registry-page-next-cursor')).toBeNull();
+    expect(await secondPage.json()).toHaveLength(1);
+
     const searches = await client.searchAgents('search');
     expect(searches).toHaveLength(1);
     expect(searches[0]?.url).toBe('https://agent-1.com');
+
+    const searchPage = await fetch(`${baseUrl}/agents/search?skill=search&limit=1`);
+    expect(searchPage.status).toBe(200);
+    expect(searchPage.headers.get('x-a2a-registry-page-total')).toBe('1');
+    expect(searchPage.headers.get('x-a2a-registry-page-count')).toBe('1');
+    expect((await searchPage.json()) as Array<{ url: string }>).toEqual([
+      expect.objectContaining({ url: 'https://agent-1.com' }),
+    ]);
 
     const health = await client.health();
     expect(health['status']).toBe('ok');
