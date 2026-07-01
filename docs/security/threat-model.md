@@ -17,5 +17,6 @@ Controls:
 - Auth middleware redacts concrete credential material in errors and logs.
 - Idempotency replay records compare a deterministic HMAC-SHA-256 fingerprint over stable request JSON that already includes the caller scope, method, and params. The HMAC domain is `a2amesh:idempotency:fingerprint:v1`, separating replay fingerprints from credential or password hashing, and cache keys encode scope/key components before storage to avoid delimiter collisions. Existing replay cache entries from earlier fingerprint versions may miss after deploy; the replay TTL bounds that transition.
 - Registry and task access tests cover principal/tenant behavior where auth context is enabled.
+- Authenticated runtime task access is default-deny: cross-tenant, cross-owner, and legacy tasks without complete ownership metadata are not visible or accessible.
 - WebSocket transport validates origin/auth before accepting application messages.
 - MCP bridge code must not forward secrets to downstream agents or logs.

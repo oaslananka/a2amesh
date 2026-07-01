@@ -676,13 +676,12 @@ export function canAccessTask(
     return true;
   }
 
-  if (task.principalId && task.principalId !== context.principalId) {
+  if (!context.principalId || !task.principalId || task.principalId !== context.principalId) {
     return false;
   }
-  if (task.tenantId && task.tenantId !== context.tenantId) {
-    return false;
+  if (context.tenantId || task.tenantId) {
+    return Boolean(context.tenantId && task.tenantId && task.tenantId === context.tenantId);
   }
-
   return true;
 }
 

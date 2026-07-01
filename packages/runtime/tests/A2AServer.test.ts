@@ -314,7 +314,7 @@ describe('A2AServer', () => {
       message: 'contextId does not match task contextId',
     });
 
-    const continuationTarget = server.createTask('ctx-1');
+    const continuationTarget = server.getTaskManager().createTask(undefined, 'ctx-1', 'api-key:api-key');
     await expect(
       server.callRpc(
         {
@@ -346,7 +346,7 @@ describe('A2AServer', () => {
         )) as Task
       ).id,
     ).toBe(task.id);
-    const cancelTarget = server.createTask('ctx-1');
+    const cancelTarget = server.getTaskManager().createTask(undefined, 'ctx-1', 'api-key:api-key');
     expect(
       (
         (await server.callRpc(

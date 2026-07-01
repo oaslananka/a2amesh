@@ -113,8 +113,10 @@ sequenceDiagram
 
 Task ownership checks run after authentication for task reads, cancellation, push
 notification configuration, task listing, and streaming. If auth is configured or a
-non-anonymous request context exists, a task is visible only to the matching `principalId`
-and `tenantId` values recorded on the task.
+non-anonymous request context exists, task visibility is default-deny: the request context
+must include both `principalId` and `tenantId`, the task must include both owner fields,
+and both values must match exactly. Legacy or imported tasks without complete ownership
+metadata are hidden from authenticated task lists and rejected for direct task access.
 
 ## JSON-RPC Flow
 

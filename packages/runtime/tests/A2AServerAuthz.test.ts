@@ -81,6 +81,52 @@ describe('A2AServer Authorization', () => {
     expect(listRes.body.result.tasks[0].tenantId).toBe('tenant-1');
   });
 
+
+  it('denies authenticated access to legacy tasks without complete ownership metadata', async () => {
+    const server = new TestServer();
+    const taskManager = server.getTaskManager();
+
+    const unscopedTask = taskManager.createTask('legacy-session', 'legacy-context');
+    const tenantOnlyTask = taskManager.createTask('tenant-only-session', 'legacy-context', undefined, 'tenant-1');
+    const ownerOnlyTask = taskManager.createTask('owner-only-session', 'legacy-context', 'user-A');
+
+    for (const task of [unscopedTask, tenantOnlyTask, ownerOnlyTask]) {
+      const response = await request(server.getApp())
+        .post('/')
+        .set('x-api-key', 'key-a-tenant-1')
+        .send({ jsonrpc: '2.0', method: 'tasks/get', params: { taskId: task.id }, id: task.id });
+
+      expect(response.body.error).toEqual(
+        expect.objectContaining({
+          code: ErrorCodes.Unauthorized,
+          message: 'Unauthorized task access',
+        }),
+      );
+    }
+  });
+
+  it('omits unowned tasks from authenticated task lists by default', async () => {
+    const server = new TestServer();
+    const taskManager = server.getTaskManager();
+
+    taskManager.createTask('owned-session', 'ctx', 'user-A', 'tenant-1');
+    taskManager.createTask('legacy-session', 'ctx');
+    taskManager.createTask('tenant-only-session', 'ctx', undefined, 'tenant-1');
+    taskManager.createTask('owner-only-session', 'ctx', 'user-A');
+    taskManager.createTask('cross-tenant-session', 'ctx', 'user-A', 'tenant-2');
+    taskManager.createTask('cross-owner-session', 'ctx', 'user-B', 'tenant-1');
+
+    const response = await request(server.getApp())
+      .post('/')
+      .set('x-api-key', 'key-a-tenant-1')
+      .send({ jsonrpc: '2.0', method: 'tasks/list', params: { contextId: 'ctx' }, id: 1 });
+
+    expect(response.body.result.tasks).toEqual([
+      expect.objectContaining({ principalId: 'user-A', tenantId: 'tenant-1' }),
+    ]);
+    expect(response.body.result.total).toBe(1);
+  });
+
   it('binds REST tenant aliases to authenticated tenant context', async () => {
     const server = new TestServer();
 
