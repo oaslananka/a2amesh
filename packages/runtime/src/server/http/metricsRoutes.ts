@@ -3,12 +3,15 @@ import type { AgentCard } from '../../types/agent-card.js';
 import type { A2AHealthResponse, TaskCounts } from '../../types/task.js';
 import type { RuntimeMetrics } from '../../telemetry/index.js';
 
+export type HealthDetailLevel = 'safe' | 'detailed';
+
 export interface HealthResponseInput {
   agentCard: AgentCard;
   startedAt: number;
   now?: number;
   taskCounts: TaskCounts;
   memoryUsage: Pick<NodeJS.MemoryUsage, 'heapUsed' | 'heapTotal'>;
+  detailLevel?: HealthDetailLevel;
 }
 
 export interface MetricsRouteDependencies {
@@ -20,7 +23,8 @@ export interface MetricsRouteDependencies {
 }
 
 export function buildHealthResponse(input: HealthResponseInput): A2AHealthResponse {
-  return {
+  const detailLevel = input.detailLevel ?? (process.env['NODE_ENV'] === 'production' ? 'safe' : 'detailed');
+  const base: A2AHealthResponse = {
     status: 'healthy',
     version: input.agentCard.version,
     protocol: 'A2A/1.0',
@@ -36,16 +40,36 @@ export function buildHealthResponse(input: HealthResponseInput): A2AHealthRespon
       heapTotalMb: Number((input.memoryUsage.heapTotal / 1024 / 1024).toFixed(1)),
     },
   };
+
+  if (detailLevel === 'safe') {
+    return {
+      status: base.status,
+      version: base.version,
+      protocol: base.protocol,
+      uptime: base.uptime,
+      tasks: {
+        active: base.tasks.active,
+        completed: base.tasks.completed,
+        failed: base.tasks.failed,
+        total: base.tasks.total,
+      },
+      memory: { heapUsedMb: 0, heapTotalMb: 0 },
+    };
+  }
+
+  return base;
 }
 
 export function registerMetricsRoutes(deps: MetricsRouteDependencies): void {
   deps.app.get('/health', (_req, res) => {
+    const detailLevel = process.env['A2AMESH_HEALTH_DETAIL'] === 'detailed' ? 'detailed' : undefined;
     res.json(
       buildHealthResponse({
         agentCard: deps.agentCard,
         startedAt: deps.startedAt,
         taskCounts: deps.getTaskCounts(),
         memoryUsage: process.memoryUsage(),
+        ...(detailLevel ? { detailLevel } : {}),
       }),
     );
   });

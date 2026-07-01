@@ -157,6 +157,77 @@ describe('A2AServer HTTP module helpers', () => {
     });
   });
 
+  it('builds production-safe health responses without detailed memory values', () => {
+    const payload = buildHealthResponse({
+      agentCard,
+      now: 1_700_000_010_000,
+      startedAt: 1_700_000_000_000,
+      detailLevel: 'safe',
+      taskCounts: {
+        active: 2,
+        canceled: 0,
+        rejected: 0,
+        completed: 3,
+        failed: 1,
+        inputRequired: 0,
+        authRequired: 0,
+        queued: 0,
+        submitted: 0,
+        total: 6,
+        waitingOnExternal: 0,
+        working: 2,
+      },
+      memoryUsage: {
+        heapUsed: 12.5 * 1024 * 1024,
+        heapTotal: 64 * 1024 * 1024,
+      },
+    });
+
+    expect(payload).toMatchObject({
+      status: 'healthy',
+      version: '1.2.3',
+      protocol: 'A2A/1.0',
+      uptime: 10,
+      tasks: { active: 2, completed: 3, failed: 1, total: 6 },
+      memory: { heapUsedMb: 0, heapTotalMb: 0 },
+    });
+  });
+
+
+  it('uses environment-driven health detail defaults', () => {
+    const previousNodeEnv = process.env['NODE_ENV'];
+    process.env['NODE_ENV'] = 'production';
+    try {
+      const payload = buildHealthResponse({
+        agentCard,
+        now: 1_700_000_010_000,
+        startedAt: 1_700_000_000_000,
+        taskCounts: {
+          active: 0,
+          canceled: 0,
+          rejected: 0,
+          completed: 0,
+          failed: 0,
+          inputRequired: 0,
+          authRequired: 0,
+          queued: 0,
+          submitted: 0,
+          total: 0,
+          waitingOnExternal: 0,
+          working: 0,
+        },
+        memoryUsage: { heapUsed: 10 * 1024 * 1024, heapTotal: 20 * 1024 * 1024 },
+      });
+      expect(payload.memory).toEqual({ heapUsedMb: 0, heapTotalMb: 0 });
+    } finally {
+      if (previousNodeEnv === undefined) {
+        delete process.env['NODE_ENV'];
+      } else {
+        process.env['NODE_ENV'] = previousNodeEnv;
+      }
+    }
+  });
+
   it('normalizes safe push notification configs and maps lifecycle errors', async () => {
     await expect(
       normalizePushNotificationConfig(
