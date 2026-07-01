@@ -28,7 +28,7 @@ Commands:
   benchmark [options] <url>                  Run request benchmarks against an A2A endpoint.
   conformance-badge [options] <report-file>  Generate a conformance badge from a report JSON file.
   conformance [options] <url>                Run the A2A conformance fixture suite.
-  doctor                                     Print local CLI diagnostics.
+  doctor [options]                           Print local CLI diagnostics.
   release-check                              Check release readiness.
   export-card [options] <url>                Export an endpoint Agent Card to JSON.
   help [command]                             display help for command

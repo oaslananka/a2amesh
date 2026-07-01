@@ -91,6 +91,7 @@ describe('conformance command', () => {
       '--experimental-profiles',
       '--json',
       '--junit <path>',
+      '--gate',
       '--timeout-ms <ms>',
       '--bearer-token <token>',
     ]);
@@ -128,6 +129,35 @@ describe('conformance command', () => {
         required: true,
         status: 'fail',
         message: 'Fixture rejected (-32603)',
+      }),
+    );
+  });
+
+
+  it('adds local gate metadata when run as a release gate', async () => {
+    mockConformanceFetch();
+    let stdout = '';
+    vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array) => {
+      stdout += String(chunk);
+      return true;
+    });
+
+    await runCli(['node', 'a2amesh', 'conformance', 'http://agent.test', '--gate', '--json']);
+
+    const payload = JSON.parse(stdout) as {
+      summary: { failed: number };
+      profile?: { id: string };
+      localGate?: { id: string; command: string; ciEquivalent: string; required: boolean };
+    };
+    expect(process.exitCode).toBeUndefined();
+    expect(payload.summary.failed).toBe(0);
+    expect(payload.profile?.id).toBe('official-a2a-v1.0');
+    expect(payload.localGate).toEqual(
+      expect.objectContaining({
+        id: 'conformance',
+        command: 'a2amesh conformance http://agent.test --gate --json',
+        ciEquivalent: 'CI / conformance',
+        required: true,
       }),
     );
   });

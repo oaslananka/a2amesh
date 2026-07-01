@@ -17,6 +17,7 @@ import {
   type RootOptionsProvider,
 } from '../io.js';
 import { addNetworkOptions, createA2AClient, type NetworkCommandOptions } from '../network.js';
+import { getLocalReleaseGates } from '../release-gates.js';
 import { CLI_VERSION } from '../version.js';
 import { applyCommandDoc, type CliCommandDoc } from './doc-metadata.js';
 
@@ -67,6 +68,7 @@ interface ConformanceCommandOptions extends NetworkCommandOptions {
   experimentalProfiles?: boolean;
   json?: boolean;
   junit?: string;
+  gate?: boolean;
 }
 
 function errorMessage(error: unknown): string {
@@ -135,6 +137,33 @@ function writeJUnitReport(path: string, report: ConformanceReport): void {
   writeFileSync(targetPath, renderConformanceJUnit(report), 'utf8');
 }
 
+interface ConformanceGateMetadata {
+  id: 'conformance';
+  command: string;
+  ciEquivalent: string;
+  required: true;
+  actionable: true;
+}
+
+function conformanceGateMetadata(endpointUrl: string): ConformanceGateMetadata {
+  const gate = getLocalReleaseGates().find((entry) => entry.id === 'conformance');
+  return {
+    id: 'conformance',
+    command: gate?.command.replace('<url>', endpointUrl) ?? `a2amesh conformance ${endpointUrl} --gate --json`,
+    ciEquivalent: gate?.ciEquivalent ?? 'CI / conformance',
+    required: true,
+    actionable: true,
+  };
+}
+
+function attachConformanceGateMetadata(
+  report: ConformanceReport,
+  endpointUrl: string,
+  enabled: boolean,
+): ConformanceReport | (ConformanceReport & { localGate: ConformanceGateMetadata }) {
+  return enabled ? { ...report, localGate: conformanceGateMetadata(endpointUrl) } : report;
+}
+
 function mergeCliOptions(
   rootOptions: CliOptions,
   commandOptions: ConformanceCommandOptions,
@@ -164,6 +193,7 @@ export function createConformanceCommand(getOptions: RootOptionsProvider): Comma
         'Allow a2amesh experimental protocol fixture profiles such as 1.2',
       )
       .option('--json', 'Machine-readable JSON output')
+      .option('--gate', 'Run as the local release gate using the strict official A2A v1.0 profile')
       .option('--junit <path>', 'Write a JUnit XML report to a path'),
   );
 
@@ -174,11 +204,14 @@ export function createConformanceCommand(getOptions: RootOptionsProvider): Comma
 
       try {
         const experimentalProfiles = Boolean(mergedCommandOptions.experimentalProfiles);
+        const gateMode = Boolean(mergedCommandOptions.gate);
         const profile = mergedCommandOptions.profile
           ? parseConformanceProfileId(mergedCommandOptions.profile)
-          : undefined;
+          : gateMode
+            ? parseConformanceProfileId('official-a2a-v1.0')
+            : undefined;
         const protocolVersion = parseConformanceProtocolVersion(
-          mergedCommandOptions.protocolVersion ?? '1.0',
+          gateMode ? '1.0' : (mergedCommandOptions.protocolVersion ?? '1.0'),
           { allowExperimental: experimentalProfiles },
         );
         const client = createA2AClient(url, mergedCommandOptions);
@@ -189,7 +222,7 @@ export function createConformanceCommand(getOptions: RootOptionsProvider): Comma
             packageVersion: CLI_VERSION,
             protocolVersion,
             profile,
-            strict: Boolean(mergedCommandOptions.strict),
+            strict: gateMode || Boolean(mergedCommandOptions.strict),
             experimentalProfiles,
           }),
         );
@@ -198,7 +231,7 @@ export function createConformanceCommand(getOptions: RootOptionsProvider): Comma
           writeJUnitReport(mergedCommandOptions.junit, report);
         }
 
-        emitResult(report, outputOptions);
+        emitResult(attachConformanceGateMetadata(report, url, gateMode), outputOptions);
         if (hasRequiredConformanceFailures(report)) {
           process.exitCode = 1;
         }
