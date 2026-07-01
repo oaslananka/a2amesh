@@ -42,6 +42,7 @@ export default defineConfig({
           text: 'Fleet',
           items: [
             { text: 'Roadmap', link: '/fleet/roadmap' },
+            { text: 'Control Plane', link: '/fleet/control-plane' },
             { text: 'Package Map', link: '/fleet/package-map' },
           ],
         },

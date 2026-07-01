@@ -64,3 +64,87 @@ export interface FleetRun {
   artifacts?: ExtensibleArtifact[];
   metrics?: Record<string, unknown>;
 }
+
+export type FleetControlPlaneResponsibility =
+  | 'worker-discovery'
+  | 'capability-indexing'
+  | 'routing-decision'
+  | 'run-admission'
+  | 'failure-classification'
+  | 'human-handoff'
+  | 'artifact-routing';
+
+export type FleetRoutingSignal =
+  | 'capability'
+  | 'role'
+  | 'tenant'
+  | 'policy'
+  | 'availability'
+  | 'load'
+  | 'affinity'
+  | 'cost'
+  | 'latency';
+
+export type FleetFailureClass =
+  | 'WORKER_UNAVAILABLE'
+  | 'CAPABILITY_MISMATCH'
+  | 'POLICY_DENIED'
+  | 'TIMEOUT'
+  | 'ARTIFACT_REJECTED'
+  | 'HUMAN_APPROVAL_REQUIRED'
+  | 'UNKNOWN';
+
+export type FleetRecoveryAction =
+  | 'RETRY_SAME_WORKER'
+  | 'ROUTE_TO_ALTERNATE_WORKER'
+  | 'QUEUE_FOR_CAPACITY'
+  | 'REQUEST_HUMAN_APPROVAL'
+  | 'FAIL_CLOSED'
+  | 'OPEN_INCIDENT';
+
+export interface FleetWorkerDiscoveryRecord {
+  workerId: string;
+  card: WorkerCard;
+  discoveredAt: string;
+  lastHeartbeatAt: string;
+  status: FleetWorkerStatus;
+  capabilities: readonly string[];
+  roles: readonly string[];
+  tenants?: readonly string[];
+  labels?: Record<string, string>;
+}
+
+export interface FleetRoutingPolicy {
+  strategy: FleetStrategy;
+  requiredSignals: readonly FleetRoutingSignal[];
+  fallback?: FleetRecoveryAction;
+  maxCandidateWorkers?: number;
+  tenantScoped?: boolean;
+  requiresHumanApproval?: boolean;
+}
+
+export interface FleetRoutingDecision {
+  taskId: string;
+  selectedWorkerId?: string;
+  candidateWorkerIds: readonly string[];
+  signals: readonly FleetRoutingSignal[];
+  policy: FleetRoutingPolicy;
+  reason: string;
+  decidedAt: string;
+}
+
+export interface FleetFailureHandlingPlan {
+  failureClass: FleetFailureClass;
+  action: FleetRecoveryAction;
+  retryable: boolean;
+  maxAttempts?: number;
+  humanHandoffReason?: string;
+}
+
+export interface FleetControlPlaneContract {
+  version: 'post-1.0';
+  responsibilities: readonly FleetControlPlaneResponsibility[];
+  routingPolicy: FleetRoutingPolicy;
+  failureHandling: readonly FleetFailureHandlingPlan[];
+  discoveryTtlSeconds: number;
+}

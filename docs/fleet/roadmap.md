@@ -6,7 +6,7 @@ The Fleet roadmap outlines the trajectory for integrating fleet capabilities int
 
 We adhere strictly to established A2A Mesh standards for these capabilities:
 
-- **Architecture**: See [ADR-0009: Fleet Architecture](../architecture/adr/0009-fleet-architecture.md).
+- **Architecture**: See [ADR-0009: Fleet Architecture](../architecture/adr/0009-fleet-architecture.md) and [Fleet Control Plane Architecture](control-plane.md).
 - **Conformance**: See [Protocol Compatibility](../protocol/compatibility.md) for A2A conformance fixture versioning.
 - **Security**: See the [Threat Model](../security/threat-model.md) for trust boundaries and authentication policies.
 - **Release**: See the [Release Process](../release/process.md) for publishing mechanics and artifact expectations.
@@ -51,4 +51,4 @@ We adhere strictly to established A2A Mesh standards for these capabilities:
 
 ## Architecture and Non-goals
 
-See [ADR-0009: Fleet Architecture](../architecture/adr/0009-fleet-architecture.md) for the integration boundaries, provider-neutral core, and human approval for external side effects.
+See [ADR-0009: Fleet Architecture](../architecture/adr/0009-fleet-architecture.md) and [Fleet Control Plane Architecture](control-plane.md) for the integration boundaries, provider-neutral core, and human approval for external side effects.
