@@ -43,6 +43,7 @@ export default defineConfig({
           items: [
             { text: 'Roadmap', link: '/fleet/roadmap' },
             { text: 'Control Plane', link: '/fleet/control-plane' },
+            { text: 'Policy, Sandbox, and Artifacts', link: '/fleet/policy-sandbox-artifacts' },
             { text: 'Package Map', link: '/fleet/package-map' },
           ],
         },

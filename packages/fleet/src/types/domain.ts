@@ -148,3 +148,64 @@ export interface FleetControlPlaneContract {
   failureHandling: readonly FleetFailureHandlingPlan[];
   discoveryTtlSeconds: number;
 }
+
+export type FleetSideEffectLevel = 'read-only' | 'local-write' | 'remote-write' | 'publish' | 'deploy';
+
+export type FleetApprovalState = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+
+export type FleetSandboxIsolation = 'none' | 'process' | 'container' | 'vm' | 'remote-runner';
+
+export type FleetArtifactSensitivity = 'public' | 'internal' | 'confidential' | 'restricted';
+
+export interface FleetSandboxProfile {
+  isolation: FleetSandboxIsolation;
+  network: 'disabled' | 'allowlisted' | 'egress-proxy';
+  filesystem: 'read-only' | 'workspace-write' | 'ephemeral-write';
+  maxRuntimeSeconds?: number;
+  allowedHosts?: readonly string[];
+  allowedCommands?: readonly string[];
+  blockedCommands?: readonly string[];
+}
+
+export interface FleetArtifactPolicy {
+  sensitivity: FleetArtifactSensitivity;
+  allowedArtifactTypes: readonly string[];
+  maxArtifactBytes?: number;
+  requireChecksum: boolean;
+  requireRedaction: boolean;
+  retentionDays?: number;
+}
+
+export interface FleetApprovalGate {
+  requiredFor: readonly FleetSideEffectLevel[];
+  state: FleetApprovalState;
+  approver?: string;
+  reason?: string;
+  expiresAt?: string;
+}
+
+export interface FleetPolicyDecision {
+  allowed: boolean;
+  sideEffectLevel: FleetSideEffectLevel;
+  sandbox: FleetSandboxProfile;
+  artifactPolicy: FleetArtifactPolicy;
+  approval: FleetApprovalGate;
+  denialReason?: string;
+  evidence: readonly string[];
+}
+
+export interface FleetSideEffectBoundary {
+  level: FleetSideEffectLevel;
+  requiresApproval: boolean;
+  requiresAudit: boolean;
+  permittedCommands?: readonly string[];
+  forbiddenTargets?: readonly string[];
+}
+
+export interface FleetWorkerRunAdmission {
+  taskId: string;
+  workerId: string;
+  decision: FleetPolicyDecision;
+  boundaries: readonly FleetSideEffectBoundary[];
+  admittedAt?: string;
+}

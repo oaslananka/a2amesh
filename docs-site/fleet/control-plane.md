@@ -70,6 +70,10 @@ Fleet failure handling is fail-closed by default.
 | `HUMAN_APPROVAL_REQUIRED` | `REQUEST_HUMAN_APPROVAL` | No automatic retry. |
 | `UNKNOWN` | `OPEN_INCIDENT` | No automatic retry. |
 
+## Policy and artifact boundary
+
+High-impact actions are gated by [Fleet Policy, Sandbox, Artifact, and Approval Boundaries](policy-sandbox-artifacts.md). The control plane must produce routing evidence, but worker runtime and policy layers enforce sandbox, artifact, and approval constraints before side effects.
+
 ## Mission Control boundary
 
 Mission Control is an operator surface above the control plane. It may show routing evidence, health, failures, approval requests, and artifacts. It must not scrape provider web UIs, extract session tokens, bypass subscriptions, or perform remote side effects without explicit approval.
