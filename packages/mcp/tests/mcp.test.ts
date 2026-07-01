@@ -117,3 +117,126 @@ describe('MCP audit and approval helpers', () => {
     expect(createAllowedMcpTools(tools, { blockedTools: ['exporter'] })).toEqual(['calculator']);
   });
 });
+
+describe('MCP auth boundary helpers', () => {
+  it('rejects credentials scoped to another MCP-facing resource', async () => {
+    const { validateMcpAudience } = await import('../src/McpAuthBoundary.js');
+
+    const result = validateMcpAudience(
+      {
+        issuer: 'https://issuer.example.com',
+        subjectClass: 'service-account',
+        audience: 'urn:mcp:registry',
+        clientId: 'internal-api-client',
+        scopes: ['agents:read'],
+        tokenSource: 'authorization-header',
+      },
+      { expectedAudience: 'urn:mcp:runtime' },
+    );
+
+    expect(result.decision).toBe('block');
+    expect(result.reasonCode).toBe('mcp-audience-mismatch');
+    expect(result.evidencePointers).toEqual(['claims.audience', 'policy.expectedAudience']);
+  });
+
+  it('rejects ambiguous multi-audience credentials without an explicit MCP resource', async () => {
+    const { validateMcpAudience } = await import('../src/McpAuthBoundary.js');
+
+    const result = validateMcpAudience(
+      {
+        issuer: 'https://issuer.example.com',
+        audience: ['urn:mcp:runtime', 'urn:mcp:registry'],
+        clientId: 'mesh-client',
+        scopes: ['mcp:tools'],
+        tokenSource: 'authorization-header',
+      },
+      { expectedAudience: ['urn:mcp:runtime', 'urn:mcp:registry'] },
+    );
+
+    expect(result.decision).toBe('block');
+    expect(result.reasonCode).toBe('mcp-audience-ambiguous');
+    expect(result.matchedAudiences).toEqual(['urn:mcp:runtime', 'urn:mcp:registry']);
+  });
+
+  it('accepts multi-audience credentials when the intended MCP resource is selected', async () => {
+    const { createMcpSafeAuditEvent, validateMcpAudience } = await import(
+      '../src/McpAuthBoundary.js'
+    );
+
+    const authContext = {
+      issuer: 'https://issuer.example.com',
+      subject: 'user-1234',
+      subjectClass: 'human-user',
+      audience: ['urn:mcp:runtime', 'urn:mcp:registry'],
+      clientId: 'mesh-client',
+      scopes: ['mcp:tools', 'profile:read'],
+      tokenSource: 'authorization-header',
+    } as const;
+
+    const result = validateMcpAudience(authContext, {
+      expectedAudience: ['urn:mcp:runtime', 'urn:mcp:registry'],
+      selectedResource: 'urn:mcp:runtime',
+    });
+
+    expect(result.decision).toBe('allow');
+    expect(result.selectedAudience).toBe('urn:mcp:runtime');
+
+    const audit = createMcpSafeAuditEvent({
+      requestId: 'req-1',
+      authContext,
+      selectedMcpServer: 'runtime',
+      selectedMcpTool: 'calculator',
+      policyDecision: result.decision,
+      reasonCode: result.reasonCode,
+      evidencePointers: result.evidencePointers,
+    });
+
+    expect(audit).toEqual(
+      expect.objectContaining({
+        requestId: 'req-1',
+        issuer: 'https://issuer.example.com',
+        subjectClass: 'human-user',
+        audience: ['urn:mcp:runtime', 'urn:mcp:registry'],
+        clientId: 'mesh-client',
+        scopes: ['mcp:tools', 'profile:read'],
+        tokenSource: 'authorization-header',
+        selectedMcpServer: 'runtime',
+        selectedMcpTool: 'calculator',
+        policyDecision: 'allow',
+        reasonCode: 'mcp-audience-accepted',
+      }),
+    );
+    expect(audit.authContextHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(audit)).not.toContain('user-1234');
+  });
+
+  it('keeps MCP audience validation separate from tool authorization', async () => {
+    const { decideMcpRuntimeAuthority, validateMcpAudience } = await import(
+      '../src/McpAuthBoundary.js'
+    );
+    const tool: Tool = {
+      name: 'delete-records',
+      description: 'Deletes production records',
+      inputSchema: { type: 'object', properties: { id: { type: 'string' } } },
+    };
+
+    const audience = validateMcpAudience(
+      {
+        issuer: 'https://issuer.example.com',
+        subjectClass: 'service-account',
+        audience: 'urn:mcp:runtime',
+        clientId: 'automation-client',
+        scopes: ['mcp:tools'],
+      },
+      { expectedAudience: 'urn:mcp:runtime' },
+    );
+    const authority = decideMcpRuntimeAuthority(tool, {
+      auditPolicy: { allowedTools: ['calculator'] },
+    });
+
+    expect(audience.decision).toBe('allow');
+    expect(authority.decision).toBe('block');
+    expect(authority.reasonCode).toBe('mcp-tool-blocked');
+    expect(authority.evidencePointers).toContain('tool.findings.tool-not-allowed');
+  });
+});
