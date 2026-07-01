@@ -280,7 +280,7 @@ requireIncludes('packages/runtime/src/testing/profiles.ts', conformanceProfilesS
   'legacy-alias',
   'unsupported',
   'binding.http-json-rest',
-  '#316',
+  '#14',
 ]);
 requireIncludes('docs/protocol/profiles.md', protocolProfilesDoc, [
   '# Protocol Profiles',

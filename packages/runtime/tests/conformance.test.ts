@@ -6,6 +6,7 @@ import {
   parseConformanceProtocolVersion,
   runConformanceSuite,
 } from '../src/testing/conformance.js';
+import { getConformanceProfile, summarizeConformanceProfile } from '../src/testing/profiles.js';
 
 const completedTask = {
   id: 'task-1',
@@ -46,6 +47,20 @@ function createAgentCard(overrides: Partial<AgentCard> = {}): AgentCard {
 }
 
 describe('conformance fixture runner', () => {
+
+  it('keeps the official strict profile fully supported and CI blocking', () => {
+    const summary = summarizeConformanceProfile(getConformanceProfile('official-a2a-v1.0'));
+
+    expect(summary.coverage).toEqual({
+      total: 10,
+      supported: 10,
+      partial: 0,
+      legacyAlias: 0,
+      unsupported: 0,
+      requiredUnsupported: 0,
+    });
+  });
+
   it('emits endpoint metadata, package version, skipped capabilities and passing cases', async () => {
     const sentMessages: MessageSendParams[] = [];
     const client = {
@@ -70,14 +85,15 @@ describe('conformance fixture runner', () => {
     expect(report.endpoint.protocolVersion).toBe('1.0');
     expect(report.profile.id).toBe('official-a2a-v1.0');
     expect(report.profile.strict).toBe(true);
-    expect(report.profile.coverage.requiredUnsupported).toBeGreaterThan(0);
-    expect(report.coverage).toContainEqual(
-      expect.objectContaining({
-        id: 'binding.http-json-rest',
-        status: 'unsupported',
-        required: true,
-      }),
-    );
+    expect(report.profile.coverage).toMatchObject({
+      total: 10,
+      supported: 10,
+      partial: 0,
+      unsupported: 0,
+      legacyAlias: 0,
+      requiredUnsupported: 0,
+    });
+    expect(report.coverage.every((item) => item.status === 'supported')).toBe(true);
     expect(report.coverage).toContainEqual(
       expect.objectContaining({ id: 'fields.send-message-configuration', status: 'supported' }),
     );

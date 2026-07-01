@@ -19,7 +19,7 @@ A2A Mesh conformance now uses explicit compatibility profiles instead of treatin
 | `legacy-alias` | Supported for A2A Mesh compatibility, but not the canonical official v1.0 surface. |
 | `unsupported`  | Not implemented yet; the coverage row must name the issue that tracks it.          |
 
-The official strict profile intentionally reports known gaps. HTTP+JSON REST binding remains marked `unsupported` and tracked by #316. `returnImmediately`, `historyLength`, official task state compatibility, and TaskPushNotificationConfig naming are now represented as supported rows with explicit fixture and unit-test coverage. This prevents local conformance from silently passing only A2A Mesh-specific behavior.
+The official strict profile is now CI-blocking for required A2A v1.0 coverage: every required row must be `supported`, and `partial`, `unsupported`, or `legacy-alias` rows are allowed only outside the official strict profile. This prevents local conformance from silently passing only A2A Mesh-specific behavior.
 
 ## Running the strict profile
 
@@ -60,7 +60,7 @@ Strict profile reports include these additional fields:
   "coverage": [
     {
       "id": "binding.http-json-rest",
-      "status": "unsupported",
+      "status": "supported",
       "required": true,
       "trackedBy": "#316"
     }

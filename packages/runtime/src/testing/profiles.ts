@@ -59,11 +59,11 @@ const officialA2aV1Requirements = [
     id: 'agent-card.v1-required-fields',
     area: 'agent-card',
     name: 'Agent Card v1.0 required fields and supported interfaces',
-    status: 'partial',
+    status: 'supported',
     required: true,
     evidence:
-      'AgentCard supports protocolVersion, supportedInterfaces, security, skills, and capabilities; tenant-aware interface routing is tracked separately.',
-    trackedBy: '#314',
+      'AgentCard schema, client tests, and conformance metadata cover protocolVersion, supportedInterfaces, security, skills, capabilities, and default modes for A2A v1.0.',
+    trackedBy: '#14',
   },
   {
     id: 'binding.jsonrpc-message-send',
@@ -78,21 +78,21 @@ const officialA2aV1Requirements = [
     id: 'binding.http-json-rest',
     area: 'bindings',
     name: 'HTTP+JSON REST binding',
-    status: 'unsupported',
+    status: 'supported',
     required: true,
     evidence:
-      'The official proto maps SendMessage to POST /message:send and task operations to REST paths.',
-    trackedBy: '#316',
+      'Runtime REST binding exposes message:send, message:stream, task get/cancel/subscribe, pagination, problem+json errors, media types, tenant aliases, and task push config CRUD.',
+    trackedBy: '#14',
   },
   {
     id: 'binding.streaming-message',
     area: 'streaming',
     name: 'message/stream or SendStreamingMessage',
-    status: 'partial',
+    status: 'supported',
     required: false,
     evidence:
-      'Streaming is capability-gated in the runner; protocol-level strict fixtures are tracked separately.',
-    trackedBy: '#317',
+      'Runtime and client tests cover text/event-stream delivery, resubscribe/replay, reconnect metadata, task stream authorization, and A2A-Version negotiation.',
+    trackedBy: '#14',
   },
   {
     id: 'push.task-push-notification-config',
@@ -128,31 +128,31 @@ const officialA2aV1Requirements = [
     id: 'extensions.headers',
     area: 'extensions',
     name: 'A2A-Version and A2A-Extensions header negotiation',
-    status: 'partial',
+    status: 'supported',
     required: true,
     evidence:
-      'Request-body extension negotiation exists; header and metadata variants are tracked separately.',
-    trackedBy: '#315',
+      'Runtime tests cover required and optional extension negotiation, task extension propagation, and A2A-Version header negotiation across JSON-RPC, REST, SSE, WebSocket, and gRPC transports.',
+    trackedBy: '#14',
   },
   {
     id: 'tenancy.interface-tenant',
     area: 'tenancy',
     name: 'Tenant-aware interface routing',
-    status: 'partial',
+    status: 'supported',
     required: false,
     evidence:
-      'Tenant metadata exists in runtime types; strict per-interface tenant routing remains a tracked gap.',
-    trackedBy: '#316',
+      'Runtime tenant aliases, request context binding, idempotency scoping, task ownership filtering, and cross-tenant denial tests cover strict tenant routing semantics.',
+    trackedBy: '#14',
   },
   {
     id: 'security.auth-observability',
     area: 'security',
     name: 'Security schemes, auth, and observability metadata',
-    status: 'partial',
+    status: 'supported',
     required: false,
     evidence:
-      'JWT/JWKS, request context, metrics, and tracing exist; profile-specific enterprise controls are tracked in policy and ops issues.',
-    trackedBy: '#318',
+      'JWT/JWKS, API-key auth context, auth rejection metrics, redacted diagnostics, task ownership defaults, and observability guidance are covered by runtime, telemetry, and ops gates.',
+    trackedBy: '#14',
   },
 ] as const satisfies readonly ConformanceProfileRequirement[];
 
