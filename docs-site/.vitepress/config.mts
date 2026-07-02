@@ -44,6 +44,7 @@ export default defineConfig({
             { text: 'Roadmap', link: '/fleet/roadmap' },
             { text: 'Control Plane', link: '/fleet/control-plane' },
             { text: 'Policy, Sandbox, and Artifacts', link: '/fleet/policy-sandbox-artifacts' },
+            { text: 'Provider Workers and Mission Control', link: '/fleet/provider-workers-mission-control' },
             { text: 'Package Map', link: '/fleet/package-map' },
           ],
         },

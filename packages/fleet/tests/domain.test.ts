@@ -6,6 +6,7 @@ import type {
   FleetSandboxProfile,
   FleetSideEffectBoundary,
   FleetWorkerRunAdmission,
+  MissionControlPlan,
   FleetRoutingDecision,
   FleetRoutingPolicy,
   FleetRun,
@@ -251,5 +252,82 @@ describe('Fleet policy, sandboxing, artifact, and approval boundaries', () => {
     expect(decision.approval.state).toBe('PENDING');
     expect(boundary.requiresApproval).toBe(true);
     expect(boundary.forbiddenTargets).toEqual(['main', 'production']);
+  });
+});
+
+
+describe('Fleet provider workers and Mission Control plans', () => {
+  it('models provider workers using documented integration surfaces only', () => {
+    const plan = {
+      supportStatus: 'experimental',
+      capabilities: ['worker-health', 'routing-evidence', 'approval-queue', 'artifact-review', 'audit-timeline'],
+      unsafeSessionScrapingAllowed: false,
+      escalationPath: 'manual-runbook',
+      providerMatrix: [
+        {
+          providerId: 'openrouter',
+          workerRole: 'model-router',
+          supportStatus: 'supported',
+          allowedSurfaces: ['official-api', 'webhook', 'artifact-handoff'],
+          forbiddenSurfaces: ['web-ui-scraping', 'browser-session', 'private-endpoint', 'token-extraction'],
+          capabilities: ['chat-completion', 'usage-metadata'],
+          credentialPolicy: 'secret-manager-ref',
+        },
+        {
+          providerId: 'claude-code',
+          workerRole: 'code-worker',
+          supportStatus: 'experimental',
+          allowedSurfaces: ['official-cli', 'mcp-server', 'git-worktree', 'artifact-handoff'],
+          forbiddenSurfaces: ['web-ui-scraping', 'browser-session', 'subscription-bypass'],
+          capabilities: ['code-edit', 'test-execution'],
+          credentialPolicy: 'official-cli-session',
+          requiresHumanHandoff: true,
+        },
+        {
+          providerId: 'unsupported-web-only-provider',
+          workerRole: 'manual-handoff',
+          supportStatus: 'manual-only',
+          allowedSurfaces: ['manual-handoff'],
+          forbiddenSurfaces: ['web-ui-scraping', 'browser-session', 'private-endpoint', 'token-extraction'],
+          capabilities: [],
+          credentialPolicy: 'none',
+          requiresHumanHandoff: true,
+        },
+      ],
+    } satisfies MissionControlPlan;
+
+    expect(plan.unsafeSessionScrapingAllowed).toBe(false);
+    expect(plan.providerMatrix.every((provider) => !provider.allowedSurfaces.includes('manual-handoff') || provider.requiresHumanHandoff)).toBe(true);
+    expect(plan.providerMatrix[0]?.forbiddenSurfaces).toContain('token-extraction');
+    expect(plan.providerMatrix[1]?.allowedSurfaces).toContain('official-cli');
+    expect(plan.providerMatrix[2]?.supportStatus).toBe('manual-only');
+  });
+
+  it('keeps Mission Control as an approval and evidence surface, not a session scraper', () => {
+    const missionControl = {
+      supportStatus: 'experimental',
+      capabilities: ['worker-health', 'routing-evidence', 'approval-queue', 'artifact-review', 'audit-timeline', 'incident-handoff'],
+      unsafeSessionScrapingAllowed: false,
+      escalationPath: 'approval-queue',
+      providerMatrix: [
+        {
+          providerId: 'codex-cli',
+          workerRole: 'code-review-worker',
+          supportStatus: 'experimental',
+          allowedSurfaces: ['official-cli', 'github-action', 'git-worktree', 'artifact-handoff'],
+          forbiddenSurfaces: ['web-ui-scraping', 'browser-session', 'private-endpoint', 'token-extraction', 'subscription-bypass'],
+          capabilities: ['code-review', 'patch-generation', 'test-execution'],
+          credentialPolicy: 'official-cli-session',
+          requiresHumanHandoff: true,
+        },
+      ],
+    } satisfies MissionControlPlan;
+
+    expect(missionControl.capabilities).toContain('approval-queue');
+    expect(missionControl.capabilities).toContain('audit-timeline');
+    expect(missionControl.providerMatrix[0]?.forbiddenSurfaces).toEqual(
+      expect.arrayContaining(['web-ui-scraping', 'browser-session', 'subscription-bypass']),
+    );
+    expect(missionControl.unsafeSessionScrapingAllowed).toBe(false);
   });
 });

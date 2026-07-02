@@ -61,7 +61,7 @@ All provider credentials must be managed securely.
 
 ## Fleet planning
 
-Fleet provider worker planning is documented in [Provider Workers and Mission Control Plan](provider-workers-mission-control.md). Fleet uses manual handoff when a provider has no documented automation surface.
+Fleet provider worker planning is documented in [Provider Workers and Mission Control Plan](/fleet/provider-workers-mission-control). Fleet uses manual handoff when a provider has no documented automation surface.
 
 ## Provider-Specific Examples
 

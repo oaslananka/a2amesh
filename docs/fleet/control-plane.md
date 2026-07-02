@@ -74,6 +74,10 @@ Fleet failure handling is fail-closed by default.
 
 High-impact actions are gated by [Fleet Policy, Sandbox, Artifact, and Approval Boundaries](policy-sandbox-artifacts.md). The control plane must produce routing evidence, but worker runtime and policy layers enforce sandbox, artifact, and approval constraints before side effects.
 
+## Provider worker and Mission Control plan
+
+Provider worker support and Mission Control capabilities are planned in [Provider Workers and Mission Control Plan](provider-workers-mission-control.md). The plan keeps provider workers on documented integration surfaces and keeps Mission Control as an approval/evidence surface rather than a session automation layer.
+
 ## Mission Control boundary
 
 Mission Control is an operator surface above the control plane. It may show routing evidence, health, failures, approval requests, and artifacts. It must not scrape provider web UIs, extract session tokens, bypass subscriptions, or perform remote side effects without explicit approval.

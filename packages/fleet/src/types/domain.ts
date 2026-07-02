@@ -209,3 +209,52 @@ export interface FleetWorkerRunAdmission {
   boundaries: readonly FleetSideEffectBoundary[];
   admittedAt?: string;
 }
+
+export type FleetProviderIntegrationSurface =
+  | 'official-api'
+  | 'official-cli'
+  | 'mcp-server'
+  | 'github-action'
+  | 'webhook'
+  | 'workspace-extension'
+  | 'git-worktree'
+  | 'artifact-handoff'
+  | 'manual-handoff';
+
+export type FleetUnsupportedProviderSurface =
+  | 'browser-session'
+  | 'web-ui-scraping'
+  | 'private-endpoint'
+  | 'token-extraction'
+  | 'subscription-bypass';
+
+export type FleetProviderSupportStatus = 'supported' | 'experimental' | 'manual-only' | 'unsupported';
+
+export type MissionControlCapability =
+  | 'worker-health'
+  | 'routing-evidence'
+  | 'approval-queue'
+  | 'artifact-review'
+  | 'audit-timeline'
+  | 'incident-handoff'
+  | 'manual-runbook';
+
+export interface FleetProviderWorkerPlan {
+  providerId: string;
+  workerRole: string;
+  supportStatus: FleetProviderSupportStatus;
+  allowedSurfaces: readonly FleetProviderIntegrationSurface[];
+  forbiddenSurfaces: readonly FleetUnsupportedProviderSurface[];
+  capabilities: readonly string[];
+  credentialPolicy: 'env-ref' | 'secret-manager-ref' | 'official-cli-session' | 'none';
+  requiresHumanHandoff?: boolean;
+  notes?: string;
+}
+
+export interface MissionControlPlan {
+  supportStatus: FleetProviderSupportStatus;
+  capabilities: readonly MissionControlCapability[];
+  providerMatrix: readonly FleetProviderWorkerPlan[];
+  unsafeSessionScrapingAllowed: false;
+  escalationPath: 'manual-runbook' | 'approval-queue' | 'incident-handoff';
+}

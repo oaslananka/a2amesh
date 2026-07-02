@@ -8,7 +8,7 @@ We adhere strictly to established A2A Mesh standards for these capabilities:
 
 - **Architecture**: See [ADR-0009: Fleet Architecture](/guide/architecture) and [Fleet Control Plane Architecture](/fleet/control-plane).
 - **Conformance**: See [Protocol Compatibility](/protocol/compliance) for A2A conformance fixture versioning.
-- **Security**: See the [Threat Model](/security/threat-model) and [Fleet Policy, Sandbox, Artifact, and Approval Boundaries](/fleet/policy-sandbox-artifacts) for trust boundaries, approvals, and artifact controls.
+- **Security**: See the [Threat Model](/security/threat-model) and [Fleet Policy, Sandbox, Artifact, and Approval Boundaries](/fleet/policy-sandbox-artifacts) and [Provider Workers and Mission Control Plan](/fleet/provider-workers-mission-control) for trust boundaries, approvals, and artifact controls.
 - **Release**: See the [Release Process](/release/process) for publishing mechanics and artifact expectations.
 
 ## Milestones
