@@ -1,0 +1,10 @@
+# CODEOWNERS documents current ownership only.
+# CODEOWNERS review enforcement is intentionally a manual repository setting.
+# This solo-maintainer project should not enable mandatory CODEOWNERS review until an independent reviewer exists.
+
+* @oaslananka
+/.github/ @oaslananka
+/docs/ @oaslananka
+/packages/ @oaslananka
+/apps/ @oaslananka
+/scripts/ @oaslananka

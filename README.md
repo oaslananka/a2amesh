@@ -191,3 +191,16 @@ Run `pnpm run verify` before submitting changes.
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+## Repository maturity and governance
+
+This repository is maintained as a professional open-source project. See the maturity and contribution documents for the current operating model:
+
+- [Repository maturity report](docs/repo-maturity-report.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Governance](GOVERNANCE.md)
+- [Maintainers](MAINTAINERS.md)
+- [Roadmap](ROADMAP.md)
+- [Security policy](SECURITY.md)
+- [Support policy](SUPPORT.md)
+- [OpenSSF evidence](docs/openssf-evidence.md)
