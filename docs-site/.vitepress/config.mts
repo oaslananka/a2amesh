@@ -44,7 +44,10 @@ export default defineConfig({
             { text: 'Roadmap', link: '/fleet/roadmap' },
             { text: 'Control Plane', link: '/fleet/control-plane' },
             { text: 'Policy, Sandbox, and Artifacts', link: '/fleet/policy-sandbox-artifacts' },
-            { text: 'Provider Workers and Mission Control', link: '/fleet/provider-workers-mission-control' },
+            {
+              text: 'Provider Workers and Mission Control',
+              link: '/fleet/provider-workers-mission-control',
+            },
             { text: 'Package Map', link: '/fleet/package-map' },
           ],
         },
@@ -124,6 +127,7 @@ export default defineConfig({
           text: 'Protocol',
           items: [
             { text: 'Compatibility', link: '/protocol/compliance' },
+            { text: 'A2A v1 Matrix', link: '/protocol/a2a-v1-compatibility-matrix' },
             { text: 'Profiles', link: '/protocol/profiles' },
             { text: 'JSON Schemas', link: '/protocol/schemas' },
             { text: 'Agent Cards', link: '/protocol/agent-card' },

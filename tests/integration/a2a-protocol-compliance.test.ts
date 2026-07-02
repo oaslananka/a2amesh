@@ -190,6 +190,18 @@ describe('A2A Protocol v1.0 Compliance', () => {
       expect(body.error.code).toBe(ErrorCodes.Unauthorized);
     });
 
+    it('agent/getAuthenticatedExtendedCard returns the card with a valid api key', async () => {
+      const body = await postJsonRpc<{ result: Record<string, unknown> }>(
+        handle.url,
+        'agent/getAuthenticatedExtendedCard',
+        undefined,
+        { 'x-api-key': 'valid-key' },
+      );
+
+      expect(body.result).toBeDefined();
+      expect(body.result['protocolVersion']).toBe('1.0');
+    });
+
     it('agent/authenticatedExtendedCard returns the card with a valid api key', async () => {
       const body = await postJsonRpc<{ result: Record<string, unknown> }>(
         handle.url,

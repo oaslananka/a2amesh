@@ -12,7 +12,7 @@ import type {
 } from '@a2amesh/runtime';
 import type { IAgentStorage } from '../storage/IAgentStorage.js';
 
-export interface RegistryTenantTrustPolicy {
+interface RegistryTenantTrustPolicy {
   requireSignedAgentCards?: boolean;
   trustedAgentCardKeys?: VerificationKey[];
   allowPublicAgents?: boolean;

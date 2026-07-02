@@ -302,6 +302,14 @@ export class A2AClient {
     );
   }
 
+  async getAuthenticatedExtendedCard(): Promise<AgentCard> {
+    return this.rpc<AgentCard, Record<string, never>>('agent/getAuthenticatedExtendedCard', {});
+  }
+
+  async authenticatedExtendedCard(): Promise<AgentCard> {
+    return this.rpc<AgentCard, Record<string, never>>('agent/authenticatedExtendedCard', {});
+  }
+
   async health(): Promise<A2AHealthResponse> {
     const response = await this.fetchWithRetry(new URL('/health', this.baseUrl), {
       headers: this.createProtocolHeaders(),

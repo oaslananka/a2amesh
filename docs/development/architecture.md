@@ -124,17 +124,17 @@ The HTTP JSON-RPC handler rejects batch requests, validates the JSON-RPC envelop
 optional auth, resolves idempotency, and dispatches to the method-specific handler. The
 stable method surface is:
 
-| Method                            | Runtime path                                                                                                                                                                                                |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `message/send`                    | Creates or resumes a task, normalizes the message, negotiates extensions, optionally stores push notification config, moves the task to `WORKING`, starts adapter processing, and returns the current task. |
-| `message/stream`                  | Uses the same task creation path as `message/send`, then keeps a JSON-RPC SSE response open until the task reaches a terminal state.                                                                        |
-| `tasks/resubscribe`               | Re-attaches an SSE JSON-RPC response to an existing accessible task.                                                                                                                                        |
-| `tasks/get`                       | Reads one accessible task by `taskId`.                                                                                                                                                                      |
-| `tasks/cancel`                    | Moves an accessible task to `CANCELED`.                                                                                                                                                                     |
-| `tasks/list`                      | Lists accessible tasks, optionally filtered by `contextId`, with `limit` and `offset`.                                                                                                                      |
-| `tasks/pushNotification/set`      | Validates and stores an accessible task's callback config after outbound URL policy checks.                                                                                                                 |
-| `tasks/pushNotification/get`      | Reads an accessible task's callback config.                                                                                                                                                                 |
-| `agent/authenticatedExtendedCard` | Returns the full card only when the agent card advertises `extendedAgentCard`.                                                                                                                              |
+| Method                               | Runtime path                                                                                                                                                                                                |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `message/send`                       | Creates or resumes a task, normalizes the message, negotiates extensions, optionally stores push notification config, moves the task to `WORKING`, starts adapter processing, and returns the current task. |
+| `message/stream`                     | Uses the same task creation path as `message/send`, then keeps a JSON-RPC SSE response open until the task reaches a terminal state.                                                                        |
+| `tasks/resubscribe`                  | Re-attaches an SSE JSON-RPC response to an existing accessible task.                                                                                                                                        |
+| `tasks/get`                          | Reads one accessible task by `taskId`.                                                                                                                                                                      |
+| `tasks/cancel`                       | Moves an accessible task to `CANCELED`.                                                                                                                                                                     |
+| `tasks/list`                         | Lists accessible tasks, optionally filtered by `contextId`, with `limit` and `offset`.                                                                                                                      |
+| `tasks/pushNotification/set`         | Validates and stores an accessible task's callback config after outbound URL policy checks.                                                                                                                 |
+| `tasks/pushNotification/get`         | Reads an accessible task's callback config.                                                                                                                                                                 |
+| `agent/getAuthenticatedExtendedCard` | Official v1.x method that returns the full card only when the agent card advertises `extendedAgentCard`; legacy alias `agent/authenticatedExtendedCard` remains accepted.                                   |
 
 JSON-RPC error normalization maps lifecycle failures into protocol errors. Unknown
 internal failures are logged and returned as `Internal Error`.

@@ -483,6 +483,7 @@ export async function handleRpcRequest(
         };
       }
 
+      case 'agent/getAuthenticatedExtendedCard':
       case 'agent/authenticatedExtendedCard': {
         if (!deps.agentCard.capabilities?.extendedAgentCard) {
           throw new JsonRpcError(ErrorCodes.UnsupportedOperation, 'Extended card not supported');

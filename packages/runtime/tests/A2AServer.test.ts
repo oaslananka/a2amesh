@@ -268,7 +268,6 @@ describe('A2AServer', () => {
     expect(pushConfig).toEqual(expect.objectContaining({ url: 'https://example.com/hook' }));
   });
 
-
   it('applies canonical send configuration and keeps legacy blocking behavior', async () => {
     const server = new HarnessServer('success');
     const immediateTask = (await server.callRpc({
@@ -293,7 +292,6 @@ describe('A2AServer', () => {
     expect(immediateTask.status.state).toBe('COMPLETED');
     expect(immediateTask.history).toHaveLength(1);
     expect(immediateTask.history[0]?.messageId).toBe('canonical-config-message');
-
 
     const blockingTask = (await server.callRpc({
       jsonrpc: '2.0',
@@ -360,7 +358,9 @@ describe('A2AServer', () => {
       message: 'contextId does not match task contextId',
     });
 
-    const continuationTarget = server.getTaskManager().createTask(undefined, 'ctx-1', 'api-key:api-key');
+    const continuationTarget = server
+      .getTaskManager()
+      .createTask(undefined, 'ctx-1', 'api-key:api-key');
     await expect(
       server.callRpc(
         {
@@ -442,6 +442,17 @@ describe('A2AServer', () => {
           jsonrpc: '2.0',
           id: 'auth-2',
           method: 'agent/authenticatedExtendedCard',
+        },
+        { 'x-api-key': 'secret' },
+      ),
+    ).toEqual(expect.objectContaining({ name: 'Harness Agent' }));
+
+    expect(
+      await server.callRpc(
+        {
+          jsonrpc: '2.0',
+          id: 'auth-3',
+          method: 'agent/getAuthenticatedExtendedCard',
         },
         { 'x-api-key': 'secret' },
       ),

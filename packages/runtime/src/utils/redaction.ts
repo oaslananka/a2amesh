@@ -1,4 +1,4 @@
-export const REDACTED_VALUE = '[REDACTED]';
+const REDACTED_VALUE = '[REDACTED]';
 
 const SENSITIVE_KEY_PARTS = [
   'authorization',
@@ -17,7 +17,7 @@ export interface RedactionOptions {
   maxStringLength?: number | undefined;
 }
 
-export function isSensitiveKey(key: string): boolean {
+function isSensitiveKey(key: string): boolean {
   const normalized = key.toLowerCase();
   return SENSITIVE_KEY_PARTS.some((part) => normalized.includes(part));
 }
@@ -26,12 +26,15 @@ export function redactSensitiveText(value: string, options: RedactionOptions = {
   const maxStringLength = options.maxStringLength ?? 2_048;
   const redacted = value
     .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, `Bearer ${REDACTED_VALUE}`)
-    .replace(/\b(api[_-]?key|token|client[_-]?secret|secret|password)=([^&\s,;"}]+)/gi, (_match, key: string) => `${key}=${REDACTED_VALUE}`)
+    .replace(
+      /\b(api[_-]?key|token|client[_-]?secret|secret|password)=([^&\s,;"}]+)/gi,
+      (_match, key: string) => `${key}=${REDACTED_VALUE}`,
+    )
     .replace(/\b(?:sk|pk|rk|ak)-[A-Za-z0-9_-]{12,}\b/g, REDACTED_VALUE);
   return redacted.length > maxStringLength ? `${redacted.slice(0, maxStringLength)}…` : redacted;
 }
 
-export function redactValue(value: unknown, key?: string, seen = new WeakSet<object>()): unknown {
+function redactValue(value: unknown, key?: string, seen = new WeakSet<object>()): unknown {
   if (key && isSensitiveKey(key)) return REDACTED_VALUE;
   if (typeof value === 'string') return redactSensitiveText(value);
   if (!value || typeof value !== 'object') return value;

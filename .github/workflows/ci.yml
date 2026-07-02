@@ -325,6 +325,20 @@ jobs:
           cache: 'false'
       - run: node scripts/check-no-generated-artifacts.mjs
 
+  gc:
+    name: CI / gc
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: pnpm run gc
+
   compatibility-smoke:
     name: CI / compatibility-smoke (${{ matrix.os }}, node ${{ matrix.node }})
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'

@@ -30,7 +30,8 @@
   "scripts": {
     "build": "node ../../scripts/build-tsc-package.mjs",
     "typecheck": "tsc -b",
-    "test": "vitest run --root ../.. --config vitest.config.ts --project unit packages/registry/tests"
+    "test": "vitest run --root ../.. --config vitest.config.ts --project unit packages/registry/tests",
+    "start": "node dist/bin/start.js"
   },
   "dependencies": {
     "@a2amesh/runtime": "workspace:^",
@@ -62,5 +63,8 @@
   "publishConfig": {
     "access": "public",
     "provenance": true
+  },
+  "bin": {
+    "a2amesh-registry": "dist/bin/start.js"
   }
 }

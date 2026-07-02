@@ -3,7 +3,7 @@ import type { AgentCard } from '../../types/agent-card.js';
 import type { A2AHealthResponse, TaskCounts } from '../../types/task.js';
 import type { RuntimeMetrics } from '../../telemetry/index.js';
 
-export type HealthDetailLevel = 'safe' | 'detailed';
+type HealthDetailLevel = 'safe' | 'detailed';
 
 export interface HealthResponseInput {
   agentCard: AgentCard;
@@ -23,7 +23,8 @@ export interface MetricsRouteDependencies {
 }
 
 export function buildHealthResponse(input: HealthResponseInput): A2AHealthResponse {
-  const detailLevel = input.detailLevel ?? (process.env['NODE_ENV'] === 'production' ? 'safe' : 'detailed');
+  const detailLevel =
+    input.detailLevel ?? (process.env['NODE_ENV'] === 'production' ? 'safe' : 'detailed');
   const base: A2AHealthResponse = {
     status: 'healthy',
     version: input.agentCard.version,
@@ -62,7 +63,8 @@ export function buildHealthResponse(input: HealthResponseInput): A2AHealthRespon
 
 export function registerMetricsRoutes(deps: MetricsRouteDependencies): void {
   deps.app.get('/health', (_req, res) => {
-    const detailLevel = process.env['A2AMESH_HEALTH_DETAIL'] === 'detailed' ? 'detailed' : undefined;
+    const detailLevel =
+      process.env['A2AMESH_HEALTH_DETAIL'] === 'detailed' ? 'detailed' : undefined;
     res.json(
       buildHealthResponse({
         agentCard: deps.agentCard,

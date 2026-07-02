@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import { ErrorCodes, JsonRpcError } from '../../types/jsonrpc.js';
 
-export const A2A_VERSION_HEADER = 'A2A-Version';
+const A2A_VERSION_HEADER = 'A2A-Version';
 export const A2A_REST_MEDIA_TYPE = 'application/a2a+json';
 export const A2A_VERSION_NOT_SUPPORTED_PROBLEM_TYPE =
   'https://a2a-protocol.org/errors/version-not-supported';
@@ -9,7 +9,7 @@ export const A2A_VERSION_NOT_SUPPORTED_PROBLEM_TYPE =
 export const SUPPORTED_A2A_PROTOCOL_VERSIONS = ['1.0', '1.2', '0.3'] as const;
 export type SupportedA2AProtocolVersion = (typeof SUPPORTED_A2A_PROTOCOL_VERSIONS)[number];
 
-export function getRequestedA2AProtocolVersion(req: Request): string {
+function getRequestedA2AProtocolVersion(req: Request): string {
   const headerValue = req.get(A2A_VERSION_HEADER);
   const queryValue = req.query[A2A_VERSION_HEADER] ?? req.query[A2A_VERSION_HEADER.toLowerCase()];
   const raw = firstString(headerValue ?? queryValue);
@@ -32,9 +32,7 @@ export function assertSupportedA2AProtocolVersion(req: Request): SupportedA2APro
   );
 }
 
-export function isSupportedA2AProtocolVersion(
-  version: string,
-): version is SupportedA2AProtocolVersion {
+function isSupportedA2AProtocolVersion(version: string): version is SupportedA2AProtocolVersion {
   return (SUPPORTED_A2A_PROTOCOL_VERSIONS as readonly string[]).includes(version);
 }
 

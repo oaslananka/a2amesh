@@ -89,7 +89,7 @@ export type TaskState =
   | 'FAILED'
   | 'CANCELED'
   | 'REJECTED';
-export type LegacyTaskState =
+type LegacyTaskState =
   | 'submitted'
   | 'queued'
   | 'working'
@@ -103,7 +103,7 @@ export type LegacyTaskState =
   | 'failed'
   | 'canceled'
   | 'rejected';
-export type OfficialTaskState =
+type OfficialTaskState =
   | 'TASK_STATE_SUBMITTED'
   | 'TASK_STATE_QUEUED'
   | 'TASK_STATE_WORKING'
@@ -116,7 +116,6 @@ export type OfficialTaskState =
   | 'TASK_STATE_REJECTED';
 export type TaskStateInput = TaskState | LegacyTaskState | OfficialTaskState;
 export type TerminalTaskState = 'COMPLETED' | 'FAILED' | 'CANCELED' | 'REJECTED';
-export type InterruptedTaskState = 'INPUT_REQUIRED' | 'AUTH_REQUIRED';
 
 export interface Task {
   kind?: 'task';

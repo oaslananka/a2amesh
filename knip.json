@@ -7,7 +7,10 @@
     "jscpd",
     "@anthropic-ai/sdk",
     "langchain",
-    "llamaindex"
+    "llamaindex",
+    "@arethetypeswrong/packages",
+    "@arethetypeswrong/cli",
+    "publint"
   ],
-  "ignoreBinaries": ["gh", "gitleaks", "playwright", "view", "where.exe"]
+  "ignoreBinaries": ["gh", "playwright", "view", "where.exe"]
 }
