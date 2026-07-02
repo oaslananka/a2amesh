@@ -58,7 +58,7 @@ See [ADR-0009: Fleet Architecture](../architecture/adr/0009-fleet-architecture.m
 
 - `packages/runtime` is provider-neutral.
 - Direct internal hacking or unsupported extraction methods are not permitted.
-- Human approval is required for external side effects (e.g., remote push, publish, issue close, PR merge, deploy). See [Fleet Policy, Sandbox, Artifact, and Approval Boundaries](policy-sandbox-artifacts.md).
+- Human approval is required for external side effects (e.g., remote push, publish, issue close, PR merge, deploy). See [Fleet Policy, Sandbox, Artifact, and Approval Boundaries](policy-sandbox-artifacts.md) and [Provider Workers and Mission Control Plan](provider-workers-mission-control.md).
 
 ## Additional Rules
 
