@@ -47,7 +47,6 @@ function createAgentCard(overrides: Partial<AgentCard> = {}): AgentCard {
 }
 
 describe('conformance fixture runner', () => {
-
   it('keeps the official strict profile fully supported and CI blocking', () => {
     const summary = summarizeConformanceProfile(getConformanceProfile('official-a2a-v1.0'));
 

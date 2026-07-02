@@ -6,8 +6,7 @@ import { getWorkspacePackages, readJson, readText, fail } from './check-utils.mj
 const CANONICAL_REPOSITORY = 'oaslananka/a2amesh';
 const PUBLISH_ENVIRONMENT = 'npm-publish';
 const PUBLISH_WORKFLOW = '.github/workflows/publish.yml';
-const TAG_PATTERN =
-  /^@a2amesh\/runtime-v(?<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/;
+const TAG_PATTERN = /^@a2amesh\/runtime-v(?<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/;
 const ALLOWED_PUBLIC_PACKAGE_NAMES = new Set([
   '@a2amesh/protocol',
   '@a2amesh/runtime',
@@ -45,7 +44,9 @@ if (tag) {
 }
 
 if (expectedVersion && !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(expectedVersion)) {
-  failures.push(`Expected version must be semver x.y.z with an optional prerelease; received ${expectedVersion}`);
+  failures.push(
+    `Expected version must be semver x.y.z with an optional prerelease; received ${expectedVersion}`,
+  );
 }
 
 if (rootPackage.private !== true) failures.push('Root package.json must remain private');

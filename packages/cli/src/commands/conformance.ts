@@ -149,7 +149,9 @@ function conformanceGateMetadata(endpointUrl: string): ConformanceGateMetadata {
   const gate = getLocalReleaseGates().find((entry) => entry.id === 'conformance');
   return {
     id: 'conformance',
-    command: gate?.command.replace('<url>', endpointUrl) ?? `a2amesh conformance ${endpointUrl} --gate --json`,
+    command:
+      gate?.command.replace('<url>', endpointUrl) ??
+      `a2amesh conformance ${endpointUrl} --gate --json`,
     ciEquivalent: gate?.ciEquivalent ?? 'CI / conformance',
     required: true,
     actionable: true,

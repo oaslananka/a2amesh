@@ -20,7 +20,6 @@ export const doctorCommandDoc = {
   ],
 } satisfies CliCommandDoc;
 
-
 interface DoctorCommandOptions {
   releaseGates?: boolean;
 }

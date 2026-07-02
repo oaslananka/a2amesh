@@ -193,7 +193,6 @@ describe('A2AServer HTTP module helpers', () => {
     });
   });
 
-
   it('uses environment-driven health detail defaults', () => {
     const previousNodeEnv = process.env['NODE_ENV'];
     process.env['NODE_ENV'] = 'production';

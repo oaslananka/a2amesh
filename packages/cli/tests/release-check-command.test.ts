@@ -40,7 +40,6 @@ describe('release-check command', () => {
     );
   });
 
-
   it('fails dirty worktrees with remediation metadata', () => {
     const check = createGitWorktreeCheckFromStatus(' M packages/cli/src/index.ts', 12);
 
@@ -80,5 +79,4 @@ describe('release-check command', () => {
       }),
     ]);
   });
-
 });

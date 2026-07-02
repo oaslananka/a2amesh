@@ -4,13 +4,13 @@ Fleet workers must not perform high-impact operations until policy, sandbox, art
 
 ## Side-effect levels
 
-| Level | Examples | Default action |
-| --- | --- | --- |
-| `read-only` | Inspect files, read registry metadata, run dry-run checks | Allowed with audit. |
-| `local-write` | Write temporary reports, create local patch files, update local artifacts | Allowed only inside the sandbox workspace. |
-| `remote-write` | Push branches, create issues, update remote task state | Requires approval and audit. |
-| `publish` | Publish packages, release artifacts, write to public registries | Requires approval, release evidence, and audit. |
-| `deploy` | Deploy services, change infrastructure, mutate production state | Requires explicit operator approval and incident-ready rollback evidence. |
+| Level          | Examples                                                                  | Default action                                                            |
+| -------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `read-only`    | Inspect files, read registry metadata, run dry-run checks                 | Allowed with audit.                                                       |
+| `local-write`  | Write temporary reports, create local patch files, update local artifacts | Allowed only inside the sandbox workspace.                                |
+| `remote-write` | Push branches, create issues, update remote task state                    | Requires approval and audit.                                              |
+| `publish`      | Publish packages, release artifacts, write to public registries           | Requires approval, release evidence, and audit.                           |
+| `deploy`       | Deploy services, change infrastructure, mutate production state           | Requires explicit operator approval and incident-ready rollback evidence. |
 
 Unknown side-effect levels fail closed.
 
@@ -82,14 +82,14 @@ If policy cannot classify the requested operation, the decision must be `allowed
 
 ## Responsibility split
 
-| Component | Responsibility |
-| --- | --- |
-| Fleet control plane | Builds routing and admission inputs; records evidence. |
-| Policy layer | Decides whether the run is allowed and what approvals are required. |
-| Worker runtime | Enforces sandbox, command, network, filesystem, and artifact rules. |
-| Artifact layer | Stores only approved artifact types with checksum, retention, and redaction. |
-| Mission Control | Shows decisions, collects human approvals, and records audit trail. |
-| Provider adapters | Execute only through documented provider surfaces and only inside the admitted boundary. |
+| Component           | Responsibility                                                                           |
+| ------------------- | ---------------------------------------------------------------------------------------- |
+| Fleet control plane | Builds routing and admission inputs; records evidence.                                   |
+| Policy layer        | Decides whether the run is allowed and what approvals are required.                      |
+| Worker runtime      | Enforces sandbox, command, network, filesystem, and artifact rules.                      |
+| Artifact layer      | Stores only approved artifact types with checksum, retention, and redaction.             |
+| Mission Control     | Shows decisions, collects human approvals, and records audit trail.                      |
+| Provider adapters   | Execute only through documented provider surfaces and only inside the admitted boundary. |
 
 ## Non-goals
 

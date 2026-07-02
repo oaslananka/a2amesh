@@ -81,13 +81,17 @@ describe('A2AServer Authorization', () => {
     expect(listRes.body.result.tasks[0].tenantId).toBe('tenant-1');
   });
 
-
   it('denies authenticated access to legacy tasks without complete ownership metadata', async () => {
     const server = new TestServer();
     const taskManager = server.getTaskManager();
 
     const unscopedTask = taskManager.createTask('legacy-session', 'legacy-context');
-    const tenantOnlyTask = taskManager.createTask('tenant-only-session', 'legacy-context', undefined, 'tenant-1');
+    const tenantOnlyTask = taskManager.createTask(
+      'tenant-only-session',
+      'legacy-context',
+      undefined,
+      'tenant-1',
+    );
     const ownerOnlyTask = taskManager.createTask('owner-only-session', 'legacy-context', 'user-A');
 
     for (const task of [unscopedTask, tenantOnlyTask, ownerOnlyTask]) {

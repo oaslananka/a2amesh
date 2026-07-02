@@ -9,7 +9,15 @@ const INTERNAL_INSTALL_PATTERNS = [
   /pnpm\s+add\s+@a2amesh\/internal/,
   /npm\s+install\s+@a2amesh\/internal/,
 ];
-const EXCLUDE_DIRS = new Set(['node_modules', '.git', 'dist', 'coverage', '.cache', '.artifacts', '.codex-checkpoints']);
+const EXCLUDE_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'coverage',
+  '.cache',
+  '.artifacts',
+  '.codex-checkpoints',
+]);
 // Files that intentionally reference the stale URL for documentation or scan-definition purposes.
 const EXCLUDE_FILES = new Set([
   'scripts/check-public-docs-links.mjs',
@@ -129,7 +137,9 @@ function scanRepoForStaleUrl(rootPath) {
   }
 
   if (!rootPath || rootPath === '/' || !existsSync(rootPath)) {
-    console.warn(`  WARNING: ROOT path "${rootPath}" does not exist or is invalid. Skipping repo scan.`);
+    console.warn(
+      `  WARNING: ROOT path "${rootPath}" does not exist or is invalid. Skipping repo scan.`,
+    );
     return errors;
   }
   walk(rootPath);
@@ -220,7 +230,10 @@ async function main() {
   console.log(`Scanning repository for stale "${STALE_PATTERN}" references...`);
   const staleMatches = scanRepoForStaleUrl(ROOT);
   if (staleMatches.length > 0) {
-    fail(`Found ${staleMatches.length} stale "${STALE_PATTERN}" reference(s) in the repository:`, staleMatches);
+    fail(
+      `Found ${staleMatches.length} stale "${STALE_PATTERN}" reference(s) in the repository:`,
+      staleMatches,
+    );
     return;
   }
   console.log('  No stale references found. Repository is clean.');

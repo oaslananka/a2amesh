@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { decideMcpToolApproval, type McpAuditPolicy, type McpApprovalDecision } from './McpAudit.js';
+import {
+  decideMcpToolApproval,
+  type McpAuditPolicy,
+  type McpApprovalDecision,
+} from './McpAudit.js';
 
 export type McpAudienceValidationDecision = 'allow' | 'block';
 
@@ -90,7 +94,9 @@ function stableAuthContext(context: McpAuthContext): Record<string, unknown> {
 }
 
 export function hashMcpAuthContext(context: McpAuthContext): string {
-  return createHash('sha256').update(JSON.stringify(stableAuthContext(context))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(stableAuthContext(context)))
+    .digest('hex');
 }
 
 export function validateMcpAudience(
@@ -99,7 +105,9 @@ export function validateMcpAudience(
 ): McpAudienceValidationResult {
   const normalizedAudiences = normalizeList(context.audience);
   const expectedAudiences = normalizeList(policy.expectedAudience);
-  const matchedAudiences = normalizedAudiences.filter((audience) => expectedAudiences.includes(audience));
+  const matchedAudiences = normalizedAudiences.filter((audience) =>
+    expectedAudiences.includes(audience),
+  );
 
   if (normalizedAudiences.length === 0) {
     return {

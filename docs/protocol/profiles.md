@@ -7,7 +7,7 @@ A2A Mesh conformance now uses explicit compatibility profiles instead of treatin
 | Profile                 | Strict | Protocol | Purpose                                                                                                                |
 | ----------------------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `official-a2a-v1.0`     | Yes    | `1.0`    | The default strict profile aligned to the normative A2A v1.0 protobuf and HTTP+JSON binding surface.                   |
-| `legacy-a2amesh`       | No     | `1.0`    | Backwards-compatible behavior for existing A2A Mesh JSON-RPC paths, local aliases, and push notification method names. |
+| `legacy-a2amesh`        | No     | `1.0`    | Backwards-compatible behavior for existing A2A Mesh JSON-RPC paths, local aliases, and push notification method names. |
 | `experimental-a2a-v1.2` | No     | `1.2`    | Opt-in fixtures for future A2A Mesh behavior. Requires `--experimental-profiles`.                                      |
 
 ## Status vocabulary

@@ -46,9 +46,12 @@ for (const [path, expectedName] of PUBLIC_PACKAGES) {
   const pkgDir = path.replace(/\/package\.json$/, '');
   const expectedVersion = MANIFEST[pkgDir] ?? ROOT_VERSION;
   if (manifest.version !== expectedVersion) {
-    failures.push(`${path}: expected version ${expectedVersion}, found ${String(manifest.version)}`);
+    failures.push(
+      `${path}: expected version ${expectedVersion}, found ${String(manifest.version)}`,
+    );
   }
-  if (manifest.private === true) failures.push(`${path}: approved public package must not be private`);
+  if (manifest.private === true)
+    failures.push(`${path}: approved public package must not be private`);
   if (manifest.publishConfig?.access !== 'public') {
     failures.push(`${path}: publishConfig.access must be public`);
   }
@@ -93,12 +96,20 @@ for (const { path, dir, packageJson: manifest } of packages) {
   for (const [binName] of Object.entries(manifest.bin ?? {})) {
     if (staleBinPattern.test(binName)) failures.push(`${path}: stale binary name ${binName}`);
   }
-  for (const block of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
+  for (const block of [
+    'dependencies',
+    'devDependencies',
+    'peerDependencies',
+    'optionalDependencies',
+  ]) {
     for (const dependency of Object.keys(manifest[block] ?? {})) {
       if (staleScopePattern.test(dependency)) {
         failures.push(`${path}: stale dependency ${dependency}`);
       }
-      if ((dependency.startsWith('@a2amesh/') || dependency === '@a2amesh/create-a2amesh') && !localNames.has(dependency)) {
+      if (
+        (dependency.startsWith('@a2amesh/') || dependency === '@a2amesh/create-a2amesh') &&
+        !localNames.has(dependency)
+      ) {
         failures.push(`${path}: unknown local package dependency ${dependency}`);
       }
     }

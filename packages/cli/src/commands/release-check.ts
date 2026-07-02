@@ -56,8 +56,10 @@ export interface ReleaseCheckReport {
   ready: boolean;
 }
 
-
-const RELEASE_CHECK_METADATA = new Map<string, Pick<CheckResult, 'command' | 'ciEquivalent' | 'remediation'>>([
+const RELEASE_CHECK_METADATA = new Map<
+  string,
+  Pick<CheckResult, 'command' | 'ciEquivalent' | 'remediation'>
+>([
   [
     'Git worktree clean',
     {
@@ -140,7 +142,6 @@ const RELEASE_CHECK_METADATA = new Map<string, Pick<CheckResult, 'command' | 'ci
   ],
 ]);
 
-
 export function createReleaseCheckPlan(): Array<
   Pick<CheckResult, 'name' | 'command' | 'ciEquivalent' | 'remediation'>
 > {
@@ -210,7 +211,14 @@ export function createReleaseCheckReport(checks: CheckResult[]): ReleaseCheckRep
     command: 'release-check',
     localGate: releaseCheckGate(),
     checks,
-    summary: { total, passed, failed, skipped, duration: totalDuration, actionableFailures: failures },
+    summary: {
+      total,
+      passed,
+      failed,
+      skipped,
+      duration: totalDuration,
+      actionableFailures: failures,
+    },
     ready: failed === 0,
   };
 }
@@ -234,7 +242,11 @@ function runCheck(
       : args;
   try {
     execFileSync(file, commandArgs, { ...options, stdio: 'pipe', timeout: 120_000 });
-    return annotateCheck({ name, status: 'passed', duration: Math.round(performance.now() - start) });
+    return annotateCheck({
+      name,
+      status: 'passed',
+      duration: Math.round(performance.now() - start),
+    });
   } catch (error: unknown) {
     const err = error as NodeJS.ErrnoException & { stdout?: Buffer; stderr?: Buffer };
     const message = err.stderr?.toString().trim() || err.stdout?.toString().trim() || err.message;
@@ -258,7 +270,6 @@ function runPnpm(name: string, args: readonly string[], cwd: string): CheckResul
   }
   return runCheck(name, process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', args, { cwd });
 }
-
 
 function runGitWorktreeClean(cwd: string): CheckResult {
   const start = performance.now();

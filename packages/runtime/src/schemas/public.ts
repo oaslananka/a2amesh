@@ -295,7 +295,6 @@ export const JsonRpcEnvelopeSchema = z.union([JsonRpcRequestSchema, JsonRpcRespo
 
 export const RegistryAgentStatusSchema = z.enum(['healthy', 'unhealthy', 'unknown']);
 
-
 export const AgentCardVerificationMetadataSchema = z.object({
   required: z.boolean(),
   valid: z.boolean(),

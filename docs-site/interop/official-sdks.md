@@ -20,12 +20,12 @@ The matrix lives in `tests/interop/matrix.json` and currently tracks the `offici
 
 | Client                   | Server                   |
 | ------------------------ | ------------------------ |
-| `official-js-client`     | `a2amesh-server`        |
-| `a2amesh-client`        | `official-js-server`     |
-| `official-python-client` | `a2amesh-server`        |
-| `a2amesh-client`        | `official-python-server` |
-| `a2amesh-registry`      | `official-js-server`     |
-| `a2amesh-registry`      | `official-python-server` |
+| `official-js-client`     | `a2amesh-server`         |
+| `a2amesh-client`         | `official-js-server`     |
+| `official-python-client` | `a2amesh-server`         |
+| `a2amesh-client`         | `official-python-server` |
+| `a2amesh-registry`       | `official-js-server`     |
+| `a2amesh-registry`       | `official-python-server` |
 
 Required capabilities include message send, message stream, task lifecycle, cancellation, callback configuration, challenge handling, version negotiation, extension negotiation, and registry discovery.
 

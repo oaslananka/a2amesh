@@ -159,9 +159,8 @@ describe('MCP auth boundary helpers', () => {
   });
 
   it('accepts multi-audience credentials when the intended MCP resource is selected', async () => {
-    const { createMcpSafeAuditEvent, validateMcpAudience } = await import(
-      '../src/McpAuthBoundary.js'
-    );
+    const { createMcpSafeAuditEvent, validateMcpAudience } =
+      await import('../src/McpAuthBoundary.js');
 
     const authContext = {
       issuer: 'https://issuer.example.com',
@@ -211,9 +210,8 @@ describe('MCP auth boundary helpers', () => {
   });
 
   it('keeps MCP audience validation separate from tool authorization', async () => {
-    const { decideMcpRuntimeAuthority, validateMcpAudience } = await import(
-      '../src/McpAuthBoundary.js'
-    );
+    const { decideMcpRuntimeAuthority, validateMcpAudience } =
+      await import('../src/McpAuthBoundary.js');
     const tool: Tool = {
       name: 'delete-records',
       description: 'Deletes production records',
@@ -288,7 +286,11 @@ describe('MCP tool guardrails', () => {
       inputSchema: { type: 'object', properties: { amount: { type: 'number' } } },
     };
 
-    const result = decideMcpToolGuardrail(tool, { amount: 42 }, { policy: { blockOnMetadataRisk: true } });
+    const result = decideMcpToolGuardrail(
+      tool,
+      { amount: 42 },
+      { policy: { blockOnMetadataRisk: true } },
+    );
 
     expect(result.decision).toBe('review');
     expect(result.reasonCode).toBe('mcp-tool-needs-human-approval');
@@ -297,9 +299,8 @@ describe('MCP tool guardrails', () => {
   });
 
   it('creates dry-run plans without exposing raw input values', async () => {
-    const { createMcpGuardrailAuditEvent, decideMcpToolGuardrail } = await import(
-      '../src/McpToolGuardrails.js'
-    );
+    const { createMcpGuardrailAuditEvent, decideMcpToolGuardrail } =
+      await import('../src/McpToolGuardrails.js');
     const tool: Tool = {
       name: 'record-writer',
       description: 'Writes a record after approval.',

@@ -86,7 +86,14 @@ const METADATA_RISK_PATTERNS = [
   'override approval',
 ] as const;
 
-const SIDE_EFFECT_PATTERNS = ['delete', 'write', 'modify', 'payment', 'browser', 'network'] as const;
+const SIDE_EFFECT_PATTERNS = [
+  'delete',
+  'write',
+  'modify',
+  'payment',
+  'browser',
+  'network',
+] as const;
 
 function normalizeName(name: string): string {
   return name.trim().toLowerCase();
@@ -128,7 +135,8 @@ function textValues(subject: McpToolManifestSubject): Array<{ pointer: string; v
     { pointer: 'tool.name', value: subject.name },
     { pointer: 'tool.description', value: subject.description ?? '' },
   ];
-  for (const [index, tag] of (subject.tags ?? []).entries()) fields.push({ pointer: `tool.tags.${index}`, value: tag });
+  for (const [index, tag] of (subject.tags ?? []).entries())
+    fields.push({ pointer: `tool.tags.${index}`, value: tag });
   for (const [index, example] of (subject.examples ?? []).entries()) {
     fields.push({ pointer: `tool.examples.${index}`, value: example });
   }
@@ -197,11 +205,16 @@ export function classifyMcpToolManifestRisk(
   }
 
   const risk = highestSeverity(findings);
-  const riskScore = Math.min(100, findings.reduce((sum, finding) => sum + severityScore(finding.severity), 0));
+  const riskScore = Math.min(
+    100,
+    findings.reduce((sum, finding) => sum + severityScore(finding.severity), 0),
+  );
   return { toolName: subject.name, risk, riskScore, findings };
 }
 function inputHash(input: unknown): string {
-  return createHash('sha256').update(JSON.stringify(input ?? null)).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(input ?? null))
+    .digest('hex');
 }
 
 function inputPreview(input: unknown): Record<string, unknown> {
@@ -252,7 +265,8 @@ export function decideMcpToolGuardrail(
   const metadataRisk = risk.findings.some((finding) => finding.id === 'metadata-risk-pattern');
   const dryRunRequired = includesName(policy.dryRunRequiredTools, tool.name);
   const requiresHumanApproval =
-    approval.decision === 'review' || severityAtLeast(risk.risk, policy.humanApprovalRequiredRisk ?? 'medium');
+    approval.decision === 'review' ||
+    severityAtLeast(risk.risk, policy.humanApprovalRequiredRisk ?? 'medium');
 
   let decision: McpGuardrailDecision = approval.decision;
   let reasonCode: McpGuardrailReasonCode =
@@ -272,7 +286,10 @@ export function decideMcpToolGuardrail(
     reasonCode = 'mcp-tool-needs-human-approval';
   }
 
-  const dryRun = mode === 'dry-run' || dryRunRequired ? createMcpDryRunPlan(tool, input, risk, requiresHumanApproval) : undefined;
+  const dryRun =
+    mode === 'dry-run' || dryRunRequired
+      ? createMcpDryRunPlan(tool, input, risk, requiresHumanApproval)
+      : undefined;
   return {
     decision,
     reasonCode,
@@ -300,7 +317,8 @@ export function createMcpGuardrailAuditEvent(options: {
     risk: options.result.risk.risk,
     riskScore: options.result.risk.riskScore,
     requiresHumanApproval: options.result.requiresHumanApproval,
-    inputHash: options.input === undefined ? options.result.dryRun?.inputHash : inputHash(options.input),
+    inputHash:
+      options.input === undefined ? options.result.dryRun?.inputHash : inputHash(options.input),
     evidencePointers: options.result.evidencePointers,
     findingIds: options.result.risk.findings.map((finding) => finding.id),
   };

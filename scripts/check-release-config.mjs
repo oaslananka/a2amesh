@@ -37,18 +37,22 @@ if (manifestVersions.some((version) => typeof version !== 'string' || version.le
   failures.push('release manifest versions must be non-empty strings');
 }
 if (uniqueManifestVersions.size > 1) {
-  failures.push(`linked public packages must share one release version, found: ${[...uniqueManifestVersions].join(', ')}`);
+  failures.push(
+    `linked public packages must share one release version, found: ${[...uniqueManifestVersions].join(', ')}`,
+  );
 }
 
 for (const [path, expectedName] of APPROVED_RELEASES) {
   const packageJson = readJson(`${path}/package.json`);
   const releaseConfig = config.packages?.[path];
   const expectedVersion = manifest[path];
-  if (packageJson.name !== expectedName) failures.push(`${path}: package name must be ${expectedName}`);
+  if (packageJson.name !== expectedName)
+    failures.push(`${path}: package name must be ${expectedName}`);
   if (packageJson.version !== expectedVersion) {
     failures.push(`${path}: version must match release manifest version ${expectedVersion}`);
   }
-  if (packageJson.private === true) failures.push(`${path}: approved public package must not be private`);
+  if (packageJson.private === true)
+    failures.push(`${path}: approved public package must not be private`);
   if (packageJson.publishConfig?.access !== 'public') {
     failures.push(`${path}: publishConfig.access must be public`);
   }
@@ -69,7 +73,8 @@ const linkedComponents = new Set(
     .flatMap((plugin) => plugin.components ?? []),
 );
 for (const expectedName of APPROVED_RELEASES.values()) {
-  if (!linkedComponents.has(expectedName)) failures.push(`${expectedName}: missing linked-version component`);
+  if (!linkedComponents.has(expectedName))
+    failures.push(`${expectedName}: missing linked-version component`);
 }
 for (const component of linkedComponents) {
   if (![...APPROVED_RELEASES.values()].includes(component)) {

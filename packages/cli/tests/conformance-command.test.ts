@@ -133,7 +133,6 @@ describe('conformance command', () => {
     );
   });
 
-
   it('adds local gate metadata when run as a release gate', async () => {
     mockConformanceFetch();
     let stdout = '';

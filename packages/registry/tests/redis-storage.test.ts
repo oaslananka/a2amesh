@@ -205,13 +205,12 @@ class RaceyAtomicRedisTransaction {
   }
 }
 
-
 function isNxSet(args: unknown[]): boolean {
   return args.some(
     (arg) =>
-      typeof arg === 'object' &&
-      arg !== null &&
-      (arg as { NX?: unknown; nx?: unknown }).NX === true ||
+      (typeof arg === 'object' &&
+        arg !== null &&
+        (arg as { NX?: unknown; nx?: unknown }).NX === true) ||
       (typeof arg === 'object' && arg !== null && (arg as { nx?: unknown }).nx === true),
   );
 }
@@ -479,7 +478,6 @@ describe('RedisStorage', () => {
     expect(client.sremCalls.length).toBeGreaterThan(0);
     expect(client.execCalls).toBeGreaterThan(0);
   });
-
 
   it('uses redis leases to coordinate distributed polling ownership', async () => {
     const client = new RaceyAtomicRedisClient();

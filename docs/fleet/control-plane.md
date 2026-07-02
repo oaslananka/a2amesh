@@ -4,15 +4,15 @@ Fleet remains a post-1.0 layer above the provider-neutral A2A runtime. The contr
 
 ## Control-plane responsibilities
 
-| Responsibility | Owner | Boundary |
-| --- | --- | --- |
-| Worker discovery | Fleet control plane | Reads Worker Cards and health records from supported registry surfaces only. |
-| Capability indexing | Fleet control plane | Builds a queryable index from Worker Card capabilities, labels, roles, and tenant scope. |
-| Routing decision | Fleet control plane | Selects candidate workers using capability, role, tenant, availability, policy, load, cost, and latency signals. |
-| Run admission | Policy and approval layer | Verifies task, tenant, side-effect, budget, and artifact constraints before a worker run starts. |
-| Failure classification | Fleet control plane | Converts worker/runtime outcomes into explicit failure classes and recovery actions. |
-| Human handoff | Mission Control or CLI | Surfaces approval, incident, and manual intervention requests; it does not silently bypass policy. |
-| Artifact routing | Artifact layer | Routes run outputs to approved artifact stores and redacts diagnostic metadata. |
+| Responsibility         | Owner                     | Boundary                                                                                                         |
+| ---------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Worker discovery       | Fleet control plane       | Reads Worker Cards and health records from supported registry surfaces only.                                     |
+| Capability indexing    | Fleet control plane       | Builds a queryable index from Worker Card capabilities, labels, roles, and tenant scope.                         |
+| Routing decision       | Fleet control plane       | Selects candidate workers using capability, role, tenant, availability, policy, load, cost, and latency signals. |
+| Run admission          | Policy and approval layer | Verifies task, tenant, side-effect, budget, and artifact constraints before a worker run starts.                 |
+| Failure classification | Fleet control plane       | Converts worker/runtime outcomes into explicit failure classes and recovery actions.                             |
+| Human handoff          | Mission Control or CLI    | Surfaces approval, incident, and manual intervention requests; it does not silently bypass policy.               |
+| Artifact routing       | Artifact layer            | Routes run outputs to approved artifact stores and redacts diagnostic metadata.                                  |
 
 ## Routing flow
 
@@ -60,15 +60,15 @@ Discovery records have a TTL. A worker without a fresh heartbeat must not receiv
 
 Fleet failure handling is fail-closed by default.
 
-| Failure class | Default recovery action | Retryable |
-| --- | --- | --- |
-| `WORKER_UNAVAILABLE` | `ROUTE_TO_ALTERNATE_WORKER` | Yes, bounded by max attempts. |
-| `CAPABILITY_MISMATCH` | `QUEUE_FOR_CAPACITY` or `FAIL_CLOSED` | Usually no. |
-| `POLICY_DENIED` | `FAIL_CLOSED` | No. |
-| `TIMEOUT` | `RETRY_SAME_WORKER` or alternate worker | Yes, bounded by timeout budget. |
-| `ARTIFACT_REJECTED` | `FAIL_CLOSED` | No until artifact policy changes. |
-| `HUMAN_APPROVAL_REQUIRED` | `REQUEST_HUMAN_APPROVAL` | No automatic retry. |
-| `UNKNOWN` | `OPEN_INCIDENT` | No automatic retry. |
+| Failure class             | Default recovery action                 | Retryable                         |
+| ------------------------- | --------------------------------------- | --------------------------------- |
+| `WORKER_UNAVAILABLE`      | `ROUTE_TO_ALTERNATE_WORKER`             | Yes, bounded by max attempts.     |
+| `CAPABILITY_MISMATCH`     | `QUEUE_FOR_CAPACITY` or `FAIL_CLOSED`   | Usually no.                       |
+| `POLICY_DENIED`           | `FAIL_CLOSED`                           | No.                               |
+| `TIMEOUT`                 | `RETRY_SAME_WORKER` or alternate worker | Yes, bounded by timeout budget.   |
+| `ARTIFACT_REJECTED`       | `FAIL_CLOSED`                           | No until artifact policy changes. |
+| `HUMAN_APPROVAL_REQUIRED` | `REQUEST_HUMAN_APPROVAL`                | No automatic retry.               |
+| `UNKNOWN`                 | `OPEN_INCIDENT`                         | No automatic retry.               |
 
 ## Policy and artifact boundary
 

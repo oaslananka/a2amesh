@@ -4,14 +4,14 @@ This pack adds a starter deployment and observability baseline for A2A Mesh oper
 
 ## Contents
 
-| Path                                  | Purpose                                                     |
-| ------------------------------------- | ----------------------------------------------------------- |
+| Path                                 | Purpose                                                     |
+| ------------------------------------ | ----------------------------------------------------------- |
 | `deploy/<chart>/a2amesh/Chart.yaml`  | Deployment chart metadata.                                  |
 | `deploy/<chart>/a2amesh/values.yaml` | Default deployment values.                                  |
 | `ops/prometheus/a2amesh-alerts.yml`  | Starter alert rules for registry health and request errors. |
 | `ops/grafana/a2amesh-dashboard.json` | Starter Grafana dashboard JSON.                             |
-| `ops/otel/collector.yaml`             | OpenTelemetry collector example.                            |
-| `scripts/check-ops-pack.mjs`          | CI-friendly validation for the operations pack.             |
+| `ops/otel/collector.yaml`            | OpenTelemetry collector example.                            |
+| `scripts/check-ops-pack.mjs`         | CI-friendly validation for the operations pack.             |
 
 Run the validation with:
 

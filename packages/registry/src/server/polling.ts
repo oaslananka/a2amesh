@@ -177,7 +177,6 @@ export function createRegistryPolling(
     }
   };
 
-
   async function withPollingLease(
     scope: string,
     intervalMs: number,
@@ -190,7 +189,9 @@ export function createRegistryPolling(
 
     const leaseStore = resolvePollingLeaseStore(context.store);
     if (!leaseStore) {
-      logger.warn('Distributed registry polling requested without a lease-capable store', { scope });
+      logger.warn('Distributed registry polling requested without a lease-capable store', {
+        scope,
+      });
       return;
     }
 
@@ -213,14 +214,18 @@ export function createRegistryPolling(
     startHealthChecks(): void {
       pingInterval = setInterval(async () => {
         try {
-          await withPollingLease('health', context.options.healthPollingIntervalMs ?? 30_000, async () => {
-            const result = await context.store.list({
-              cursor: context.state.healthCursor ?? undefined,
-              limit: context.options.healthCheckBatchSize ?? 50,
-            });
-            context.state.healthCursor = result.nextCursor;
-            await executeHealthChecks(result.items.filter((agent) => isHealthCheckDue(agent)));
-          });
+          await withPollingLease(
+            'health',
+            context.options.healthPollingIntervalMs ?? 30_000,
+            async () => {
+              const result = await context.store.list({
+                cursor: context.state.healthCursor ?? undefined,
+                limit: context.options.healthCheckBatchSize ?? 50,
+              });
+              context.state.healthCursor = result.nextCursor;
+              await executeHealthChecks(result.items.filter((agent) => isHealthCheckDue(agent)));
+            },
+          );
         } catch (error) {
           logger.error('Failed to run health checks', { error: String(error) });
         }
@@ -232,11 +237,13 @@ export function createRegistryPolling(
     startTaskPolling(): void {
       const intervalMs = context.options.taskPollingIntervalMs ?? 5_000;
       taskPollInterval = setInterval(() => {
-        void withPollingLease('task-snapshots', intervalMs, refreshTaskSnapshots).catch((error: unknown) => {
-          logger.warn('Failed to refresh registry task snapshots', {
-            error: String(error),
-          });
-        });
+        void withPollingLease('task-snapshots', intervalMs, refreshTaskSnapshots).catch(
+          (error: unknown) => {
+            logger.warn('Failed to refresh registry task snapshots', {
+              error: String(error),
+            });
+          },
+        );
       }, intervalMs);
     },
     stop(): void {
@@ -260,8 +267,10 @@ function resolvePollingLeaseStore(store: unknown): RegistryDistributedPollingLea
   if (
     typeof store === 'object' &&
     store !== null &&
-    typeof (store as Partial<RegistryDistributedPollingLeaseStore>).acquirePollingLease === 'function' &&
-    typeof (store as Partial<RegistryDistributedPollingLeaseStore>).releasePollingLease === 'function'
+    typeof (store as Partial<RegistryDistributedPollingLeaseStore>).acquirePollingLease ===
+      'function' &&
+    typeof (store as Partial<RegistryDistributedPollingLeaseStore>).releasePollingLease ===
+      'function'
   ) {
     return store as RegistryDistributedPollingLeaseStore;
   }

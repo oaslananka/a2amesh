@@ -1,5 +1,11 @@
 import type { ExtensibleArtifact, TaskStatus } from '@a2amesh/protocol';
-import type { FleetRun, FleetRunStatus, FleetTask, FleetWorker, WorkerCard } from '@a2amesh/internal-fleet';
+import type {
+  FleetRun,
+  FleetRunStatus,
+  FleetTask,
+  FleetWorker,
+  WorkerCard,
+} from '@a2amesh/internal-fleet';
 
 export type WorkerRuntimeOperation =
   | 'prepare'
@@ -120,7 +126,13 @@ export interface WorkerRuntimeContract {
   stream(context: WorkerRuntimeContext): AsyncIterable<WorkerRuntimeEvent>;
   observe(context: WorkerRuntimeContext): Promise<WorkerRuntimeEvent>;
   verify(context: WorkerRuntimeContext): Promise<WorkerRuntimeVerificationResult>;
-  finalize(context: WorkerRuntimeContext, result: WorkerRuntimeResult): Promise<WorkerRuntimeResult>;
-  cancel(context: WorkerRuntimeContext, request: WorkerRuntimeStopRequest): Promise<WorkerRuntimeEvent>;
+  finalize(
+    context: WorkerRuntimeContext,
+    result: WorkerRuntimeResult,
+  ): Promise<WorkerRuntimeResult>;
+  cancel(
+    context: WorkerRuntimeContext,
+    request: WorkerRuntimeStopRequest,
+  ): Promise<WorkerRuntimeEvent>;
   cleanup(context: WorkerRuntimeContext): Promise<WorkerRuntimeEvent>;
 }

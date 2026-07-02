@@ -28,7 +28,6 @@ import { createRegistryTaskProjection } from '../src/server/taskProjection.js';
 import { InMemoryStorage } from '../src/storage/InMemoryStorage.js';
 import type { RegisteredAgent } from '../src/storage/IAgentStorage.js';
 
-
 function createEs256KeyPair(keyId = 'registry-agent-key') {
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
   return {
@@ -511,7 +510,6 @@ describe('Registry distributed polling lease scheduling', () => {
   });
 });
 
-
 describe('Registry tenant trust and signed Agent Card handling', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -630,7 +628,12 @@ describe('Registry tenant trust and signed Agent Card handling', () => {
             tenantId: 'tenant-import',
           },
         ],
-        metadata: { source: 'a2amesh-registry', agentCount: 1, tenants: ['tenant-import'], publicAgents: 0 },
+        metadata: {
+          source: 'a2amesh-registry',
+          agentCount: 1,
+          tenants: ['tenant-import'],
+          publicAgents: 0,
+        },
       })
       .expect(200);
 

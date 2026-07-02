@@ -15,7 +15,9 @@ function run(command, args) {
 }
 
 function sha256(path) {
-  return createHash('sha256').update(readFileSync(resolve(repoRoot, path))).digest('hex');
+  return createHash('sha256')
+    .update(readFileSync(resolve(repoRoot, path)))
+    .digest('hex');
 }
 
 function checkProtoSurface() {
@@ -33,8 +35,14 @@ function checkProtoSurface() {
   }
 
   const proto = readFileSync(resolve(repoRoot, protoPath), 'utf8');
-  for (const required of ['service A2AService', 'rpc SendMessage', 'rpc StreamMessage', 'message TaskResponse']) {
-    if (!proto.includes(required)) failures.push(`${protoPath}: missing required protobuf surface ${required}`);
+  for (const required of [
+    'service A2AService',
+    'rpc SendMessage',
+    'rpc StreamMessage',
+    'message TaskResponse',
+  ]) {
+    if (!proto.includes(required))
+      failures.push(`${protoPath}: missing required protobuf surface ${required}`);
   }
 }
 

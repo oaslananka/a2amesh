@@ -4,12 +4,12 @@ A2A Mesh treats generated API surfaces as release-blocking artifacts. Public API
 
 ## Covered surfaces
 
-| Surface | Source of truth | Checked artifact |
-| --- | --- | --- |
-| JSON Schema | `packages/runtime/src/schemas/public.ts` | `docs/protocol/schemas`, `docs-site/public/schemas`, `packages/protocol/schemas` |
-| OpenAPI | `packages/registry/src/openapi.ts` | `docs/openapi/registry.openapi.json`, `docs-site/public/openapi/registry.openapi.json` |
-| TypeScript exports | package `exports` fields | `packages/*/public-surface.json` for public packages |
-| Protobuf | `packages/transport-grpc/proto/a2a.proto` | `packages/transport-grpc/proto/a2a.proto.sha256` |
+| Surface            | Source of truth                           | Checked artifact                                                                       |
+| ------------------ | ----------------------------------------- | -------------------------------------------------------------------------------------- |
+| JSON Schema        | `packages/runtime/src/schemas/public.ts`  | `docs/protocol/schemas`, `docs-site/public/schemas`, `packages/protocol/schemas`       |
+| OpenAPI            | `packages/registry/src/openapi.ts`        | `docs/openapi/registry.openapi.json`, `docs-site/public/openapi/registry.openapi.json` |
+| TypeScript exports | package `exports` fields                  | `packages/*/public-surface.json` for public packages                                   |
+| Protobuf           | `packages/transport-grpc/proto/a2a.proto` | `packages/transport-grpc/proto/a2a.proto.sha256`                                       |
 
 ## Commands
 

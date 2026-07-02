@@ -149,7 +149,12 @@ export interface FleetControlPlaneContract {
   discoveryTtlSeconds: number;
 }
 
-export type FleetSideEffectLevel = 'read-only' | 'local-write' | 'remote-write' | 'publish' | 'deploy';
+export type FleetSideEffectLevel =
+  | 'read-only'
+  | 'local-write'
+  | 'remote-write'
+  | 'publish'
+  | 'deploy';
 
 export type FleetApprovalState = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
 
@@ -228,7 +233,11 @@ export type FleetUnsupportedProviderSurface =
   | 'token-extraction'
   | 'subscription-bypass';
 
-export type FleetProviderSupportStatus = 'supported' | 'experimental' | 'manual-only' | 'unsupported';
+export type FleetProviderSupportStatus =
+  | 'supported'
+  | 'experimental'
+  | 'manual-only'
+  | 'unsupported';
 
 export type MissionControlCapability =
   | 'worker-health'

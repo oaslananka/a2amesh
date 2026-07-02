@@ -16,8 +16,8 @@ pnpm run examples:smoke
 
 ## Deployment Modes
 
-| Mode                 | Source                                                                                                          | Smoke command                                        |
-| -------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Mode                 | Source                                                                                                         | Smoke command                                        |
+| -------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | Authenticated server | [examples/authenticated-server](https://github.com/oaslananka/a2amesh/tree/main/examples/authenticated-server) | `pnpm --dir examples/authenticated-server run smoke` |
 | Streaming            | [examples/streaming](https://github.com/oaslananka/a2amesh/tree/main/examples/streaming)                       | `pnpm --dir examples/streaming run smoke`            |
 | Push notifications   | [examples/push-notifications](https://github.com/oaslananka/a2amesh/tree/main/examples/push-notifications)     | `pnpm --dir examples/push-notifications run smoke`   |

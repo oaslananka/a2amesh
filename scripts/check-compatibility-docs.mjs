@@ -184,9 +184,7 @@ requireNotIncludes(canonicalPath, canonicalDoc, [
 const publicPackages = getWorkspacePackages()
   .filter(
     ({ dir, packageJson }) =>
-      packageJson.private !== true &&
-      dir.startsWith('packages/') &&
-      packageJson.name,
+      packageJson.private !== true && dir.startsWith('packages/') && packageJson.name,
   )
   .sort((a, b) => a.packageJson.name.localeCompare(b.packageJson.name));
 

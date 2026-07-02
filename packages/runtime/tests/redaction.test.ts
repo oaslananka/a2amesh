@@ -44,10 +44,11 @@ describe('observability redaction helpers', () => {
   it('handles every header container form', () => {
     expect(redactHeaders(undefined)).toEqual({});
     expect(redactHeaders([['X-Api-Key', 'array-key']])).toEqual({ 'X-Api-Key': '[REDACTED]' });
-    expect(redactHeaders(new Headers({ Cookie: 'sid=value', Accept: 'application/json' }))).toEqual({
-      accept: 'application/json',
-      cookie: '[REDACTED]',
-    });
+    expect(redactHeaders(new Headers({ Cookie: 'sid=value', Accept: 'application/json' }))).toEqual(
+      {
+        accept: 'application/json',
+        cookie: '[REDACTED]',
+      },
+    );
   });
-
 });

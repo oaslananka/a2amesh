@@ -149,7 +149,12 @@ describe('Fleet control-plane architecture contracts', () => {
         requiresHumanApproval: true,
       },
       failureHandling: [
-        { failureClass: 'WORKER_UNAVAILABLE', action: 'ROUTE_TO_ALTERNATE_WORKER', retryable: true, maxAttempts: 2 },
+        {
+          failureClass: 'WORKER_UNAVAILABLE',
+          action: 'ROUTE_TO_ALTERNATE_WORKER',
+          retryable: true,
+          maxAttempts: 2,
+        },
         { failureClass: 'POLICY_DENIED', action: 'FAIL_CLOSED', retryable: false },
         {
           failureClass: 'HUMAN_APPROVAL_REQUIRED',
@@ -168,7 +173,6 @@ describe('Fleet control-plane architecture contracts', () => {
     expect(contract.discoveryTtlSeconds).toBeGreaterThan(0);
   });
 });
-
 
 describe('Fleet policy, sandboxing, artifact, and approval boundaries', () => {
   const lockedSandbox = {
@@ -207,7 +211,12 @@ describe('Fleet policy, sandboxing, artifact, and approval boundaries', () => {
       decision,
       boundaries: [
         { level: 'read-only', requiresApproval: false, requiresAudit: true },
-        { level: 'remote-write', requiresApproval: true, requiresAudit: true, forbiddenTargets: ['origin/main'] },
+        {
+          level: 'remote-write',
+          requiresApproval: true,
+          requiresAudit: true,
+          forbiddenTargets: ['origin/main'],
+        },
       ],
       admittedAt: FIXED_TIMESTAMP,
     } satisfies FleetWorkerRunAdmission;
@@ -255,12 +264,17 @@ describe('Fleet policy, sandboxing, artifact, and approval boundaries', () => {
   });
 });
 
-
 describe('Fleet provider workers and Mission Control plans', () => {
   it('models provider workers using documented integration surfaces only', () => {
     const plan = {
       supportStatus: 'experimental',
-      capabilities: ['worker-health', 'routing-evidence', 'approval-queue', 'artifact-review', 'audit-timeline'],
+      capabilities: [
+        'worker-health',
+        'routing-evidence',
+        'approval-queue',
+        'artifact-review',
+        'audit-timeline',
+      ],
       unsafeSessionScrapingAllowed: false,
       escalationPath: 'manual-runbook',
       providerMatrix: [
@@ -269,7 +283,12 @@ describe('Fleet provider workers and Mission Control plans', () => {
           workerRole: 'model-router',
           supportStatus: 'supported',
           allowedSurfaces: ['official-api', 'webhook', 'artifact-handoff'],
-          forbiddenSurfaces: ['web-ui-scraping', 'browser-session', 'private-endpoint', 'token-extraction'],
+          forbiddenSurfaces: [
+            'web-ui-scraping',
+            'browser-session',
+            'private-endpoint',
+            'token-extraction',
+          ],
           capabilities: ['chat-completion', 'usage-metadata'],
           credentialPolicy: 'secret-manager-ref',
         },
@@ -288,7 +307,12 @@ describe('Fleet provider workers and Mission Control plans', () => {
           workerRole: 'manual-handoff',
           supportStatus: 'manual-only',
           allowedSurfaces: ['manual-handoff'],
-          forbiddenSurfaces: ['web-ui-scraping', 'browser-session', 'private-endpoint', 'token-extraction'],
+          forbiddenSurfaces: [
+            'web-ui-scraping',
+            'browser-session',
+            'private-endpoint',
+            'token-extraction',
+          ],
           capabilities: [],
           credentialPolicy: 'none',
           requiresHumanHandoff: true,
@@ -312,7 +336,14 @@ describe('Fleet provider workers and Mission Control plans', () => {
   it('keeps Mission Control as an approval and evidence surface, not a session scraper', () => {
     const missionControl = {
       supportStatus: 'experimental',
-      capabilities: ['worker-health', 'routing-evidence', 'approval-queue', 'artifact-review', 'audit-timeline', 'incident-handoff'],
+      capabilities: [
+        'worker-health',
+        'routing-evidence',
+        'approval-queue',
+        'artifact-review',
+        'audit-timeline',
+        'incident-handoff',
+      ],
       unsafeSessionScrapingAllowed: false,
       escalationPath: 'approval-queue',
       providerMatrix: [
@@ -321,7 +352,13 @@ describe('Fleet provider workers and Mission Control plans', () => {
           workerRole: 'code-review-worker',
           supportStatus: 'experimental',
           allowedSurfaces: ['official-cli', 'github-action', 'git-worktree', 'artifact-handoff'],
-          forbiddenSurfaces: ['web-ui-scraping', 'browser-session', 'private-endpoint', 'token-extraction', 'subscription-bypass'],
+          forbiddenSurfaces: [
+            'web-ui-scraping',
+            'browser-session',
+            'private-endpoint',
+            'token-extraction',
+            'subscription-bypass',
+          ],
           capabilities: ['code-review', 'patch-generation', 'test-execution'],
           credentialPolicy: 'official-cli-session',
           requiresHumanHandoff: true,

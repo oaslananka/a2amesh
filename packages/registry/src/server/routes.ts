@@ -108,7 +108,9 @@ export function registerRegistryRoutes(
     const authTenantId = requestContext.tenantId;
     const finalTenantId = authTenantId ?? tenantId;
     if (!isPublicAgentAllowed(finalTenantId, isPublic, context)) {
-      writeRegistryProblem(res, 'forbidden', { detail: 'Public agent registration is disabled for this tenant' });
+      writeRegistryProblem(res, 'forbidden', {
+        detail: 'Public agent registration is disabled for this tenant',
+      });
       return;
     }
 
@@ -449,7 +451,10 @@ async function normalizeImportedAgent(
 ): Promise<RegisteredAgent> {
   const card = normalizeAgentCard(agent.card as AgentCard);
   const tenantId = requestTenantId ?? agent.tenantId;
-  const verification = agent.verification ?? existingVerification ?? (await verifyRegistryAgentCard(card, tenantId, context));
+  const verification =
+    agent.verification ??
+    existingVerification ??
+    (await verifyRegistryAgentCard(card, tenantId, context));
 
   return {
     id,
@@ -524,8 +529,12 @@ async function verifyRegistryAgentCard(
   context: RegistryServerContext,
 ): Promise<AgentCardVerificationMetadata> {
   const policy = tenantId ? context.options.tenantTrustPolicies?.[tenantId] : undefined;
-  const required = policy?.requireSignedAgentCards ?? context.options.requireSignedAgentCards ?? false;
-  const trustedKeys = [...(context.options.trustedAgentCardKeys ?? []), ...(policy?.trustedAgentCardKeys ?? [])];
+  const required =
+    policy?.requireSignedAgentCards ?? context.options.requireSignedAgentCards ?? false;
+  const trustedKeys = [
+    ...(context.options.trustedAgentCardKeys ?? []),
+    ...(policy?.trustedAgentCardKeys ?? []),
+  ];
   const verifiedAt = new Date().toISOString();
 
   if ((card.signatures?.length ?? 0) === 0) {
@@ -546,7 +555,9 @@ async function verifyRegistryAgentCard(
       state: required ? 'rejected' : 'unverified',
       verifiedAt,
       ...(tenantId ? { tenantId } : {}),
-      failureReason: required ? 'No trusted Agent Card verification keys configured' : 'No trusted verification key matched',
+      failureReason: required
+        ? 'No trusted Agent Card verification keys configured'
+        : 'No trusted verification key matched',
     };
   }
 

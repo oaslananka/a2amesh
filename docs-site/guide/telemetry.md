@@ -63,14 +63,14 @@ const ctx = extractA2AContext(req.headers);
 
 ## Configuration Reference
 
-| Environment variable                 | Default                | Description                               |
-| ------------------------------------ | ---------------------- | ----------------------------------------- |
-| `A2A_TELEMETRY_ENABLED`              | `false`                | Enable OpenTelemetry tracing and metrics  |
-| `OTEL_EXPORTER_OTLP_ENDPOINT`        | —                      | OTLP HTTP endpoint for traces and metrics |
-| `OTEL_TRACES_SAMPLER_ARG`            | `1`                    | Trace sample ratio (0.0–1.0)              |
-| `A2A_OTEL_METRIC_EXPORT_INTERVAL_MS` | `10000`                | Metric export interval in milliseconds    |
+| Environment variable                 | Default            | Description                               |
+| ------------------------------------ | ------------------ | ----------------------------------------- |
+| `A2A_TELEMETRY_ENABLED`              | `false`            | Enable OpenTelemetry tracing and metrics  |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`        | —                  | OTLP HTTP endpoint for traces and metrics |
+| `OTEL_TRACES_SAMPLER_ARG`            | `1`                | Trace sample ratio (0.0–1.0)              |
+| `A2A_OTEL_METRIC_EXPORT_INTERVAL_MS` | `10000`            | Metric export interval in milliseconds    |
 | `OTEL_SERVICE_NAME`                  | `@a2amesh/runtime` | Service name for resource attributes      |
-| `DEPLOYMENT_ENVIRONMENT`             | `NODE_ENV`             | Deployment environment label              |
+| `DEPLOYMENT_ENVIRONMENT`             | `NODE_ENV`         | Deployment environment label              |
 
 ## Span Names
 

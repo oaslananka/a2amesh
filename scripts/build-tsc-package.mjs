@@ -75,10 +75,7 @@ function generateCliGeneratedModules() {
         protocolPackage,
         'packages/protocol/package.json',
       )}`,
-      '@a2amesh/runtime': `^${readPackageVersion(
-        runtimePackage,
-        'packages/runtime/package.json',
-      )}`,
+      '@a2amesh/runtime': `^${readPackageVersion(runtimePackage, 'packages/runtime/package.json')}`,
     },
     devDependencies: {
       '@types/node': readDependencyRange(

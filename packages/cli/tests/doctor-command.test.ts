@@ -30,5 +30,4 @@ describe('doctor command', () => {
       ]),
     );
   });
-
 });
