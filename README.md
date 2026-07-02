@@ -7,7 +7,7 @@
     <img src="https://img.shields.io/npm/v/%40a2amesh%2Fruntime.svg" alt="npm version" />
   </a>
   <a href="https://www.npmjs.com/package/@a2amesh/runtime">
-    <img src="https://img.shields.io/npm/dm/%40a2amesh%2Fruntime.svg" alt="npm monthly downloads" />
+    <img src="https://img.shields.io/npm/dt/%40a2amesh%2Fruntime.svg" alt="npm total downloads" />
   </a>
   <a href="https://www.npmjs.com/package/@a2amesh/runtime">
     <img src="https://img.shields.io/npm/types/%40a2amesh%2Fruntime.svg" alt="TypeScript types" />
@@ -18,9 +18,9 @@
   <a href="https://pnpm.io/">
     <img src="https://img.shields.io/badge/pnpm-11.7.0-blue.svg" alt="pnpm" />
   </a>
-  <a href="https://deepwiki.com/oaslananka/a2amesh">
-    <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki" />
-  </a>
+</p>
+
+<p>
   <a href="https://github.com/oaslananka/a2amesh/actions/workflows/ci.yml">
     <img src="https://github.com/oaslananka/a2amesh/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
@@ -36,13 +36,23 @@
   <a href="https://github.com/oaslananka/a2amesh/actions/workflows/scorecard.yml">
     <img src="https://github.com/oaslananka/a2amesh/actions/workflows/scorecard.yml/badge.svg" alt="OpenSSF Scorecard" />
   </a>
-  <a href="https://api.securityscorecards.dev/projects/github.com/oaslananka/a2amesh">
-    <img src="https://api.securityscorecards.dev/projects/github.com/oaslananka/a2amesh/badge" alt="OpenSSF Scorecard score" />
-  </a>
-  <a href="https://github.com/oaslananka/a2amesh/blob/main/docs/security/trust-evidence.md">
+  <a href="docs/security/trust-evidence.md">
     <img src="https://img.shields.io/badge/trust-evidence-blue.svg" alt="trust evidence" />
   </a>
 </p>
+
+<p>
+  <a href="https://deepwiki.com/oaslananka/a2amesh">Ask DeepWiki</a> ·
+  <a href="docs/repo-maturity-report.md">Maturity report</a> ·
+  <a href="docs/openssf-evidence.md">OpenSSF evidence</a> ·
+  <a href="docs/security/trust-evidence.md">Trust evidence</a>
+</p>
+
+</div>
+
+A2A Mesh is an independent TypeScript runtime and toolkit for the Agent2Agent (A2A) protocol. It is not an official Google, Linux Foundation, or a2aproject package.
+
+<div align="center">
 
 <p>
   <a href="https://www.buymeacoffee.com/oaslananka">
@@ -51,7 +61,6 @@
 </p>
 
 </div>
-A2A Mesh is an independent TypeScript runtime and toolkit for the Agent2Agent (A2A) protocol. It is not an official Google, Linux Foundation, or a2aproject package.
 
 ## Trust and Supply Chain
 
