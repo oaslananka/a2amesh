@@ -297,7 +297,13 @@ describe('Fleet provider workers and Mission Control plans', () => {
     } satisfies MissionControlPlan;
 
     expect(plan.unsafeSessionScrapingAllowed).toBe(false);
-    expect(plan.providerMatrix.every((provider) => !provider.allowedSurfaces.includes('manual-handoff') || provider.requiresHumanHandoff)).toBe(true);
+    expect(
+      plan.providerMatrix.every(
+        (provider) =>
+          !provider.allowedSurfaces.some((surface) => surface === 'manual-handoff') ||
+          provider.requiresHumanHandoff,
+      ),
+    ).toBe(true);
     expect(plan.providerMatrix[0]?.forbiddenSurfaces).toContain('token-extraction');
     expect(plan.providerMatrix[1]?.allowedSurfaces).toContain('official-cli');
     expect(plan.providerMatrix[2]?.supportStatus).toBe('manual-only');
