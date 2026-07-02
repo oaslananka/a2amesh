@@ -80,3 +80,9 @@ path = "packages/transport-grpc/proto/a2a.proto.sha256"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 A2A Mesh contributors"
 SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "CODEOWNERS"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025-2026 oaslananka"
+SPDX-License-Identifier = "Apache-2.0"
