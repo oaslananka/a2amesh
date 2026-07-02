@@ -1,0 +1,19 @@
+{
+  "project_name": "a2amesh",
+  "repo_url": "https://github.com/oaslananka/a2amesh",
+  "badge_target": "passing-first",
+  "desired_target": "silver-ready-after-human-confirmation",
+  "gold_claim": false,
+  "gold_reason": "Gold/foundation-grade is not claimed because the project is currently solo-maintained and lacks independent recurring human review and multi-maintainer governance.",
+  "evidence": "docs/openssf-evidence.md",
+  "gap_analysis": "docs/openssf-gap-analysis.md",
+  "proposal_links": "docs/openssf-proposal-links.md",
+  "last_reviewed": "2026-07-02",
+  "status_vocabulary": [
+    "Passed",
+    "Partial",
+    "Missing",
+    "Not applicable",
+    "Needs human confirmation"
+  ]
+}
