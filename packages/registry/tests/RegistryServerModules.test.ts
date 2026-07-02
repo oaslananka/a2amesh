@@ -409,3 +409,84 @@ describe('RegistryServer control-plane modules', () => {
     expect(JSON.parse(serialized)).toEqual(payload);
   });
 });
+
+describe('Registry distributed polling lease scheduling', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('does not list agents for scheduled task polling when no lease store is available', async () => {
+    vi.useFakeTimers();
+    const { polling, context } = createRouteHarness({
+      distributedPollingLeases: true,
+      taskPollingIntervalMs: 100,
+    });
+    const listSpy = vi.spyOn(context.store, 'list');
+
+    polling.startTaskPolling();
+    await vi.advanceTimersByTimeAsync(100);
+    polling.stop();
+
+    expect(listSpy).not.toHaveBeenCalled();
+  });
+
+  it('lists agents and releases ownership for scheduled task polling when the lease is acquired', async () => {
+    vi.useFakeTimers();
+    class LeaseGrantedStorage extends InMemoryStorage {
+      acquireCalls = 0;
+      releaseCalls = 0;
+      listCalls = 0;
+      async acquirePollingLease(): Promise<boolean> {
+        this.acquireCalls += 1;
+        return true;
+      }
+      async releasePollingLease(): Promise<void> {
+        this.releaseCalls += 1;
+      }
+      override async list(...args: Parameters<InMemoryStorage['list']>) {
+        this.listCalls += 1;
+        return super.list(...args);
+      }
+    }
+
+    const store = new LeaseGrantedStorage();
+    const { polling } = createRouteHarness({
+      storage: store,
+      distributedPollingLeases: true,
+      taskPollingIntervalMs: 100,
+    });
+
+    polling.startTaskPolling();
+    await vi.advanceTimersByTimeAsync(100);
+    polling.stop();
+
+    expect(store.acquireCalls).toBeGreaterThan(0);
+    expect(store.listCalls).toBeGreaterThan(0);
+    expect(store.releaseCalls).toBeGreaterThan(0);
+  });
+
+  it('skips malformed task payloads with unsafe history entries during polling', async () => {
+    const agent = createRegisteredAgent('malformed-task-agent', 'Malformed Task Agent');
+    const { polling, context } = createRouteHarness({ allowLocalhost: true });
+    const server = await listen(
+      express().get('/tasks', (_req, res) => {
+        res.json([
+          {
+            id: 'bad-history-task',
+            status: { state: 'WORKING', timestamp: '2026-04-06T10:00:00.000Z' },
+            history: [{ role: 'user', parts: [{ type: 'text', text: 42 }] }],
+          },
+        ]);
+      }),
+    );
+
+    try {
+      const port = (server.address() as { port: number }).port;
+      await polling.pollAgentTasks({ ...agent, url: `http://localhost:${port}` });
+      expect(context.recentTasks.size).toBe(0);
+    } finally {
+      await close(server);
+    }
+  });
+});

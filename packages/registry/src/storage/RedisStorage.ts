@@ -11,7 +11,7 @@ import {
 
 export interface RegistryRedisClient {
   get(key: string): Promise<string | null>;
-  set(key: string, value: string): Promise<unknown>;
+  set(key: string, value: string, ...args: unknown[]): Promise<unknown>;
   del(key: string): Promise<number>;
   sadd?(key: string, ...members: string[]): Promise<number>;
   srem?(key: string, ...members: string[]): Promise<number>;
@@ -31,6 +31,19 @@ export interface RegistryRedisClient {
     count?: number,
   ): Promise<[string, string[]]>;
   keys?(pattern: string): Promise<string[]>;
+}
+
+export interface RegistryPollingLeaseRecord {
+  scope: string;
+  ownerId: string;
+  acquiredAt: string;
+  expiresAt: string;
+}
+
+export interface RegistryDistributedPollingLeaseStore {
+  acquirePollingLease(scope: string, ownerId: string, ttlMs: number): Promise<boolean>;
+  releasePollingLease(scope: string, ownerId: string): Promise<void>;
+  getPollingLease(scope: string): Promise<RegistryPollingLeaseRecord | null>;
 }
 
 export interface RegistryRedisTransaction {
@@ -161,6 +174,65 @@ export class RedisStorage implements IAgentStorage {
 
   async findBySkill(skill: string): Promise<RegisteredAgent[]> {
     return (await this.list({ skill, limit: Number.MAX_SAFE_INTEGER })).items;
+  }
+
+  async acquirePollingLease(scope: string, ownerId: string, ttlMs: number): Promise<boolean> {
+    const now = Date.now();
+    const record: RegistryPollingLeaseRecord = {
+      scope,
+      ownerId,
+      acquiredAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + ttlMs).toISOString(),
+    };
+    const key = this.leaseKey(scope);
+    const value = JSON.stringify(record);
+
+    const result = await this.client.set(key, value, { NX: true, PX: ttlMs });
+    if (isRedisSetSuccess(result)) {
+      return true;
+    }
+
+    const existing = await this.getPollingLease(scope);
+    if (!existing || Date.parse(existing.expiresAt) <= now) {
+      await this.client.set(key, value, { PX: ttlMs });
+      return true;
+    }
+
+    return existing.ownerId === ownerId;
+  }
+
+  async releasePollingLease(scope: string, ownerId: string): Promise<void> {
+    const existing = await this.getPollingLease(scope);
+    if (existing?.ownerId === ownerId) {
+      await this.client.del(this.leaseKey(scope));
+    }
+  }
+
+  async getPollingLease(scope: string): Promise<RegistryPollingLeaseRecord | null> {
+    const value = await this.client.get(this.leaseKey(scope));
+    if (!value) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(value) as Partial<RegistryPollingLeaseRecord>;
+      if (
+        typeof parsed.scope === 'string' &&
+        typeof parsed.ownerId === 'string' &&
+        typeof parsed.acquiredAt === 'string' &&
+        typeof parsed.expiresAt === 'string'
+      ) {
+        return {
+          scope: parsed.scope,
+          ownerId: parsed.ownerId,
+          acquiredAt: parsed.acquiredAt,
+          expiresAt: parsed.expiresAt,
+        };
+      }
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   private async findCandidateIds(query: AgentListQuery): Promise<string[]> {
@@ -422,6 +494,10 @@ export class RedisStorage implements IAgentStorage {
     return `${this.prefix}:idx:${namespace}:${value}`;
   }
 
+  private leaseKey(scope: string): string {
+    return `${this.prefix}:lease:polling:${scope}`;
+  }
+
   private createMutationBatch(): RedisMutationBatch {
     return {
       transaction: this.client.multi?.() ?? null,
@@ -579,6 +655,10 @@ function resolveRedisMethod(target: object, names: readonly string[]): ResolvedR
     return { name, method: method as (...args: unknown[]) => unknown };
   }
   return null;
+}
+
+function isRedisSetSuccess(value: unknown): boolean {
+  return value === 'OK' || value === 'QUEUED' || value === true;
 }
 
 function shouldPassMembersAsArray(name: string): boolean {

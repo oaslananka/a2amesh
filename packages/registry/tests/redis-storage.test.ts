@@ -42,7 +42,10 @@ class RaceyAtomicRedisClient implements RegistryRedisClient {
     return this.values.get(key) ?? null;
   }
 
-  async set(key: string, value: string): Promise<unknown> {
+  async set(key: string, value: string, ...args: unknown[]): Promise<unknown> {
+    if (isNxSet(args) && (this.values.has(key) || this.sets.has(key))) {
+      return null;
+    }
     if (this.isIndexOrMetaKey(key)) {
       this.indexJsonWrites.push(key);
     }
@@ -200,6 +203,17 @@ class RaceyAtomicRedisTransaction {
     }
     return results;
   }
+}
+
+
+function isNxSet(args: unknown[]): boolean {
+  return args.some(
+    (arg) =>
+      typeof arg === 'object' &&
+      arg !== null &&
+      (arg as { NX?: unknown; nx?: unknown }).NX === true ||
+      (typeof arg === 'object' && arg !== null && (arg as { nx?: unknown }).nx === true),
+  );
 }
 
 function createStorage() {
@@ -464,6 +478,45 @@ describe('RedisStorage', () => {
     expect(client.indexJsonWrites).toEqual([]);
     expect(client.sremCalls.length).toBeGreaterThan(0);
     expect(client.execCalls).toBeGreaterThan(0);
+  });
+
+
+  it('uses redis leases to coordinate distributed polling ownership', async () => {
+    const client = new RaceyAtomicRedisClient();
+    const storage = new RedisStorage(client);
+
+    await expect(storage.acquirePollingLease('health', 'node-a', 30_000)).resolves.toBe(true);
+    await expect(storage.acquirePollingLease('health', 'node-b', 30_000)).resolves.toBe(false);
+    await expect(storage.getPollingLease('health')).resolves.toEqual(
+      expect.objectContaining({ scope: 'health', ownerId: 'node-a' }),
+    );
+
+    await storage.releasePollingLease('health', 'node-b');
+    await expect(storage.getPollingLease('health')).resolves.toEqual(
+      expect.objectContaining({ ownerId: 'node-a' }),
+    );
+
+    await storage.releasePollingLease('health', 'node-a');
+    await expect(storage.getPollingLease('health')).resolves.toBeNull();
+  });
+
+  it('recovers stale redis polling leases by overwriting expired records', async () => {
+    const client = new RaceyAtomicRedisClient();
+    const storage = new RedisStorage(client);
+    client.values.set(
+      'a2a:registry:lease:polling:health',
+      JSON.stringify({
+        scope: 'health',
+        ownerId: 'stale-node',
+        acquiredAt: '2026-04-06T10:00:00.000Z',
+        expiresAt: '2026-04-06T10:00:01.000Z',
+      }),
+    );
+
+    await expect(storage.acquirePollingLease('health', 'node-b', 30_000)).resolves.toBe(true);
+    await expect(storage.getPollingLease('health')).resolves.toEqual(
+      expect.objectContaining({ ownerId: 'node-b' }),
+    );
   });
 
   redisIntegrationTest(

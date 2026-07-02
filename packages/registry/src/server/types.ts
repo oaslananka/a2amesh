@@ -34,6 +34,9 @@ export interface RegistryServerOptions {
   unhealthyRecheckIntervalMs?: number;
   unknownRecheckIntervalMs?: number;
   taskPollCooldownMs?: number;
+  distributedPollingLeases?: boolean;
+  pollingLeaseOwnerId?: string;
+  pollingLeaseTtlMs?: number;
   rateLimit?: Partial<RateLimitConfig>;
   rateLimitStore?: RateLimitStore;
 }

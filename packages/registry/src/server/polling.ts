@@ -1,5 +1,6 @@
 import { logger, validateAndFetch, type Task } from '@a2amesh/runtime';
 import type { RegisteredAgent } from '../storage/IAgentStorage.js';
+import type { RegistryDistributedPollingLeaseStore } from '../storage/RedisStorage.js';
 import { createRegistryOutboundPolicy } from './outboundPolicy.js';
 import type { RegistryServerContext } from './types.js';
 import {
@@ -27,6 +28,7 @@ export function createRegistryPolling(
 ): RegistryPollingController {
   let pingInterval: NodeJS.Timeout | null = null;
   let taskPollInterval: NodeJS.Timeout | null = null;
+  const leaseOwnerId = context.options.pollingLeaseOwnerId ?? `registry-${process.pid}`;
 
   const isHealthCheckDue = (agent: RegisteredAgent): boolean =>
     (context.nextHealthCheckAt.get(agent.id) ?? 0) <= Date.now();
@@ -175,17 +177,50 @@ export function createRegistryPolling(
     }
   };
 
+
+  async function withPollingLease(
+    scope: string,
+    intervalMs: number,
+    operation: () => Promise<void>,
+  ): Promise<void> {
+    if (context.options.distributedPollingLeases !== true) {
+      await operation();
+      return;
+    }
+
+    const leaseStore = resolvePollingLeaseStore(context.store);
+    if (!leaseStore) {
+      logger.warn('Distributed registry polling requested without a lease-capable store', { scope });
+      return;
+    }
+
+    const ttlMs = context.options.pollingLeaseTtlMs ?? Math.max(intervalMs * 2, 10_000);
+    const acquired = await leaseStore.acquirePollingLease(scope, leaseOwnerId, ttlMs);
+    if (!acquired) {
+      logger.debug('Skipping registry polling because another instance holds the lease', { scope });
+      return;
+    }
+
+    try {
+      await operation();
+    } finally {
+      await leaseStore.releasePollingLease(scope, leaseOwnerId);
+    }
+  }
+
   return {
     executeHealthChecks,
     startHealthChecks(): void {
       pingInterval = setInterval(async () => {
         try {
-          const result = await context.store.list({
-            cursor: context.state.healthCursor ?? undefined,
-            limit: context.options.healthCheckBatchSize ?? 50,
+          await withPollingLease('health', context.options.healthPollingIntervalMs ?? 30_000, async () => {
+            const result = await context.store.list({
+              cursor: context.state.healthCursor ?? undefined,
+              limit: context.options.healthCheckBatchSize ?? 50,
+            });
+            context.state.healthCursor = result.nextCursor;
+            await executeHealthChecks(result.items.filter((agent) => isHealthCheckDue(agent)));
           });
-          context.state.healthCursor = result.nextCursor;
-          await executeHealthChecks(result.items.filter((agent) => isHealthCheckDue(agent)));
         } catch (error) {
           logger.error('Failed to run health checks', { error: String(error) });
         }
@@ -197,7 +232,7 @@ export function createRegistryPolling(
     startTaskPolling(): void {
       const intervalMs = context.options.taskPollingIntervalMs ?? 5_000;
       taskPollInterval = setInterval(() => {
-        void refreshTaskSnapshots().catch((error: unknown) => {
+        void withPollingLease('task-snapshots', intervalMs, refreshTaskSnapshots).catch((error: unknown) => {
           logger.warn('Failed to refresh registry task snapshots', {
             error: String(error),
           });
@@ -219,6 +254,19 @@ export function createRegistryPolling(
     isTaskPollDue,
     scheduleNextTaskPoll,
   };
+}
+
+function resolvePollingLeaseStore(store: unknown): RegistryDistributedPollingLeaseStore | null {
+  if (
+    typeof store === 'object' &&
+    store !== null &&
+    typeof (store as Partial<RegistryDistributedPollingLeaseStore>).acquirePollingLease === 'function' &&
+    typeof (store as Partial<RegistryDistributedPollingLeaseStore>).releasePollingLease === 'function'
+  ) {
+    return store as RegistryDistributedPollingLeaseStore;
+  }
+
+  return null;
 }
 
 function buildAgentUrl(baseUrl: string, path: string): string {
