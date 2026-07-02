@@ -92,7 +92,12 @@ function initializeSqliteTaskStorage(db: SqliteDatabase): void {
       config_json TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_tasks_context_id ON tasks(context_id);
+    CREATE TABLE IF NOT EXISTS storage_schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS idx_tasks_context_id_id ON tasks(context_id, id);
   `);
+  db.prepare(
+    'INSERT OR IGNORE INTO storage_schema_migrations (version, applied_at) VALUES (?, ?)',
+  ).run(1, new Date().toISOString());
 }
 
 function insertTaskIntoSqlite(db: SqliteDatabase, task: Task): Task {
