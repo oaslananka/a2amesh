@@ -8,8 +8,15 @@ import type {
   RateLimitConfig,
   RateLimitStore,
   Task,
+  VerificationKey,
 } from '@a2amesh/runtime';
 import type { IAgentStorage } from '../storage/IAgentStorage.js';
+
+export interface RegistryTenantTrustPolicy {
+  requireSignedAgentCards?: boolean;
+  trustedAgentCardKeys?: VerificationKey[];
+  allowPublicAgents?: boolean;
+}
 
 export interface RegistryServerOptions {
   storage?: IAgentStorage;
@@ -37,6 +44,9 @@ export interface RegistryServerOptions {
   distributedPollingLeases?: boolean;
   pollingLeaseOwnerId?: string;
   pollingLeaseTtlMs?: number;
+  requireSignedAgentCards?: boolean;
+  trustedAgentCardKeys?: VerificationKey[];
+  tenantTrustPolicies?: Record<string, RegistryTenantTrustPolicy>;
   rateLimit?: Partial<RateLimitConfig>;
   rateLimitStore?: RateLimitStore;
 }

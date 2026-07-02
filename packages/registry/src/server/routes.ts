@@ -3,15 +3,17 @@ import type { Express, Request, Response } from 'express';
 import {
   logger,
   normalizeAgentCard,
+  verifyAgentCard,
   REGISTRY_EXPORT_SCHEMA_ID,
   RegistryExportDocumentSchema,
   validateUrl,
   type AgentCard,
   type RegistryExportDocument,
   type RequestContext,
+  type VerificationKey,
 } from '@a2amesh/runtime';
 import type { AgentListQuery, AgentListResult } from '../storage/indexing.js';
-import type { RegisteredAgent } from '../storage/IAgentStorage.js';
+import type { AgentCardVerificationMetadata, RegisteredAgent } from '../storage/IAgentStorage.js';
 import type { RegistryAuthController } from './auth.js';
 import type { RegistryMetricsController } from './metrics.js';
 import { createRegistryOutboundPolicy } from './outboundPolicy.js';
@@ -105,8 +107,22 @@ export function registerRegistryRoutes(
 
     const authTenantId = requestContext.tenantId;
     const finalTenantId = authTenantId ?? tenantId;
+    if (!isPublicAgentAllowed(finalTenantId, isPublic, context)) {
+      writeRegistryProblem(res, 'forbidden', { detail: 'Public agent registration is disabled for this tenant' });
+      return;
+    }
+
+    const normalizedCard = normalizeAgentCard(agentCard);
+    const verification = await verifyRegistryAgentCard(normalizedCard, finalTenantId, context);
+    if (verification.state === 'rejected') {
+      writeRegistryProblem(res, 'forbidden', {
+        detail: verification.failureReason ?? 'Signed Agent Card verification failed',
+      });
+      return;
+    }
+
     const registered = await context.store.upsert(
-      toRegisteredAgent(agentUrl, normalizeAgentCard(agentCard), finalTenantId, isPublic),
+      toRegisteredAgent(agentUrl, normalizedCard, finalTenantId, isPublic, verification),
     );
     context.state.metrics.registrations += 1;
     emitRegistryEvent(context, { type: 'registered', agent: registered });
@@ -384,11 +400,23 @@ async function importRegistryDocument(
   for (const agent of document.agents) {
     const existingById = await context.store.get(agent.id);
     const existing = existingById ?? agentsByUrl.get(agent.url) ?? null;
-    const importedAgent = normalizeImportedAgent(
+    if (!isPublicAgentAllowed(requestContext.tenantId ?? agent.tenantId, agent.isPublic, context)) {
+      result.skipped += 1;
+      continue;
+    }
+
+    const importedAgent = await normalizeImportedAgent(
       agent,
       existing?.id ?? agent.id,
       requestContext.tenantId,
+      context,
+      existing?.verification,
     );
+
+    if (importedAgent.verification?.state === 'rejected') {
+      result.skipped += 1;
+      continue;
+    }
 
     if (!existing) {
       await context.store.upsert(importedAgent);
@@ -412,13 +440,16 @@ async function importRegistryDocument(
   return result;
 }
 
-function normalizeImportedAgent(
+async function normalizeImportedAgent(
   agent: RegistryExportDocument['agents'][number],
   id: string,
   requestTenantId: string | undefined,
-): RegisteredAgent {
+  context: RegistryServerContext,
+  existingVerification?: AgentCardVerificationMetadata,
+): Promise<RegisteredAgent> {
   const card = normalizeAgentCard(agent.card as AgentCard);
   const tenantId = requestTenantId ?? agent.tenantId;
+  const verification = agent.verification ?? existingVerification ?? (await verifyRegistryAgentCard(card, tenantId, context));
 
   return {
     id,
@@ -435,6 +466,7 @@ function normalizeImportedAgent(
     ...(agent.lastSuccessAt ? { lastSuccessAt: agent.lastSuccessAt } : {}),
     ...(tenantId ? { tenantId } : {}),
     ...(typeof agent.isPublic === 'boolean' ? { isPublic: agent.isPublic } : {}),
+    ...(verification ? { verification } : {}),
   };
 }
 
@@ -470,6 +502,7 @@ function toRegisteredAgent(
   card: AgentCard,
   tenantId?: string,
   isPublic?: boolean,
+  verification?: AgentCardVerificationMetadata,
 ): RegisteredAgent {
   return {
     id: randomUUID(),
@@ -481,7 +514,85 @@ function toRegisteredAgent(
     registeredAt: new Date().toISOString(),
     ...(tenantId ? { tenantId } : {}),
     ...(typeof isPublic === 'boolean' ? { isPublic } : {}),
+    ...(verification ? { verification } : {}),
   };
+}
+
+async function verifyRegistryAgentCard(
+  card: AgentCard,
+  tenantId: string | undefined,
+  context: RegistryServerContext,
+): Promise<AgentCardVerificationMetadata> {
+  const policy = tenantId ? context.options.tenantTrustPolicies?.[tenantId] : undefined;
+  const required = policy?.requireSignedAgentCards ?? context.options.requireSignedAgentCards ?? false;
+  const trustedKeys = [...(context.options.trustedAgentCardKeys ?? []), ...(policy?.trustedAgentCardKeys ?? [])];
+  const verifiedAt = new Date().toISOString();
+
+  if ((card.signatures?.length ?? 0) === 0) {
+    return {
+      required,
+      valid: false,
+      state: required ? 'rejected' : 'unverified',
+      verifiedAt,
+      ...(tenantId ? { tenantId } : {}),
+      failureReason: required ? 'Agent Card signature is required' : 'Agent Card is unsigned',
+    };
+  }
+
+  if (trustedKeys.length === 0) {
+    return {
+      required,
+      valid: false,
+      state: required ? 'rejected' : 'unverified',
+      verifiedAt,
+      ...(tenantId ? { tenantId } : {}),
+      failureReason: required ? 'No trusted Agent Card verification keys configured' : 'No trusted verification key matched',
+    };
+  }
+
+  const verification = await verifyAgentCard(card, dedupeVerificationKeys(trustedKeys));
+  if (!verification.valid) {
+    return {
+      required,
+      valid: false,
+      state: required ? 'rejected' : 'unverified',
+      verifiedAt,
+      ...(tenantId ? { tenantId } : {}),
+      failureReason: 'Agent Card signature could not be verified',
+    };
+  }
+
+  return {
+    required,
+    valid: true,
+    state: 'trusted',
+    verifiedAt,
+    ...(verification.verifiedKeyId ? { keyId: verification.verifiedKeyId } : {}),
+    ...(tenantId ? { tenantId } : {}),
+  };
+}
+
+function isPublicAgentAllowed(
+  tenantId: string | undefined,
+  isPublic: boolean | undefined,
+  context: RegistryServerContext,
+): boolean {
+  if (isPublic !== true || !tenantId) {
+    return true;
+  }
+
+  return context.options.tenantTrustPolicies?.[tenantId]?.allowPublicAgents !== false;
+}
+
+function dedupeVerificationKeys(keys: VerificationKey[]): VerificationKey[] {
+  const seen = new Set<string>();
+  return keys.filter((key) => {
+    if (seen.has(key.keyId)) {
+      return false;
+    }
+    seen.add(key.keyId);
+    return true;
+  });
 }
 
 async function validateAgentUrl(

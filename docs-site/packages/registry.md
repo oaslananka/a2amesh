@@ -76,3 +76,44 @@ Lease behavior:
 - Successful checks reset `consecutiveFailures` and update `lastSuccessAt`.
 - Task polling skips malformed payloads and non-array responses rather than poisoning the registry projection.
 - Redis clients used in production should support `SET ... NX PX`, set commands, and transactions. Without those capabilities, deployments should run a single registry poller or keep `distributedPollingLeases` disabled.
+
+## Tenant Trust and Signed Agent Cards
+
+Registry deployments can require signed Agent Cards globally or per tenant.
+
+Recommended production options:
+
+```typescript
+new RegistryServer({
+  registrationToken: process.env.A2AMESH_REGISTRY_TOKEN,
+  requireSignedAgentCards: true,
+  trustedAgentCardKeys: [globalVerificationKey],
+  tenantTrustPolicies: {
+    'tenant-a': {
+      requireSignedAgentCards: true,
+      trustedAgentCardKeys: [tenantAVerificationKey],
+      allowPublicAgents: false,
+    },
+  },
+});
+```
+
+Trust behavior:
+
+- unsigned Agent Cards are stored as `unverified` unless the global or tenant policy requires signatures;
+- required unsigned or invalid signed cards are rejected during registration;
+- tenant-specific verification keys are combined with global keys and deduplicated by `keyId`;
+- public registration can be disabled per tenant with `allowPublicAgents: false`;
+- import skips agents that fail the active tenant trust policy rather than poisoning the registry.
+
+Stored `verification` metadata includes:
+
+- whether a signature was required;
+- whether verification succeeded;
+- trust state: `trusted`, `unverified`, or `rejected`;
+- verified key ID when available;
+- tenant ID when scoped;
+- verification timestamp;
+- failure reason for unverified or rejected cards.
+
+This metadata is included in registry exports so downstream control planes can preserve trust evidence.

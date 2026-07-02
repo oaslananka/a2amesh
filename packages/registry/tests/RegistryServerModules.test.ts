@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import type { Server } from 'node:http';
 import express, { type Express } from 'express';
@@ -7,8 +8,11 @@ import {
   attachRequestContext,
   createAnonymousRequestContext,
   InMemoryRateLimitStore,
+  signAgentCard,
   type AgentCard,
+  type SigningKey,
   type Task,
+  type VerificationKey,
 } from '@a2amesh/runtime';
 import { registerRegistryRoutes } from '../src/server/routes.js';
 import { createRegistryAuth } from '../src/server/auth.js';
@@ -23,6 +27,22 @@ import {
 import { createRegistryTaskProjection } from '../src/server/taskProjection.js';
 import { InMemoryStorage } from '../src/storage/InMemoryStorage.js';
 import type { RegisteredAgent } from '../src/storage/IAgentStorage.js';
+
+
+function createEs256KeyPair(keyId = 'registry-agent-key') {
+  const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  return {
+    signingKey: {
+      keyId,
+      algorithm: 'ES256' as const,
+      privateKeyPem: privateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
+    } satisfies SigningKey,
+    verificationKey: {
+      keyId,
+      publicKeyPem: publicKey.export({ format: 'pem', type: 'spki' }).toString(),
+    } satisfies VerificationKey,
+  };
+}
 
 function createAgentCard(name: string): AgentCard {
   return {
@@ -488,5 +508,138 @@ describe('Registry distributed polling lease scheduling', () => {
     } finally {
       await close(server);
     }
+  });
+});
+
+
+describe('Registry tenant trust and signed Agent Card handling', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('stores trusted verification metadata for tenant-scoped signed Agent Cards', async () => {
+    const { signingKey, verificationKey } = createEs256KeyPair('tenant-a-key');
+    const signedCard = await signAgentCard(createAgentCard('Signed Tenant Agent'), signingKey);
+    const { app } = createRouteHarness({
+      allowLocalhost: true,
+      registrationToken: 'token',
+      requireSignedAgentCards: true,
+      trustedAgentCardKeys: [verificationKey],
+    });
+
+    const registered = await request(app)
+      .post('/agents/register')
+      .set('Authorization', 'Bearer token')
+      .set('x-tenant-id', 'tenant-a')
+      .send({
+        agentUrl: 'http://localhost:3030',
+        agentCard: signedCard,
+      })
+      .expect(201);
+
+    expect(registered.body).toMatchObject({
+      tenantId: 'tenant-a',
+      verification: {
+        required: true,
+        valid: true,
+        state: 'trusted',
+        keyId: 'tenant-a-key',
+        tenantId: 'tenant-a',
+      },
+    });
+    expect(registered.body.verification.verifiedAt).toEqual(expect.any(String));
+  });
+
+  it('rejects unsigned Agent Cards when tenant trust requires signatures', async () => {
+    const { app } = createRouteHarness({
+      allowLocalhost: true,
+      registrationToken: 'token',
+      tenantTrustPolicies: {
+        'tenant-secure': {
+          requireSignedAgentCards: true,
+          trustedAgentCardKeys: [],
+        },
+      },
+    });
+
+    const response = await request(app)
+      .post('/agents/register')
+      .set('Authorization', 'Bearer token')
+      .set('x-tenant-id', 'tenant-secure')
+      .send({
+        agentUrl: 'http://localhost:3031',
+        agentCard: createAgentCard('Unsigned Tenant Agent'),
+      })
+      .expect(403);
+
+    expect(response.body.detail).toContain('signature is required');
+  });
+
+  it('blocks public registration when the tenant trust lifecycle disallows it', async () => {
+    const { app } = createRouteHarness({
+      allowLocalhost: true,
+      registrationToken: 'token',
+      tenantTrustPolicies: {
+        'tenant-private': {
+          allowPublicAgents: false,
+        },
+      },
+    });
+
+    await request(app)
+      .post('/agents/register')
+      .set('Authorization', 'Bearer token')
+      .set('x-tenant-id', 'tenant-private')
+      .send({
+        agentUrl: 'http://localhost:3032',
+        agentCard: createAgentCard('Public Denied Agent'),
+        isPublic: true,
+      })
+      .expect(403);
+  });
+
+  it('skips imported Agent Cards that fail required tenant verification', async () => {
+    const { app } = createRouteHarness({
+      allowLocalhost: true,
+      registrationToken: 'token',
+      tenantTrustPolicies: {
+        'tenant-import': {
+          requireSignedAgentCards: true,
+          trustedAgentCardKeys: [],
+        },
+      },
+    });
+
+    const imported = await request(app)
+      .post('/admin/agents/import')
+      .set('Authorization', 'Bearer token')
+      .set('x-tenant-id', 'tenant-import')
+      .send({
+        $schema: 'https://oaslananka.github.io/a2amesh/schemas/registry-export.schema.json',
+        schemaVersion: '1',
+        exportedAt: '2026-04-06T10:00:00.000Z',
+        agents: [
+          {
+            id: 'import-unsigned',
+            url: 'http://localhost:3033',
+            card: createAgentCard('Import Unsigned Agent'),
+            status: 'unknown',
+            tags: ['research'],
+            skills: ['Research'],
+            registeredAt: '2026-04-06T10:00:00.000Z',
+            tenantId: 'tenant-import',
+          },
+        ],
+        metadata: { source: 'a2amesh-registry', agentCount: 1, tenants: ['tenant-import'], publicAgents: 0 },
+      })
+      .expect(200);
+
+    expect(imported.body).toMatchObject({ imported: 0, updated: 0, skipped: 1, total: 1 });
+    const listed = await request(app)
+      .get('/agents')
+      .set('Authorization', 'Bearer token')
+      .set('x-tenant-id', 'tenant-import')
+      .expect(200);
+    expect(listed.body).toEqual([]);
   });
 });

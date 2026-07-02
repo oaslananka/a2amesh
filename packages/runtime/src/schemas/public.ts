@@ -295,6 +295,17 @@ export const JsonRpcEnvelopeSchema = z.union([JsonRpcRequestSchema, JsonRpcRespo
 
 export const RegistryAgentStatusSchema = z.enum(['healthy', 'unhealthy', 'unknown']);
 
+
+export const AgentCardVerificationMetadataSchema = z.object({
+  required: z.boolean(),
+  valid: z.boolean(),
+  state: z.enum(['trusted', 'unverified', 'rejected']),
+  verifiedAt: IsoDateTimeSchema,
+  keyId: z.string().optional(),
+  tenantId: z.string().optional(),
+  failureReason: z.string().optional(),
+});
+
 export const RegisteredAgentSchema = z.object({
   id: z.string(),
   url: z.string().url(),
@@ -308,6 +319,7 @@ export const RegisteredAgentSchema = z.object({
   lastSuccessAt: IsoDateTimeSchema.optional(),
   tenantId: z.string().optional(),
   isPublic: z.boolean().optional(),
+  verification: AgentCardVerificationMetadataSchema.optional(),
 });
 
 export const REGISTRY_EXPORT_SCHEMA_ID =
