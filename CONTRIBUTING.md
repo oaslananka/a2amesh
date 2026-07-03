@@ -10,6 +10,30 @@ Thanks for helping improve A2A Mesh.
 4. Run `pnpm run ui:install:browsers` once per machine before the full UI smoke path.
 5. Run `pnpm run verify` before opening a PR.
 
+## Legal authority and Developer Certificate of Origin
+
+By contributing non-trivial code, documentation, tests, examples, workflows, or other project assets, contributors certify that they have the legal right to submit the contribution under the project license. A2A Mesh uses the [Developer Certificate of Origin 1.1](https://developercertificate.org/) as the lightweight legal mechanism for this assertion.
+
+Every non-trivial commit SHOULD include a DCO sign-off line:
+
+```text
+Signed-off-by: Your Name <your.email@example.com>
+```
+
+The usual way to add this line is:
+
+```bash
+git commit -s
+```
+
+PowerShell:
+
+```powershell
+git commit -s
+```
+
+Pull requests that contain non-trivial contributions may be asked to add or repair sign-offs before merge.
+
 ## Pull requests
 
 1. Open PRs against `main` on the public collaboration surface in use.
@@ -18,6 +42,16 @@ Thanks for helping improve A2A Mesh.
 4. Add or update docs when user-facing behavior changes.
 5. Use Conventional Commit messages so release-please can derive versions.
 6. Keep PRs focused and release-note friendly.
+
+## Coding standards and tests
+
+Contributions must follow the repository coding standards, commit conventions, and test policy:
+
+- [Coding standards](./docs/development/coding-standards.md)
+- [Testing policy](./docs/development/testing-policy.md)
+- [Commit conventions](./docs/development/commit-conventions.md)
+
+Major new behavior must include automated tests unless the PR explains why tests are not applicable. User-facing behavior changes must update documentation.
 
 ## CI and releases
 
