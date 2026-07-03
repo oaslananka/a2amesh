@@ -23,7 +23,6 @@ defaults:
 
 env:
   NODE_VERSION: '24.16.0'
-  NPM_VERSION: '11.15.0'
 
 jobs:
   publish:
@@ -108,10 +107,8 @@ jobs:
 
       - run: pnpm run lint:identity
 
-      - name: Install pinned npm
-        run: |
-          npm install -g "npm@${NPM_VERSION}"
-          echo "npm version: $(npm --version)"
+      - name: Report npm version
+        run: npm --version
 
       - run: pnpm run build
       - run: pnpm run typecheck
