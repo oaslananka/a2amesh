@@ -97,6 +97,24 @@ The provenance statement must resolve to:
 
 If npm provenance is absent, the release is not acceptable for the supported supply-chain path. Do not add token-based fallback publishing. Fix Trusted Publishing configuration and publish a new version.
 
+## Verify the GitHub build attestation
+
+`publish.yml` also generates a GitHub Artifact Attestation (`actions/attest-build-provenance`) for
+each published tarball, independent of and in addition to npm provenance. Verify it against the
+downloaded tarball with the GitHub CLI:
+
+```bash
+PACKAGE=@a2amesh/runtime
+VERSION=0.2.0-alpha.1
+npm pack "$PACKAGE@$VERSION" --pack-destination /tmp/a2amesh-verify
+gh attestation verify /tmp/a2amesh-verify/*.tgz --owner oaslananka
+```
+
+A successful verification confirms the tarball was built by the `publish.yml` workflow in
+`oaslananka/a2amesh` from a specific, signed commit, using Sigstore transparency-log-backed
+signatures rather than a self-reported claim. Record the attestation's `predicateType` and the
+workflow run URL it resolves to alongside the npm provenance summary.
+
 ## Verify the SBOM
 
 The publish workflow emits a CycloneDX SBOM for the release artifact set. Validate it before attaching or consuming it:
@@ -132,5 +150,7 @@ For each release, keep these verification records with the GitHub Release or the
 - Tarball SHA-256 checksums and npm `dist.integrity` values.
 - SBOM artifact name and checksum.
 - npm provenance summary for every public package.
+- `gh attestation verify` output (predicate type and resolved workflow run) for every published
+  tarball.
 
 This evidence is also the input for the project trust and bestpractice.dev documentation work.

@@ -56,6 +56,13 @@ workflow that produced the published tarball — it cannot be computed offline o
 an actual publish. This repository's policy is "do not publish npm packages" during this pass, so no
 provenance statement exists yet for `0.2.0-alpha.1` or the upcoming `0.3.0-alpha.1`.
 
+Separately, `publish.yml` also runs `actions/attest-build-provenance` to create a GitHub Artifact
+Attestation for each tarball (verifiable with `gh attestation verify <tarball> --owner oaslananka`,
+see [Package Verification](../release/package-verification.md#verify-the-github-build-attestation)).
+Like npm provenance, this attestation only exists once `publish.yml` actually runs — it is a Sigstore
+transparency-log entry tied to a real workflow run, not something that can be produced or predicted
+offline.
+
 **Manual/CI follow-up required for a real release:**
 
 1. Merge to `main`, let `release-please` cut the `0.3.0-alpha.1` release PR, merge it (version bump
