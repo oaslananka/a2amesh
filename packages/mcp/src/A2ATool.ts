@@ -1,5 +1,16 @@
-import { A2AClient, createAuthenticatingFetchWithRetry, type Task } from '@a2amesh/runtime';
+import {
+  A2AClient,
+  createAuthenticatingFetchWithRetry,
+  validateUrl,
+  type Task,
+} from '@a2amesh/runtime';
 import type { CallToolResult, Tool } from '@modelcontextprotocol/sdk/types.js';
+import {
+  createMcpBridgeAuditEvent,
+  emitMcpBridgeAudit,
+  evaluateMcpBridgeAuthorization,
+  type McpBridgeSecurityPolicy,
+} from './McpBridgeSecurity.js';
 
 export interface A2AMcpToolConfig {
   /** The URL of the A2A Agent */
@@ -12,6 +23,34 @@ export interface A2AMcpToolConfig {
   token?: string;
   /** Optional ID for resuming sessions */
   sessionId?: string;
+  /** Required execution boundary. Calls without it fail closed. */
+  security?: McpBridgeSecurityPolicy;
+}
+
+function toolError(reasonCode: string): CallToolResult {
+  return {
+    content: [{ type: 'text', text: `MCP bridge denied: ${reasonCode}` }],
+    isError: true,
+  };
+}
+
+function validateToolArguments(
+  args: unknown,
+  maxMessageLength: number,
+): args is { message: string; contextId?: string } {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return false;
+  const record = args as Record<string, unknown>;
+  if (Object.keys(record).some((key) => key !== 'message' && key !== 'contextId')) return false;
+  if (typeof record['message'] !== 'string') return false;
+  if (!record['message'].trim() || record['message'].length > maxMessageLength) return false;
+  return (
+    record['contextId'] === undefined ||
+    (typeof record['contextId'] === 'string' && record['contextId'].length <= 256)
+  );
+}
+
+function requestUrl(input: string | URL | Request): string | URL {
+  return input instanceof Request ? input.url : input;
 }
 
 /**
@@ -46,14 +85,74 @@ export async function handleA2AMcpToolCall(
   config: A2AMcpToolConfig,
   args: { message: string; contextId?: string },
 ): Promise<CallToolResult> {
+  const security = config.security;
+  if (!security) return toolError('mcp-security-policy-required');
+  const tool = createMcpToolFromAgent(config);
+  if (!validateToolArguments(args, security.maxMessageLength ?? 32_768)) {
+    const event = createMcpBridgeAuditEvent({
+      tool,
+      input: args,
+      policy: security,
+      phase: 'authorization',
+      decision: 'block',
+      outcome: 'denied',
+      reasonCode: 'mcp-invalid-tool-arguments',
+      evidencePointers: ['tool.arguments'],
+    });
+    await emitMcpBridgeAudit(security, event);
+    return toolError(event.reasonCode);
+  }
+
+  const authorization = evaluateMcpBridgeAuthorization(tool, args, security);
+  await emitMcpBridgeAudit(
+    security,
+    createMcpBridgeAuditEvent({
+      tool,
+      input: args,
+      policy: security,
+      phase: 'authorization',
+      decision: authorization.decision,
+      outcome: authorization.decision === 'allow' ? 'allowed' : 'denied',
+      reasonCode: authorization.reasonCode,
+      evidencePointers: authorization.evidencePointers,
+    }),
+  );
+  if (authorization.decision === 'block') return toolError(authorization.reasonCode);
+
   try {
+    await validateUrl(config.agentUrl, security.outboundPolicy);
+  } catch {
+    await emitMcpBridgeAudit(
+      security,
+      createMcpBridgeAuditEvent({
+        tool,
+        input: args,
+        policy: security,
+        phase: 'execution',
+        decision: 'block',
+        outcome: 'denied',
+        reasonCode: 'mcp-outbound-policy-denied',
+        evidencePointers: ['agentUrl', 'security.outboundPolicy'],
+      }),
+    );
+    return toolError('mcp-outbound-policy-denied');
+  }
+
+  try {
+    const policyFetch = async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ): Promise<Response> => {
+      const safeUrl = await validateUrl(requestUrl(input), security.outboundPolicy);
+      return globalThis.fetch(safeUrl, { ...init, redirect: 'error' });
+    };
     const fetcher = config.token
-      ? createAuthenticatingFetchWithRetry(globalThis.fetch.bind(globalThis), {
+      ? createAuthenticatingFetchWithRetry(policyFetch, {
           async headers() {
             return { Authorization: `Bearer ${config.token}` };
           },
         })
-      : globalThis.fetch.bind(globalThis);
+      : policyFetch;
 
     const client = new A2AClient(config.agentUrl, { fetchImplementation: fetcher });
 
@@ -81,7 +180,7 @@ export async function handleA2AMcpToolCall(
       finalOutput = `Task generated no artifacts. Final state: ${task.status.state}`;
     }
 
-    return {
+    const result: CallToolResult = {
       content: [
         {
           type: 'text',
@@ -90,15 +189,32 @@ export async function handleA2AMcpToolCall(
       ],
       isError: task.status.state === 'FAILED',
     };
-  } catch (error: unknown) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `A2A Agent Error: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ],
-      isError: true,
-    };
+    await emitMcpBridgeAudit(
+      security,
+      createMcpBridgeAuditEvent({
+        tool,
+        input: args,
+        policy: security,
+        phase: 'execution',
+        decision: 'allow',
+        outcome: result.isError ? 'failed' : 'succeeded',
+        reasonCode: result.isError ? 'mcp-a2a-task-failed' : 'mcp-a2a-call-succeeded',
+      }),
+    );
+    return result;
+  } catch {
+    await emitMcpBridgeAudit(
+      security,
+      createMcpBridgeAuditEvent({
+        tool,
+        input: args,
+        policy: security,
+        phase: 'execution',
+        decision: 'allow',
+        outcome: 'failed',
+        reasonCode: 'mcp-a2a-call-failed',
+      }),
+    );
+    return toolError('mcp-a2a-call-failed');
   }
 }
