@@ -21,6 +21,7 @@ class FakeTransactionalDatabase {
   readonly executedSql: string[] = [];
   readonly tasks = new Map<string, StoredTaskRow>();
   readonly pushNotifications = new Map<string, string>();
+  readonly migrations = new Map<number, string>();
   closeCount = 0;
   private transactionSnapshot: Map<string, StoredTaskRow> | undefined;
   private pushNotificationSnapshot: Map<string, string> | undefined;
@@ -71,6 +72,15 @@ class FakeTransactionalDatabase {
   }
 
   run(sql: string, params: unknown[]): { changes: number } {
+    if (sql.startsWith('INSERT OR IGNORE INTO storage_schema_migrations')) {
+      const version = Number(params[0]);
+      if (!this.migrations.has(version)) {
+        this.migrations.set(version, String(params[1]));
+        return { changes: 1 };
+      }
+      return { changes: 0 };
+    }
+
     if (sql.startsWith('INSERT INTO tasks')) {
       this.tasks.set(String(params[0]), {
         contextId: typeof params[1] === 'string' ? params[1] : null,
