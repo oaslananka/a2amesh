@@ -64,18 +64,19 @@ jobs:
         with:
           ref: ${{ steps.release_pr.outputs.branch }}
           persist-credentials: false
-      - name: Sync generated CLI files with release version
+      - name: Sync generated CLI files and compatibility docs with release version
         if: steps.release.outputs.prs_created == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           (cd packages/cli && node ../../scripts/build-tsc-package.mjs --generated-only)
-          if ! git diff --quiet -- packages/cli/src/generated; then
+          node scripts/sync-compatibility-docs.mjs
+          if ! git diff --quiet -- packages/cli/src/generated docs/compatibility.md; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add packages/cli/src/generated
-            git commit -m "chore: sync generated CLI files with release version"
+            git add packages/cli/src/generated docs/compatibility.md
+            git commit -m "chore: sync generated CLI files and compatibility docs with release version"
             git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" \
               "HEAD:${{ steps.release_pr.outputs.branch }}"
           fi
