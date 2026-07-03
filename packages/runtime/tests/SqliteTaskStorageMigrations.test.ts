@@ -4,15 +4,16 @@ import {
   getSqliteSchemaVersion,
   initializeSqliteTaskStorage,
   SQLITE_TASK_STORAGE_SCHEMA_VERSION,
+  type SqliteDatabase,
 } from '../src/storage/SqliteTaskStorageMigrations.js';
 import { SqliteTaskStorage } from '../src/storage/SqliteTaskStorage.js';
 
 describe('initializeSqliteTaskStorage', () => {
   it('applies all migrations using its own default clock when no now() is supplied', () => {
-    const db = new DatabaseSync(':memory:');
+    const db = new DatabaseSync(':memory:') as unknown as SqliteDatabase;
     initializeSqliteTaskStorage(db);
     expect(getSqliteSchemaVersion(db)).toBe(SQLITE_TASK_STORAGE_SCHEMA_VERSION);
-    db.close();
+    db.close?.();
   });
 
   it('rejects a busyTimeoutMs outside the supported range', () => {
