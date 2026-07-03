@@ -51,3 +51,27 @@ jobs:
           include-component-in-tag: true
           skip-github-release: true
           skip-labeling: true
+      - name: Determine release pull request branch
+        id: release_pr
+        if: steps.release.outputs.prs_created == 'true'
+        env:
+          PR_JSON: ${{ steps.release.outputs.pr }}
+        run: |
+          echo "branch=$(node -e "process.stdout.write(JSON.parse(process.env.PR_JSON).headBranchName)")" >> "$GITHUB_OUTPUT"
+      - name: Checkout release pull request branch
+        if: steps.release.outputs.prs_created == 'true'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: ${{ steps.release_pr.outputs.branch }}
+      - name: Sync generated CLI files with release version
+        if: steps.release.outputs.prs_created == 'true'
+        run: |
+          set -euo pipefail
+          (cd packages/cli && node ../../scripts/build-tsc-package.mjs --generated-only)
+          if ! git diff --quiet -- packages/cli/src/generated; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add packages/cli/src/generated
+            git commit -m "chore: sync generated CLI files with release version"
+            git push origin "HEAD:${{ steps.release_pr.outputs.branch }}"
+          fi

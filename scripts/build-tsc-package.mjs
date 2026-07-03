@@ -108,7 +108,9 @@ function generateCliGeneratedModules() {
 }
 
 generateCliGeneratedModules();
-rmSync('dist', { recursive: true, force: true });
-execFileSync(process.execPath, [require.resolve('typescript/bin/tsc'), '-b', '--force'], {
-  stdio: 'inherit',
-});
+if (!process.argv.includes('--generated-only')) {
+  rmSync('dist', { recursive: true, force: true });
+  execFileSync(process.execPath, [require.resolve('typescript/bin/tsc'), '-b', '--force'], {
+    stdio: 'inherit',
+  });
+}
