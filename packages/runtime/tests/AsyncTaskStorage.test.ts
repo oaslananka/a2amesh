@@ -72,7 +72,7 @@ class FakeTransactionalDatabase {
   }
 
   run(sql: string, params: unknown[]): { changes: number } {
-    if (sql.startsWith('INSERT OR IGNORE INTO storage_schema_migrations')) {
+    if (sql.startsWith('INSERT INTO storage_schema_migrations')) {
       const version = Number(params[0]);
       if (!this.migrations.has(version)) {
         this.migrations.set(version, String(params[1]));
@@ -114,8 +114,12 @@ class FakeTransactionalDatabase {
       return { changes: this.tasks.delete(String(params[0])) ? 1 : 0 };
     }
 
+    if (sql.startsWith('INSERT INTO task_audit_journal')) {
+      return { changes: 1 };
+    }
+
     if (sql.startsWith('UPDATE tasks')) {
-      const id = String(params[2]);
+      const id = String(params[params.length - 1]);
       if (!this.tasks.has(id)) {
         return { changes: 0 };
       }
@@ -130,7 +134,10 @@ class FakeTransactionalDatabase {
   }
 
   get(sql: string, params: unknown[]): unknown {
-    if (sql.startsWith('SELECT task_json FROM tasks WHERE id')) {
+    if (
+      sql.startsWith('SELECT task_json FROM tasks WHERE id') ||
+      sql.startsWith('SELECT task_json, status FROM tasks WHERE id')
+    ) {
       const row = this.tasks.get(String(params[0]));
       return row ? ({ task_json: row.taskJson } satisfies FakeTaskJsonRow) : undefined;
     }
@@ -142,6 +149,13 @@ class FakeTransactionalDatabase {
 
     if (sql.startsWith('SELECT COUNT(*) AS count FROM tasks')) {
       return { count: this.tasks.size };
+    }
+
+    if (
+      sql.startsWith('SELECT COALESCE(MAX(version), 0) AS version FROM storage_schema_migrations')
+    ) {
+      const versions = [...this.migrations.keys()];
+      return { version: versions.length > 0 ? Math.max(...versions) : 0 };
     }
 
     throw new Error(`Unexpected SQL get: ${sql}`);
@@ -159,6 +173,10 @@ class FakeTransactionalDatabase {
       return [...this.tasks.values()].map(
         (row) => ({ task_json: row.taskJson }) satisfies FakeTaskJsonRow,
       );
+    }
+
+    if (sql.startsWith('PRAGMA table_info')) {
+      return [];
     }
 
     throw new Error(`Unexpected SQL all: ${sql}`);

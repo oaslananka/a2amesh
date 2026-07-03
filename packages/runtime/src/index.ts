@@ -15,6 +15,7 @@ export * from './storage/ITaskStorage.js';
 export * from './storage/AsyncTaskStorage.js';
 export * from './storage/InMemoryTaskStorage.js';
 export * from './storage/SqliteTaskStorage.js';
+export * from './storage/TaskStorageContracts.js';
 export * from './client/A2AClient.js';
 export * from './client/AgentRegistryClient.js';
 export * from './client/interceptors.js';

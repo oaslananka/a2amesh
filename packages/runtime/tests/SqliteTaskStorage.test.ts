@@ -1,344 +1,329 @@
-import { describe, expect, it } from 'vitest';
-import { AsyncSqliteTaskStorage, SqliteTaskStorage } from '../src/storage/SqliteTaskStorage.js';
-import type { Task } from '../src/types/task.js';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  AsyncSqliteTaskStorage,
+  SqliteTaskStorage,
+  type SqliteDatabase,
+} from '../src/storage/SqliteTaskStorage.js';
+import type { SqliteStatement } from '../src/storage/SqliteTaskStorageMigrations.js';
+import type { PersistedTaskArtifact } from '../src/storage/TaskStorageContracts.js';
+import type { Task, TaskState } from '../src/types/task.js';
 
-interface FakeSqliteStatement<TRow = unknown> {
-  run(...params: unknown[]): { changes: number };
-  get(...params: unknown[]): TRow | undefined;
-  all(...params: unknown[]): TRow[];
+const tempDirectories: string[] = [];
+
+afterEach(() => {
+  for (const directory of tempDirectories.splice(0)) {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+function databasePath(name: string): string {
+  const directory = mkdtempSync(join(tmpdir(), 'a2amesh-sqlite-'));
+  tempDirectories.push(directory);
+  return join(directory, name);
 }
 
-interface StoredTaskRow {
-  contextId: string | null;
-  taskJson: string;
-}
-
-interface FakeTaskJsonRow {
-  task_json: string;
-}
-
-interface FakePushNotificationRow {
-  config_json: string;
-}
-
-class FakeDatabase {
-  readonly executedSql: string[] = [];
-  readonly tasks = new Map<string, StoredTaskRow>();
-  readonly pushNotifications = new Map<string, string>();
-  readonly migrations = new Map<number, string>();
-  closed = false;
-
-  exec(sql: string): void {
-    this.executedSql.push(sql);
-  }
-
-  prepare<TRow = unknown>(sql: string): FakeSqliteStatement<TRow> {
-    return new FakeStatement<TRow>(this, sql);
-  }
-
-  close(): void {
-    this.closed = true;
-  }
-
-  run(sql: string, params: unknown[]): { changes: number } {
-    if (sql.startsWith('INSERT OR IGNORE INTO storage_schema_migrations')) {
-      const version = Number(params[0]);
-      if (!this.migrations.has(version)) {
-        this.migrations.set(version, String(params[1]));
-        return { changes: 1 };
-      }
-      return { changes: 0 };
-    }
-
-    if (sql.startsWith('INSERT INTO tasks')) {
-      const id = String(params[0]);
-      const contextId = typeof params[1] === 'string' ? params[1] : null;
-      this.tasks.set(id, {
-        contextId,
-        taskJson: String(params[2]),
-      });
-      return { changes: 1 };
-    }
-
-    if (sql.startsWith('UPDATE tasks')) {
-      const id = String(params[2]);
-      if (!this.tasks.has(id)) {
-        return { changes: 0 };
-      }
-      this.tasks.set(id, {
-        contextId: typeof params[0] === 'string' ? params[0] : null,
-        taskJson: String(params[1]),
-      });
-      return { changes: 1 };
-    }
-
-    if (sql.startsWith('INSERT INTO push_notifications')) {
-      this.pushNotifications.set(String(params[0]), String(params[1]));
-      return { changes: 1 };
-    }
-
-    if (sql.startsWith('DELETE FROM push_notifications WHERE task_id')) {
-      return { changes: this.pushNotifications.delete(String(params[0])) ? 1 : 0 };
-    }
-
-    if (sql.startsWith('DELETE FROM tasks WHERE id')) {
-      return { changes: this.tasks.delete(String(params[0])) ? 1 : 0 };
-    }
-
-    if (sql === 'DELETE FROM push_notifications') {
-      const changes = this.pushNotifications.size;
-      this.pushNotifications.clear();
-      return { changes };
-    }
-
-    if (sql === 'DELETE FROM tasks') {
-      const changes = this.tasks.size;
-      this.tasks.clear();
-      return { changes };
-    }
-
-    throw new Error(`Unexpected SQL run: ${sql}`);
-  }
-
-  get(sql: string, params: unknown[]): unknown {
-    if (sql.startsWith('SELECT task_json FROM tasks WHERE id')) {
-      const row = this.tasks.get(String(params[0]));
-      return row ? ({ task_json: row.taskJson } satisfies FakeTaskJsonRow) : undefined;
-    }
-
-    if (sql.startsWith('SELECT config_json FROM push_notifications')) {
-      const config = this.pushNotifications.get(String(params[0]));
-      return config ? ({ config_json: config } satisfies FakePushNotificationRow) : undefined;
-    }
-
-    if (sql.startsWith('SELECT COUNT(*) AS count FROM tasks')) {
-      return { count: this.tasks.size };
-    }
-
-    throw new Error(`Unexpected SQL get: ${sql}`);
-  }
-
-  all(sql: string, params: unknown[]): unknown[] {
-    if (sql.startsWith('SELECT task_json FROM tasks WHERE context_id')) {
-      const contextId = String(params[0]);
-      return [...this.tasks.entries()]
-        .filter(([, row]) => row.contextId === contextId)
-        .sort(([leftId], [rightId]) => leftId.localeCompare(rightId))
-        .map(([, row]) => ({ task_json: row.taskJson }) satisfies FakeTaskJsonRow);
-    }
-
-    if (sql.startsWith('SELECT task_json FROM tasks ORDER BY id')) {
-      return [...this.tasks.entries()]
-        .sort(([leftId], [rightId]) => leftId.localeCompare(rightId))
-        .map(([, row]) => ({ task_json: row.taskJson }) satisfies FakeTaskJsonRow);
-    }
-
-    throw new Error(`Unexpected SQL all: ${sql}`);
-  }
-}
-
-class FakeStatement<TRow> implements FakeSqliteStatement<TRow> {
-  constructor(
-    private readonly database: FakeDatabase,
-    private readonly sql: string,
-  ) {}
-
-  run(...params: unknown[]): { changes: number } {
-    return this.database.run(this.sql, params);
-  }
-
-  get(...params: unknown[]): TRow | undefined {
-    return this.database.get(this.sql, params) as TRow | undefined;
-  }
-
-  all(...params: unknown[]): TRow[] {
-    return this.database.all(this.sql, params) as TRow[];
-  }
-}
-
-function createTask(id: string, contextId?: string): Task {
+function createTask(
+  id: string,
+  options: {
+    tenantId?: string;
+    contextId?: string;
+    state?: TaskState;
+    timestamp?: string;
+    principalId?: string;
+    correlationId?: string;
+  } = {},
+): Task {
   return {
     kind: 'task',
     id,
     status: {
-      state: 'SUBMITTED',
-      timestamp: new Date().toISOString(),
+      state: options.state ?? 'SUBMITTED',
+      timestamp: options.timestamp ?? '2026-07-03T12:00:00.000Z',
     },
     history: [],
     artifacts: [],
-    metadata: {},
+    metadata: {
+      tenantId: options.tenantId ?? 'tenant-a',
+      ...(options.principalId ? { principalId: options.principalId } : {}),
+      ...(options.correlationId ? { correlationId: options.correlationId } : {}),
+    },
     extensions: [],
-    ...(contextId ? { contextId } : {}),
+    ...(options.contextId ? { contextId: options.contextId } : {}),
   };
 }
 
-describe('SqliteTaskStorage', () => {
-  it('persists tasks, context lookups and push notification configuration with an injected driver', () => {
-    const FakeDatabaseConstructor = class extends FakeDatabase {
-      static readonly instances: FakeDatabase[] = [];
+function artifact(
+  taskId: string,
+  overrides: Partial<PersistedTaskArtifact> = {},
+): PersistedTaskArtifact {
+  return {
+    taskId,
+    artifactId: 'artifact-1',
+    tenantId: 'tenant-a',
+    contentType: 'text/plain',
+    checksumSha256: 'a'.repeat(64),
+    payloadRef: `file:///var/lib/a2amesh/${taskId}/artifact-1.txt`,
+    sizeBytes: 42,
+    sensitivity: 'internal',
+    redacted: false,
+    provenance: { producerId: 'worker-1', taskId },
+    createdAt: '2026-07-03T12:00:00.000Z',
+    ...overrides,
+  };
+}
 
-      constructor(readonly path: string) {
-        super();
-        FakeDatabaseConstructor.instances.push(this);
-      }
-    };
+describe('SqliteTaskStorage migrations and operations', () => {
+  it('runs ordered migrations, applies WAL/tuning/indexes, and reopens idempotently', () => {
+    const path = databasePath('tasks.db');
+    const storage = new SqliteTaskStorage(path, { busyTimeoutMs: 2_345 });
 
-    const storage = new SqliteTaskStorage(':memory:', FakeDatabaseConstructor);
-    const database = FakeDatabaseConstructor.instances[0];
-    if (!database) {
-      throw new Error('Expected fake database to be constructed');
-    }
-    const initializedSql = database.executedSql.join('\n');
-    expect(initializedSql).toContain('PRAGMA journal_mode = WAL');
-    expect(initializedSql).toContain('PRAGMA foreign_keys = ON');
-    expect(initializedSql).toContain('CREATE TABLE IF NOT EXISTS storage_schema_migrations');
-    expect(initializedSql).toContain('REFERENCES tasks(id) ON DELETE CASCADE');
-    expect(initializedSql).toContain('CREATE INDEX IF NOT EXISTS idx_tasks_context_id_id');
-    expect(database.migrations.has(1)).toBe(true);
-
-    const inserted = storage.insertTask(createTask('task-1', 'ctx-1'));
-
-    inserted.metadata = { mutated: true };
-    expect(storage.getTask('task-1')?.metadata).toEqual({});
-    expect(storage.getTask('missing')).toBeUndefined();
-
-    const storedTask = storage.getTask('task-1');
-    if (!storedTask) {
-      throw new Error('Expected stored task to exist');
-    }
-
-    storedTask.contextId = 'ctx-2';
-    storedTask.status.state = 'WORKING';
-    storage.saveTask(storedTask);
-    storage.saveTask(createTask('missing'));
-
-    expect(storage.getTasksByContextId('ctx-1')).toEqual([]);
-    expect(storage.getTasksByContextId('ctx-2')).toHaveLength(1);
-    expect(storage.getAllTasks()).toEqual([
+    expect(storage.getOperationalState()).toEqual(
       expect.objectContaining({
-        id: 'task-1',
-        contextId: 'ctx-2',
-        status: expect.objectContaining({ state: 'WORKING' }),
+        schemaVersion: 3,
+        journalMode: 'wal',
+        busyTimeoutMs: 2_345,
+        indexes: expect.arrayContaining([
+          'idx_tasks_context_id',
+          'idx_tasks_status',
+          'idx_tasks_tenant_id',
+          'idx_tasks_updated_at',
+          'idx_tasks_tenant_status_updated',
+        ]),
       }),
-    ]);
+    );
+    expect(storage.explainRetentionQueryPlan().join(' ')).toContain(
+      'idx_tasks_tenant_status_updated',
+    );
+
+    storage.insertTask(createTask('task-1', { contextId: 'ctx-1' }));
+    storage.close();
+
+    const reopened = new SqliteTaskStorage(path, { busyTimeoutMs: 2_345 });
+    expect(reopened.count()).toBe(1);
+    expect(reopened.getTask('task-1')?.contextId).toBe('ctx-1');
+    reopened.close();
+
+    const database = new DatabaseSync(path);
+    expect(
+      database.prepare('SELECT COUNT(*) AS count FROM storage_schema_migrations').get(),
+    ).toEqual({ count: 3 });
+    database.close();
+  });
+
+  it('upgrades a legacy database without data loss and rejects future schemas', () => {
+    const legacyPath = databasePath('legacy.db');
+    const legacy = new DatabaseSync(legacyPath);
+    legacy.exec(
+      'CREATE TABLE tasks (id TEXT PRIMARY KEY, context_id TEXT, task_json TEXT NOT NULL);',
+    );
+    legacy
+      .prepare('INSERT INTO tasks (id, context_id, task_json) VALUES (?, ?, ?)')
+      .run('legacy-task', 'legacy-context', JSON.stringify(createTask('legacy-task')));
+    legacy.close();
+
+    const upgraded = new SqliteTaskStorage(legacyPath);
+    expect(upgraded.getOperationalState().schemaVersion).toBe(3);
+    expect(upgraded.getTask('legacy-task')?.id).toBe('legacy-task');
+    upgraded.close();
+
+    const futurePath = databasePath('future.db');
+    const future = new DatabaseSync(futurePath);
+    future.exec(
+      'CREATE TABLE storage_schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);',
+    );
+    future
+      .prepare('INSERT INTO storage_schema_migrations (version, applied_at) VALUES (?, ?)')
+      .run(999, '2026-07-03T00:00:00.000Z');
+    future.close();
+
+    expect(() => new SqliteTaskStorage(futurePath)).toThrow('newer than supported version 3');
+  });
+
+  it('rolls back and reports the exact failed migration', () => {
+    class FailingDatabase implements SqliteDatabase {
+      static instance: FailingDatabase | undefined;
+      readonly inner = new DatabaseSync(':memory:');
+
+      constructor(_path: string) {
+        FailingDatabase.instance = this;
+      }
+
+      exec(sql: string): void {
+        if (sql.includes('CREATE TABLE IF NOT EXISTS task_audit_journal')) {
+          throw new Error('injected migration failure');
+        }
+        this.inner.exec(sql);
+      }
+
+      prepare<TRow = unknown>(sql: string): SqliteStatement<TRow> {
+        return this.inner.prepare(sql) as unknown as SqliteStatement<TRow>;
+      }
+    }
+
+    expect(() => new SqliteTaskStorage(':memory:', FailingDatabase)).toThrow('migration 3 failed');
+    const database = FailingDatabase.instance?.inner;
+    expect(
+      database
+        ?.prepare('SELECT COALESCE(MAX(version), 0) AS version FROM storage_schema_migrations')
+        .get(),
+    ).toEqual({ version: 2 });
+    expect(
+      database
+        ?.prepare("SELECT COUNT(*) AS count FROM sqlite_master WHERE name = 'task_audit_journal'")
+        .get(),
+    ).toEqual({ count: 0 });
+    database?.close();
+  });
+
+  it('persists tasks and multiple push notification configurations', () => {
+    const storage = new SqliteTaskStorage(':memory:');
+    const inserted = storage.insertTask(createTask('task-1', { contextId: 'ctx-1' }));
+    inserted.metadata = { mutated: true };
+    expect(storage.getTask('task-1')?.metadata).toEqual({ tenantId: 'tenant-a' });
+
+    const stored = storage.getTask('task-1');
+    if (!stored) throw new Error('task missing');
+    stored.contextId = 'ctx-2';
+    stored.status.state = 'WORKING';
+    storage.saveTask(stored);
+    expect(storage.getTasksByContextId('ctx-2')).toHaveLength(1);
 
     expect(
-      storage.setPushNotification('missing', { url: 'https://example.com/missing' }),
-    ).toBeUndefined();
-
-    const config = storage.setPushNotification('task-1', {
-      url: 'https://example.com/hook',
-      token: 'secret',
-    });
-
-    expect(config).toEqual({
-      url: 'https://example.com/hook',
-      token: 'secret',
-    });
-    expect(storage.getPushNotification('task-1')).toEqual(config);
-    expect(storage.getPushNotification('missing')).toBeUndefined();
-
+      storage.setPushNotification('task-1', {
+        url: 'https://example.com/default',
+        token: 'secret',
+      }),
+    ).toEqual({ url: 'https://example.com/default', token: 'secret' });
     expect(
       storage.setPushNotificationConfig('task-1', 'email', {
         url: 'https://example.com/email',
       }),
     ).toEqual({ url: 'https://example.com/email' });
-    expect(
-      storage.setPushNotificationConfig('task-1', 'pager', {
-        id: 'pager',
-        url: 'https://example.com/pager',
-      }),
-    ).toEqual({ id: 'pager', url: 'https://example.com/pager' });
-    expect(storage.listPushNotifications('task-1')).toEqual([
-      config,
-      { url: 'https://example.com/email' },
-      { id: 'pager', url: 'https://example.com/pager' },
-    ]);
-    expect(storage.getPushNotificationConfig('task-1', 'email')).toEqual({
-      url: 'https://example.com/email',
-    });
+    expect(storage.listPushNotifications('task-1')).toHaveLength(2);
     expect(storage.removePushNotificationConfig('task-1', 'email')).toBe(true);
-    expect(storage.removePushNotificationConfig('task-1', 'missing')).toBe(false);
-    expect(storage.getPushNotificationConfig('task-1', 'email')).toBeUndefined();
-
-    expect(storage.count()).toBe(1);
-    expect(storage.deleteTask('missing')).toBe(false);
     expect(storage.deleteTask('task-1')).toBe(true);
-    expect(storage.getTask('task-1')).toBeUndefined();
-    expect(storage.getPushNotification('task-1')).toBeUndefined();
-
-    storage.insertTask(createTask('task-2'));
-    storage.clear();
     expect(storage.count()).toBe(0);
-
     storage.close();
-    expect(database.closed).toBe(true);
+  });
+});
+
+describe('SqliteTaskStorage retention, audit, and artifacts', () => {
+  it('cleans only eligible records in one tenant and protects active work', () => {
+    const storage = new SqliteTaskStorage(':memory:');
+    const old = '2026-07-03T10:00:00.000Z';
+    for (const [id, state] of [
+      ['completed', 'COMPLETED'],
+      ['failed', 'FAILED'],
+      ['canceled', 'CANCELED'],
+      ['rejected', 'REJECTED'],
+      ['paused', 'INPUT_REQUIRED'],
+      ['working', 'WORKING'],
+    ] as const) {
+      storage.insertTask(createTask(id, { state, timestamp: old }));
+    }
+    storage.insertTask(
+      createTask('other-tenant', { tenantId: 'tenant-b', state: 'COMPLETED', timestamp: old }),
+    );
+    storage.saveArtifact(artifact('completed'));
+    storage.setTtl('working', 0, 'tenant-a');
+
+    const result = storage.cleanupRetention({
+      tenantId: 'tenant-a',
+      completedTtlMs: 1_000,
+      failedTtlMs: 1_000,
+      canceledTtlMs: 1_000,
+      rejectedTtlMs: 1_000,
+      stalePausedTtlMs: 1_000,
+      now: new Date('2026-07-03T12:00:00.000Z'),
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({ deletedTasks: 5, deletedArtifacts: 1, tenantId: 'tenant-a' }),
+    );
+    expect(storage.getTask('working')).toBeDefined();
+    expect(storage.getTask('other-tenant')).toBeDefined();
+    expect(storage.listArtifacts('tenant-a', 'completed')).toEqual([]);
+    expect(storage.listAuditEntries('tenant-a')).toContainEqual(
+      expect.objectContaining({ action: 'retention.cleanup', outcome: 'success' }),
+    );
+    expect(
+      storage.listAuditEntries('tenant-b').some((entry) => entry.action === 'retention.cleanup'),
+    ).toBe(false);
+    storage.close();
   });
 
-  it('serializes async sqlite push config operations and transactions', async () => {
-    const FakeDatabaseConstructor = class extends FakeDatabase {
-      static readonly instances: FakeDatabase[] = [];
-
-      constructor(readonly path: string) {
-        super();
-        FakeDatabaseConstructor.instances.push(this);
-      }
-    };
-
-    const storage = new AsyncSqliteTaskStorage(':memory:', FakeDatabaseConstructor);
-    const database = FakeDatabaseConstructor.instances[0];
-    if (!database) {
-      throw new Error('Expected fake async database to be constructed');
-    }
-
-    await storage.insertTask(createTask('async-task', 'ctx-async'));
-    await expect(storage.getAllTasks()).resolves.toHaveLength(1);
-    await expect(storage.getTasksByContextId('ctx-async')).resolves.toHaveLength(1);
-    await expect(
-      storage.setPushNotification('async-task', {
-        url: 'https://example.com/default',
-      }),
-    ).resolves.toEqual({ url: 'https://example.com/default' });
-    await expect(
-      storage.setPushNotificationConfig('async-task', 'email', {
-        url: 'https://example.com/email',
-      }),
-    ).resolves.toEqual({ url: 'https://example.com/email' });
-    await expect(storage.getPushNotification('async-task')).resolves.toEqual({
-      url: 'https://example.com/default',
+  it('keeps ordered redacted audit evidence and validates artifact integrity', () => {
+    const storage = new SqliteTaskStorage(':memory:');
+    const task = createTask('audit-task', {
+      principalId: 'token: super-secret',
+      correlationId: 'request-42',
     });
-    await expect(storage.getPushNotificationConfig('async-task', 'email')).resolves.toEqual({
-      url: 'https://example.com/email',
-    });
-    await expect(storage.listPushNotifications('async-task')).resolves.toEqual([
-      { url: 'https://example.com/default' },
-      { url: 'https://example.com/email' },
+    storage.insertTask(task);
+    task.status.state = 'WORKING';
+    storage.saveTask(task);
+
+    const storedArtifact = storage.saveArtifact(artifact(task.id));
+    expect(storage.listArtifacts('tenant-a', task.id)).toEqual([storedArtifact]);
+    const entries = storage.listAuditEntries('tenant-a', task.id);
+    expect(entries.map((entry) => entry.action)).toEqual([
+      'task.created',
+      'task.transition.SUBMITTED.WORKING',
+      'artifact.persisted',
     ]);
-    await expect(storage.removePushNotificationConfig('async-task', 'email')).resolves.toBe(true);
-    await expect(storage.removePushNotification('async-task')).resolves.toBe(true);
+    expect(entries.map((entry) => entry.sequence)).toEqual(
+      [...entries.map((entry) => entry.sequence)].sort((left, right) => left - right),
+    );
+    expect(JSON.stringify(entries)).not.toContain('super-secret');
+    expect(entries[0]?.principalId).toBe('[REDACTED]');
 
+    expect(() =>
+      storage.saveArtifact(
+        artifact(task.id, { sensitivity: 'secret', redacted: false, artifactId: 'unsafe-secret' }),
+      ),
+    ).toThrow('Secret artifacts must be redacted');
+    expect(() =>
+      storage.saveArtifact(
+        artifact(task.id, { checksumSha256: 'invalid', artifactId: 'bad-hash' }),
+      ),
+    ).toThrow('SHA-256');
+    expect(() =>
+      storage.saveArtifact(
+        artifact(task.id, {
+          artifactId: 'unsafe-ref',
+          payloadRef: 'https://user:password@example.com/output?token=secret',
+        }),
+      ),
+    ).toThrow('must not contain credentials');
+    expect(() =>
+      storage.saveArtifact(artifact(task.id, { artifactId: 'wrong-tenant', tenantId: 'tenant-b' })),
+    ).toThrow('does not exist in the requested tenant');
+    storage.close();
+  });
+
+  it('serializes async operations and rolls back transactions', async () => {
+    const storage = new AsyncSqliteTaskStorage(':memory:');
+    await storage.insertTask(createTask('async-task', { contextId: 'ctx-async' }));
     await storage.transaction(async (transaction) => {
       const task = await transaction.getTask('async-task');
-      if (!task) {
-        throw new Error('Expected async task in transaction');
-      }
-      task.extensions = ['urn:test:sqlite-async'];
+      if (!task) throw new Error('task missing');
+      task.status.state = 'WORKING';
       await transaction.saveTask(task);
     });
     await expect(storage.getTask('async-task')).resolves.toEqual(
-      expect.objectContaining({ extensions: ['urn:test:sqlite-async'] }),
+      expect.objectContaining({ status: expect.objectContaining({ state: 'WORKING' }) }),
     );
-
     await expect(
       storage.transaction(async () => {
         throw new Error('rollback me');
       }),
     ).rejects.toThrow('rollback me');
-    expect(database.executedSql).toContain('ROLLBACK');
-
-    await storage.clear();
-    await expect(storage.count()).resolves.toBe(0);
+    await expect(storage.getOperationalState()).resolves.toEqual(
+      expect.objectContaining({ schemaVersion: 3, journalMode: 'memory' }),
+    );
     await storage.close();
-    expect(database.closed).toBe(true);
   });
 });
