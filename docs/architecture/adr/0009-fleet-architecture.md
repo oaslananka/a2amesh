@@ -44,6 +44,18 @@ To maintain security, reliability, and clear boundaries, the following are expli
 - No provider-specific code inside `packages/runtime`.
 - No remote push, publish, issue close, PR merge, or deploy operations without explicit human approval.
 
+### Implementation note (2026-07-03)
+
+The first routing (`routeFleetTask`, `planFleetDispatchWaves`) and artifact-contract
+(`validateFleetArtifact`) implementations landed inside `packages/fleet` rather than as separate
+`packages/policy`/`packages/artifacts` packages, to avoid adding new workspace packages (release
+config, tsconfig references, package registry parity checks, etc.) before there is enough surface
+area to justify the split. `packages/worker-runtime` gained its first two `WorkerRuntimeContract`
+implementations (`MockWorkerRuntimeAdapter`, `LocalCliWorkerRuntimeAdapter`) in the same pass. This
+does not change the package boundary decision above — extracting `packages/policy` and
+`packages/artifacts` remains available once routing/policy or artifact-contract code grows large or
+independent enough to warrant its own release cadence.
+
 ## Consequences
 
 By keeping the core provider-neutral, we ensure the longevity and stability of the A2A protocol implementation. The Fleet packages can iterate quickly on orchestration, policy, and artifact management without risking the integrity of the core layer.

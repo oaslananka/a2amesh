@@ -41,6 +41,7 @@ export default defineConfig({
         {
           text: 'Fleet',
           items: [
+            { text: 'Quickstart', link: '/fleet/quickstart' },
             { text: 'Roadmap', link: '/fleet/roadmap' },
             { text: 'Control Plane', link: '/fleet/control-plane' },
             { text: 'Policy, Sandbox, and Artifacts', link: '/fleet/policy-sandbox-artifacts' },

@@ -114,7 +114,9 @@ describe('A2A to MCP Tool Bridge', () => {
     },
   ])('denies $name before network access', async ({ policy, reason }) => {
     const audit: McpBridgeAuditEvent[] = [];
-    policy.audit = (event) => audit.push(event);
+    policy.audit = (event) => {
+      audit.push(event);
+    };
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     const result = await handleA2AMcpToolCall(
@@ -141,7 +143,9 @@ describe('A2A to MCP Tool Bridge', () => {
     const audit: McpBridgeAuditEvent[] = [];
     const security = bridgeSecurity({
       maxMessageLength: 8,
-      audit: (event) => audit.push(event),
+      audit: (event) => {
+        audit.push(event);
+      },
     });
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
@@ -180,7 +184,11 @@ describe('A2A to MCP Tool Bridge', () => {
       ),
     );
     const audit: McpBridgeAuditEvent[] = [];
-    const security = bridgeSecurity({ audit: (event) => audit.push(event) });
+    const security = bridgeSecurity({
+      audit: (event) => {
+        audit.push(event);
+      },
+    });
 
     const result = await handleA2AMcpToolCall(
       {
