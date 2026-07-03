@@ -82,17 +82,30 @@ function serializePushNotificationConfigs(configs: Map<string, PushNotificationC
 
 function initializeSqliteTaskStorage(db: SqliteDatabase): void {
   db.exec(`
+    PRAGMA journal_mode = WAL;
+    PRAGMA synchronous = NORMAL;
+    PRAGMA foreign_keys = ON;
+    PRAGMA busy_timeout = 5000;
+
+    CREATE TABLE IF NOT EXISTS storage_schema_migrations (
+      version INTEGER PRIMARY KEY,
+      applied_at TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS tasks (
       id TEXT PRIMARY KEY,
       context_id TEXT,
       task_json TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS push_notifications (
-      task_id TEXT PRIMARY KEY,
+      task_id TEXT PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
       config_json TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_tasks_context_id ON tasks(context_id);
+    CREATE INDEX IF NOT EXISTS idx_tasks_context_id_id ON tasks(context_id, id);
   `);
+  db.prepare(
+    'INSERT OR IGNORE INTO storage_schema_migrations (version, applied_at) VALUES (?, ?)',
+  ).run(SQLITE_TASK_STORAGE_SCHEMA_VERSION, new Date().toISOString());
 }
 
 function insertTaskIntoSqlite(db: SqliteDatabase, task: Task): Task {
@@ -457,6 +470,7 @@ function getSqliteChanges(result: unknown): number {
   return 0;
 }
 
+const SQLITE_TASK_STORAGE_SCHEMA_VERSION = 1;
 const DEFAULT_PUSH_NOTIFICATION_CONFIG_ID = 'default';
 
 function pushNotificationConfigId(config: PushNotificationConfig): string {

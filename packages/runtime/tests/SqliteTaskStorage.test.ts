@@ -25,6 +25,7 @@ class FakeDatabase {
   readonly executedSql: string[] = [];
   readonly tasks = new Map<string, StoredTaskRow>();
   readonly pushNotifications = new Map<string, string>();
+  readonly migrations = new Map<number, string>();
   closed = false;
 
   exec(sql: string): void {
@@ -40,6 +41,15 @@ class FakeDatabase {
   }
 
   run(sql: string, params: unknown[]): { changes: number } {
+    if (sql.startsWith('INSERT OR IGNORE INTO storage_schema_migrations')) {
+      const version = Number(params[0]);
+      if (!this.migrations.has(version)) {
+        this.migrations.set(version, String(params[1]));
+        return { changes: 1 };
+      }
+      return { changes: 0 };
+    }
+
     if (sql.startsWith('INSERT INTO tasks')) {
       const id = String(params[0]);
       const contextId = typeof params[1] === 'string' ? params[1] : null;
@@ -178,7 +188,13 @@ describe('SqliteTaskStorage', () => {
     if (!database) {
       throw new Error('Expected fake database to be constructed');
     }
-    expect(database.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS tasks');
+    const initializedSql = database.executedSql.join('\n');
+    expect(initializedSql).toContain('PRAGMA journal_mode = WAL');
+    expect(initializedSql).toContain('PRAGMA foreign_keys = ON');
+    expect(initializedSql).toContain('CREATE TABLE IF NOT EXISTS storage_schema_migrations');
+    expect(initializedSql).toContain('REFERENCES tasks(id) ON DELETE CASCADE');
+    expect(initializedSql).toContain('CREATE INDEX IF NOT EXISTS idx_tasks_context_id_id');
+    expect(database.migrations.has(1)).toBe(true);
 
     const inserted = storage.insertTask(createTask('task-1', 'ctx-1'));
 
