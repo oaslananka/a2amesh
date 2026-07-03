@@ -201,15 +201,28 @@ describe('SqliteTaskStorage migrations and operations', () => {
         token: 'secret',
       }),
     ).toEqual({ url: 'https://example.com/default', token: 'secret' });
+    expect(storage.getPushNotification('task-1')).toEqual({
+      url: 'https://example.com/default',
+      token: 'secret',
+    });
     expect(
       storage.setPushNotificationConfig('task-1', 'email', {
         url: 'https://example.com/email',
       }),
     ).toEqual({ url: 'https://example.com/email' });
+    expect(storage.getPushNotificationConfig('task-1', 'email')).toEqual({
+      url: 'https://example.com/email',
+    });
     expect(storage.listPushNotifications('task-1')).toHaveLength(2);
     expect(storage.removePushNotificationConfig('task-1', 'email')).toBe(true);
+    expect(storage.removePushNotification('task-1')).toBe(true);
+    expect(storage.getAllTasks()).toHaveLength(1);
     expect(storage.deleteTask('task-1')).toBe(true);
     expect(storage.count()).toBe(0);
+
+    storage.insertTask(createTask('task-2'));
+    storage.clear();
+    expect(storage.getAllTasks()).toEqual([]);
     storage.close();
   });
 });
@@ -330,6 +343,54 @@ describe('SqliteTaskStorage retention, audit, and artifacts', () => {
         journalMode: 'memory',
       }),
     );
+    await storage.close();
+  });
+
+  it('exercises the async push-notification-config, TTL, audit, and artifact surface', async () => {
+    const storage = new AsyncSqliteTaskStorage(':memory:');
+    await storage.insertTask(createTask('async-task-2'));
+
+    await expect(
+      storage.setPushNotificationConfig('async-task-2', 'email', {
+        url: 'https://example.com/email',
+      }),
+    ).resolves.toEqual({ url: 'https://example.com/email' });
+    await expect(storage.getPushNotificationConfig('async-task-2', 'email')).resolves.toEqual({
+      url: 'https://example.com/email',
+    });
+    await expect(storage.listPushNotifications('async-task-2')).resolves.toHaveLength(1);
+    await expect(storage.removePushNotificationConfig('async-task-2', 'email')).resolves.toBe(true);
+
+    await storage.setTtl('async-task-2', 0);
+    const cleanup = await storage.cleanupRetention({
+      tenantId: 'tenant-a',
+      completedTtlMs: 0,
+      now: new Date('2100-01-01T00:00:00.000Z'),
+    });
+    expect(cleanup.tenantId).toBe('tenant-a');
+
+    await storage.insertTask(createTask('async-task-3'));
+    const auditEntry = await storage.appendAuditEntry({
+      taskId: 'async-task-3',
+      tenantId: 'tenant-a',
+      action: 'custom.audit.event',
+      outcome: 'success',
+    });
+    expect(auditEntry.action).toBe('custom.audit.event');
+    await expect(storage.listAuditEntries('tenant-a', 'async-task-3')).resolves.toContainEqual(
+      expect.objectContaining({ action: 'custom.audit.event' }),
+    );
+
+    const savedArtifact = await storage.saveArtifact(artifact('async-task-3'));
+    expect(savedArtifact.taskId).toBe('async-task-3');
+    await expect(storage.listArtifacts('tenant-a', 'async-task-3')).resolves.toEqual([
+      savedArtifact,
+    ]);
+
+    await expect(storage.explainRetentionQueryPlan()).resolves.toEqual(
+      expect.arrayContaining([expect.any(String)]),
+    );
+
     await storage.close();
   });
 });
