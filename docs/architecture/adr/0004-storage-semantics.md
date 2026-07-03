@@ -41,6 +41,16 @@ public visibility, status, skill, tag, transport, and MCP compatibility queries.
 Storage backends may add persistence or indexing optimizations, but they must keep public
 contract behavior stable and let runtime or registry managers enforce policy.
 
+`SqliteTaskStorage`/`AsyncSqliteTaskStorage` additionally provide production-hardening
+surfaces that are specific to that backend rather than part of the generic `ITaskStorage`/
+`AsyncTaskStorage` contracts: versioned schema migrations (`storage_schema_migrations`),
+WAL journaling with a configurable busy timeout, production indexes for tenant/status/time
+lookups, TTL-based retention cleanup (`cleanupRetention`), an append-only, redacted audit
+journal (`appendAuditEntry`/`listAuditEntries`), and a validated artifact persistence
+contract (`saveArtifact`/`listArtifacts`, see `TaskStorageContracts.ts`). These are additive
+capabilities a caller opts into; they do not change task lifecycle semantics enforced by
+`taskLifecycle.ts`. See [`docs/packages/runtime.md`](../../packages/runtime.md) for details.
+
 ## Consequences
 
 Runtime storage changes can be tested through the task manager and storage contract

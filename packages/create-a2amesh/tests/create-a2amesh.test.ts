@@ -15,6 +15,7 @@ const runtimeVersions = JSON.parse(
 const execFileAsync = promisify(execFile);
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const createBinary = resolve(repoRoot, 'packages/create-a2amesh/bin/create-a2amesh.js');
+const nodeCommand = 'node';
 const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
 type ScaffoldAdapter =
@@ -70,14 +71,11 @@ const templates: TemplateExpectation[] = [
 
 async function execIn(
   cwd: string,
-  command: string,
+  command: typeof nodeCommand | typeof pnpmCommand,
   args: string[],
 ): Promise<{ stdout: string; stderr: string }> {
-  const file = process.platform === 'win32' && command === pnpmCommand ? 'cmd.exe' : command;
-  const commandArgs =
-    process.platform === 'win32' && command === pnpmCommand
-      ? ['/d', '/s', '/c', command, ...args]
-      : args;
+  const file = command === 'pnpm.cmd' ? 'cmd.exe' : command;
+  const commandArgs = command === 'pnpm.cmd' ? ['/d', '/s', '/c', command, ...args] : [...args];
   try {
     return await execFileAsync(file, commandArgs, {
       cwd,
@@ -193,7 +191,7 @@ describe('create-a2amesh binary scaffolds typechecked templates', () => {
     const localPackageOverrides = await packLocalPackageOverrides(tempDir);
 
     for (const template of templates) {
-      await execIn(tempDir, process.execPath, [
+      await execIn(tempDir, nodeCommand, [
         createBinary,
         template.name,
         '--adapter',

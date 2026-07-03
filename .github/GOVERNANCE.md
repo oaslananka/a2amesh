@@ -6,6 +6,8 @@
 - **Contributor**: Anyone with a merged pull request.
 - **Adapter Champion**: Responsible for the quality and roadmap of a specific adapter.
 
+See [Vulnerability Reporting and Mandatory Review Policy](../docs/governance/vulnerability-reporting-and-review-policy.md) for the status of independent-maintainer recruitment ahead of enabling mandatory PR reviews.
+
 ## Decision Making
 
 Significant changes such as breaking API changes, new packages or architectural shifts should be proposed as an RFC in GitHub Discussions under Ideas.

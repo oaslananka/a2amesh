@@ -1,9 +1,10 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Command } from 'commander';
 import { emitResult, type RootOptionsProvider } from '../io.js';
 import { getLocalReleaseGates, type LocalReleaseGate } from '../release-gates.js';
 import { CLI_VERSION } from '../version.js';
+import { findWorkspaceRoot } from '../workspace.js';
 import { applyCommandDoc, type CliCommandDoc } from './doc-metadata.js';
 
 export const doctorCommandDoc = {
@@ -40,17 +41,6 @@ interface DoctorReport {
   packageManager: string | undefined;
   checks: DoctorCheck[];
   releaseGates?: readonly LocalReleaseGate[];
-}
-
-function findWorkspaceRoot(start: string): string | undefined {
-  let dir = resolve(start);
-  for (let i = 0; i < 20; i++) {
-    if (existsSync(resolve(dir, 'pnpm-workspace.yaml'))) return dir;
-    const parent = resolve(dir, '..');
-    if (parent === dir) return undefined;
-    dir = parent;
-  }
-  return undefined;
 }
 
 function readPackageManager(workspaceRoot: string | undefined): string | undefined {

@@ -62,6 +62,20 @@ export async function runExample(): Promise<McpBridgeExampleResult> {
         agentUrl,
         name: 'Research Agent',
         description: 'Answers local smoke-test prompts.',
+        security: {
+          requestId: 'mcp-example',
+          tenantId: 'example-tenant',
+          expectedTenantId: 'example-tenant',
+          authContext: {
+            subject: 'example-operator',
+            audience: 'urn:mcp:a2a-bridge',
+            scopes: ['mcp:tools'],
+          },
+          audiencePolicy: { expectedAudience: 'urn:mcp:a2a-bridge' },
+          requiredScopes: ['mcp:tools'],
+          consent: { decision: 'approved', approvalId: 'example-approval' },
+          outboundPolicy: { allowLocalhost: true },
+        },
       },
       { message: 'summarize bridge mapping' },
     );

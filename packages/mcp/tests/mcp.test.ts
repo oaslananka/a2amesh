@@ -1,7 +1,29 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { createMcpToolFromAgent, handleA2AMcpToolCall } from '../src/A2ATool.js';
+import type { McpBridgeAuditEvent, McpBridgeSecurityPolicy } from '../src/McpBridgeSecurity.js';
 import { createA2ASkillFromMcpTool } from '../src/McpToolSkill.js';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+
+function bridgeSecurity(overrides: Partial<McpBridgeSecurityPolicy> = {}): McpBridgeSecurityPolicy {
+  return {
+    requestId: 'req-bridge-1',
+    tenantId: 'tenant-a',
+    expectedTenantId: 'tenant-a',
+    authContext: {
+      subject: 'user-sensitive-123',
+      subjectClass: 'human-user',
+      audience: 'urn:mcp:a2a-bridge',
+      clientId: 'mesh-client',
+      scopes: ['mcp:tools'],
+      tokenSource: 'authorization-header',
+    },
+    audiencePolicy: { expectedAudience: 'urn:mcp:a2a-bridge' },
+    requiredScopes: ['mcp:tools'],
+    consent: { decision: 'approved', approvalId: 'approval-1' },
+    outboundPolicy: { allowLocalhost: true },
+    ...overrides,
+  };
+}
 
 describe('A2A to MCP Tool Bridge', () => {
   afterEach(() => {
@@ -37,7 +59,12 @@ describe('A2A to MCP Tool Bridge', () => {
     );
 
     const result = await handleA2AMcpToolCall(
-      { agentUrl: 'http://localhost:3001', name: 'Researcher', description: 'test' },
+      {
+        agentUrl: 'http://localhost:3001',
+        name: 'Researcher',
+        description: 'test',
+        security: bridgeSecurity(),
+      },
       { message: 'What is A2A?' },
     );
     const firstContent = result.content[0];
@@ -49,6 +76,136 @@ describe('A2A to MCP Tool Bridge', () => {
       throw new Error('Expected a text content item');
     }
     expect(firstContent.text).toBe('This is the research data.');
+  });
+
+  it('fails closed when the execution policy is missing', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    const result = await handleA2AMcpToolCall(
+      { agentUrl: 'https://agent.example.com', name: 'Researcher', description: 'test' },
+      { message: 'hello' },
+    );
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result)).toContain('mcp-security-policy-required');
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: 'tenant mismatch',
+      policy: bridgeSecurity({ expectedTenantId: 'tenant-b' }),
+      reason: 'mcp-tenant-mismatch',
+    },
+    {
+      name: 'missing principal',
+      policy: bridgeSecurity({ authContext: { audience: 'urn:mcp:a2a-bridge' } }),
+      reason: 'mcp-principal-missing',
+    },
+    {
+      name: 'missing scope',
+      policy: bridgeSecurity({ requiredScopes: ['mcp:admin'] }),
+      reason: 'mcp-scope-missing',
+    },
+    {
+      name: 'denied consent',
+      policy: bridgeSecurity({ consent: { decision: 'denied' } }),
+      reason: 'mcp-consent-denied',
+    },
+  ])('denies $name before network access', async ({ policy, reason }) => {
+    const audit: McpBridgeAuditEvent[] = [];
+    policy.audit = (event) => {
+      audit.push(event);
+    };
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    const result = await handleA2AMcpToolCall(
+      {
+        agentUrl: 'https://agent.example.com',
+        name: 'Researcher',
+        description: 'test',
+        security: policy,
+      },
+      { message: 'secret-message-value' },
+    );
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result)).toContain(reason);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(audit).toContainEqual(
+      expect.objectContaining({ phase: 'authorization', outcome: 'denied', reasonCode: reason }),
+    );
+    expect(JSON.stringify(audit)).not.toContain('secret-message-value');
+    expect(JSON.stringify(audit)).not.toContain('user-sensitive-123');
+  });
+
+  it('rejects unknown and oversized arguments as untrusted input', async () => {
+    const audit: McpBridgeAuditEvent[] = [];
+    const security = bridgeSecurity({
+      maxMessageLength: 8,
+      audit: (event) => {
+        audit.push(event);
+      },
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    const result = await handleA2AMcpToolCall(
+      { agentUrl: 'https://agent.example.com', name: 'Researcher', description: 'test', security },
+      { message: 'too-long-message', command: 'rm -rf /' } as never,
+    );
+
+    expect(JSON.stringify(result)).toContain('mcp-invalid-tool-arguments');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(JSON.stringify(audit)).not.toContain('rm -rf');
+  });
+
+  it('blocks localhost and private network targets unless explicitly allowed', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const security = bridgeSecurity({ outboundPolicy: {} });
+
+    const result = await handleA2AMcpToolCall(
+      { agentUrl: 'http://127.0.0.1:3001', name: 'Researcher', description: 'test', security },
+      { message: 'hello' },
+    );
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result)).toContain('mcp-outbound-policy-denied');
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('emits redacted success evidence without tokens or message values', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          id: null,
+          result: { id: 'task-2', status: { state: 'COMPLETED' }, artifacts: [] },
+        }),
+      ),
+    );
+    const audit: McpBridgeAuditEvent[] = [];
+    const security = bridgeSecurity({
+      audit: (event) => {
+        audit.push(event);
+      },
+    });
+
+    const result = await handleA2AMcpToolCall(
+      {
+        agentUrl: 'http://localhost:3001',
+        name: 'Researcher',
+        description: 'test',
+        token: 'top-secret-token',
+        security,
+      },
+      { message: 'private-prompt-value' },
+    );
+
+    expect(result.isError).toBe(false);
+    expect(audit.map((event) => event.outcome)).toEqual(['allowed', 'succeeded']);
+    expect(JSON.stringify(audit)).not.toContain('private-prompt-value');
+    expect(JSON.stringify(audit)).not.toContain('top-secret-token');
+    expect(audit.every((event) => /^[a-f0-9]{64}$/.test(event.inputHash))).toBe(true);
   });
 });
 

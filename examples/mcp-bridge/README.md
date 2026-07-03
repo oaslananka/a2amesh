@@ -1,6 +1,6 @@
 # MCP Bridge Example
 
-This example maps an A2A agent into an MCP tool definition and maps an MCP tool back into an A2A skill. The smoke test uses a local fetch mock, so no MCP server or remote agent is required.
+This example maps an A2A agent into an MCP tool definition and maps an MCP tool back into an A2A skill. It supplies the required tenant, authorization, consent, and outbound policy. The smoke test uses a local fetch mock, so no MCP server or remote agent is required.
 
 ## Run
 

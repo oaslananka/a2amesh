@@ -1,9 +1,9 @@
 import { execFileSync, type ExecFileSyncOptions } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Command } from 'commander';
 import { emitResult, writeError, type RootOptionsProvider } from '../io.js';
 import { getLocalReleaseGates, type LocalReleaseGate } from '../release-gates.js';
+import { findWorkspaceRoot } from '../workspace.js';
 import { applyCommandDoc, type CliCommandDoc } from './doc-metadata.js';
 
 export const releaseCheckCommandDoc = {
@@ -175,17 +175,6 @@ function actionableFailures(checks: readonly CheckResult[]): ActionableFailure[]
     }));
 }
 
-function findWorkspaceRoot(start: string): string | undefined {
-  let dir = resolve(start);
-  for (let i = 0; i < 20; i++) {
-    if (existsSync(resolve(dir, 'pnpm-workspace.yaml'))) return dir;
-    const parent = resolve(dir, '..');
-    if (parent === dir) return undefined;
-    dir = parent;
-  }
-  return undefined;
-}
-
 export function createGitWorktreeCheckFromStatus(output: string, duration = 0): CheckResult {
   const trimmed = output.trim();
   if (trimmed.length > 0) {
@@ -223,23 +212,17 @@ export function createReleaseCheckReport(checks: CheckResult[]): ReleaseCheckRep
   };
 }
 
+type ReleaseCheckExecutable = 'node' | 'pnpm' | 'pnpm.cmd';
+
 function runCheck(
   name: string,
-  command: string,
+  command: ReleaseCheckExecutable,
   args: readonly string[],
   options: ExecFileSyncOptions,
 ): CheckResult {
   const start = performance.now();
-  const file =
-    process.platform === 'win32' && command.toLowerCase().endsWith('.cmd') ? 'cmd.exe' : command;
-  // Quote the .cmd path so cmd.exe /c treats it as a single token even if
-  // the absolute path contains spaces.  execFileSync already avoids a
-  // shell, but /c still concatenates the remaining arguments into one
-  // command line string.
-  const commandArgs =
-    process.platform === 'win32' && command.toLowerCase().endsWith('.cmd')
-      ? ['/d', '/s', '/c', `"${command}"`, ...args]
-      : args;
+  const file = command === 'pnpm.cmd' ? 'cmd.exe' : command;
+  const commandArgs = command === 'pnpm.cmd' ? ['/d', '/s', '/c', command, ...args] : [...args];
   try {
     execFileSync(file, commandArgs, { ...options, stdio: 'pipe', timeout: 120_000 });
     return annotateCheck({
@@ -260,14 +243,10 @@ function runCheck(
 }
 
 function runNodeScript(name: string, script: string, cwd: string): CheckResult {
-  return runCheck(name, process.execPath, [script], { cwd });
+  return runCheck(name, 'node', [script], { cwd });
 }
 
 function runPnpm(name: string, args: readonly string[], cwd: string): CheckResult {
-  const pnpmExecPath = process.env['npm_execpath'];
-  if (pnpmExecPath) {
-    return runCheck(name, process.execPath, [pnpmExecPath, ...args], { cwd });
-  }
   return runCheck(name, process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', args, { cwd });
 }
 

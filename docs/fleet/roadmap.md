@@ -11,6 +11,12 @@ We adhere strictly to established A2A Mesh standards for these capabilities:
 - **Security**: See the [Threat Model](../security/threat-model.md) and [Fleet Policy, Sandbox, Artifact, and Approval Boundaries](policy-sandbox-artifacts.md) and [Provider Workers and Mission Control Plan](provider-workers-mission-control.md) for trust boundaries, approvals, and artifact controls.
 - **Release**: See the [Release Process](../release/process.md) for publishing mechanics and artifact expectations.
 
+## Implementation status
+
+- **M1 (Worker Runtime)**: `WorkerRuntimeContract` (`packages/worker-runtime/src/types/lifecycle.ts`) has two reference implementations — `MockWorkerRuntimeAdapter` and `LocalCliWorkerRuntimeAdapter` — covering the full prepare/start/stream/observe/verify/finalize/cancel/cleanup lifecycle. See the [Quickstart](quickstart.md).
+- **M2 (Policy, Artifacts, Sandboxed Execution)**: `routeFleetTask`/`planFleetDispatchWaves` (`packages/fleet/src/routing/TaskRouter.ts`) implement capability/workspace/risk/concurrency-aware routing and dependency-aware dispatch planning; `validateFleetArtifact` (`packages/fleet/src/artifact-contracts/FleetArtifacts.ts`) implements the standardized artifact contract; `LocalCliWorkerRuntimeAdapter` implements command allowlisting, environment allowlisting, and workspace containment as the first sandboxed local execution surface.
+- Registry-backed worker discovery, remote/cloud adapters, and Mission Control are not yet implemented — the quickstart uses an in-memory candidate list.
+
 ## Milestones
 
 ### Fleet M0 — Scope, Architecture, and Governance

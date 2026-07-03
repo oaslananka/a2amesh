@@ -59,13 +59,20 @@ with `pnpm run test:conformance`.
 
 ## Transport Feature Matrix
 
-| Transport surface | Status                       | Covered behavior                                                                                                                              | Required verification                                               |
-| ----------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| HTTP+JSON         | Supported                    | Agent Card discovery, JSON-RPC `message/send`, task reads, task cancellation, push notification routes, registry routes, health, and metrics. | Core, registry, integration, and conformance tests.                 |
-| SSE               | Supported                    | `message/stream`, task event streaming, heartbeat/close behavior, and task resubscribe surfaces.                                              | Core SSE tests, integration tests, and conformance stream fixtures. |
-| WebSocket         | Supported package surface    | Request/response A2A JSON-RPC over `@a2amesh/internal-transport-ws`.                                                                          | WebSocket package tests and shared transport contract tests.        |
-| gRPC              | Retained package surface     | A2A task and agent-card flows through `@a2amesh/internal-transport-grpc`.                                                                     | gRPC package tests and shared transport contract tests.             |
-| MCP bridge        | Bridge, not an A2A transport | Maps supported MCP tool shapes to A2A tool/task concepts.                                                                                     | MCP bridge mapping tests.                                           |
+| Transport surface | Status                       | Covered behavior                                                                                                                               | Required verification                                               |
+| ----------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| HTTP+JSON         | Supported                    | Exact `/.well-known/agent-card.json` discovery, JSON-RPC and REST task semantics, version/extension negotiation, and push notification parity. | Fixture-backed conformance plus core and integration tests.         |
+| SSE               | Supported                    | `message/stream`, task event streaming, heartbeat/close behavior, and task resubscribe surfaces.                                               | Core SSE tests, integration tests, and conformance stream fixtures. |
+| WebSocket         | Supported package surface    | Request/response A2A JSON-RPC over `@a2amesh/internal-transport-ws`.                                                                           | WebSocket package tests and shared transport contract tests.        |
+| gRPC              | Retained package surface     | A2A task and agent-card flows through `@a2amesh/internal-transport-grpc`.                                                                      | gRPC package tests and shared transport contract tests.             |
+| MCP bridge        | Bridge, not an A2A transport | Maps supported MCP tool shapes to A2A tool/task concepts.                                                                                      | MCP bridge mapping tests.                                           |
+
+The fixture-backed conformance suite directly compares JSON-RPC and REST task and
+push-configuration results and verifies SSE version rejection. WebSocket and gRPC
+do not expose every HTTP-only route; their equivalent task, Agent Card, stream,
+version-negotiation, malformed-request, and cancellation semantics are executable
+through each transport package test and the shared transport contract. `Planned`
+cells above are intentionally unsupported and must not be inferred as parity.
 
 No transport should be documented for broad deployment without matching tests and
 security documentation for its auth, origin, TLS, or callback behavior.
