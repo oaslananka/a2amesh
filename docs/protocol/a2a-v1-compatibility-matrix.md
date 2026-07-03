@@ -14,7 +14,7 @@ This matrix records the repository-backed compatibility status for the Agent2Age
 | `tasks/list`                          | Task listing with tenant/context filters  | `listTasks`                    | Registry/task flows   | `GET /tasks`                                                | N/A            | Contract transport | Planned            | Unit and performance smoke                     | Supported    |
 | `tasks/cancel`                        | Lifecycle transition guard                | `cancelTask`                   | Task command path     | `POST /tasks/{taskId}:cancel`                               | N/A            | Contract transport | Planned            | Unit, integration, transport contract          | Supported    |
 | `tasks/resubscribe`                   | Streaming reattach                        | `subscribeTask`                | Conformance command   | `GET /tasks/{taskId}:subscribe`                             | Canonical path | Planned            | Planned            | Unit and conformance stream fixtures           | Supported    |
-| `tasks/pushNotificationConfig/create` | Callback config normalization and storage | `createPushNotificationConfig` | N/A                   | `PUT /tasks/{taskId}/pushNotificationConfigs/{configId}`    | N/A            | Planned            | Planned            | Unit and push notification integration tests   | Supported    |
+| `tasks/pushNotificationConfig/create` | Callback config normalization and storage | `createPushNotificationConfig` | N/A                   | `POST /tasks/{taskId}/pushNotificationConfigs`              | N/A            | Planned            | Planned            | Unit and push notification integration tests   | Supported    |
 | `tasks/pushNotificationConfig/get`    | Config lookup                             | `getPushNotificationConfig`    | N/A                   | `GET /tasks/{taskId}/pushNotificationConfigs/{configId}`    | N/A            | Planned            | Planned            | Unit tests                                     | Supported    |
 | `tasks/pushNotificationConfig/list`   | Config list result                        | `listPushNotificationConfigs`  | N/A                   | `GET /tasks/{taskId}/pushNotificationConfigs`               | N/A            | Planned            | Planned            | Unit tests                                     | Supported    |
 | `tasks/pushNotificationConfig/delete` | Config removal                            | `deletePushNotificationConfig` | N/A                   | `DELETE /tasks/{taskId}/pushNotificationConfigs/{configId}` | N/A            | Planned            | Planned            | Unit tests                                     | Supported    |
@@ -32,6 +32,14 @@ This matrix records the repository-backed compatibility status for the Agent2Age
 | Agent Card signing                     | Runtime/registry signing and verification helpers                                         | Unit tests and registry hardening tests  | Supported |
 | JSON-RPC error normalization           | Runtime JSON-RPC handler and REST problem detail mapping                                  | Unit, fuzz, and integration tests        | Supported |
 | Tenant-aware task authorization        | Runtime and registry request context filters                                              | Unit and integration tests               | Supported |
+
+The conformance fixtures additionally execute the exact public Agent Card discovery
+path, validate interface and extension metadata, reject unsupported required
+extensions and protocol versions, and compare JSON-RPC/REST task and push
+configuration results. SSE version rejection runs in the same suite. WebSocket and
+gRPC parity is limited to the operations each transport declares and is exercised by
+their package tests and the shared transport contract; HTTP-only routes remain
+explicitly `Planned` for those transports.
 
 ## Compatibility policy
 

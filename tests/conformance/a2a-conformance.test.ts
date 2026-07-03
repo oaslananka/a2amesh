@@ -188,30 +188,187 @@ describe.each(fixtureVersions)('Agent2Agent conformance fixtures %s', (version) 
     agentCard: AgentCard;
     client: A2AClient;
     handle: StartedServer;
+    server: FixtureAgent;
     taskResponse: TaskResponseFixture;
   }> {
     const agentCard = readFixture<AgentCard>(version, 'agent-card.json');
     const taskResponse = readFixture<TaskResponseFixture>(version, 'task-response.json');
-    const handle = await startTestServer(new FixtureAgent(agentCard, taskResponse));
+    const server = new FixtureAgent(agentCard, taskResponse);
+    const handle = await startTestServer(server);
     handles.push(handle);
 
     return {
       agentCard,
       client: new A2AClient(handle.url),
       handle,
+      server,
       taskResponse,
     };
   }
 
   it('serves the versioned agent card fixture through discovery', async () => {
-    const { agentCard, client } = await startFixtureAgent();
+    const { agentCard, client, handle } = await startFixtureAgent();
 
     const resolved = await client.resolveCard();
+    const discoveryResponse = await fetch(`${handle.url}/.well-known/agent-card.json`);
+    const discovered = (await discoveryResponse.json()) as AgentCard;
 
+    expect(discoveryResponse.status).toBe(200);
+    expect(discoveryResponse.headers.get('content-type')).toContain('application/json');
+    expect(discovered).toEqual(resolved);
     expect(resolved.protocolVersion).toBe(agentCard.protocolVersion);
     expect(resolved.name).toBe(agentCard.name);
     expect(resolved.capabilities?.streaming).toBe(true);
     expect(resolved.capabilities?.pushNotifications).toBe(true);
+    expect(resolved.supportedInterfaces).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          protocolBinding: 'HTTP+JSON',
+          protocolVersion: agentCard.protocolVersion,
+          url: expect.stringMatching(/^http:\/\//),
+        }),
+      ]),
+    );
+    expect(resolved.extensions).toContainEqual(
+      expect.objectContaining({
+        uri: 'https://a2amesh.test/extensions/conformance/v1',
+        version: '1.0.0',
+      }),
+    );
+  });
+
+  it('negotiates supported and optional extensions and rejects required unknown extensions', async () => {
+    const { client, handle } = await startFixtureAgent();
+    const request = readFixture<MessageRequestFixture>(version, 'message-request.json');
+    const supportedUri = 'https://a2amesh.test/extensions/conformance/v1';
+
+    const supported = await client.sendMessage({
+      ...request.params,
+      message: { ...request.params.message, messageId: `${version}-supported-extension` },
+      configuration: {
+        ...request.params.configuration,
+        extensions: [{ uri: supportedUri, version: '1.0.0', required: true }],
+      },
+    });
+    expect(supported.extensions).toContain(supportedUri);
+
+    const optional = await client.sendMessage({
+      ...request.params,
+      message: { ...request.params.message, messageId: `${version}-optional-extension` },
+      configuration: {
+        ...request.params.configuration,
+        extensions: [
+          { uri: supportedUri, required: true },
+          { uri: 'https://unsupported.example/extensions/optional', required: false },
+        ],
+      },
+    });
+    expect(optional.extensions).toEqual([supportedUri]);
+
+    const rejected = await postRawJsonRpc(handle.url, {
+      jsonrpc: '2.0',
+      id: `${version}-required-extension`,
+      method: 'message/send',
+      params: {
+        ...request.params,
+        message: { ...request.params.message, messageId: `${version}-required-extension` },
+        configuration: {
+          ...request.params.configuration,
+          extensions: [{ uri: 'https://unsupported.example/extensions/required', required: true }],
+        },
+      },
+    });
+    expect(rejected.error?.code).toBe(ErrorCodes.ExtensionRequired);
+  });
+
+  it('rejects unsupported versions consistently across JSON-RPC, REST, and SSE', async () => {
+    const { handle } = await startFixtureAgent();
+    const request = readFixture<MessageRequestFixture>(version, 'message-request.json');
+    const headers = { 'A2A-Version': '9.9', 'Content-Type': 'application/a2a+json' };
+
+    const rpcResponse = await fetch(`${handle.url}/a2a/jsonrpc`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ...request, id: `${version}-unsupported-version` }),
+    });
+    const rpcBody = (await rpcResponse.json()) as { error?: { code: number } };
+    expect(rpcResponse.status).toBe(200);
+    expect(rpcBody.error?.code).toBe(ErrorCodes.VersionNotSupported);
+
+    const restResponse = await fetch(`${handle.url}/message:send`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(request.params),
+    });
+    expect(restResponse.status).toBe(400);
+    expect(restResponse.headers.get('content-type')).toContain('application/problem+json');
+    expect(await restResponse.json()).toEqual(
+      expect.objectContaining({
+        status: 400,
+        supportedVersions: expect.arrayContaining(['1.0']),
+      }),
+    );
+
+    const sseResponse = await fetch(`${handle.url}/stream?taskId=missing`, {
+      headers: { 'A2A-Version': '9.9' },
+    });
+    expect(sseResponse.status).toBe(400);
+    expect(sseResponse.headers.get('content-type')).toContain('application/problem+json');
+  });
+
+  it('keeps JSON-RPC and REST task and push-config semantics equivalent', async () => {
+    const { client, handle, server } = await startFixtureAgent();
+    const request = readFixture<MessageRequestFixture>(version, 'message-request.json');
+    const rpcTask = await client.sendMessage({
+      ...request.params,
+      message: { ...request.params.message, messageId: `${version}-rpc-parity` },
+    });
+
+    const restResponse = await fetch(`${handle.url}/message:send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/a2a+json' },
+      body: JSON.stringify({
+        ...request.params,
+        message: { ...request.params.message, messageId: `${version}-rest-parity` },
+      }),
+    });
+    expect(restResponse.status).toBe(200);
+    const restTask = (await restResponse.json()) as Task;
+    const [rpcCompleted, restCompleted] = await Promise.all([
+      waitForTaskState(client, rpcTask.id, ['COMPLETED']),
+      waitForTaskState(client, restTask.id, ['COMPLETED']),
+    ]);
+    expect(restCompleted.status.state).toBe(rpcCompleted.status.state);
+    expect(restCompleted.artifacts?.map((artifact) => artifact.parts)).toEqual(
+      rpcCompleted.artifacts?.map((artifact) => artifact.parts),
+    );
+
+    const receiver = await createWebhookReceiver();
+    webhookReceivers.push(receiver);
+    const rpcPushTarget = server.getTaskManager().createTask(undefined, `${version}-rpc-push`);
+    const restPushTarget = server.getTaskManager().createTask(undefined, `${version}-rest-push`);
+    const rpcConfig = await client.createPushNotificationConfig(rpcPushTarget.id, {
+      id: 'parity',
+      url: receiver.url,
+      token: 'parity-token',
+    });
+    const restConfigResponse = await fetch(
+      `${handle.url}/tasks/${restPushTarget.id}/pushNotificationConfigs`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/a2a+json' },
+        body: JSON.stringify({
+          configId: 'parity',
+          taskPushNotificationConfig: {
+            id: 'parity',
+            url: receiver.url,
+            token: 'parity-token',
+          },
+        }),
+      },
+    );
+    expect(restConfigResponse.status).toBe(200);
+    expect(await restConfigResponse.json()).toEqual(rpcConfig);
   });
 
   it('runs the message request fixture through A2AServer and A2AClient', async () => {

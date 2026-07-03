@@ -10,6 +10,13 @@
     "stateTransitionHistory": true,
     "extendedAgentCard": true
   },
+  "supportedInterfaces": [
+    {
+      "url": "http://localhost:0",
+      "protocolBinding": "HTTP+JSON",
+      "protocolVersion": "1.0"
+    }
+  ],
   "defaultInputModes": ["text/plain"],
   "defaultOutputModes": ["text/plain", "application/json"],
   "skills": [
