@@ -45,3 +45,7 @@ AGENT_ORDERS*.md
 NEXT.md
 
 artifacts/
+
+# Local agent/tool state (Claude Code, Serena, gh device auth, etc.)
+.local/
+.serena/

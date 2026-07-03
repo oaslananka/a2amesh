@@ -8,7 +8,10 @@ import {
   SqliteTaskStorage,
   type SqliteDatabase,
 } from '../src/storage/SqliteTaskStorage.js';
-import type { SqliteStatement } from '../src/storage/SqliteTaskStorageMigrations.js';
+import {
+  SQLITE_TASK_STORAGE_SCHEMA_VERSION,
+  type SqliteStatement,
+} from '../src/storage/SqliteTaskStorageMigrations.js';
 import type { PersistedTaskArtifact } from '../src/storage/TaskStorageContracts.js';
 import type { Task, TaskState } from '../src/types/task.js';
 
@@ -83,7 +86,7 @@ describe('SqliteTaskStorage migrations and operations', () => {
 
     expect(storage.getOperationalState()).toEqual(
       expect.objectContaining({
-        schemaVersion: 3,
+        schemaVersion: SQLITE_TASK_STORAGE_SCHEMA_VERSION,
         journalMode: 'wal',
         busyTimeoutMs: 2_345,
         indexes: expect.arrayContaining([
@@ -126,7 +129,7 @@ describe('SqliteTaskStorage migrations and operations', () => {
     legacy.close();
 
     const upgraded = new SqliteTaskStorage(legacyPath);
-    expect(upgraded.getOperationalState().schemaVersion).toBe(3);
+    expect(upgraded.getOperationalState().schemaVersion).toBe(SQLITE_TASK_STORAGE_SCHEMA_VERSION);
     expect(upgraded.getTask('legacy-task')?.id).toBe('legacy-task');
     upgraded.close();
 
@@ -322,7 +325,10 @@ describe('SqliteTaskStorage retention, audit, and artifacts', () => {
       }),
     ).rejects.toThrow('rollback me');
     await expect(storage.getOperationalState()).resolves.toEqual(
-      expect.objectContaining({ schemaVersion: 3, journalMode: 'memory' }),
+      expect.objectContaining({
+        schemaVersion: SQLITE_TASK_STORAGE_SCHEMA_VERSION,
+        journalMode: 'memory',
+      }),
     );
     await storage.close();
   });

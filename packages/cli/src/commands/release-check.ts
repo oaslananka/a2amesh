@@ -1,9 +1,9 @@
 import { execFileSync, type ExecFileSyncOptions } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Command } from 'commander';
 import { emitResult, writeError, type RootOptionsProvider } from '../io.js';
 import { getLocalReleaseGates, type LocalReleaseGate } from '../release-gates.js';
+import { findWorkspaceRoot } from '../workspace.js';
 import { applyCommandDoc, type CliCommandDoc } from './doc-metadata.js';
 
 export const releaseCheckCommandDoc = {
@@ -173,17 +173,6 @@ function actionableFailures(checks: readonly CheckResult[]): ActionableFailure[]
       error: check.error,
       remediation: check.remediation,
     }));
-}
-
-function findWorkspaceRoot(start: string): string | undefined {
-  let dir = resolve(start);
-  for (let i = 0; i < 20; i++) {
-    if (existsSync(resolve(dir, 'pnpm-workspace.yaml'))) return dir;
-    const parent = resolve(dir, '..');
-    if (parent === dir) return undefined;
-    dir = parent;
-  }
-  return undefined;
 }
 
 export function createGitWorktreeCheckFromStatus(output: string, duration = 0): CheckResult {
