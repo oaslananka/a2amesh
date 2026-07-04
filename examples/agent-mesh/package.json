@@ -1,0 +1,25 @@
+{
+  "name": "@a2amesh/runtime-example-agent-mesh",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "description": "Multi-agent registry discovery and hand-off example for A2A Mesh.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false",
+    "start": "pnpm --dir ../.. run build && node dist/src/index.js",
+    "smoke": "pnpm --dir ../.. run build && node --test dist/tests/smoke.test.js"
+  },
+  "dependencies": {
+    "@a2amesh/runtime": "workspace:*",
+    "@a2amesh/registry": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=22.22.1 <25",
+    "pnpm": ">=11 <12"
+  }
+}

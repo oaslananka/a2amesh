@@ -73,7 +73,7 @@ A2A Mesh keeps public trust evidence in [`docs/security/trust-evidence.md`](docs
 - Adapters for OpenAI, Anthropic, LangChain, Google ADK, LlamaIndex, and CrewAI HTTP bridge flows when the optional peer dependency is installed.
 - CLI commands for validation, discovery, sending messages, registry export/import, monitoring tasks, benchmarking, diagnostics, and scaffolding.
 - MCP bridge, WebSocket transport, gRPC transport, and testing helper packages for repository-verified workflows.
-- Runnable examples for authenticated servers, streaming, push notifications, registry tenancy, WebSocket, gRPC, MCP bridge, and adapter templates.
+- Runnable examples for authenticated servers, streaming, push notifications, registry tenancy, WebSocket, gRPC, MCP bridge, adapter templates, and a multi-agent registry discovery mesh.
 
 ## Install
 

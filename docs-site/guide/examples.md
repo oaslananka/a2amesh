@@ -26,5 +26,6 @@ pnpm run examples:smoke
 | gRPC                 | [examples/grpc](https://github.com/oaslananka/a2amesh/tree/main/examples/grpc)                                 | `pnpm --dir examples/grpc run smoke`                 |
 | MCP bridge           | [examples/mcp-bridge](https://github.com/oaslananka/a2amesh/tree/main/examples/mcp-bridge)                     | `pnpm --dir examples/mcp-bridge run smoke`           |
 | Adapter template     | [examples/adapter-template](https://github.com/oaslananka/a2amesh/tree/main/examples/adapter-template)         | `pnpm --dir examples/adapter-template run smoke`     |
+| Agent mesh           | [examples/agent-mesh](https://github.com/oaslananka/a2amesh/tree/main/examples/agent-mesh)                     | `pnpm --dir examples/agent-mesh run smoke`           |
 
 The root smoke command validates the required example file layout, builds the workspace, and runs each compiled smoke test with Node's test runner.

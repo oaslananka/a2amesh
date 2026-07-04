@@ -11,6 +11,7 @@ const examples = [
   'grpc',
   'mcp-bridge',
   'adapter-template',
+  'agent-mesh',
 ];
 
 const requiredFiles = [

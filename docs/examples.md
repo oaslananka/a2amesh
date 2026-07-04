@@ -26,5 +26,6 @@ pnpm run examples:smoke
 | gRPC                 | [`examples/grpc`](../examples/grpc/README.md)                                 | `pnpm --dir examples/grpc run smoke`                 |
 | MCP bridge           | [`examples/mcp-bridge`](../examples/mcp-bridge/README.md)                     | `pnpm --dir examples/mcp-bridge run smoke`           |
 | Adapter template     | [`examples/adapter-template`](../examples/adapter-template/README.md)         | `pnpm --dir examples/adapter-template run smoke`     |
+| Agent mesh           | [`examples/agent-mesh`](../examples/agent-mesh/README.md)                     | `pnpm --dir examples/agent-mesh run smoke`           |
 
 The root `examples:smoke` script validates the required file layout, builds the workspace, and runs every compiled smoke test with Node's test runner.
