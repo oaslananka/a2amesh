@@ -1141,4 +1141,112 @@ describe('A2AServer', () => {
       configs: [tenantPushConfig],
     });
   });
+
+  it('accepts omitted and explicit protocol version compatibility fixtures', async () => {
+    const server = new HarnessServer();
+    const listener = server.start(0);
+    handles.push(listener);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    const port = (listener.address() as { port: number }).port;
+    const baseUrl = `http://localhost:${port}`;
+
+    const legacyResponse = await fetch(`${baseUrl}/message:send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/a2a+json' },
+      body: JSON.stringify({
+        message: {
+          role: 'user',
+          parts: [{ type: 'text', text: 'legacy default' }],
+          messageId: 'message-legacy-default',
+          timestamp: new Date().toISOString(),
+        },
+      }),
+    });
+    expect(legacyResponse.status).toBe(200);
+
+    const v1Response = await fetch(`${baseUrl}/message:send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/a2a+json', 'A2A-Version': '1.0' },
+      body: JSON.stringify({
+        message: {
+          role: 'user',
+          parts: [{ type: 'text', text: 'explicit v1' }],
+          messageId: 'message-explicit-v1',
+          timestamp: new Date().toISOString(),
+        },
+      }),
+    });
+    expect(v1Response.status).toBe(200);
+  });
+
+
+  it('returns explicit errors for unsupported requested protocol versions', async () => {
+    const server = new HarnessServer();
+    const listener = server.start(0);
+    handles.push(listener);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    const port = (listener.address() as { port: number }).port;
+    const baseUrl = `http://localhost:${port}`;
+    const message: Message = {
+      role: 'user',
+      parts: [{ type: 'text', text: 'version negotiation' }],
+      messageId: 'message-version-negotiation',
+      timestamp: new Date().toISOString(),
+    };
+
+    const response = await fetch(`${baseUrl}/message:send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/a2a+json', 'A2A-Version': '9.9' },
+      body: JSON.stringify({ message }),
+    });
+    const problem = (await response.json()) as { title: string; supportedVersions: string[] };
+
+    expect(response.status).toBe(400);
+    expect(problem.title).toBe('Protocol Version Not Supported');
+    expect(problem.supportedVersions).toEqual(expect.arrayContaining(['1.0', '1.2', '0.3']));
+  });
+
+
+  it('requires credentials before returning the extended card through JSON-RPC HTTP', async () => {
+    const server = new HarnessServer('success', {}, true);
+    const listener = server.start(0);
+    handles.push(listener);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    const port = (listener.address() as { port: number }).port;
+    const baseUrl = `http://localhost:${port}`;
+    const method = ['agent', 'authenticatedExtendedCard'].join('/');
+    const headerName = ['x', 'api', 'key'].join('-');
+    const apiKey = ['sec', 'ret'].join('');
+
+    const publicResponse = await fetch(`${baseUrl}/.well-known/agent-card.json`);
+    expect(publicResponse.status).toBe(200);
+    expect((await publicResponse.json()) as AgentCard).toEqual(
+      expect.objectContaining({
+        name: 'Harness Agent',
+        capabilities: expect.objectContaining({ extendedAgentCard: true }),
+      }),
+    );
+
+    const unauthenticatedResponse = await fetch(`${baseUrl}/a2a/jsonrpc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/a2a+json', 'A2A-Version': '1.0' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 'extended-card-unauthenticated', method }),
+    });
+    const unauthenticatedPayload = (await unauthenticatedResponse.json()) as { error: { code: number } };
+    expect(unauthenticatedResponse.status).toBe(200);
+    expect(unauthenticatedPayload.error.code).toBe(ErrorCodes.Unauthorized);
+
+    const authenticatedResponse = await fetch(`${baseUrl}/a2a/jsonrpc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/a2a+json', 'A2A-Version': '1.0', [headerName]: apiKey },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 'extended-card-authenticated', method }),
+    });
+    const authenticatedPayload = (await authenticatedResponse.json()) as { result: AgentCard };
+    expect(authenticatedResponse.status).toBe(200);
+    expect(authenticatedPayload.result).toEqual(expect.objectContaining({ name: 'Harness Agent' }));
+  });
+
 });
