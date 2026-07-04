@@ -2,50 +2,40 @@
 
 <h1>A2A Mesh</h1>
 
+<p><strong>Production-grade TypeScript runtime and toolkit for Agent2Agent (A2A): agent cards, JSON-RPC tasks, registry discovery, transports, adapters, MCP bridge, and conformance fixtures.</strong></p>
+
 <p>
-  <a href="https://www.npmjs.com/package/@a2amesh/runtime">
-    <img src="https://img.shields.io/npm/v/%40a2amesh%2Fruntime.svg" alt="npm version" />
-  </a>
-  <a href="https://www.npmjs.com/package/@a2amesh/runtime">
-    <img src="https://img.shields.io/npm/dt/%40a2amesh%2Fruntime.svg" alt="npm total downloads" />
-  </a>
-  <a href="https://www.npmjs.com/package/@a2amesh/runtime">
-    <img src="https://img.shields.io/npm/types/%40a2amesh%2Fruntime.svg" alt="TypeScript types" />
-  </a>
-  <a href="LICENSE">
-    <img src="https://img.shields.io/npm/l/%40a2amesh%2Fruntime.svg" alt="license" />
-  </a>
-  <a href="https://pnpm.io/">
-    <img src="https://img.shields.io/badge/pnpm-11.7.0-blue.svg" alt="pnpm" />
-  </a>
+  <a href="https://www.npmjs.com/package/@a2amesh/runtime"><img src="https://img.shields.io/npm/v/%40a2amesh%2Fruntime/latest?label=npm%20latest" alt="npm latest version" /></a>
+  <a href="https://www.npmjs.com/package/@a2amesh/runtime?activeTab=versions"><img src="https://img.shields.io/npm/v/%40a2amesh%2Fruntime/alpha?label=alpha" alt="npm alpha version" /></a>
+  <a href="https://www.npmjs.com/package/@a2amesh/runtime"><img src="https://img.shields.io/npm/dw/%40a2amesh%2Fruntime?label=weekly%20downloads" alt="npm weekly downloads" /></a>
+  <a href="https://www.npmjs.com/package/@a2amesh/runtime"><img src="https://img.shields.io/npm/dt/%40a2amesh%2Fruntime?label=total%20downloads" alt="npm total downloads" /></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-%3E%3D24.16%20%3C27-339933" alt="Node.js >=24.16 <27" /></a>
+  <a href="https://pnpm.io/"><img src="https://img.shields.io/badge/pnpm-11.7.0-F69220" alt="pnpm 11.7.0" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/npm/l/%40a2amesh%2Fruntime?label=license" alt="license" /></a>
 </p>
 
 <p>
-  <a href="https://github.com/oaslananka/a2amesh/actions/workflows/ci.yml">
-    <img src="https://github.com/oaslananka/a2amesh/actions/workflows/ci.yml/badge.svg" alt="CI" />
-  </a>
-  <a href="https://github.com/oaslananka/a2amesh/actions/workflows/docs.yml">
-    <img src="https://github.com/oaslananka/a2amesh/actions/workflows/docs.yml/badge.svg" alt="Docs" />
-  </a>
-  <a href="https://github.com/oaslananka/a2amesh/actions/workflows/security.yml">
-    <img src="https://github.com/oaslananka/a2amesh/actions/workflows/security.yml/badge.svg" alt="Security" />
-  </a>
-  <a href="https://github.com/oaslananka/a2amesh/actions/workflows/codeql.yml">
-    <img src="https://github.com/oaslananka/a2amesh/actions/workflows/codeql.yml/badge.svg" alt="CodeQL" />
-  </a>
-  <a href="https://github.com/oaslananka/a2amesh/actions/workflows/scorecard.yml">
-    <img src="https://github.com/oaslananka/a2amesh/actions/workflows/scorecard.yml/badge.svg" alt="OpenSSF Scorecard" />
-  </a>
-  <a href="docs/security/trust-evidence.md">
-    <img src="https://img.shields.io/badge/trust-evidence-blue.svg" alt="trust evidence" />
-  </a>
+  <a href="https://github.com/oaslananka/a2amesh/actions/workflows/ci.yml"><img src="https://github.com/oaslananka/a2amesh/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/oaslananka/a2amesh/actions/workflows/docs.yml"><img src="https://github.com/oaslananka/a2amesh/actions/workflows/docs.yml/badge.svg" alt="Docs" /></a>
+  <a href="https://github.com/oaslananka/a2amesh/actions/workflows/security.yml"><img src="https://github.com/oaslananka/a2amesh/actions/workflows/security.yml/badge.svg" alt="Security" /></a>
+  <a href="https://api.scorecard.dev/projects/github.com/oaslananka/a2amesh"><img src="https://api.scorecard.dev/projects/github.com/oaslananka/a2amesh/badge" alt="OpenSSF Scorecard" /></a>
+  <a href="docs/openssf-evidence.md"><img src="https://img.shields.io/badge/OpenSSF-evidence-2f80ed" alt="OpenSSF evidence" /></a>
+  <a href="docs/openssf-silver-readiness.md"><img src="https://img.shields.io/badge/OpenSSF%20readiness-silver-c0c0c0" alt="OpenSSF silver readiness" /></a>
+  <a href="docs/security/trust-evidence.md"><img src="https://img.shields.io/badge/security-trust%20evidence-4c1" alt="trust evidence" /></a>
 </p>
 
 <p>
   <a href="https://deepwiki.com/oaslananka/a2amesh">Ask DeepWiki</a> ·
+  <a href="docs/roadmap/open-issues-triage-2026-06-27.md">Roadmap</a> ·
   <a href="docs/repo-maturity-report.md">Maturity report</a> ·
   <a href="docs/openssf-evidence.md">OpenSSF evidence</a> ·
-  <a href="docs/security/trust-evidence.md">Trust evidence</a>
+  <a href="docs/security/trust-evidence.md">Security assurance case</a>
+</p>
+
+<p>
+  <a href="https://www.buymeacoffee.com/oaslananka"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=%E2%98%95&slug=oaslananka&button_colour=FFDD00&font_colour=000000&font_family=Arial&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" /></a>
+  <a href="https://github.com/oaslananka/a2amesh/stargazers"><img src="https://img.shields.io/github/stars/oaslananka/a2amesh?style=social" alt="Star on GitHub" /></a>
+  <a href="https://github.com/oaslananka/a2amesh"><img src="https://img.shields.io/github/last-commit/oaslananka/a2amesh?label=last%20commit" alt="last commit" /></a>
 </p>
 
 </div>

@@ -95,7 +95,9 @@
     "release:preflight": "node scripts/check-publish-preflight.mjs",
     "api:surfaces:check": "node scripts/check-api-surfaces.mjs",
     "api:surfaces:write": "node scripts/check-api-surfaces.mjs --write",
-    "security:gitleaks": "node scripts/run-gitleaks.mjs"
+    "security:gitleaks": "node scripts/run-gitleaks.mjs",
+    "release:tags:check": "node scripts/sync-npm-tags.mjs --check",
+    "release:tags:sync": "node scripts/sync-npm-tags.mjs --write"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
