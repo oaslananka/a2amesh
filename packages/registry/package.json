@@ -1,6 +1,6 @@
 {
   "name": "@a2amesh/registry",
-  "version": "0.4.0-alpha.1",
+  "version": "0.5.0-alpha.1",
   "description": "A2A Mesh registry, discovery, health, trust, and storage infrastructure for A2A-native agents.",
   "keywords": [
     "a2a",
