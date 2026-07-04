@@ -2,23 +2,22 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const repoRoot = process.cwd();
-const docPath = join(repoRoot, 'docs/compatibility.md');
+const docPaths = ['docs/compatibility.md', 'docs-site/guide/compatibility.md'].map((path) => join(repoRoot, path));
 const cliPackagePath = join(repoRoot, 'packages/cli/package.json');
-
 const targetVersion = JSON.parse(readFileSync(cliPackagePath, 'utf8')).version;
-const doc = readFileSync(docPath, 'utf8');
+const startToken = 'All public packages in the `';
+const endToken = '` release line share';
 
-const releaseLineMatch = doc.match(/All public packages in the `([^`]+)` release line share/);
-if (!releaseLineMatch) {
-  console.error('Could not find the Package Version Matrix release line in docs/compatibility.md');
-  process.exit(1);
+for (const docPath of docPaths) {
+  const doc = readFileSync(docPath, 'utf8');
+  const start = doc.indexOf(startToken);
+  if (start < 0) throw new Error('Could not find the Package Version Matrix release line in ' + docPath);
+  const versionStart = start + startToken.length;
+  const versionEnd = doc.indexOf(endToken, versionStart);
+  if (versionEnd < 0) throw new Error('Could not find the Package Version Matrix release line in ' + docPath);
+  const currentVersion = doc.slice(versionStart, versionEnd);
+  if (currentVersion === targetVersion) continue;
+  const updated = doc.split('`' + currentVersion + '`').join('`' + targetVersion + '`');
+  writeFileSync(docPath, updated);
+  console.log('Updated ' + docPath + ' Package Version Matrix: ' + currentVersion + ' -> ' + targetVersion);
 }
-const currentVersion = releaseLineMatch[1];
-
-if (currentVersion === targetVersion) {
-  process.exit(0);
-}
-
-const updated = doc.split(`\`${currentVersion}\``).join(`\`${targetVersion}\``);
-writeFileSync(docPath, updated);
-console.log(`Updated docs/compatibility.md Package Version Matrix: ${currentVersion} -> ${targetVersion}`);
