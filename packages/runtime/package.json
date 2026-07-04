@@ -1,6 +1,6 @@
 {
   "name": "@a2amesh/runtime",
-  "version": "0.3.0-alpha.1",
+  "version": "0.4.0-alpha.1",
   "description": "A2A Mesh runtime, client, server, storage, auth, telemetry, and testing infrastructure for A2A-native agents.",
   "keywords": [
     "a2a",
