@@ -1,8 +1,8 @@
 // This file is written by scripts/build-tsc-package.mjs from workspace manifests and tools/runtime-versions.json.
 export const scaffoldTemplateConfig = {
   dependencies: {
-    '@a2amesh/protocol': '^0.4.0-alpha.1',
-    '@a2amesh/runtime': '^0.4.0-alpha.1',
+    '@a2amesh/protocol': '^0.5.0-alpha.1',
+    '@a2amesh/runtime': '^0.5.0-alpha.1',
   },
   devDependencies: {
     '@types/node': '22.19.21',
