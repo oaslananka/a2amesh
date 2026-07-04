@@ -67,8 +67,8 @@ jobs:
       - run: pnpm run docs:check
 
   public-links:
-    name: Docs / public links
-    if: ${{ github.event_name == 'schedule' && (github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops') }}
+    name: Docs / links
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

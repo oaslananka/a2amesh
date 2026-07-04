@@ -10,14 +10,16 @@ interface TaskStreamProps {
 }
 
 const statusClasses: Record<RegistryTaskEvent['status'], string> = {
-  submitted: 'border-slate-300/20 bg-slate-300/8 text-slate-100',
-  queued: 'border-blue-300/20 bg-blue-300/10 text-blue-100',
-  working: 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
-  'input-required': 'border-amber-300/20 bg-amber-300/10 text-amber-100',
-  waiting_on_external: 'border-violet-300/20 bg-violet-300/10 text-violet-100',
-  completed: 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100',
-  failed: 'border-rose-300/20 bg-rose-300/10 text-rose-100',
-  canceled: 'border-slate-400/20 bg-slate-400/10 text-slate-200',
+  SUBMITTED: 'border-slate-300/20 bg-slate-300/8 text-slate-100',
+  QUEUED: 'border-blue-300/20 bg-blue-300/10 text-blue-100',
+  WORKING: 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
+  INPUT_REQUIRED: 'border-amber-300/20 bg-amber-300/10 text-amber-100',
+  AUTH_REQUIRED: 'border-orange-300/20 bg-orange-300/10 text-orange-100',
+  WAITING_ON_EXTERNAL: 'border-violet-300/20 bg-violet-300/10 text-violet-100',
+  COMPLETED: 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100',
+  FAILED: 'border-rose-300/20 bg-rose-300/10 text-rose-100',
+  CANCELED: 'border-slate-400/20 bg-slate-400/10 text-slate-200',
+  REJECTED: 'border-red-300/20 bg-red-300/10 text-red-100',
 };
 
 export function TaskStream({ tasks, loading, error, connected, selectedAgentId }: TaskStreamProps) {

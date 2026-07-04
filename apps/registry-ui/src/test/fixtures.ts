@@ -93,7 +93,7 @@ export const completedTask: RegistryTaskEvent = {
   agentId: researcherAgent.id,
   agentName: researcherAgent.card.name,
   agentUrl: researcherAgent.url,
-  status: 'completed',
+  status: 'COMPLETED',
   updatedAt: '2026-04-06T10:00:00.000Z',
   contextId: 'ctx-research-001',
   summary: 'Collected and summarized research findings.',
@@ -103,7 +103,7 @@ export const completedTask: RegistryTaskEvent = {
     id: 'task-completed-001',
     contextId: 'ctx-research-001',
     status: {
-      state: 'completed',
+      state: 'COMPLETED',
       timestamp: '2026-04-06T10:00:00.000Z',
     },
   },
@@ -114,7 +114,7 @@ export const workingTask: RegistryTaskEvent = {
   agentId: writerAgent.id,
   agentName: writerAgent.card.name,
   agentUrl: writerAgent.url,
-  status: 'working',
+  status: 'WORKING',
   updatedAt: '2026-04-06T10:00:03.000Z',
   summary: 'Drafting final report from research output.',
   historyCount: 4,
@@ -122,7 +122,7 @@ export const workingTask: RegistryTaskEvent = {
   task: {
     id: 'task-working-002',
     status: {
-      state: 'working',
+      state: 'WORKING',
       timestamp: '2026-04-06T10:00:03.000Z',
     },
   },
@@ -133,7 +133,7 @@ export const failedTask: RegistryTaskEvent = {
   agentId: writerAgent.id,
   agentName: writerAgent.card.name,
   agentUrl: writerAgent.url,
-  status: 'failed',
+  status: 'FAILED',
   updatedAt: '2026-04-06T10:01:00.000Z',
   summary: 'Report generation failed after provider timeout.',
   historyCount: 5,
@@ -141,7 +141,7 @@ export const failedTask: RegistryTaskEvent = {
   task: {
     id: 'task-failed-003',
     status: {
-      state: 'failed',
+      state: 'FAILED',
       timestamp: '2026-04-06T10:01:00.000Z',
     },
   },

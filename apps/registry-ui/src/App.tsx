@@ -388,11 +388,11 @@ export default function App() {
                           const agentTasks = tasks.filter((task) => task.agentId === agent.id);
                           const activeTasks = agentTasks.filter((task) =>
                             [
-                              'submitted',
-                              'queued',
-                              'working',
-                              'input-required',
-                              'waiting_on_external',
+                              'SUBMITTED',
+                              'QUEUED',
+                              'WORKING',
+                              'INPUT_REQUIRED',
+                              'WAITING_ON_EXTERNAL',
                             ].includes(task.status),
                           ).length;
                           return (

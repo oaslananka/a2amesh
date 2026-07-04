@@ -188,7 +188,7 @@ jobs:
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
             git fetch --no-tags --depth=1 origin "$BASE_REF"
             changed_files="$(git diff --name-only FETCH_HEAD...HEAD)"
-            if grep -Eq '^(packages/(core|adapters|registry)/|vitest\.config\.ts$|stryker\.config\.json$)' <<< "$changed_files"; then
+            if grep -Eq '^(packages/|vitest\.config\.ts$|stryker\.config\.json$)' <<< "$changed_files"; then
               echo "run=true" >> "$GITHUB_OUTPUT"
             else
               echo "run=false" >> "$GITHUB_OUTPUT"

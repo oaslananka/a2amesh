@@ -48,9 +48,9 @@ function evaluateAgent(
   const agentTasks = agent ? tasks.filter((task) => task.agentId === agent.id) : [];
   const hasTaskHistory = agentTasks.length > 0;
   const hasArtifacts = agentTasks.some((task) => task.artifactCount > 0);
-  const hasTerminalSuccess = agentTasks.some((task) => task.status === 'completed');
+  const hasTerminalSuccess = agentTasks.some((task) => task.status === 'COMPLETED');
   const hasTerminalFailure = agentTasks.some((task) =>
-    ['failed', 'canceled'].includes(task.status),
+    ['FAILED', 'CANCELED'].includes(task.status),
   );
 
   return [
@@ -102,7 +102,7 @@ function evaluateAgent(
       description: 'Completed, failed, or canceled tasks can be surfaced for conformance review.',
       status:
         hasTerminalSuccess && hasTerminalFailure ? 'pass' : hasTerminalSuccess ? 'partial' : 'fail',
-      evidence: operationEvidence(agentTasks, ['completed', 'failed', 'canceled']),
+      evidence: operationEvidence(agentTasks, ['COMPLETED', 'FAILED', 'CANCELED']),
     },
     {
       id: 'artifact-surface',

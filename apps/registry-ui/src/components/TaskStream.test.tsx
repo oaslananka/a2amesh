@@ -40,7 +40,7 @@ describe('TaskStream', () => {
 
     expect(screen.getByText('Drafting final report from research output.')).toBeTruthy();
     expect(screen.queryByText('Collected and summarized research findings.')).toBeNull();
-    expect(screen.getByText('working')).toBeTruthy();
+    expect(screen.getByText('WORKING')).toBeTruthy();
     expect(screen.getByText('4 messages')).toBeTruthy();
     expect(screen.getByText('0 artifacts')).toBeTruthy();
   });
