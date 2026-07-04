@@ -30,7 +30,7 @@
 </p>
 
 <p>
-  <a href="https://www.buymeacoffee.com/oaslananka"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=%E2%98%95&slug=oaslananka&button_colour=FFDD00&font_colour=000000&font_family=Arial&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" /></a>
+  <a href="https://www.buymeacoffee.com/oaslananka"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=%E2%98%95&slug=oaslananka&button_colour=FFDD00&font_colour=000000&font_family=Arial&outline_colour=000000&coffee_colour=ffffff"  height="28" alt="Buy me a coffee" /></a>
   <a href="https://github.com/oaslananka/a2amesh/stargazers"><img src="https://img.shields.io/github/stars/oaslananka/a2amesh?style=for-the-badge&logo=github&label=Star%20on%20GitHub&labelColor=1a1a1a&color=f79000" alt="Star on GitHub" /></a>
 </p>
 
