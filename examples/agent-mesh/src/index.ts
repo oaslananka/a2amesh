@@ -100,7 +100,7 @@ export async function runExample(): Promise<AgentMeshExampleResult> {
     // Discover agents through the registry instead of hardcoding their URLs.
     const agents = await registryClient.listAgents();
     const researchEntry = findBySkill(agents, 'research');
-    const summarizeEntry = findBySkill(agents, 'summar');
+    const summarizeEntry = findBySkill(agents, 'summarize');
 
     const researchTask = await new A2AClient(researchEntry.url).sendMessage({
       message: createUserMessage('Tell me about A2A'),
@@ -124,19 +124,32 @@ export async function runExample(): Promise<AgentMeshExampleResult> {
   }
 }
 
-function findBySkill(agents: RegisteredAgent[], term: string): RegisteredAgent {
-  const match = agents.find((agent) =>
-    agent.skills.some((skill) => skill.toLowerCase().includes(term)),
-  );
+function findBySkill(agents: RegisteredAgent[], skillId: string): RegisteredAgent {
+  const normalizedSkillId = skillId.toLowerCase();
+  const match = agents.find((agent) => {
+    const identifiers = [
+      ...(agent.skills ?? []),
+      ...(agent.tags ?? []),
+      ...(agent.card.skills ?? []).flatMap((skill) => [
+        skill.id,
+        skill.name,
+        ...(skill.tags ?? []),
+      ]),
+    ];
+    return identifiers.some((identifier) => identifier.toLowerCase() === normalizedSkillId);
+  });
   if (!match) {
-    throw new Error(`No registered agent advertises a skill matching "${term}"`);
+    throw new Error('No registered agent advertises the requested exact skill id or tag');
   }
   return match;
 }
 
 function readArtifactText(task: Task): string {
-  const part = task.artifacts?.[0]?.parts[0];
-  return part && part.type === 'text' ? part.text : '';
+  const part = task.artifacts?.[0]?.parts.find((candidate) => candidate.type === 'text');
+  if (!part || part.type !== 'text') {
+    throw new Error('Missing text artifact');
+  }
+  return part.text;
 }
 
 function createRegistryClient(baseUrl: string): AgentRegistryClient {
@@ -168,7 +181,7 @@ function createAgentCard(name: string, description: string, skillId: string): Ag
 
 function createUserMessage(text: string): Message {
   return {
-    role: 'user',
+    role: 'ROLE_USER',
     parts: [{ type: 'text', text }],
     messageId: randomUUID(),
     timestamp: new Date().toISOString(),

@@ -85,7 +85,12 @@ if (checkMode && !state.safe_to_publish) {
 }
 
 function ghJson(args) {
-  return JSON.parse(execFileSync('gh', args, { encoding: 'utf8' }));
+  try {
+    return JSON.parse(execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error('GitHub CLI request failed. Authenticate with gh auth login or configure a GitHub CLI token before running release:state locally. ' + detail);
+  }
 }
 
 function git(args) {

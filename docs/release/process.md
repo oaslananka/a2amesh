@@ -136,3 +136,7 @@ After publish, confirm npm shows the expected package versions and provenance.
 The workflow runs `pnpm run release:parity` after registry propagation. If npm
 has not propagated yet, rerun parity after the registry becomes consistent
 instead of republishing existing tarballs.
+
+## Local release state checks
+
+`pnpm run release:state` calls the GitHub CLI to inspect open Release Please pull requests and release state. When running it outside GitHub Actions, authenticate first with `gh auth login` or configure an equivalent GitHub CLI token in the shell environment. Without that authentication, the command fails before it can read repository release state.

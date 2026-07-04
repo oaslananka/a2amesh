@@ -54,14 +54,16 @@ export interface RegistryMetrics {
 }
 
 type TaskStatus =
-  | 'submitted'
-  | 'queued'
-  | 'working'
-  | 'input-required'
-  | 'waiting_on_external'
-  | 'completed'
-  | 'failed'
-  | 'canceled';
+  | 'SUBMITTED'
+  | 'QUEUED'
+  | 'WORKING'
+  | 'INPUT_REQUIRED'
+  | 'AUTH_REQUIRED'
+  | 'WAITING_ON_EXTERNAL'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELED'
+  | 'REJECTED';
 
 export interface RegistryTaskEvent {
   taskId: string;

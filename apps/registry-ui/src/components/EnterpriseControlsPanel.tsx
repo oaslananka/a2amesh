@@ -52,8 +52,8 @@ function summarizeControls(
   const privateAgents = agents.filter((agent) => !agent.isPublic);
   const unhealthyAgents = agents.filter((agent) => agent.status === 'unhealthy');
   const pushAgents = agents.filter((agent) => agent.card.capabilities?.pushNotifications);
-  const taskFailures = tasks.filter((task) => ['failed', 'canceled'].includes(task.status));
-  const externalWaits = tasks.filter((task) => task.status === 'waiting_on_external');
+  const taskFailures = tasks.filter((task) => ['FAILED', 'CANCELED'].includes(task.status));
+  const externalWaits = tasks.filter((task) => task.status === 'WAITING_ON_EXTERNAL');
 
   return [
     {

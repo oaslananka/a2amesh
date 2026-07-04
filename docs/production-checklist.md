@@ -42,3 +42,8 @@ shared environment.
   commit.
 - Prefer deprecation or corrective patch releases over republishing existing npm
   versions.
+
+## Registry metrics exposure
+
+- Treat `/metrics` and `/metrics/summary` as operational surfaces. In production, place them behind network policy, reverse-proxy authentication, or a private observability network unless the deployment intentionally exposes aggregate registry health publicly.
+- Do not publish tenant-specific task, agent, or health details through metrics without a privacy review.
