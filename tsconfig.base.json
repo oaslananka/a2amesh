@@ -24,6 +24,11 @@
     "composite": true,
     "paths": {
       "@a2amesh/runtime": ["./packages/runtime/src/index.ts"],
+      "@a2amesh/runtime/middleware": ["./packages/runtime/src/middleware/index.ts"],
+      "@a2amesh/runtime/schemas": ["./packages/runtime/src/schemas/public.ts"],
+      "@a2amesh/runtime/client": ["./packages/runtime/src/client/index.ts"],
+      "@a2amesh/runtime/testing": ["./packages/runtime/src/testing/index.ts"],
+      "@a2amesh/runtime/codex-bridge": ["./packages/runtime/src/codex-bridge/index.ts"],
       "@a2amesh/internal-adapters": ["./packages/adapters/src/index.ts"],
       "@a2amesh/registry": ["./packages/registry/src/index.ts"],
       "@a2amesh/cli": ["./packages/cli/src/index.ts"],

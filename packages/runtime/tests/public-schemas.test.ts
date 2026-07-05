@@ -61,6 +61,7 @@ describe('public protocol schemas', () => {
       'agent-card.schema.json',
       'message.schema.json',
       'task.schema.json',
+      'cassette.schema.json',
       'artifact.schema.json',
       'json-rpc.schema.json',
       'registry-agent.schema.json',

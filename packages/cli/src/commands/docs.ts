@@ -8,6 +8,7 @@ import { healthCommandDoc } from './health.js';
 import { monitorCommandDoc } from './monitor.js';
 import { registryCommandDoc } from './registry.js';
 import { releaseCheckCommandDoc } from './release-check.js';
+import { replayCommandDoc } from './replay.js';
 import { scaffoldCommandDoc } from './scaffold.js';
 import { sendCommandDoc } from './send.js';
 import { taskCommandDoc } from './task.js';
@@ -27,6 +28,7 @@ export const cliCommandDocs = [
   monitorCommandDoc,
   registryCommandDoc,
   releaseCheckCommandDoc,
+  replayCommandDoc,
   scaffoldCommandDoc,
   sendCommandDoc,
   taskCommandDoc,

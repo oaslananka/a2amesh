@@ -99,6 +99,7 @@ a2amesh monitor http://127.0.0.1:3000 --cycles 3
 a2amesh benchmark http://127.0.0.1:3000 --requests 25 --concurrency 5
 a2amesh release-check
 a2amesh doctor --json
+a2amesh replay ./task-123.cassette.jsonl
 ```
 
 PowerShell:
@@ -119,6 +120,7 @@ a2amesh monitor http://127.0.0.1:3000 --cycles 3
 a2amesh benchmark http://127.0.0.1:3000 --requests 25 --concurrency 5
 a2amesh release-check
 a2amesh doctor --json
+a2amesh replay .\task-123.cassette.jsonl
 ```
 
 ## Package List

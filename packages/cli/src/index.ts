@@ -13,6 +13,7 @@ import { createHealthCommand } from './commands/health.js';
 import { createMonitorCommand } from './commands/monitor.js';
 import { createRegistryCommand } from './commands/registry.js';
 import { createReleaseCheckCommand } from './commands/release-check.js';
+import { createReplayCommand } from './commands/replay.js';
 import { createScaffoldCommand } from './commands/scaffold.js';
 import { createSendCommand } from './commands/send.js';
 import { createTaskCommand } from './commands/task.js';
@@ -46,6 +47,7 @@ export function createProgram(): Command {
   program.addCommand(createDoctorCommand(getOptions));
   program.addCommand(createReleaseCheckCommand(getOptions));
   program.addCommand(createExportCardCommand(getOptions));
+  program.addCommand(createReplayCommand(getOptions));
 
   return program;
 }

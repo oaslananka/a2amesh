@@ -253,6 +253,37 @@ export const TaskSchema = z.object({
   extensions: z.array(z.string()).optional(),
 });
 
+export const CassetteEventReasonSchema = z.enum([
+  'created',
+  'message',
+  'artifact',
+  'state',
+  'push-config',
+]);
+
+export const CassetteHeaderSchema = z.object({
+  formatVersion: z.literal('1'),
+  runtimeVersion: z.string(),
+  taskId: z.string(),
+  recordedAt: IsoDateTimeSchema,
+  redacted: z.boolean(),
+  cardHash: z.string().optional(),
+});
+
+export const CassetteEntrySchema = z.object({
+  sequence: z.number().int().nonnegative(),
+  recordedAt: IsoDateTimeSchema,
+  reason: CassetteEventReasonSchema,
+  task: TaskSchema,
+  previousState: TaskStateSchema.optional(),
+  integrityHash: z.string(),
+});
+
+export const CassetteSchema = z.object({
+  header: CassetteHeaderSchema,
+  entries: z.array(CassetteEntrySchema),
+});
+
 export const TaskListParamsSchema = z.object({
   contextId: z.string().optional(),
   limit: z.number().int().positive().max(500).optional(),
@@ -407,6 +438,19 @@ export const publicJsonSchemaDefinitions = [
       typeSymbol: 'Task',
       schemaSymbol: 'TaskSchema',
       sourceFile: 'packages/runtime/src/types/task.ts',
+    },
+  },
+  {
+    fileName: 'cassette.schema.json',
+    id: 'https://oaslananka.github.io/a2amesh/schemas/cassette.schema.json',
+    title: 'A2A Mesh Cassette',
+    description:
+      'Deterministic task record/replay cassette documents captured by A2A Mesh testing helpers.',
+    schema: CassetteSchema,
+    source: {
+      typeSymbol: 'Cassette',
+      schemaSymbol: 'CassetteSchema',
+      sourceFile: 'packages/runtime/src/types/cassette.ts',
     },
   },
   {

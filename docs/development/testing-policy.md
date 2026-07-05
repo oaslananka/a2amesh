@@ -14,6 +14,11 @@
 - Conformance: A2A protocol compatibility behavior.
 - Coverage: regression signal for core behavior.
 - Mutation/e2e/performance smoke: higher-cost quality gates.
+- Cassette record/replay: deterministic, LLM-free regression coverage for a recorded task
+  lifecycle (`@a2amesh/runtime/testing`'s `CassetteRecorder`/`replayCassette`; see
+  [Cassette Record/Replay](../operations/record-replay.md)). Prefer this for regression-testing
+  adapter or task-lifecycle changes against a previously recorded "golden" run instead of
+  re-invoking a live adapter in the test suite.
 
 ## Local commands
 

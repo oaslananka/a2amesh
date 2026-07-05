@@ -5,3 +5,4 @@ export { createTestMessage, createTestTask } from './fixtures/tasks.js';
 export { toHaveCompletedTask } from './matchers/toHaveCompletedTask.js';
 export * from './conformance.js';
 export * from './profiles.js';
+export * from './cassette/index.js';

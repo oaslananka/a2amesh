@@ -31,27 +31,30 @@ Commands:
   doctor [options]                           Print local CLI diagnostics.
   release-check                              Check release readiness.
   export-card [options] <url>                Export an endpoint Agent Card to JSON.
+  replay [options] <cassette>                Replay a recorded task cassette without invoking a real
+                                             adapter.
   help [command]                             display help for command
 ```
 
 ## Commands
 
-| Command                     | Summary                                               |
-| --------------------------- | ----------------------------------------------------- |
-| `a2amesh benchmark`         | Run request benchmarks against an A2A endpoint.       |
-| `a2amesh conformance`       | Run the A2A conformance fixture suite.                |
-| `a2amesh conformance-badge` | Generate a conformance badge from a report JSON file. |
-| `a2amesh discover`          | Resolve and print an endpoint Agent Card.             |
-| `a2amesh doctor`            | Print local CLI diagnostics.                          |
-| `a2amesh export-card`       | Export an endpoint Agent Card to JSON.                |
-| `a2amesh health`            | Check an A2A endpoint health route.                   |
-| `a2amesh init`              | Initialize an A2A Mesh agent project.                 |
-| `a2amesh monitor`           | Poll task status snapshots.                           |
-| `a2amesh registry`          | Start, inspect, export, and import registry state.    |
-| `a2amesh release-check`     | Check release readiness.                              |
-| `a2amesh send`              | Send a text message to an A2A endpoint.               |
-| `a2amesh task`              | Run task lifecycle operations.                        |
-| `a2amesh validate`          | Validate an Agent Card file or endpoint.              |
+| Command                     | Summary                                                          |
+| --------------------------- | ---------------------------------------------------------------- |
+| `a2amesh benchmark`         | Run request benchmarks against an A2A endpoint.                  |
+| `a2amesh conformance`       | Run the A2A conformance fixture suite.                           |
+| `a2amesh conformance-badge` | Generate a conformance badge from a report JSON file.            |
+| `a2amesh discover`          | Resolve and print an endpoint Agent Card.                        |
+| `a2amesh doctor`            | Print local CLI diagnostics.                                     |
+| `a2amesh export-card`       | Export an endpoint Agent Card to JSON.                           |
+| `a2amesh health`            | Check an A2A endpoint health route.                              |
+| `a2amesh init`              | Initialize an A2A Mesh agent project.                            |
+| `a2amesh monitor`           | Poll task status snapshots.                                      |
+| `a2amesh registry`          | Start, inspect, export, and import registry state.               |
+| `a2amesh release-check`     | Check release readiness.                                         |
+| `a2amesh replay`            | Replay a recorded task cassette without invoking a real adapter. |
+| `a2amesh send`              | Send a text message to an A2A endpoint.                          |
+| `a2amesh task`              | Run task lifecycle operations.                                   |
+| `a2amesh validate`          | Validate an Agent Card file or endpoint.                         |
 
 ## Shared Network Options
 
