@@ -1,6 +1,6 @@
 version = 1
 SPDX-PackageName = "a2amesh"
-SPDX-PackageSupplier = "oaslananka <opensource@oaslananka.com>"
+SPDX-PackageSupplier = "oaslananka <opensource@oaslananka.dev>"
 SPDX-PackageDownloadLocation = "https://github.com/oaslananka/a2amesh"
 
 # Source code — TypeScript/JS and all structured config files
