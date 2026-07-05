@@ -41,7 +41,7 @@
     "lint:md": "markdownlint-cli2",
     "lint:yaml": "node scripts/check-yaml.mjs",
     "lint:identity": "node scripts/check-package-names.mjs && node scripts/check-identity.mjs && node scripts/check-forbidden-refs.mjs && node scripts/check-no-generated-artifacts.mjs && node scripts/check-no-secrets.mjs && node scripts/check-issue-template-packages.mjs && node scripts/check-runtime-versions.mjs && node scripts/check-labels.mjs",
-    "typecheck": "pnpm run build && pnpm -r --if-present run typecheck && pnpm exec tsc -p tsconfig.test.json --noEmit && pnpm exec tsc -p apps/demo/tsconfig.json --noEmit && pnpm exec tsc -p apps/registry-ui/tsconfig.json --noEmit",
+    "typecheck": "pnpm run build && pnpm -r --if-present run typecheck && pnpm exec tsc -p tsconfig.test.json --noEmit && pnpm exec tsc -p apps/demo/tsconfig.json --noEmit && pnpm exec tsc -p apps/registry-ui/tsconfig.json --noEmit && pnpm exec tsc -p apps/mission-control/tsconfig.json --noEmit",
     "test": "pnpm run test:unit && pnpm run test:integration",
     "test:unit": "pnpm run build && vitest run --project unit",
     "test:integration": "pnpm run build && vitest run --project integration --project transport-contract && pnpm run examples:smoke",

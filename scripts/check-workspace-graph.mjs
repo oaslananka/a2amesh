@@ -21,6 +21,7 @@ const packageByImport = new Map([
   ['@a2amesh/internal-transport-grpc', 'transport-grpc'],
   ['@a2amesh/internal-fleet', 'fleet'],
   ['@a2amesh/internal-worker-runtime', 'worker-runtime'],
+  ['@a2amesh/internal-fleet-server', 'fleet-server'],
 ]);
 
 const adapterImplementations = [
@@ -44,6 +45,7 @@ const disallowed = {
     'transport-grpc',
     'fleet',
     'worker-runtime',
+    'fleet-server',
     'auth',
     'telemetry',
   ]),

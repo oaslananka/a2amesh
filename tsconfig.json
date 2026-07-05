@@ -38,6 +38,9 @@
       "path": "./packages/fleet"
     },
     {
+      "path": "./packages/fleet-server"
+    },
+    {
       "path": "./packages/mcp"
     },
     {
@@ -63,6 +66,9 @@
     },
     {
       "path": "./apps/demo"
+    },
+    {
+      "path": "./apps/mission-control"
     },
     {
       "path": "./apps/registry-ui"

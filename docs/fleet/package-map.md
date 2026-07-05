@@ -7,7 +7,7 @@ This document defines the package boundaries, dependency directions, and archite
 To maintain a clean and acyclic architecture, Fleet packages must adhere to the following dependency flow (from lowest level to highest level):
 
 ```text
-packages/runtime (and types) -> packages/fleet (core fleet protocols) -> worker packages -> provider adapter packages -> applications/CLI
+packages/runtime (and types) -> packages/fleet (core fleet protocols) -> worker packages -> provider adapter packages -> packages/fleet-server (control-plane HTTP surface) -> applications/CLI
 ```
 
 - Lower-level packages **must never** import from higher-level packages.
@@ -41,6 +41,10 @@ A2A runtime/protocol only. Must remain strictly provider-neutral.
 ### `packages/artifacts`
 
 - **Belongs Here:** Run artifacts, reports, diffs, logs, reviews, handoff outputs.
+
+### `packages/fleet-server`
+
+- **Belongs Here:** The control-plane HTTP surface (`FleetControlPlaneServer`): live worker health, task routing, the operator approval queue, artifact review, and the audit timeline. See [Fleet Control Plane Server](control-plane-server.md) and [ADR-0012](../architecture/adr/0012-fleet-control-plane-server.md).
 
 ### Worker & Provider Adapter Packages
 

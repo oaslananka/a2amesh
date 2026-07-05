@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+  color-scheme: dark;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: #0f141a;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top right, rgba(20, 184, 166, 0.08), transparent 28%),
+    radial-gradient(circle at top left, rgba(245, 158, 11, 0.06), transparent 24%),
+    linear-gradient(180deg, #0f141a 0%, #131b22 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.mesh-display {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+}
