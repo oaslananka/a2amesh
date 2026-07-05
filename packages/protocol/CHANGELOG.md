@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/protocol-v0.5.0-alpha.1...@a2amesh/protocol-v0.6.0-alpha.1) (2026-07-05)
+
+
+### Features
+
+* add TypeScript configuration and runtime versions ([f4d5d6d](https://github.com/oaslananka/a2amesh/commit/f4d5d6dca177aaab8454d706ae21a3522ad33223))
+* **registry:** harden tenant trust ([#64](https://github.com/oaslananka/a2amesh/issues/64)) ([0d1bdfd](https://github.com/oaslananka/a2amesh/commit/0d1bdfd1763f5eb1648cf78c241c79f5fd74d8db))
+
 ## [0.5.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/protocol-v0.4.0-alpha.1...@a2amesh/protocol-v0.5.0-alpha.1) (2026-07-04)
 
 
