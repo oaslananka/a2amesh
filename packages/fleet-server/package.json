@@ -1,0 +1,63 @@
+{
+  "name": "@a2amesh/internal-fleet-server",
+  "version": "0.1.0-alpha.0",
+  "description": "Fleet control-plane HTTP server: live worker health, routing, approval queue, artifact review, and audit timeline.",
+  "keywords": [
+    "a2a",
+    "agent2agent",
+    "fleet",
+    "orchestration",
+    "control-plane",
+    "mission-control"
+  ],
+  "author": "oaslananka",
+  "license": "Apache-2.0",
+  "homepage": "https://oaslananka.github.io/a2amesh/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oaslananka/a2amesh.git",
+    "directory": "packages/fleet-server"
+  },
+  "bugs": {
+    "url": "https://github.com/oaslananka/a2amesh/issues"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "build": "node ../../scripts/build-tsc-package.mjs",
+    "typecheck": "tsc -b",
+    "test": "vitest run --root ../.. --config vitest.config.ts packages/fleet-server/tests",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@a2amesh/internal-fleet": "workspace:^",
+    "@a2amesh/runtime": "workspace:^",
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.6",
+    "typescript": "6.0.3"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.22.1 <25"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "private": true
+}
