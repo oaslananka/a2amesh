@@ -39,8 +39,9 @@ FleetTask
 ```
 
 - **Registry**: workers are represented as `FleetWorkerDiscoveryRecord` (capabilities, roles,
-  tenants, status). In this quickstart the registry is just an in-memory array; production
-  deployments back it with `@a2amesh/registry`.
+  tenants, status). The minimal demo below uses a plain in-memory array
+  (`StaticWorkerDirectory`); [Registry-backed worker discovery](#registry-backed-worker-discovery)
+  replaces that array with live discovery against `@a2amesh/registry`.
 - **Adapter**: implements the `WorkerRuntimeContract` lifecycle
   (`packages/worker-runtime/src/types/lifecycle.ts`). Two reference implementations ship today:
   `MockWorkerRuntimeAdapter` (no process, deterministic, good for tests/demos) and
@@ -187,6 +188,47 @@ for the executable specification):
 `planFleetDispatchWaves` can express step 3/4's dependency (tests depend on the patch landing) as a
 two-wave dispatch plan; unrelated tasks (e.g., two independent review comments) land in the same wave
 and can run in parallel.
+
+## Registry-backed worker discovery
+
+The minimal demo above builds the candidate array by hand. `routeFleetTask`/`planFleetDispatchWaves`
+never assumed that array was static — `FleetWorkerDirectory` (`packages/fleet/src/discovery/`) makes
+the candidate source an explicit, swappable seam:
+
+- `StaticWorkerDirectory` wraps a fixed array — the in-memory-list behavior above, made explicit.
+- `RegistryWorkerDirectory` polls a live `@a2amesh/registry` instance instead: it queries
+  `listAgents()` on a bounded refresh interval, evicts unhealthy or stale-heartbeat agents before
+  they ever reach the router, and falls back to the last known-good candidate set (or a configured
+  static fallback) if the registry is temporarily unreachable, so a registry outage degrades routing
+  rather than breaking it.
+
+```typescript
+import { AgentRegistryClient } from '@a2amesh/runtime';
+import { RegistryWorkerDirectory, routeFleetTask } from '@a2amesh/internal-fleet';
+
+// AgentRegistryClient#listAgents() already returns the fields RegistryWorkerDirectory
+// needs (id, card, status, skills, tenantId, lastHeartbeatAt) — no adapter code required.
+const registry = new AgentRegistryClient('http://127.0.0.1:3099');
+const directory = new RegistryWorkerDirectory(registry, {
+  refreshIntervalMs: 5_000, // default; how often listAgents() is re-queried
+  staleAfterMs: 60_000, // default; agents with an older heartbeat are evicted
+  activeRunCounts: () => currentRunCountsByWorkerId(), // your own load tracking
+});
+
+const candidates = await directory.listCandidates();
+const decision = routeFleetTask(
+  { taskId: 'task-1', requiredCapabilities: ['code-review'] },
+  candidates,
+  { strategy: { type: 'CAPABILITY_MATCH' }, requiredSignals: ['capability', 'availability'] },
+);
+```
+
+Workers publish themselves to the registry the same way any A2A agent does — call
+`registry.register(agentUrl, workerCard, { tenantId })` on startup with a `WorkerCard`
+(`fleetRoles`, `maxConcurrentTasks`) as the `agentCard`; no separate fleet-specific registration API
+is needed. `RegistryWorkerDirectory` never dispatches to a worker the registry reports as
+`unhealthy`, and `tenantScoped` routing policies are enforced the same way as with a static list,
+since a registry-backed candidate carries the same `FleetWorkerDiscoveryRecord` shape.
 
 ## Artifact exchange
 
