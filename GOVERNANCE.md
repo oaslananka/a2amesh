@@ -32,7 +32,7 @@ The project treats continuity as a release and security requirement. To satisfy 
 - publish or pause npm releases;
 - update security advisories and vulnerability-reporting instructions.
 
-Current status: the repository is still recruiting an independent maintainer before enabling mandatory multi-person review and full continuity. The active tracking issue is [#69](https://github.com/oaslananka/a2amesh/issues/69). Until that is complete, continuity is documented as an explicit governance gap rather than being overstated.
+Current status: the repository is still recruiting an independent maintainer before enabling mandatory multi-person review and full continuity. The active tracking issue is [#125](https://github.com/oaslananka/a2amesh/issues/125). Until that is complete, continuity is documented as an explicit governance gap rather than being overstated.
 
 ## Review and release authority
 
