@@ -17,6 +17,8 @@ import {
   type RegistryMetrics,
 } from './api/registry';
 import { AgentInspector } from './components/AgentInspector';
+import { ConformanceDashboard } from './components/ConformanceDashboard';
+import { EnterpriseControlsPanel } from './components/EnterpriseControlsPanel';
 import { HealthBadge } from './components/HealthBadge';
 import { PlaygroundPanel } from './components/PlaygroundPanel';
 import { TaskStream } from './components/TaskStream';
@@ -24,7 +26,7 @@ import { TopologyGraph } from './components/TopologyGraph';
 import { useAgents } from './hooks/useAgents';
 import { useTaskStream } from './hooks/useTaskStream';
 
-type ViewMode = 'fleet' | 'topology' | 'stream' | 'playground';
+type ViewMode = 'fleet' | 'topology' | 'stream' | 'playground' | 'conformance' | 'controls';
 type StatusFilter = 'all' | 'healthy' | 'unhealthy' | 'unknown';
 type CapabilityFilter = 'all' | 'streaming' | 'mcp';
 
@@ -335,6 +337,16 @@ export default function App() {
                 label="Playground"
                 onClick={() => setView('playground')}
               />
+              <ViewButton
+                active={view === 'conformance'}
+                label="Conformance"
+                onClick={() => setView('conformance')}
+              />
+              <ViewButton
+                active={view === 'controls'}
+                label="Controls"
+                onClick={() => setView('controls')}
+              />
             </div>
           </div>
         </section>
@@ -481,6 +493,22 @@ export default function App() {
                 selectedAgent={selectedAgent}
                 accessMode={accessMode}
                 onSelectAgent={(agent) => setSelectedAgentId(agent.id)}
+              />
+            ) : null}
+
+            {view === 'conformance' ? (
+              <ConformanceDashboard
+                agents={filteredAgents}
+                tasks={tasks}
+                selectedAgent={selectedAgent}
+              />
+            ) : null}
+
+            {view === 'controls' ? (
+              <EnterpriseControlsPanel
+                agents={filteredAgents}
+                tasks={tasks}
+                accessMode={accessMode}
               />
             ) : null}
           </main>
