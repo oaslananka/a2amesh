@@ -33,6 +33,7 @@ Commands:
   export-card [options] <url>                Export an endpoint Agent Card to JSON.
   replay [options] <cassette>                Replay a recorded task cassette without invoking a real
                                              adapter.
+  trust                                      Sign, verify, and inspect the Agent Card trust chain.
   help [command]                             display help for command
 ```
 
@@ -54,6 +55,7 @@ Commands:
 | `a2amesh replay`            | Replay a recorded task cassette without invoking a real adapter. |
 | `a2amesh send`              | Send a text message to an A2A endpoint.                          |
 | `a2amesh task`              | Run task lifecycle operations.                                   |
+| `a2amesh trust`             | Sign, verify, and inspect the Agent Card trust chain.            |
 | `a2amesh validate`          | Validate an Agent Card file or endpoint.                         |
 
 ## Shared Network Options

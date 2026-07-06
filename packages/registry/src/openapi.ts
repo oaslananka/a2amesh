@@ -186,6 +186,10 @@ export const registryOpenApiDocument = {
       name: 'Admin',
       description: 'Authenticated export and import control-plane operations.',
     },
+    {
+      name: 'Trust',
+      description: 'Append-only, hash-chained trust log for verified Agent Card registrations.',
+    },
   ],
   paths: {
     '/health': {
@@ -455,6 +459,38 @@ export const registryOpenApiDocument = {
         },
       },
     },
+    '/trust-log': {
+      get: {
+        operationId: 'listRegistryTrustLog',
+        tags: ['Trust'],
+        summary: 'List trust log entries for verified Agent Card registrations.',
+        description:
+          'Returns entries in append order. Each entry is chained to the previous entry via entryHash, so tampering with an earlier entry changes every hash after it. Read-only and unauthenticated by design so downstream tooling can independently audit the chain.',
+        parameters: [parameterRef('LimitQuery')],
+        responses: {
+          '200': jsonResponse('Trust log entries in append order.', {
+            type: 'array',
+            items: schemaRef('TrustLogEntry'),
+          }),
+          ...operationalErrorResponses,
+        },
+      },
+    },
+    '/trust-log/{cardHash}': {
+      parameters: [parameterRef('CardHashPath')],
+      get: {
+        operationId: 'getRegistryTrustLogByCardHash',
+        tags: ['Trust'],
+        summary: 'List trust log entries for a specific Agent Card hash.',
+        responses: {
+          '200': jsonResponse('Trust log entries matching the card hash.', {
+            type: 'array',
+            items: schemaRef('TrustLogEntry'),
+          }),
+          ...operationalErrorResponses,
+        },
+      },
+    },
   },
   components: {
     securitySchemes: {
@@ -476,6 +512,16 @@ export const registryOpenApiDocument = {
           minLength: 1,
         },
         description: 'Registry agent id.',
+      },
+      CardHashPath: {
+        name: 'cardHash',
+        in: 'path',
+        required: true,
+        schema: {
+          type: 'string',
+          minLength: 1,
+        },
+        description: 'SHA-256 hex digest of the canonicalized, signature-less Agent Card.',
       },
       CursorQuery: {
         name: 'cursor',
@@ -1035,6 +1081,45 @@ export const registryOpenApiDocument = {
           task: {
             type: 'object',
             additionalProperties: true,
+          },
+        },
+      },
+      TrustLogEntry: {
+        type: 'object',
+        additionalProperties: false,
+        required: [
+          'sequence',
+          'cardHash',
+          'keyId',
+          'algorithm',
+          'agentUrl',
+          'timestamp',
+          'entryHash',
+        ],
+        properties: {
+          sequence: {
+            type: 'integer',
+            minimum: 0,
+          },
+          cardHash: {
+            type: 'string',
+          },
+          keyId: {
+            type: 'string',
+          },
+          algorithm: {
+            type: 'string',
+          },
+          agentUrl: {
+            type: 'string',
+            format: 'uri',
+          },
+          tenantId: {
+            type: 'string',
+          },
+          timestamp: timestampSchema,
+          entryHash: {
+            type: 'string',
           },
         },
       },

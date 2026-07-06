@@ -12,3 +12,4 @@
 - [ADR-0010: A2A Mesh Clean Start](0010-a2amesh-clean-start.md)
 - [ADR-0011: Cassette Record/Replay](0011-cassette-record-replay.md)
 - [ADR-0012: Fleet Control Plane Server](0012-fleet-control-plane-server.md)
+- [ADR-0013: Agent Card Trust Log](0013-agent-card-trust-log.md)

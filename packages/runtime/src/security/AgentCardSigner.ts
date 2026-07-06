@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { CompactSign, compactVerify, importPKCS8, importSPKI } from 'jose';
 import type { AgentCard, AgentCardSignature } from '../types/agent-card.js';
 
@@ -82,6 +83,24 @@ export async function verifyAgentCard(
   }
 
   return { valid: false };
+}
+
+/**
+ * Canonicalizes an Agent Card the same way `signAgentCard`/`verifyAgentCard`
+ * do internally (key-sorted JSON, `undefined` values dropped) — exported so
+ * callers that need the exact signed payload (e.g. computing a stable
+ * `cardHash` for a trust log entry) never drift from what was actually
+ * signed.
+ */
+export function canonicalizeAgentCard(card: AgentCard): string {
+  const { signatures, ...signaturelessCard } = card;
+  void signatures;
+  return canonicalize(signaturelessCard);
+}
+
+/** SHA-256 hex digest of the canonicalized, signature-less Agent Card. */
+export function hashAgentCard(card: AgentCard): string {
+  return createHash('sha256').update(canonicalizeAgentCard(card)).digest('hex');
 }
 
 function canonicalize(value: unknown): string {

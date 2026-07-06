@@ -29,6 +29,7 @@ import {
 } from './server/types.js';
 import { InMemoryStorage } from './storage/InMemoryStorage.js';
 import type { RegisteredAgent } from './storage/IAgentStorage.js';
+import { InMemoryTrustLogStorage } from './storage/InMemoryTrustLogStorage.js';
 
 export type {
   RegistryMetricsSummary,
@@ -52,6 +53,7 @@ export class RegistryServer {
     this.app = express();
     this.context = {
       store: options.storage ?? new InMemoryStorage(),
+      trustLog: options.trustLogStorage ?? new InMemoryTrustLogStorage(),
       events: new EventEmitter(),
       taskEvents: new EventEmitter(),
       options,

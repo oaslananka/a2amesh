@@ -35,6 +35,22 @@ export interface RegistryImportResult {
   total: number;
 }
 
+export interface TrustLogEntry {
+  sequence: number;
+  cardHash: string;
+  keyId: string;
+  algorithm: string;
+  agentUrl: string;
+  tenantId?: string;
+  timestamp: string;
+  entryHash: string;
+}
+
+export interface TrustLogQuery {
+  cardHash?: string;
+  limit?: number;
+}
+
 /**
  * Client for the registry REST and SSE endpoints.
  *
@@ -138,6 +154,20 @@ export class AgentRegistryClient {
       throw new Error(`Failed to fetch registry health (${response.status})`);
     }
     return (await response.json()) as Record<string, unknown>;
+  }
+
+  async getTrustLog(query: TrustLogQuery = {}): Promise<TrustLogEntry[]> {
+    const url = query.cardHash
+      ? new URL(`/trust-log/${query.cardHash}`, this.baseUrl)
+      : new URL('/trust-log', this.baseUrl);
+    if (query.limit !== undefined) {
+      url.searchParams.set('limit', String(query.limit));
+    }
+    const response = await this.fetchImplementation(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch trust log (${response.status})`);
+    }
+    return (await response.json()) as TrustLogEntry[];
   }
 
   async *events(): AsyncGenerator<unknown> {

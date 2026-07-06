@@ -11,6 +11,7 @@ import type {
   VerificationKey,
 } from '@a2amesh/runtime';
 import type { IAgentStorage } from '../storage/IAgentStorage.js';
+import type { ITrustLogStorage } from '../storage/ITrustLogStorage.js';
 
 interface RegistryTenantTrustPolicy {
   requireSignedAgentCards?: boolean;
@@ -20,6 +21,7 @@ interface RegistryTenantTrustPolicy {
 
 export interface RegistryServerOptions {
   storage?: IAgentStorage;
+  trustLogStorage?: ITrustLogStorage;
   requireAuth?: boolean;
   registrationToken?: string;
   auth?: JwtAuthMiddlewareOptions;
@@ -89,6 +91,7 @@ export interface RegistryServerState {
 
 export interface RegistryServerContext {
   store: IAgentStorage;
+  trustLog: ITrustLogStorage;
   events: EventEmitter;
   taskEvents: EventEmitter;
   options: RegistryServerOptions;

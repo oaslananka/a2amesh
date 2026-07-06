@@ -27,6 +27,7 @@ import {
 import { createRegistryTaskProjection } from '../src/server/taskProjection.js';
 import { InMemoryStorage } from '../src/storage/InMemoryStorage.js';
 import type { RegisteredAgent } from '../src/storage/IAgentStorage.js';
+import { InMemoryTrustLogStorage } from '../src/storage/InMemoryTrustLogStorage.js';
 
 function createEs256KeyPair(keyId = 'registry-agent-key') {
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
@@ -116,6 +117,7 @@ function createRouteHarness(options: RegistryServerOptions = {}) {
   const app = express();
   const context: RegistryServerContext = {
     store: options.storage ?? new InMemoryStorage(),
+    trustLog: options.trustLogStorage ?? new InMemoryTrustLogStorage(),
     events: new EventEmitter(),
     taskEvents: new EventEmitter(),
     options,
@@ -644,5 +646,115 @@ describe('Registry tenant trust and signed Agent Card handling', () => {
       .set('x-tenant-id', 'tenant-import')
       .expect(200);
     expect(listed.body).toEqual([]);
+  });
+});
+
+describe('Registry trust log', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('appends an entry when a trusted signed Agent Card is registered', async () => {
+    const { signingKey, verificationKey } = createEs256KeyPair('trust-log-key');
+    const signedCard = await signAgentCard(createAgentCard('Trust Log Agent'), signingKey);
+    const { app } = createRouteHarness({
+      allowLocalhost: true,
+      registrationToken: 'token',
+      requireSignedAgentCards: true,
+      trustedAgentCardKeys: [verificationKey],
+    });
+
+    await request(app)
+      .post('/agents/register')
+      .set('Authorization', 'Bearer token')
+      .send({
+        agentUrl: 'http://localhost:3040',
+        agentCard: signedCard,
+      })
+      .expect(201);
+
+    const trustLog = await request(app).get('/trust-log').expect(200);
+    expect(trustLog.body).toHaveLength(1);
+    expect(trustLog.body[0]).toMatchObject({
+      sequence: 0,
+      keyId: 'trust-log-key',
+      algorithm: 'ES256',
+      agentUrl: 'http://localhost:3040',
+    });
+    expect(trustLog.body[0].entryHash).toEqual(expect.any(String));
+    expect(trustLog.body[0].cardHash).toEqual(expect.any(String));
+  });
+
+  it('does not append an entry when registration is unsigned or untrusted', async () => {
+    const { app } = createRouteHarness({
+      allowLocalhost: true,
+      registrationToken: 'token',
+    });
+
+    await request(app)
+      .post('/agents/register')
+      .set('Authorization', 'Bearer token')
+      .send({
+        agentUrl: 'http://localhost:3041',
+        agentCard: createAgentCard('Unsigned Agent'),
+      })
+      .expect(201);
+
+    const trustLog = await request(app).get('/trust-log').expect(200);
+    expect(trustLog.body).toEqual([]);
+  });
+
+  it('filters trust log entries by cardHash via the dedicated route', async () => {
+    const { signingKey, verificationKey } = createEs256KeyPair('filter-key');
+    const cardA = await signAgentCard(createAgentCard('Filter Agent A'), signingKey);
+    const cardB = await signAgentCard(createAgentCard('Filter Agent B'), signingKey);
+    const { app } = createRouteHarness({
+      allowLocalhost: true,
+      registrationToken: 'token',
+      requireSignedAgentCards: true,
+      trustedAgentCardKeys: [verificationKey],
+    });
+
+    await request(app)
+      .post('/agents/register')
+      .set('Authorization', 'Bearer token')
+      .send({ agentUrl: 'http://localhost:3042', agentCard: cardA })
+      .expect(201);
+    await request(app)
+      .post('/agents/register')
+      .set('Authorization', 'Bearer token')
+      .send({ agentUrl: 'http://localhost:3043', agentCard: cardB })
+      .expect(201);
+
+    const fullLog = await request(app).get('/trust-log').expect(200);
+    expect(fullLog.body).toHaveLength(2);
+    const cardHash = fullLog.body[0].cardHash as string;
+
+    const filtered = await request(app).get(`/trust-log/${cardHash}`).expect(200);
+    expect(filtered.body).toHaveLength(1);
+    expect(filtered.body[0].cardHash).toBe(cardHash);
+  });
+
+  it('applies a limit query parameter on GET /trust-log', async () => {
+    const { signingKey, verificationKey } = createEs256KeyPair('limit-key');
+    const { app } = createRouteHarness({
+      allowLocalhost: true,
+      registrationToken: 'token',
+      requireSignedAgentCards: true,
+      trustedAgentCardKeys: [verificationKey],
+    });
+
+    for (const index of [0, 1, 2]) {
+      const card = await signAgentCard(createAgentCard(`Limit Agent ${index}`), signingKey);
+      await request(app)
+        .post('/agents/register')
+        .set('Authorization', 'Bearer token')
+        .send({ agentUrl: `http://localhost:305${index}`, agentCard: card })
+        .expect(201);
+    }
+
+    const limited = await request(app).get('/trust-log?limit=2').expect(200);
+    expect(limited.body).toHaveLength(2);
+    expect(limited.body.map((entry: { sequence: number }) => entry.sequence)).toEqual([1, 2]);
   });
 });

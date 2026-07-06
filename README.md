@@ -100,6 +100,8 @@ a2amesh benchmark http://127.0.0.1:3000 --requests 25 --concurrency 5
 a2amesh release-check
 a2amesh doctor --json
 a2amesh replay ./task-123.cassette.jsonl
+a2amesh trust sign ./agent-card.json --key ./signing-key.pem --key-id my-key --output ./agent-card.signed.json
+a2amesh trust verify ./agent-card.signed.json --trusted-key my-key:./public-key.pem
 ```
 
 PowerShell:
@@ -121,6 +123,8 @@ a2amesh benchmark http://127.0.0.1:3000 --requests 25 --concurrency 5
 a2amesh release-check
 a2amesh doctor --json
 a2amesh replay .\task-123.cassette.jsonl
+a2amesh trust sign .\agent-card.json --key .\signing-key.pem --key-id my-key --output .\agent-card.signed.json
+a2amesh trust verify .\agent-card.signed.json --trusted-key my-key:.\public-key.pem
 ```
 
 ## Package List

@@ -8,6 +8,13 @@
         "required": true,
         "schema": { "minLength": 1, "type": "string" }
       },
+      "CardHashPath": {
+        "description": "SHA-256 hex digest of the canonicalized, signature-less Agent Card.",
+        "in": "path",
+        "name": "cardHash",
+        "required": true,
+        "schema": { "minLength": 1, "type": "string" }
+      },
       "CursorQuery": {
         "description": "Pagination cursor returned by X-A2A-Registry-Page-Next-Cursor.",
         "in": "query",
@@ -381,6 +388,29 @@
           "historyCount",
           "artifactCount",
           "task"
+        ],
+        "type": "object"
+      },
+      "TrustLogEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "agentUrl": { "format": "uri", "type": "string" },
+          "algorithm": { "type": "string" },
+          "cardHash": { "type": "string" },
+          "entryHash": { "type": "string" },
+          "keyId": { "type": "string" },
+          "sequence": { "minimum": 0, "type": "integer" },
+          "tenantId": { "type": "string" },
+          "timestamp": { "format": "date-time", "type": "string" }
+        },
+        "required": [
+          "sequence",
+          "cardHash",
+          "keyId",
+          "algorithm",
+          "agentUrl",
+          "timestamp",
+          "entryHash"
         ],
         "type": "object"
       },
@@ -889,6 +919,53 @@
         "summary": "Stream recent and future task projection events.",
         "tags": ["Tasks", "Events"]
       }
+    },
+    "/trust-log": {
+      "get": {
+        "description": "Returns entries in append order. Each entry is chained to the previous entry via entryHash, so tampering with an earlier entry changes every hash after it. Read-only and unauthenticated by design so downstream tooling can independently audit the chain.",
+        "operationId": "listRegistryTrustLog",
+        "parameters": [{ "$ref": "#/components/parameters/LimitQuery" }],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/TrustLogEntry" },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Trust log entries in append order."
+          },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        },
+        "summary": "List trust log entries for verified Agent Card registrations.",
+        "tags": ["Trust"]
+      }
+    },
+    "/trust-log/{cardHash}": {
+      "get": {
+        "operationId": "getRegistryTrustLogByCardHash",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/TrustLogEntry" },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Trust log entries matching the card hash."
+          },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        },
+        "summary": "List trust log entries for a specific Agent Card hash.",
+        "tags": ["Trust"]
+      },
+      "parameters": [{ "$ref": "#/components/parameters/CardHashPath" }]
     }
   },
   "servers": [{ "description": "Local registry server", "url": "http://localhost:3000" }],
@@ -901,6 +978,10 @@
     },
     { "description": "Server-sent event streams for registry and task changes.", "name": "Events" },
     { "description": "Recent task projections and task update streams.", "name": "Tasks" },
-    { "description": "Authenticated export and import control-plane operations.", "name": "Admin" }
+    { "description": "Authenticated export and import control-plane operations.", "name": "Admin" },
+    {
+      "description": "Append-only, hash-chained trust log for verified Agent Card registrations.",
+      "name": "Trust"
+    }
   ]
 }

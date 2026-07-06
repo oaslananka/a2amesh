@@ -12,6 +12,7 @@ import { replayCommandDoc } from './replay.js';
 import { scaffoldCommandDoc } from './scaffold.js';
 import { sendCommandDoc } from './send.js';
 import { taskCommandDoc } from './task.js';
+import { trustCommandDoc } from './trust.js';
 import { validateCommandDoc } from './validate.js';
 import type { CliCommandDoc } from './doc-metadata.js';
 
@@ -32,5 +33,6 @@ export const cliCommandDocs = [
   scaffoldCommandDoc,
   sendCommandDoc,
   taskCommandDoc,
+  trustCommandDoc,
   validateCommandDoc,
 ] as const satisfies readonly CliCommandDoc[];

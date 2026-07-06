@@ -17,6 +17,7 @@ import { createReplayCommand } from './commands/replay.js';
 import { createScaffoldCommand } from './commands/scaffold.js';
 import { createSendCommand } from './commands/send.js';
 import { createTaskCommand } from './commands/task.js';
+import { createTrustCommand } from './commands/trust.js';
 import { createValidateCommand } from './commands/validate.js';
 import { writeError, type CliOptions } from './io.js';
 import { CLI_VERSION } from './version.js';
@@ -48,6 +49,7 @@ export function createProgram(): Command {
   program.addCommand(createReleaseCheckCommand(getOptions));
   program.addCommand(createExportCardCommand(getOptions));
   program.addCommand(createReplayCommand(getOptions));
+  program.addCommand(createTrustCommand(getOptions));
 
   return program;
 }

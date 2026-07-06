@@ -117,3 +117,16 @@ Stored `verification` metadata includes:
 - failure reason for unverified or rejected cards.
 
 This metadata is included in registry exports so downstream control planes can preserve trust evidence.
+
+## Trust Log
+
+Every registry maintains an in-memory, append-only trust log (`ITrustLogStorage`). Whenever an Agent Card registration is verified as `trusted`, the registry appends an entry recording the card's SHA-256 hash (`hashAgentCard` from `@a2amesh/runtime`), the verifying key id and algorithm, the agent URL, the tenant id when scoped, and a timestamp. Each entry also carries an `entryHash` chained from the previous entry's hash, so altering any earlier entry changes every hash after it — the same tamper-evidence pattern used by [cassette record/replay](../architecture/adr/0011-cassette-record-replay.md).
+
+The log is exposed read-only, without authentication, at:
+
+- `GET /trust-log` — all entries in append order (`?limit=` returns only the most recent N).
+- `GET /trust-log/:cardHash` — entries for one specific Agent Card hash.
+
+Unsigned or untrusted registrations never append an entry. The `a2amesh trust` CLI command signs and verifies Agent Cards and inspects a running registry's trust log — see [`a2amesh trust`](../cli/trust.md).
+
+See [ADR-0013: Agent Card Trust Log](../architecture/adr/0013-agent-card-trust-log.md) for the design rationale.

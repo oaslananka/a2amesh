@@ -34,6 +34,8 @@ export const REQUIRED_OPERATIONS = [
   ['POST', '/admin/agents/import'],
   ['GET', '/tasks/recent'],
   ['GET', '/tasks/stream'],
+  ['GET', '/trust-log'],
+  ['GET', '/trust-log/{cardHash}'],
 ];
 
 export const REQUIRED_SCHEMAS = [
@@ -52,6 +54,7 @@ export const REQUIRED_SCHEMAS = [
   'RegistryImportResult',
   'RegistryMetricsSummary',
   'RegistryTaskEvent',
+  'TrustLogEntry',
   'ValidationErrorResponse',
   'ValidationIssue',
 ];

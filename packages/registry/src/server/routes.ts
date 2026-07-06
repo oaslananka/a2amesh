@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Express, Request, Response } from 'express';
 import {
+  hashAgentCard,
   logger,
   normalizeAgentCard,
   verifyAgentCard,
@@ -128,6 +129,21 @@ export function registerRegistryRoutes(
     );
     context.state.metrics.registrations += 1;
     emitRegistryEvent(context, { type: 'registered', agent: registered });
+
+    if (verification.state === 'trusted' && verification.keyId) {
+      const signature = normalizedCard.signatures?.find(
+        (candidate) => candidate.keyId === verification.keyId,
+      );
+      await context.trustLog.append({
+        cardHash: hashAgentCard(normalizedCard),
+        keyId: verification.keyId,
+        algorithm: signature?.algorithm ?? 'unknown',
+        agentUrl,
+        ...(finalTenantId ? { tenantId: finalTenantId } : {}),
+        timestamp: verification.verifiedAt,
+      });
+    }
+
     logger.audit('register_agent', finalTenantId, `agent:${registered.id}`, 'success', {
       url: registered.url,
     });
@@ -140,6 +156,20 @@ export function registerRegistryRoutes(
   };
   app.post('/agents/register', registerAgent);
   app.post('/admin/agents/register', registerAgent);
+
+  app.get('/trust-log', async (req, res) => {
+    const limitRaw =
+      typeof req.query['limit'] === 'string' ? Number(req.query['limit']) : undefined;
+    const entries = await context.trustLog.list({
+      ...(limitRaw !== undefined && Number.isFinite(limitRaw) ? { limit: limitRaw } : {}),
+    });
+    res.json(entries);
+  });
+
+  app.get('/trust-log/:cardHash', async (req, res) => {
+    const entries = await context.trustLog.list({ cardHash: req.params['cardHash'] as string });
+    res.json(entries);
+  });
 
   app.get('/agents', async (req, res) => {
     const pagination = resolveAgentPagination(req);
