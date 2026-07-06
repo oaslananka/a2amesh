@@ -6,6 +6,16 @@ import type {
   TrustLogListFilter,
 } from './ITrustLogStorage.js';
 
+function compareOrdinal(left: string, right: string): number {
+  if (left < right) {
+    return -1;
+  }
+  if (left > right) {
+    return 1;
+  }
+  return 0;
+}
+
 function canonicalJsonStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') {
     return JSON.stringify(value);
@@ -16,7 +26,7 @@ function canonicalJsonStringify(value: unknown): string {
   const record = value as Record<string, unknown>;
   const entries = Object.keys(record)
     .filter((key) => record[key] !== undefined)
-    .sort()
+    .sort(compareOrdinal)
     .map((key) => `${JSON.stringify(key)}:${canonicalJsonStringify(record[key])}`);
   return `{${entries.join(',')}}`;
 }
