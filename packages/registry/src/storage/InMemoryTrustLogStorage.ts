@@ -16,7 +16,7 @@ function canonicalJsonStringify(value: unknown): string {
   const record = value as Record<string, unknown>;
   const entries = Object.keys(record)
     .filter((key) => record[key] !== undefined)
-    .sort()
+    .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))
     .map((key) => `${JSON.stringify(key)}:${canonicalJsonStringify(record[key])}`);
   return `{${entries.join(',')}}`;
 }
