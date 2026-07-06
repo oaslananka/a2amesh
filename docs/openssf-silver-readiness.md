@@ -47,6 +47,6 @@ The project has achieved the OpenSSF Best Practices Passing badge for project `1
 
 The following items should not be overstated:
 
-1. **Access continuity / bus factor**: currently tracked by [#69](https://github.com/oaslananka/a2amesh/issues/69). Silver continuity should be marked complete only after an independent maintainer or equivalent recovery mechanism is in place.
+1. **Access continuity / bus factor**: currently tracked by [#125](https://github.com/oaslananka/a2amesh/issues/125). Silver continuity should be marked complete only after an independent maintainer or equivalent recovery mechanism is in place.
 2. **Signed releases / signed tags**: release documentation exists, but official release signing/provenance evidence should be attached after the Release Please and npm publish flow completes.
-3. **Private vulnerability reporting confirmation**: documented in [SECURITY.md](../SECURITY.md) and [governance policy](governance/vulnerability-reporting-and-review-policy.md), with admin confirmation tracked by [#70](https://github.com/oaslananka/a2amesh/issues/70).
+3. **Private vulnerability reporting confirmation**: verified enabled and closed as [#70](https://github.com/oaslananka/a2amesh/issues/70), documented in [SECURITY.md](../SECURITY.md) and [governance policy](governance/vulnerability-reporting-and-review-policy.md).
