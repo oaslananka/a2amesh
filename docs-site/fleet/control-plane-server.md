@@ -19,8 +19,7 @@ in the runs table), and per-run artifact/audit review, with live updates over
 ## Status
 
 Internal workspace package (`packages/fleet-server`), not published to npm, not a
-stable public API. `InMemoryFleetStorage` is the only storage backend today; run,
-approval, and audit state do not survive a process restart.
+stable public API.
 
 ## Starting a server
 
@@ -32,6 +31,29 @@ const server = new FleetControlPlaneServer({
 });
 server.start(3200);
 ```
+
+## Storage backends
+
+`FleetControlPlaneServerOptions.storage` accepts any `IFleetStorage` implementation:
+
+- `InMemoryFleetStorage` (default) — run, approval, and audit state do not survive a
+  process restart. Suitable for a single-instance deployment or tests.
+- `SqliteFleetStorage` — durable, file-backed via Node's built-in `node:sqlite`. Each
+  `FleetRunRecord` is a JSON blob alongside indexed `status`/`approvalState`/`createdAt`
+  columns; the audit timeline is a dedicated append-only, sequence-numbered table.
+
+```typescript
+import { FleetControlPlaneServer, SqliteFleetStorage } from '@a2amesh/internal-fleet-server';
+
+const server = new FleetControlPlaneServer({
+  registryUrl: 'http://127.0.0.1:3099',
+  storage: new SqliteFleetStorage('./fleet.db'),
+});
+server.start(3200);
+```
+
+See [ADR-0014](https://github.com/oaslananka/a2amesh/blob/main/docs/architecture/adr/0014-sqlite-persistence-for-trust-log-and-fleet-storage.md)
+for the design rationale.
 
 Worker discovery reuses `RegistryWorkerDirectory` from the
 [registry-backed worker discovery](/fleet/quickstart#registry-backed-worker-discovery)

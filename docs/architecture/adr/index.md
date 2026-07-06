@@ -13,3 +13,4 @@
 - [ADR-0011: Cassette Record/Replay](0011-cassette-record-replay.md)
 - [ADR-0012: Fleet Control Plane Server](0012-fleet-control-plane-server.md)
 - [ADR-0013: Agent Card Trust Log](0013-agent-card-trust-log.md)
+- [ADR-0014: SQLite Persistence for Trust Log and Fleet Storage](0014-sqlite-persistence-for-trust-log-and-fleet-storage.md)
