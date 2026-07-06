@@ -5,4 +5,5 @@ export * from './storage/InMemoryStorage.js';
 export * from './storage/RedisStorage.js';
 export * from './storage/ITrustLogStorage.js';
 export * from './storage/InMemoryTrustLogStorage.js';
+export * from './storage/SqliteTrustLogStorage.js';
 export * from './TrustScore.js';

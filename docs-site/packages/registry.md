@@ -120,7 +120,7 @@ This metadata is included in registry exports so downstream control planes can p
 
 ## Trust Log
 
-Every registry maintains an in-memory, append-only trust log (`ITrustLogStorage`). Whenever an Agent Card registration is verified as `trusted`, the registry appends an entry recording the card's SHA-256 hash (`hashAgentCard` from `@a2amesh/runtime`), the verifying key id and algorithm, the agent URL, the tenant id when scoped, and a timestamp. Each entry also carries an `entryHash` chained from the previous entry's hash, so altering any earlier entry changes every hash after it — the same tamper-evidence pattern used by [cassette record/replay](https://github.com/oaslananka/a2amesh/blob/main/docs/architecture/adr/0011-cassette-record-replay.md).
+Every registry maintains an append-only trust log (`ITrustLogStorage`). Whenever an Agent Card registration is verified as `trusted`, the registry appends an entry recording the card's SHA-256 hash (`hashAgentCard` from `@a2amesh/runtime`), the verifying key id and algorithm, the agent URL, the tenant id when scoped, and a timestamp. Each entry also carries an `entryHash` chained from the previous entry's hash, so altering any earlier entry changes every hash after it — the same tamper-evidence pattern used by [cassette record/replay](https://github.com/oaslananka/a2amesh/blob/main/docs/architecture/adr/0011-cassette-record-replay.md).
 
 The log is exposed read-only, without authentication, at:
 
@@ -129,4 +129,17 @@ The log is exposed read-only, without authentication, at:
 
 Unsigned or untrusted registrations never append an entry. The `a2amesh trust` CLI command signs and verifies Agent Cards and inspects a running registry's trust log — see [`a2amesh trust`](../cli/trust.md).
 
-See [ADR-0013: Agent Card Trust Log](https://github.com/oaslananka/a2amesh/blob/main/docs/architecture/adr/0013-agent-card-trust-log.md) for the design rationale.
+`RegistryServerOptions.trustLogStorage` accepts any `ITrustLogStorage` implementation:
+
+- `InMemoryTrustLogStorage` (default) — does not survive a process restart.
+- `SqliteTrustLogStorage` — durable, file-backed via Node's built-in `node:sqlite`. Shares its hash-chain computation with `InMemoryTrustLogStorage`, so the `entryHash` a given sequence of registrations produces is identical regardless of which backend a registry uses.
+
+```typescript
+import { RegistryServer, SqliteTrustLogStorage } from '@a2amesh/registry';
+
+const registry = new RegistryServer({
+  trustLogStorage: new SqliteTrustLogStorage('./trust-log.db'),
+});
+```
+
+See [ADR-0013: Agent Card Trust Log](https://github.com/oaslananka/a2amesh/blob/main/docs/architecture/adr/0013-agent-card-trust-log.md) and [ADR-0014: SQLite Persistence for Trust Log and Fleet Storage](https://github.com/oaslananka/a2amesh/blob/main/docs/architecture/adr/0014-sqlite-persistence-for-trust-log-and-fleet-storage.md) for the design rationale.
