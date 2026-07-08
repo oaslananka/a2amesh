@@ -102,7 +102,7 @@ export class RegistryApiError extends Error {
   }
 }
 
-export interface NewAgentCardInput {
+interface NewAgentCardInput {
   protocolVersion: '1.0';
   name: string;
   description: string;
