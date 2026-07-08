@@ -1,5 +1,11 @@
-import { useMemo, useState } from 'react';
-import type { RegisteredAgent, RegistryAccessMode, RegistryTaskEvent } from '../api/registry';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  deleteAgent,
+  RegistryApiError,
+  type RegisteredAgent,
+  type RegistryAccessMode,
+  type RegistryTaskEvent,
+} from '../api/registry';
 import { HealthBadge } from './HealthBadge';
 
 interface AgentInspectorProps {
@@ -7,6 +13,7 @@ interface AgentInspectorProps {
   selectedAgentTasks: RegistryTaskEvent[];
   accessMode: RegistryAccessMode;
   formatRelativeTime: (timestamp?: string) => string;
+  onDeleted?: (agentId: string) => void;
 }
 
 function fallbackRemediationHints(agent: RegisteredAgent): string[] {
@@ -78,13 +85,22 @@ export function AgentInspector({
   selectedAgentTasks,
   accessMode,
   formatRelativeTime,
+  onDeleted,
 }: AgentInspectorProps) {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const latestTask = selectedAgentTasks[0];
   const remediationHints = useMemo(
     () => (selectedAgent ? fallbackRemediationHints(selectedAgent) : []),
     [selectedAgent],
   );
+
+  useEffect(() => {
+    setConfirmingDelete(false);
+    setDeleteError(null);
+  }, [selectedAgent?.id]);
 
   if (!selectedAgent) {
     return (
@@ -116,6 +132,29 @@ export function AgentInspector({
     }
 
     setActionMessage(`Replay prepared for ${latestTask.taskId}.`);
+  };
+
+  const handleDeleteClick = async () => {
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteAgent(selectedAgent.id);
+      onDeleted?.(selectedAgent.id);
+    } catch (deleteAgentError) {
+      setDeleteError(
+        deleteAgentError instanceof RegistryApiError
+          ? deleteAgentError.message
+          : 'Failed to delete agent.',
+      );
+      setConfirmingDelete(false);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -220,9 +259,35 @@ export function AgentInspector({
         <QuickActionButton label="Replay latest" onClick={prepareReplay} />
       </div>
 
+      {accessMode === 'authenticated' ? (
+        <div className="mt-2">
+          <DangerActionButton
+            label={
+              deleting ? 'Deleting…' : confirmingDelete ? 'Confirm delete agent' : 'Delete agent'
+            }
+            disabled={deleting}
+            onClick={handleDeleteClick}
+          />
+          {confirmingDelete && !deleting ? (
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              className="ml-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-white/20"
+            >
+              Cancel
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       {actionMessage ? (
         <p className="mt-3 rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
           {actionMessage}
+        </p>
+      ) : null}
+      {deleteError ? (
+        <p className="mt-3 rounded-lg border border-rose-300/20 bg-rose-300/10 px-3 py-2 text-sm text-rose-100">
+          {deleteError}
         </p>
       ) : null}
     </section>
@@ -241,6 +306,27 @@ function QuickActionButton({
       type="button"
       onClick={() => void onClick()}
       className="rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:border-cyan-200/40 hover:bg-cyan-300/15"
+    >
+      {label}
+    </button>
+  );
+}
+
+function DangerActionButton({
+  label,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void | Promise<void>;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => void onClick()}
+      className="rounded-lg border border-rose-300/25 bg-rose-300/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:border-rose-200/45 hover:bg-rose-300/15 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {label}
     </button>

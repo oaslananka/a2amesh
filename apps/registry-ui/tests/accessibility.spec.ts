@@ -195,3 +195,20 @@ test('dashboard has no critical or serious accessibility violations', async ({ p
 
   expect(blockingViolations, formatViolations(blockingViolations)).toEqual([]);
 });
+
+test('register agent panel has no critical or serious accessibility violations', async ({
+  page,
+}) => {
+  await routeAuthenticatedDashboard(page);
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Register' }).click();
+  await expect(page.getByRole('heading', { name: 'Register a new agent' })).toBeVisible();
+
+  const results = await new AxeBuilder({ page }).analyze();
+  const blockingViolations = results.violations.filter((violation) =>
+    ['critical', 'serious'].includes(violation.impact ?? ''),
+  );
+
+  expect(blockingViolations, formatViolations(blockingViolations)).toEqual([]);
+});

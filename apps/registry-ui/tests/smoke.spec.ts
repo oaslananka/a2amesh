@@ -237,6 +237,86 @@ test('renders authenticated fleet, topology, and task stream', async ({ page }) 
   await expect(page.getByText('Artifact preview ready')).toBeVisible();
 });
 
+test('registers and deletes an agent through the operator console', async ({ page }) => {
+  let agents: unknown[] = [];
+
+  await page.route('**/api/agents', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(agents) });
+  });
+
+  await page.route('**/api/agents/register', async (route) => {
+    const body = route.request().postDataJSON() as {
+      agentUrl: string;
+      isPublic?: boolean;
+      agentCard: { name: string; description: string; version: string };
+    };
+    const registered = {
+      id: 'agent-new',
+      url: body.agentUrl,
+      status: 'unknown',
+      isPublic: body.isPublic ?? false,
+      card: {
+        name: body.agentCard.name,
+        description: body.agentCard.description,
+        version: body.agentCard.version,
+      },
+    };
+    agents = [registered];
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify(registered),
+    });
+  });
+
+  await page.route('**/api/agents/agent-new', async (route) => {
+    agents = [];
+    await route.fulfill({ status: 204 });
+  });
+
+  await page.route('**/api/metrics/summary', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        registrations: 0,
+        searches: 0,
+        heartbeats: 0,
+        agentCount: agents.length,
+        healthyAgents: 0,
+        unhealthyAgents: 0,
+        unknownAgents: agents.length,
+        activeTenants: 0,
+        publicAgents: 0,
+      }),
+    });
+  });
+  await page.route('**/api/tasks/recent?limit=30', async (route) => {
+    await route.fulfill({ contentType: 'application/json', body: '[]' });
+  });
+  await installMockEventSource(page);
+
+  await page.goto('/');
+  await expect(page.getByText('Operator mode')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Register' }).click();
+  await page.getByRole('textbox', { name: 'Agent URL' }).fill('http://localhost:4009');
+  await page.getByRole('textbox', { name: 'Name' }).fill('New Agent');
+  await page.getByRole('textbox', { name: 'Description' }).fill('A newly registered agent.');
+  await page.getByRole('button', { name: 'Register agent' }).click();
+
+  await expect(page.getByText('Registered New Agent.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'New Agent' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Delete agent' }).click();
+  await page.getByRole('button', { name: 'Confirm delete agent' }).click();
+
+  await expect(page.getByRole('cell', { name: /New Agent/ })).toHaveCount(0);
+});
+
 test('filters agents by search query', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({

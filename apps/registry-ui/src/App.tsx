@@ -21,12 +21,20 @@ import { ConformanceDashboard } from './components/ConformanceDashboard';
 import { EnterpriseControlsPanel } from './components/EnterpriseControlsPanel';
 import { HealthBadge } from './components/HealthBadge';
 import { PlaygroundPanel } from './components/PlaygroundPanel';
+import { RegisterAgentPanel } from './components/RegisterAgentPanel';
 import { TaskStream } from './components/TaskStream';
 import { TopologyGraph } from './components/TopologyGraph';
 import { useAgents } from './hooks/useAgents';
 import { useTaskStream } from './hooks/useTaskStream';
 
-type ViewMode = 'fleet' | 'topology' | 'stream' | 'playground' | 'conformance' | 'controls';
+type ViewMode =
+  | 'fleet'
+  | 'topology'
+  | 'stream'
+  | 'playground'
+  | 'conformance'
+  | 'controls'
+  | 'register';
 type StatusFilter = 'all' | 'healthy' | 'unhealthy' | 'unknown';
 type CapabilityFilter = 'all' | 'streaming' | 'mcp';
 
@@ -169,6 +177,18 @@ export default function App() {
   const handleRefresh = () => {
     void refresh();
     void refreshTasks();
+  };
+
+  const handleAgentRegistered = (agent: RegisteredAgent) => {
+    setSelectedAgentId(agent.id);
+    handleRefresh();
+  };
+
+  const handleAgentDeleted = (agentId: string) => {
+    if (selectedAgentId === agentId) {
+      setSelectedAgentId(null);
+    }
+    handleRefresh();
   };
 
   return (
@@ -347,6 +367,11 @@ export default function App() {
                 label="Controls"
                 onClick={() => setView('controls')}
               />
+              <ViewButton
+                active={view === 'register'}
+                label="Register"
+                onClick={() => setView('register')}
+              />
             </div>
           </div>
         </section>
@@ -511,6 +536,10 @@ export default function App() {
                 accessMode={accessMode}
               />
             ) : null}
+
+            {view === 'register' ? (
+              <RegisterAgentPanel accessMode={accessMode} onRegistered={handleAgentRegistered} />
+            ) : null}
           </main>
 
           <aside className="space-y-6">
@@ -519,6 +548,7 @@ export default function App() {
               selectedAgentTasks={selectedAgentTasks}
               accessMode={accessMode}
               formatRelativeTime={formatRelativeTime}
+              onDeleted={handleAgentDeleted}
             />
 
             <section className="rounded-lg border border-white/10 bg-[#111820] p-4">

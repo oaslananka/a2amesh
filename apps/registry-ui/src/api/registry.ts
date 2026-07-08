@@ -102,6 +102,21 @@ export class RegistryApiError extends Error {
   }
 }
 
+export interface NewAgentCardInput {
+  protocolVersion: '1.0';
+  name: string;
+  description: string;
+  url: string;
+  version: string;
+}
+
+export interface RegisterAgentInput {
+  agentUrl: string;
+  agentCard: NewAgentCardInput;
+  tenantId?: string;
+  isPublic?: boolean;
+}
+
 const BASE = (import.meta.env.VITE_REGISTRY_URL ?? '/api').replace(/\/$/, '');
 
 function endpoint(path: string): string {
@@ -134,6 +149,41 @@ export async function fetchAgents(): Promise<AgentFetchResult> {
   }
 
   throw new RegistryApiError(`Registry error: ${privateResponse.status}`, privateResponse.status);
+}
+
+async function readProblemDetail(response: Response): Promise<string> {
+  try {
+    const problem = (await response.json()) as { detail?: string };
+    return problem.detail ?? `Registry error: ${response.status}`;
+  } catch {
+    return `Registry error: ${response.status}`;
+  }
+}
+
+export async function registerAgent(input: RegisterAgentInput): Promise<RegisteredAgent> {
+  const response = await fetch(endpoint('/agents/register'), {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    throw new RegistryApiError(await readProblemDetail(response), response.status);
+  }
+
+  return (await response.json()) as RegisteredAgent;
+}
+
+export async function deleteAgent(id: string): Promise<void> {
+  const response = await fetch(endpoint(`/agents/${encodeURIComponent(id)}`), {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new RegistryApiError(await readProblemDetail(response), response.status);
+  }
 }
 
 export async function fetchMetrics(): Promise<RegistryMetrics> {
