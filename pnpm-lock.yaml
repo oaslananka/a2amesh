@@ -316,6 +316,22 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  examples/local-cli-fleet:
+    dependencies:
+      '@a2amesh/internal-fleet':
+        specifier: workspace:*
+        version: link:../../packages/fleet
+      '@a2amesh/internal-worker-runtime':
+        specifier: workspace:*
+        version: link:../../packages/worker-runtime
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.21
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   examples/mcp-bridge:
     dependencies:
       '@a2amesh/mcp':

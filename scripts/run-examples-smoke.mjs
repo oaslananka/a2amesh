@@ -12,6 +12,7 @@ const examples = [
   'mcp-bridge',
   'adapter-template',
   'agent-mesh',
+  'local-cli-fleet',
 ];
 
 const requiredFiles = [
