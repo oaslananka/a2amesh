@@ -1,0 +1,25 @@
+{
+  "name": "@a2amesh/runtime-example-local-cli-fleet",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "description": "Experimental example: a local CLI coding agent as an A2A Mesh Fleet worker.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false",
+    "start": "pnpm --dir ../.. run build && node dist/src/index.js",
+    "smoke": "pnpm --dir ../.. run build && node --test dist/tests/smoke.test.js"
+  },
+  "dependencies": {
+    "@a2amesh/internal-fleet": "workspace:*",
+    "@a2amesh/internal-worker-runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=22.22.1 <25",
+    "pnpm": ">=11 <12"
+  }
+}
