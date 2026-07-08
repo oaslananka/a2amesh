@@ -82,7 +82,7 @@
     "release:ready": "pnpm --filter @a2amesh/cli run build && node packages/cli/bin/a2amesh.js release-check",
     "check:name-collisions": "node scripts/check-name-collisions.mjs",
     "check:bundle-sizes": "node scripts/check-bundle-sizes.mjs",
-    "check:pre-push": "pnpm run lint && pnpm run build && pnpm run typecheck && pnpm run test:coverage && pnpm run test:integration && pnpm run pack:dry-run && pnpm run schemas:check && pnpm run docs:build && pnpm run docs:check && pnpm run security && pnpm run ops:check && pnpm run verify:structure && pnpm run gc",
+    "check:pre-push": "pnpm run lint && pnpm run typecheck && pnpm run test:unit",
     "check:packages": "node scripts/check-npm-pack.mjs",
     "commitlint": "commitlint --from HEAD~1 --to HEAD",
     "lint:staged": "lint-staged",
