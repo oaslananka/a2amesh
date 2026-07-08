@@ -1,6 +1,6 @@
 {
   "name": "@a2amesh/mcp",
-  "version": "0.7.0-alpha.1",
+  "version": "0.8.0-alpha.1",
   "description": "Secure, auditable, approval-aware, risk-classified, and policy-bound MCP execution bridge for A2A Mesh.",
   "keywords": [
     "a2a",
