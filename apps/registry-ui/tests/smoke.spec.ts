@@ -309,7 +309,7 @@ test('registers and deletes an agent through the operator console', async ({ pag
   await page.getByRole('button', { name: 'Register agent' }).click();
 
   await expect(page.getByText('Registered New Agent.')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'New Agent' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'New Agent', exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Delete agent' }).click();
   await page.getByRole('button', { name: 'Confirm delete agent' }).click();
