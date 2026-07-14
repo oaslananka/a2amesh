@@ -56,6 +56,23 @@ does not change the package boundary decision above — extracting `packages/pol
 `packages/artifacts` remains available once routing/policy or artifact-contract code grows large or
 independent enough to warrant its own release cadence.
 
+### Security boundary hardening (2026-07-14)
+
+The local CLI worker boundary is fail-closed and based on canonical filesystem identity rather than
+lexical path comparison. `LocalCliWorkerRuntimeAdapter` requires absolute canonical executable paths
+and does not search the ambient host `PATH`. Workspace roots and working directories are resolved
+with `realpath`; symlink and junction traversal is rejected.
+
+Declared artifacts are collected only as regular files inside the canonical working directory.
+Capture uses bounded file-descriptor reads, pre/post file identity checks, `O_NOFOLLOW` where the
+platform exposes it, extension/content policy, and per-file/aggregate limits. Credential-shaped
+stdout/stderr and artifact metadata are redacted before emission. Unsafe existing artifact paths
+fail the run instead of being silently omitted; only files that were never produced remain optional.
+
+This is process-level confinement, not an operating-system sandbox. Deployments that execute
+untrusted code still require an external isolation boundary such as a dedicated container, VM, or
+restricted worker account.
+
 ## Consequences
 
 By keeping the core provider-neutral, we ensure the longevity and stability of the A2A protocol implementation. The Fleet packages can iterate quickly on orchestration, policy, and artifact management without risking the integrity of the core layer.

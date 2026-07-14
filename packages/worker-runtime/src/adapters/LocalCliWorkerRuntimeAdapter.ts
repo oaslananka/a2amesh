@@ -1,9 +1,16 @@
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
-import { isAbsolute, relative, resolve as resolvePath } from 'node:path';
+import { extname } from 'node:path';
+import { StringDecoder } from 'node:string_decoder';
 import type { ExtensibleArtifact } from '@a2amesh/protocol';
 import type { WorkerCard } from '@a2amesh/internal-fleet';
+import {
+  PathConfinementError,
+  readConfinedRegularFile,
+  resolveWorkerExecution,
+  type ResolvedWorkerExecution,
+} from '../security/pathConfinement.js';
+import { collectSensitiveEnvironmentValues, redactSensitiveText } from '../security/redaction.js';
 import { AsyncEventQueue } from '../util/AsyncEventQueue.js';
 import type {
   WorkerRuntimeContext,
@@ -16,11 +23,11 @@ import type {
 } from '../types/lifecycle.js';
 
 export interface LocalCliWorkerRuntimePolicy {
-  /** Executable names permitted to run. The configured `command` must be a member. */
+  /** Absolute, canonical executable paths permitted to run. Ambient PATH lookup is disabled. */
   commandAllowlist: readonly string[];
   /** Names of environment variables that may be forwarded from the host process. Empty by default. */
   envAllowlist?: readonly string[];
-  /** Absolute path all resolved working directories must stay within. */
+  /** Absolute path all canonical working directories and artifacts must stay within. */
   workspaceRoot: string;
   /** Milliseconds before an in-flight run is aborted. Defaults to 120000. */
   timeoutMs?: number;
@@ -28,12 +35,22 @@ export interface LocalCliWorkerRuntimePolicy {
   maxOutputBytes?: number;
   /** Caps concurrently running processes for this adapter instance. Defaults to 1. */
   maxConcurrentRuns?: number;
+  /** Maximum declared artifact paths per run. Defaults to 16. */
+  maxArtifactFiles?: number;
+  /** Maximum bytes read from one artifact. Defaults to 5MB. */
+  maxArtifactBytes?: number;
+  /** Maximum aggregate artifact bytes per run. Defaults to 20MB. */
+  maxTotalArtifactBytes?: number;
+  /** Allowed artifact filename extensions. Defaults to a conservative text/report allowlist. */
+  allowedArtifactExtensions?: readonly string[];
+  /** Permit non-UTF-8/binary artifact content. Disabled by default. */
+  allowBinaryArtifacts?: boolean;
 }
 
 export interface LocalCliWorkerRuntimeConfig {
   id: string;
   card: WorkerCard;
-  /** Executable to invoke. Must appear in `policy.commandAllowlist`. */
+  /** Absolute executable path. Its canonical path must appear in `policy.commandAllowlist`. */
   command: string;
   /** Fixed arguments prepended to every invocation. */
   baseArgs?: readonly string[];
@@ -43,7 +60,7 @@ export interface LocalCliWorkerRuntimeConfig {
   cwd?: string;
   /** Explicit environment values merged in after allowlist filtering. Never sourced from secrets by default. */
   env?: Readonly<Record<string, string>>;
-  /** Declares output files (relative to the resolved cwd) to capture as artifacts once the run completes. */
+  /** Declares output files (relative to the canonical cwd) to capture as artifacts once the run completes. */
   artifactFiles?: (context: WorkerRuntimeContext) => readonly string[];
   policy: LocalCliWorkerRuntimePolicy;
 }
@@ -54,16 +71,57 @@ interface CliRunState {
   result?: WorkerRuntimeResult;
   abortController: AbortController;
   timeoutHandle?: NodeJS.Timeout;
+  slotReleased: boolean;
 }
+
+interface OutputStreamState {
+  decoder: StringDecoder;
+  pending: string;
+  truncated: boolean;
+}
+
+interface OutputCaptureState {
+  outputBytes: number;
+  stdout: OutputStreamState;
+  stderr: OutputStreamState;
+}
+
+type PolicyEvaluation =
+  | { allowed: true; execution: ResolvedWorkerExecution }
+  | { allowed: false; failure: WorkerRuntimeFailure };
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const DEFAULT_MAX_OUTPUT_BYTES = 1_048_576;
 const DEFAULT_MAX_CONCURRENT_RUNS = 1;
+const DEFAULT_MAX_ARTIFACT_FILES = 16;
+const DEFAULT_MAX_ARTIFACT_BYTES = 5 * 1_048_576;
+const DEFAULT_MAX_TOTAL_ARTIFACT_BYTES = 20 * 1_048_576;
+const DEFAULT_ARTIFACT_EXTENSIONS = [
+  '.csv',
+  '.css',
+  '.diff',
+  '.html',
+  '.js',
+  '.json',
+  '.jsonl',
+  '.jsx',
+  '.log',
+  '.md',
+  '.patch',
+  '.toml',
+  '.ts',
+  '.tsv',
+  '.tsx',
+  '.txt',
+  '.xml',
+  '.yaml',
+  '.yml',
+] as const;
 
 /**
- * Generic local CLI agent adapter (#90). Wraps an allowlisted command in a
- * scoped workspace with no secret passthrough by default, structured
- * failure results, timeouts, cancellation, and declared-artifact capture.
+ * Generic local CLI agent adapter (#90). Wraps an explicitly allowlisted
+ * executable in a canonical workspace with no secret passthrough by default,
+ * structured failures, timeouts, cancellation, and confined artifact capture.
  */
 export class LocalCliWorkerRuntimeAdapter implements WorkerRuntimeContract {
   readonly id: string;
@@ -79,34 +137,32 @@ export class LocalCliWorkerRuntimeAdapter implements WorkerRuntimeContract {
   }
 
   async prepare(context: WorkerRuntimeContext): Promise<WorkerRuntimeEvent> {
-    const denial = this.evaluatePolicy(context);
-    if (denial) {
-      return this.buildEvent(context, { type: 'failed', failure: denial });
+    const evaluation = await this.evaluatePolicy(context);
+    if (!evaluation.allowed) {
+      return this.buildEvent(context, { type: 'failed', failure: evaluation.failure });
     }
     return this.buildEvent(context, { type: 'prepared', message: 'policy checks passed' });
   }
 
   async start(context: WorkerRuntimeContext): Promise<WorkerRuntimeEvent> {
-    const denial = this.evaluatePolicy(context);
-    if (denial) {
-      const event = this.buildEvent(context, { type: 'failed', failure: denial });
-      const queue = new AsyncEventQueue<WorkerRuntimeEvent>();
-      queue.push(event);
-      queue.close();
-      this.runs.set(context.run.id, {
-        queue,
-        lastEvent: event,
-        result: { status: 'FAILED', failure: denial },
-        abortController: new AbortController(),
-      });
-      return event;
+    const reservationFailure = this.reserveRunSlot();
+    if (reservationFailure) return this.recordStartFailure(context, reservationFailure);
+
+    const evaluation = await this.evaluateExecutionPolicy(context);
+    if (!evaluation.allowed) {
+      this.activeRunCount = Math.max(0, this.activeRunCount - 1);
+      return this.recordStartFailure(context, evaluation.failure);
     }
 
-    this.activeRunCount += 1;
     const queue = new AsyncEventQueue<WorkerRuntimeEvent>();
     const abortController = new AbortController();
     const startedEvent = this.buildEvent(context, { type: 'started', message: 'process starting' });
-    const state: CliRunState = { queue, lastEvent: startedEvent, abortController };
+    const state: CliRunState = {
+      queue,
+      lastEvent: startedEvent,
+      abortController,
+      slotReleased: false,
+    };
     this.runs.set(context.run.id, state);
     queue.push(startedEvent);
 
@@ -115,42 +171,57 @@ export class LocalCliWorkerRuntimeAdapter implements WorkerRuntimeContract {
       abortController.abort(new Error(`local CLI run exceeded ${timeoutMs}ms timeout`));
     }, timeoutMs);
 
-    void this.run(context, state);
+    void this.run(context, state, evaluation.execution);
     return startedEvent;
   }
 
-  private async run(context: WorkerRuntimeContext, state: CliRunState): Promise<void> {
-    const cwd = this.resolveCwd();
+  private async run(
+    context: WorkerRuntimeContext,
+    state: CliRunState,
+    execution: ResolvedWorkerExecution,
+  ): Promise<void> {
     const args = [...(this.config.baseArgs ?? []), ...this.buildTaskArgs(context)];
     const maxOutputBytes = this.config.policy.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
     const env = this.buildEnv();
+    const sensitiveValues = collectSensitiveEnvironmentValues(env);
+    const output: OutputCaptureState = {
+      outputBytes: 0,
+      stdout: { decoder: new StringDecoder('utf8'), pending: '', truncated: false },
+      stderr: { decoder: new StringDecoder('utf8'), pending: '', truncated: false },
+    };
 
-    let outputBytes = 0;
     const appendOutput = (chunk: Buffer, stream: 'stdout' | 'stderr'): void => {
-      if (outputBytes >= maxOutputBytes) return;
-      const text = chunk.toString('utf8').slice(0, maxOutputBytes - outputBytes);
-      outputBytes += Buffer.byteLength(text, 'utf8');
-      for (const line of text.split(/\r?\n/).filter((value) => value.length > 0)) {
-        state.lastEvent = this.emit(
-          context,
-          { type: 'task-update', message: `[${stream}] ${line}` },
-          state,
-        );
+      const streamState = output[stream];
+      const remaining = maxOutputBytes - output.outputBytes;
+      if (remaining <= 0) {
+        streamState.truncated = true;
+        return;
       }
+      const accepted = chunk.subarray(0, remaining);
+      if (accepted.byteLength < chunk.byteLength) streamState.truncated = true;
+      output.outputBytes += accepted.byteLength;
+      streamState.pending += streamState.decoder.write(accepted);
+      this.emitCompleteOutputLines(context, state, stream, streamState, sensitiveValues);
     };
 
     let child: ReturnType<typeof spawn>;
     try {
-      child = spawn(this.config.command, args, {
-        cwd,
+      child = spawn(execution.executable, args, {
+        cwd: execution.cwd,
         env,
+        shell: false,
         signal: state.abortController.signal,
         stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
       });
     } catch (error) {
+      this.releaseRunSlot(state);
       this.finishWithFailure(context, state, {
         code: 'UNKNOWN',
-        message: error instanceof Error ? error.message : 'failed to spawn local CLI process',
+        message: redactSensitiveText(
+          error instanceof Error ? error.message : 'failed to spawn local CLI process',
+          sensitiveValues,
+        ),
       });
       return;
     }
@@ -158,9 +229,21 @@ export class LocalCliWorkerRuntimeAdapter implements WorkerRuntimeContract {
     child.stdout?.on('data', (chunk: Buffer) => appendOutput(chunk, 'stdout'));
     child.stderr?.on('data', (chunk: Buffer) => appendOutput(chunk, 'stderr'));
 
+    let outputFlushed = false;
+    const flushOutput = (): void => {
+      if (outputFlushed) return;
+      outputFlushed = true;
+      for (const stream of ['stdout', 'stderr'] as const) {
+        const streamState = output[stream];
+        streamState.pending += streamState.decoder.end();
+        this.emitCompleteOutputLines(context, state, stream, streamState, sensitiveValues, true);
+      }
+    };
+
     const finishAbort = (): void => {
-      if (state.timeoutHandle) clearTimeout(state.timeoutHandle);
-      this.activeRunCount = Math.max(0, this.activeRunCount - 1);
+      flushOutput();
+      this.clearRunTimeout(state);
+      this.releaseRunSlot(state);
       if (state.result) return;
       const reason = state.abortController.signal.reason;
       const timedOut = reason instanceof Error && reason.message.includes('timeout');
@@ -169,34 +252,39 @@ export class LocalCliWorkerRuntimeAdapter implements WorkerRuntimeContract {
         state,
         {
           code: timedOut ? 'TIMEOUT' : 'CANCELED',
-          message: reason instanceof Error ? reason.message : 'run aborted',
+          message: redactSensitiveText(
+            reason instanceof Error ? reason.message : 'run aborted',
+            sensitiveValues,
+          ),
           retryable: timedOut,
         },
         timedOut ? 'failed' : 'canceled',
       );
     };
 
-    child.on('error', (error) => {
+    child.once('error', (error) => {
       if (state.abortController.signal.aborted) {
         finishAbort();
         return;
       }
-      if (state.timeoutHandle) clearTimeout(state.timeoutHandle);
-      this.activeRunCount = Math.max(0, this.activeRunCount - 1);
+      flushOutput();
+      this.clearRunTimeout(state);
+      this.releaseRunSlot(state);
       if (state.result) return;
       this.finishWithFailure(context, state, {
         code: 'UNKNOWN',
-        message: error.message,
+        message: redactSensitiveText(error.message, sensitiveValues),
       });
     });
 
-    child.on('close', (exitCode, signal) => {
+    child.once('close', (exitCode, signal) => {
       if (state.abortController.signal.aborted) {
         finishAbort();
         return;
       }
-      if (state.timeoutHandle) clearTimeout(state.timeoutHandle);
-      this.activeRunCount = Math.max(0, this.activeRunCount - 1);
+      flushOutput();
+      this.clearRunTimeout(state);
+      this.releaseRunSlot(state);
       if (state.result) return;
 
       if (exitCode !== 0) {
@@ -207,12 +295,74 @@ export class LocalCliWorkerRuntimeAdapter implements WorkerRuntimeContract {
         return;
       }
 
-      void this.captureArtifacts(context, cwd).then((artifacts) => {
-        state.lastEvent = this.emit(context, { type: 'finalized', message: 'completed' }, state);
-        state.result = { status: 'COMPLETED', artifacts };
-        state.queue.close();
-      });
+      void this.completeSuccessfulRun(context, state, execution.cwd, sensitiveValues);
     });
+  }
+
+  private async completeSuccessfulRun(
+    context: WorkerRuntimeContext,
+    state: CliRunState,
+    cwd: string,
+    sensitiveValues: readonly string[],
+  ): Promise<void> {
+    try {
+      const artifacts = await this.captureArtifacts(context, cwd, sensitiveValues);
+      state.lastEvent = this.emit(context, { type: 'finalized', message: 'completed' }, state);
+      state.result = { status: 'COMPLETED', artifacts };
+      state.queue.close();
+    } catch (error) {
+      this.finishWithFailure(context, state, {
+        code: 'ARTIFACT_UNAVAILABLE',
+        operation: 'finalize',
+        message: redactSensitiveText(
+          error instanceof Error ? error.message : 'artifact capture failed closed',
+          sensitiveValues,
+        ),
+      });
+    }
+  }
+
+  private emitCompleteOutputLines(
+    context: WorkerRuntimeContext,
+    state: CliRunState,
+    stream: 'stdout' | 'stderr',
+    streamState: OutputStreamState,
+    sensitiveValues: readonly string[],
+    flush = false,
+  ): void {
+    const lines = streamState.pending.split(/\r?\n/);
+    const tail = lines.pop() ?? '';
+    for (const line of lines) {
+      this.emitOutputLine(context, state, stream, line, sensitiveValues);
+    }
+    if (flush) {
+      if (streamState.truncated) {
+        this.emitOutputLine(context, state, stream, '[output truncated]', []);
+      } else {
+        this.emitOutputLine(context, state, stream, tail, sensitiveValues);
+      }
+      streamState.pending = '';
+    } else {
+      streamState.pending = tail;
+    }
+  }
+
+  private emitOutputLine(
+    context: WorkerRuntimeContext,
+    state: CliRunState,
+    stream: 'stdout' | 'stderr',
+    line: string,
+    sensitiveValues: readonly string[],
+  ): void {
+    if (line.length === 0) return;
+    state.lastEvent = this.emit(
+      context,
+      {
+        type: 'task-update',
+        message: `[${stream}] ${redactSensitiveText(line, sensitiveValues)}`,
+      },
+      state,
+    );
   }
 
   private finishWithFailure(
@@ -221,7 +371,8 @@ export class LocalCliWorkerRuntimeAdapter implements WorkerRuntimeContract {
     failure: WorkerRuntimeFailure,
     eventType: 'failed' | 'canceled' = 'failed',
   ): void {
-    if (state.timeoutHandle) clearTimeout(state.timeoutHandle);
+    if (state.result) return;
+    this.clearRunTimeout(state);
     state.lastEvent = this.emit(
       context,
       { type: eventType, failure, message: failure.message },
@@ -279,57 +430,95 @@ export class LocalCliWorkerRuntimeAdapter implements WorkerRuntimeContract {
     });
   }
 
-  private evaluatePolicy(context: WorkerRuntimeContext): WorkerRuntimeFailure | undefined {
-    const { policy } = this.config;
+  private async evaluatePolicy(context: WorkerRuntimeContext): Promise<PolicyEvaluation> {
+    const limitFailure = this.validatePolicyLimits();
+    if (limitFailure) return { allowed: false, failure: limitFailure };
 
-    if (!policy.commandAllowlist.includes(this.config.command)) {
-      return {
-        code: 'POLICY_DENIED',
-        message: `command "${this.config.command}" is not in the local CLI adapter allowlist`,
-        operation: 'prepare',
-      };
-    }
+    const concurrencyFailure = this.concurrencyFailure();
+    if (concurrencyFailure) return { allowed: false, failure: concurrencyFailure };
+    return this.evaluateExecutionPolicy(context);
+  }
 
+  private async evaluateExecutionPolicy(context: WorkerRuntimeContext): Promise<PolicyEvaluation> {
     try {
-      this.resolveCwd();
+      const execution = await resolveWorkerExecution(
+        this.config.policy.workspaceRoot,
+        this.config.cwd,
+        this.config.command,
+        this.config.policy.commandAllowlist,
+      );
+      void context;
+      return { allowed: true, execution };
     } catch (error) {
       return {
-        code: 'POLICY_DENIED',
-        message:
-          error instanceof Error ? error.message : 'working directory is outside the workspace',
-        operation: 'prepare',
+        allowed: false,
+        failure: {
+          code: 'POLICY_DENIED',
+          message:
+            error instanceof Error ? error.message : 'local CLI path confinement check failed',
+          operation: 'prepare',
+        },
       };
     }
+  }
 
-    const maxConcurrentRuns = policy.maxConcurrentRuns ?? DEFAULT_MAX_CONCURRENT_RUNS;
-    if (this.activeRunCount >= maxConcurrentRuns) {
-      return {
-        code: 'POLICY_DENIED',
-        message: `local CLI adapter "${this.id}" is at its concurrency limit (${maxConcurrentRuns})`,
-        operation: 'prepare',
-        retryable: true,
-      };
-    }
-
-    void context;
+  private reserveRunSlot(): WorkerRuntimeFailure | undefined {
+    const limitFailure = this.validatePolicyLimits();
+    if (limitFailure) return limitFailure;
+    const concurrencyFailure = this.concurrencyFailure();
+    if (concurrencyFailure) return concurrencyFailure;
+    this.activeRunCount += 1;
     return undefined;
   }
 
-  private resolveCwd(): string {
-    const workspaceRoot = resolvePath(this.config.policy.workspaceRoot);
-    const candidate = this.config.cwd
-      ? isAbsolute(this.config.cwd)
-        ? this.config.cwd
-        : resolvePath(workspaceRoot, this.config.cwd)
-      : workspaceRoot;
-    const resolved = resolvePath(candidate);
-    const rel = relative(workspaceRoot, resolved);
-    if (rel === '..' || rel.startsWith(`..${'/'}`) || (isAbsolute(rel) && rel !== '')) {
-      throw new Error(
-        `resolved working directory "${resolved}" escapes workspace root "${workspaceRoot}"`,
-      );
-    }
-    return resolved;
+  private concurrencyFailure(): WorkerRuntimeFailure | undefined {
+    const maxConcurrentRuns = this.config.policy.maxConcurrentRuns ?? DEFAULT_MAX_CONCURRENT_RUNS;
+    if (this.activeRunCount < maxConcurrentRuns) return undefined;
+    return {
+      code: 'POLICY_DENIED',
+      message: `local CLI adapter "${this.id}" is at its concurrency limit (${maxConcurrentRuns})`,
+      operation: 'prepare',
+      retryable: true,
+    };
+  }
+
+  private recordStartFailure(
+    context: WorkerRuntimeContext,
+    failure: WorkerRuntimeFailure,
+  ): WorkerRuntimeEvent {
+    const event = this.buildEvent(context, { type: 'failed', failure });
+    const queue = new AsyncEventQueue<WorkerRuntimeEvent>();
+    queue.push(event);
+    queue.close();
+    this.runs.set(context.run.id, {
+      queue,
+      lastEvent: event,
+      result: { status: 'FAILED', failure },
+      abortController: new AbortController(),
+      slotReleased: true,
+    });
+    return event;
+  }
+
+  private validatePolicyLimits(): WorkerRuntimeFailure | undefined {
+    const values: readonly [string, number][] = [
+      ['timeoutMs', this.config.policy.timeoutMs ?? DEFAULT_TIMEOUT_MS],
+      ['maxOutputBytes', this.config.policy.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES],
+      ['maxConcurrentRuns', this.config.policy.maxConcurrentRuns ?? DEFAULT_MAX_CONCURRENT_RUNS],
+      ['maxArtifactFiles', this.config.policy.maxArtifactFiles ?? DEFAULT_MAX_ARTIFACT_FILES],
+      ['maxArtifactBytes', this.config.policy.maxArtifactBytes ?? DEFAULT_MAX_ARTIFACT_BYTES],
+      [
+        'maxTotalArtifactBytes',
+        this.config.policy.maxTotalArtifactBytes ?? DEFAULT_MAX_TOTAL_ARTIFACT_BYTES,
+      ],
+    ];
+    const invalid = values.find(([, value]) => !Number.isSafeInteger(value) || value <= 0);
+    if (!invalid) return undefined;
+    return {
+      code: 'POLICY_DENIED',
+      operation: 'prepare',
+      message: `local CLI policy ${invalid[0]} must be a positive safe integer`,
+    };
   }
 
   private buildTaskArgs(context: WorkerRuntimeContext): readonly string[] {
@@ -344,50 +533,101 @@ export class LocalCliWorkerRuntimeAdapter implements WorkerRuntimeContract {
       const value = process.env[name];
       if (value !== undefined) forwarded[name] = value;
     }
-    // PATH is required to resolve the allowlisted executable and is not
-    // itself credential material, so it is forwarded regardless of the
-    // allowlist. No other ambient environment variables pass through.
-    if (process.env['PATH'] !== undefined) forwarded['PATH'] = process.env['PATH'];
     return { ...forwarded, ...(this.config.env ?? {}) };
   }
 
   private async captureArtifacts(
     context: WorkerRuntimeContext,
     cwd: string,
+    sensitiveValues: readonly string[],
   ): Promise<ExtensibleArtifact[]> {
     const declared = this.config.artifactFiles?.(context) ?? [];
+    const maxFiles = this.config.policy.maxArtifactFiles ?? DEFAULT_MAX_ARTIFACT_FILES;
+    const maxArtifactBytes = this.config.policy.maxArtifactBytes ?? DEFAULT_MAX_ARTIFACT_BYTES;
+    const maxTotalBytes =
+      this.config.policy.maxTotalArtifactBytes ?? DEFAULT_MAX_TOTAL_ARTIFACT_BYTES;
+    const allowedExtensions = new Set(
+      (this.config.policy.allowedArtifactExtensions ?? DEFAULT_ARTIFACT_EXTENSIONS).map(
+        normalizeExtension,
+      ),
+    );
+    const allowAnyExtension = allowedExtensions.has('*');
+    const allowBinary = this.config.policy.allowBinaryArtifacts ?? false;
+
+    if (declared.length > maxFiles) {
+      throw new PathConfinementError(
+        `declared artifact count ${declared.length} exceeds the ${maxFiles}-file limit`,
+      );
+    }
+
     const artifacts: ExtensibleArtifact[] = [];
-    let index = 0;
+    const canonicalPaths = new Set<string>();
+    let totalBytes = 0;
     for (const relativePath of declared) {
-      const absolutePath = resolvePath(cwd, relativePath);
-      const rel = relative(cwd, absolutePath);
-      if (rel.startsWith('..') || isAbsolute(rel)) {
-        continue; // declared artifact escapes the run's working directory; skip rather than leak
+      const extension = extname(relativePath).toLocaleLowerCase('en-US');
+      if (!allowAnyExtension && !allowedExtensions.has(extension)) {
+        throw new PathConfinementError(
+          `artifact "${relativePath}" has disallowed extension "${extension || '(none)'}"`,
+        );
       }
-      try {
-        const content = await readFile(absolutePath);
-        const checksum = createHash('sha256').update(content).digest('hex');
-        artifacts.push({
-          artifactId: `${context.run.id}:${relativePath}`,
-          name: relativePath,
-          index: index++,
-          parts: [
-            {
-              type: 'file',
-              file: {
-                name: relativePath,
-                mimeType: 'application/octet-stream',
-                bytes: content.toString('base64'),
-              },
+
+      const confined = await readConfinedRegularFile(cwd, relativePath, {
+        maxBytes: maxArtifactBytes,
+        allowBinary,
+      });
+      if (!confined) continue;
+      if (canonicalPaths.has(confined.canonicalPath)) {
+        throw new PathConfinementError(
+          `artifact "${relativePath}" resolves to a duplicate declared file`,
+        );
+      }
+      canonicalPaths.add(confined.canonicalPath);
+
+      totalBytes += confined.content.byteLength;
+      if (totalBytes > maxTotalBytes) {
+        throw new PathConfinementError(
+          `aggregate artifact size exceeds the ${maxTotalBytes}-byte limit`,
+        );
+      }
+
+      const index = artifacts.length;
+      const safeName = redactSensitiveText(relativePath, sensitiveValues);
+      const checksum = createHash('sha256').update(confined.content).digest('hex');
+      artifacts.push({
+        artifactId: `${context.run.id}:artifact-${index}`,
+        name: safeName,
+        index,
+        parts: [
+          {
+            type: 'file',
+            file: {
+              name: safeName,
+              mimeType: inferArtifactMimeType(extension),
+              bytes: confined.content.toString('base64'),
             },
-          ],
-          metadata: { checksumSha256: checksum, sizeBytes: content.byteLength },
-        });
-      } catch {
-        // declared artifact file was not produced; omit rather than fail the run
-      }
+          },
+        ],
+        metadata: {
+          checksumSha256: checksum,
+          sizeBytes: confined.content.byteLength,
+          sourcePath: safeName,
+        },
+      });
     }
     return artifacts;
+  }
+
+  private clearRunTimeout(state: CliRunState): void {
+    if (state.timeoutHandle) {
+      clearTimeout(state.timeoutHandle);
+      delete state.timeoutHandle;
+    }
+  }
+
+  private releaseRunSlot(state: CliRunState): void {
+    if (state.slotReleased) return;
+    state.slotReleased = true;
+    this.activeRunCount = Math.max(0, this.activeRunCount - 1);
   }
 
   private requireRun(context: WorkerRuntimeContext): CliRunState {
@@ -419,5 +659,30 @@ export class LocalCliWorkerRuntimeAdapter implements WorkerRuntimeContract {
     const event = this.buildEvent(context, partial);
     state.queue.push(event);
     return event;
+  }
+}
+
+function normalizeExtension(extension: string): string {
+  if (extension === '*') return extension;
+  const lower = extension.toLocaleLowerCase('en-US');
+  return lower.startsWith('.') ? lower : `.${lower}`;
+}
+
+function inferArtifactMimeType(extension: string): string {
+  switch (extension) {
+    case '.json':
+    case '.jsonl':
+      return 'application/json';
+    case '.html':
+      return 'text/html';
+    case '.css':
+      return 'text/css';
+    case '.xml':
+      return 'application/xml';
+    case '.yaml':
+    case '.yml':
+      return 'application/yaml';
+    default:
+      return 'text/plain';
   }
 }
