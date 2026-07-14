@@ -1,3 +1,4 @@
+import { promises as dns } from 'node:dns';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createA2AClient,
@@ -12,6 +13,7 @@ describe('shared CLI network options', () => {
   });
 
   it('builds A2A client headers from shared auth and request options', async () => {
+    vi.spyOn(dns, 'resolve').mockResolvedValue(['93.184.216.34']);
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ status: 'ok' }), {
         status: 200,
@@ -41,7 +43,23 @@ describe('shared CLI network options', () => {
     });
   });
 
+  it('does not allow a public CLI target to redirect to loopback by default', async () => {
+    vi.spyOn(dns, 'resolve').mockResolvedValue(['93.184.216.34']);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: { Location: 'http://127.0.0.1:3000/health' },
+      }),
+    );
+
+    const client = createA2AClient('https://agent.example');
+
+    await expect(client.health()).rejects.toThrow(/private|not allowed/i);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('builds registry client fetch headers from the same shared options', async () => {
+    vi.spyOn(dns, 'resolve').mockResolvedValue(['93.184.216.34']);
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));

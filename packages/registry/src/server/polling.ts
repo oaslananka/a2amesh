@@ -76,6 +76,7 @@ export function createRegistryPolling(
             const status = response.ok ? 'healthy' : 'unhealthy';
             const consecutiveFailures = response.ok ? 0 : (agent.consecutiveFailures ?? 0) + 1;
             const lastSuccessAt = response.ok ? new Date().toISOString() : agent.lastSuccessAt;
+            await response.body?.cancel().catch(() => undefined);
 
             await context.store.updateStatus(agent.id, status, {
               consecutiveFailures,
@@ -142,6 +143,7 @@ export function createRegistryPolling(
       );
 
       if (!response.ok) {
+        await response.body?.cancel().catch(() => undefined);
         return;
       }
 

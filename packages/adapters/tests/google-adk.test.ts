@@ -20,20 +20,6 @@ function createGoogleADKContractInstance(
   };
 }
 
-function createGoogleADKStreamInstance(card: AnyAgentCard) {
-  const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-    new Response('data: google\ndata: stream\n', {
-      status: 200,
-      headers: { 'Content-Type': 'text/event-stream' },
-    }),
-  );
-
-  return {
-    adapter: new GoogleADKAdapter(card, 'https://example.com/adk'),
-    context: { fetchMock },
-  };
-}
-
 describe('GoogleADKAdapter', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -43,7 +29,7 @@ describe('GoogleADKAdapter', () => {
     adapterName: 'GoogleADKAdapter',
     provider: 'google-adk',
     compatibility: 'beta',
-    supportsStreaming: true,
+    supportsStreaming: false,
     expectedText: 'google adk contract response',
     createInstance: (card) => createGoogleADKContractInstance(card),
     createProviderErrorCase: (card) => {
@@ -63,7 +49,10 @@ describe('GoogleADKAdapter', () => {
       expect(init).toEqual(
         expect.objectContaining({
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': 'contract-task',
+          },
         }),
       );
       expect(body).toEqual({
@@ -76,10 +65,6 @@ describe('GoogleADKAdapter', () => {
         ],
       });
     },
-    streamingCase: {
-      expectedText: 'google\nstream',
-      createInstance: (card) => createGoogleADKStreamInstance(card),
-    },
     authPropagationCase: {
       createInstance: (card) =>
         createGoogleADKContractInstance(card, 'google auth response', 'secret-key'),
@@ -87,6 +72,7 @@ describe('GoogleADKAdapter', () => {
         const [, init] = context.fetchMock.mock.calls[0] ?? [];
         expect(init?.headers).toEqual({
           'Content-Type': 'application/json',
+          'Idempotency-Key': 'contract-task',
           'x-goog-api-key': 'secret-key',
         });
       },
@@ -152,5 +138,14 @@ describe('GoogleADKAdapter', () => {
 
     const artifacts = await adapter.handleTask(task, message);
     expect(artifacts[0]?.parts[0]).toEqual({ type: 'text', text: 'hello\nworld' });
+    const metadata = (artifacts[0] as { metadata?: Record<string, unknown> } | undefined)?.metadata;
+    expect(metadata).toMatchObject({
+      sourceTransport: 'sse',
+      buffered: true,
+    });
+    expect(metadata?.['contract']).toMatchObject({
+      streamed: false,
+      supportsStreaming: false,
+    });
   });
 });

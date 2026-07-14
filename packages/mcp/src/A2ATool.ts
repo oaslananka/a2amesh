@@ -1,6 +1,7 @@
 import {
   A2AClient,
   createAuthenticatingFetchWithRetry,
+  createOutboundPolicyFetch,
   validateUrl,
   type Task,
 } from '@a2amesh/runtime';
@@ -47,10 +48,6 @@ function validateToolArguments(
     record['contextId'] === undefined ||
     (typeof record['contextId'] === 'string' && record['contextId'].length <= 256)
   );
-}
-
-function requestUrl(input: string | URL | Request): string | URL {
-  return input instanceof Request ? input.url : input;
 }
 
 /**
@@ -139,13 +136,7 @@ export async function handleA2AMcpToolCall(
   }
 
   try {
-    const policyFetch = async (
-      input: string | URL | Request,
-      init?: RequestInit,
-    ): Promise<Response> => {
-      const safeUrl = await validateUrl(requestUrl(input), security.outboundPolicy);
-      return globalThis.fetch(safeUrl, { ...init, redirect: 'error' });
-    };
+    const policyFetch = createOutboundPolicyFetch(security.outboundPolicy);
     const fetcher = config.token
       ? createAuthenticatingFetchWithRetry(policyFetch, {
           async headers() {
@@ -154,7 +145,10 @@ export async function handleA2AMcpToolCall(
         })
       : policyFetch;
 
-    const client = new A2AClient(config.agentUrl, { fetchImplementation: fetcher });
+    const client = new A2AClient(config.agentUrl, {
+      fetchImplementation: fetcher,
+      retry: { maxAttempts: 1, backoffMs: 0, retryOn: [] },
+    });
 
     const task: Task = await client.sendMessage({
       message: {

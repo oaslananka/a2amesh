@@ -7,6 +7,10 @@ import { EventSource, type EventSourceInit } from 'eventsource';
 import type { RegistryExportDocument } from '../schemas/public.js';
 import type { AgentCard } from '../types/agent-card.js';
 import { createEventSourceReader } from './eventSourceReader.js';
+import {
+  createDefaultClientOutboundPolicy,
+  createOutboundPolicyFetch,
+} from '../net/OutboundPolicy.js';
 
 export interface RegisteredAgent {
   id: string;
@@ -62,10 +66,16 @@ export interface TrustLogQuery {
  * @since 1.0.0
  */
 export class AgentRegistryClient {
+  private readonly fetchImplementation: typeof fetch;
+
   constructor(
     private readonly baseUrl: string,
-    private readonly fetchImplementation: typeof fetch = fetch,
-  ) {}
+    fetchImplementation?: typeof fetch,
+  ) {
+    this.fetchImplementation =
+      fetchImplementation ??
+      createOutboundPolicyFetch(createDefaultClientOutboundPolicy(this.baseUrl));
+  }
 
   async register(
     agentUrl: string,
@@ -78,6 +88,7 @@ export class AgentRegistryClient {
       body: JSON.stringify({ agentUrl, agentCard, ...options }),
     });
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`Failed to register agent (${response.status})`);
     }
     return (await response.json()) as RegisteredAgent;
@@ -86,6 +97,7 @@ export class AgentRegistryClient {
   async listAgents(): Promise<RegisteredAgent[]> {
     const response = await this.fetchImplementation(new URL('/agents', this.baseUrl));
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`Failed to list agents (${response.status})`);
     }
     return (await response.json()) as RegisteredAgent[];
@@ -94,6 +106,7 @@ export class AgentRegistryClient {
   async exportAgents(): Promise<RegistryExportDocument> {
     const response = await this.fetchImplementation(new URL('/admin/agents/export', this.baseUrl));
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`Failed to export agents (${response.status})`);
     }
     return (await response.json()) as RegistryExportDocument;
@@ -106,6 +119,7 @@ export class AgentRegistryClient {
       body: JSON.stringify(document),
     });
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`Failed to import agents (${response.status})`);
     }
     return (await response.json()) as RegistryImportResult;
@@ -114,6 +128,7 @@ export class AgentRegistryClient {
   async getAgent(id: string): Promise<RegisteredAgent> {
     const response = await this.fetchImplementation(new URL(`/agents/${id}`, this.baseUrl));
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`Failed to fetch agent (${response.status})`);
     }
     return (await response.json()) as RegisteredAgent;
@@ -130,6 +145,7 @@ export class AgentRegistryClient {
     }
     const response = await this.fetchImplementation(url);
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`Failed to search agents (${response.status})`);
     }
     return (await response.json()) as RegisteredAgent[];
@@ -143,6 +159,7 @@ export class AgentRegistryClient {
       },
     );
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`Failed to send heartbeat (${response.status})`);
     }
     return (await response.json()) as RegisteredAgent;
@@ -151,6 +168,7 @@ export class AgentRegistryClient {
   async health(): Promise<Record<string, unknown>> {
     const response = await this.fetchImplementation(new URL('/health', this.baseUrl));
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`Failed to fetch registry health (${response.status})`);
     }
     return (await response.json()) as Record<string, unknown>;
@@ -165,6 +183,7 @@ export class AgentRegistryClient {
     }
     const response = await this.fetchImplementation(url);
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`Failed to fetch trust log (${response.status})`);
     }
     return (await response.json()) as TrustLogEntry[];

@@ -65,6 +65,30 @@ describe('validateSafeUrl', () => {
     expect(url.hostname).toBe('localhost');
   });
 
+  it('treats allowedHostnames as a restrictive allowlist without bypassing IP policy', async () => {
+    await expect(
+      validateSafeUrl('https://other.example/path', {
+        allowedHostnames: ['allowed.example'],
+        resolveHostname: async () => ['93.184.216.34'],
+      }),
+    ).rejects.toThrow('not in the outbound allowlist');
+
+    await expect(
+      validateSafeUrl('https://allowed.example/path', {
+        allowedHostnames: ['allowed.example'],
+        resolveHostname: async () => ['10.0.0.1'],
+      }),
+    ).rejects.toThrow('private IP');
+
+    await expect(
+      validateSafeUrl('https://allowed.example/path', {
+        allowedHostnames: ['allowed.example'],
+        allowPrivateNetworks: true,
+        resolveHostname: async () => ['10.0.0.1'],
+      }),
+    ).resolves.toBeInstanceOf(URL);
+  });
+
   it('fails closed when DNS resolution fails by default', async () => {
     vi.spyOn(dns, 'resolve').mockRejectedValue(new Error('dns down'));
 

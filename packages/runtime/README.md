@@ -11,3 +11,28 @@ See [Compatibility](../../docs/compatibility.md) for supported Node.js, protocol
 Use `SyncTaskStorageAdapter` to run an existing `ITaskStorage` implementation behind `AsyncTaskManager`.
 
 SQLite storage is optional. Install `better-sqlite3` in the application workspace before constructing `SqliteTaskStorage` or `AsyncSqliteTaskStorage`.
+
+## Outbound HTTP policy
+
+`A2AClient` and `AgentRegistryClient` use the shared outbound policy by default. An
+explicit loopback URL enables loopback access for local development; private networks and
+public-to-loopback redirects remain blocked unless narrowly allowed. A hostname allowlist is
+restrictive and never bypasses private-address validation. Fetch operations also reject
+unresolved names because they cannot bind the connection to a validated address.
+A custom `fetchImplementation` is an explicit trusted integration and test escape hatch; it
+must honor the supplied `AbortSignal` and Undici dispatcher.
+
+Use `validateAndFetch` or `createOutboundPolicyFetch` for additional outbound surfaces.
+Every redirect hop is revalidated and connected through the exact DNS address set that was
+validated. HTTPS-to-HTTP redirects are blocked by default. The total deadline covers DNS,
+connect, headers, retries, and complete body or SSE consumption. OIDC discovery and JWKS
+retrieval use this same path.
+
+Default response limits are 10 MiB total, 10,000 SSE events, 64 KiB per SSE line, 1 MiB
+per SSE event buffer, and a 30-second SSE idle interval. Override these through
+`OutboundPolicyOptions` when the protocol contract requires a smaller bound. Callers that
+inspect only status or headers must cancel the response body.
+
+Retries are enabled only for idempotent methods, replayable request bodies, or requests
+carrying an `Idempotency-Key`. URLs and sensitive headers are redacted from logs and spans.
+See [SSRF Policy](../../docs/security/ssrf.md).

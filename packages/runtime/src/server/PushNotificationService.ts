@@ -74,6 +74,7 @@ export class PushNotificationService {
       await breaker.execute(async () => {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
+          'Idempotency-Key': task.id,
         };
 
         let url = config.url;
@@ -111,8 +112,12 @@ export class PushNotificationService {
           this.createOutboundPolicyOptions(),
         );
 
-        if (!response.ok) {
-          throw new Error(`Push notification failed: HTTP ${response.status}`);
+        try {
+          if (!response.ok) {
+            throw new Error(`Push notification failed: HTTP ${response.status}`);
+          }
+        } finally {
+          await response.body?.cancel().catch(() => undefined);
         }
       });
     } catch (error) {

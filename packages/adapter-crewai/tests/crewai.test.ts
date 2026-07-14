@@ -50,7 +50,10 @@ describe('CrewAIAdapter', () => {
       expect(init).toEqual(
         expect.objectContaining({
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': 'contract-task',
+          },
         }),
       );
       expect(body).toEqual({

@@ -223,7 +223,9 @@ describe('Registry Integration', () => {
       storage,
       allowLocalhost: true,
       allowPrivateNetworks: true,
-      allowUnresolvedHostnames: true,
+      outboundPolicy: {
+        resolveHostname: async () => ['93.184.216.34'],
+      },
     });
     await (
       server as unknown as {

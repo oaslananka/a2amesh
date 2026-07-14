@@ -18,7 +18,7 @@ describe('observability redaction helpers', () => {
       Authorization: '[REDACTED]',
       nested: {
         api_key: '[REDACTED]',
-        callback: 'https://example.com/hook?token=[REDACTED]&value=ok',
+        callback: 'https://example.com/hook?[REDACTED]',
       },
       publicValue: 'visible',
     });

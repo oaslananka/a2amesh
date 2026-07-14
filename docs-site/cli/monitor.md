@@ -23,6 +23,7 @@ Options:
   --retries <count>         Retry count for transient network failures
   --request-id <id>         Request id sent as x-request-id
   --origin <url>            Origin header to send
+  --allow-private-network   Allow explicitly requested private-network destinations
   -h, --help                display help for command
 ```
 

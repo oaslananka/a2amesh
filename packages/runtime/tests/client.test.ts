@@ -64,7 +64,9 @@ describe('A2AClient', () => {
       ),
     );
 
-    const client = await A2AClient.connect('https://cards.example/.well-known/agent-card.json');
+    const client = await A2AClient.connect('https://cards.example/.well-known/agent-card.json', {
+      fetchImplementation: fetchSpy,
+    });
 
     expect(client.baseUrl).toBe('https://official.example/a2a');
     expect(fetchSpy).toHaveBeenCalledWith('https://cards.example/.well-known/agent-card.json', {
@@ -72,8 +74,32 @@ describe('A2AClient', () => {
     });
   });
 
+  it('does not inherit loopback permission from an untrusted public Agent Card', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          protocolVersion: '1.0',
+          name: 'Redirected',
+          description: 'desc',
+          url: 'http://127.0.0.1:3000/a2a',
+          version: '1.0',
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const client = await A2AClient.connect('https://cards.example/.well-known/agent-card.json', {
+      outboundPolicy: {
+        resolveHostname: async () => ['93.184.216.34'],
+      },
+    });
+
+    await expect(client.health()).rejects.toThrow(/private|not allowed/i);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('connects using an experimental protocol profile only when explicitly enabled', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
           protocolVersion: '1.0',
@@ -99,6 +125,7 @@ describe('A2AClient', () => {
     );
 
     const client = await A2AClient.connect('https://cards.example/.well-known/agent-card.json', {
+      fetchImplementation: fetchSpy,
       allowExperimentalProtocolVersions: true,
       preferredProtocolVersion: '1.2',
     });
@@ -107,7 +134,7 @@ describe('A2AClient', () => {
   });
 
   it('rejects preferred experimental protocol profiles unless enabled', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
           protocolVersion: '1.0',
@@ -129,6 +156,7 @@ describe('A2AClient', () => {
 
     await expect(
       A2AClient.connect('https://cards.example/.well-known/agent-card.json', {
+        fetchImplementation: fetchSpy,
         preferredProtocolVersion: '1.2',
       }),
     ).rejects.toThrow('Set allowExperimentalProtocolVersions to true');
@@ -316,6 +344,7 @@ describe('A2AClient', () => {
     try {
       const client = new A2AClient('http://localhost:3000', {
         fetchImplementation: fetchSpy,
+        headers: { 'Idempotency-Key': 'list-tasks-1' },
         retry: { maxAttempts: 2, backoffMs: 10, retryOn: [503] },
       });
 
@@ -327,6 +356,19 @@ describe('A2AClient', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('does not retry non-idempotent RPC calls without an idempotency key', async () => {
+    const fetchSpy = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 503 }));
+    const client = new A2AClient('http://localhost:3000', {
+      fetchImplementation: fetchSpy,
+      retry: { maxAttempts: 3, backoffMs: 0, retryOn: [503] },
+    });
+
+    await expect(client.listTasks({ limit: 5 })).rejects.toThrow(
+      'RPC request failed with status 503',
+    );
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
   it('retries thrown network errors and surfaces the last error after the final attempt', async () => {
@@ -445,7 +487,11 @@ describe('AgentRegistryClient', () => {
 
     const [exportInput, exportInit] = fetchSpy.mock.calls[0] ?? [];
     expect(exportInput).toEqual(new URL('/admin/agents/export', 'http://localhost:3099'));
-    expect(exportInit).toBeUndefined();
+    expect(exportInit).toMatchObject({
+      redirect: 'manual',
+      signal: expect.any(AbortSignal),
+      dispatcher: expect.any(Object),
+    });
 
     const [importInput, importInit] = fetchSpy.mock.calls[1] ?? [];
     expect(importInput).toEqual(new URL('/admin/agents/import', 'http://localhost:3099'));

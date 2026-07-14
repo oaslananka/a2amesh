@@ -52,7 +52,7 @@
     "perf:smoke": "pnpm run build && node scripts/run-k6-performance.mjs --profile smoke",
     "perf:load": "pnpm run build && node scripts/run-k6-performance.mjs --profile load",
     "ui:test:a11y": "pnpm --dir apps/registry-ui run test:a11y",
-    "build": "pnpm -r --workspace-concurrency=1 --if-present run build",
+    "build": "pnpm -r --workspace-concurrency=1 --if-present run build && node scripts/sync-injected-workspace-dist.mjs",
     "pack:dry-run": "node scripts/check-npm-pack.mjs",
     "docs:dev": "pnpm --dir docs-site run dev",
     "docs:build": "pnpm --dir docs-site run build",
