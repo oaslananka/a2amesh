@@ -23,7 +23,7 @@ export function RunsTable({
   const handleApprove = async (runId: string) => {
     setPendingAction(runId);
     try {
-      await approveRun(runId, 'operator');
+      await approveRun(runId);
       onChanged();
     } finally {
       setPendingAction(null);
@@ -33,7 +33,7 @@ export function RunsTable({
   const handleReject = async (runId: string) => {
     setPendingAction(runId);
     try {
-      await rejectRun(runId, 'operator', 'rejected from Mission Control');
+      await rejectRun(runId, 'rejected from Mission Control');
       onChanged();
     } finally {
       setPendingAction(null);

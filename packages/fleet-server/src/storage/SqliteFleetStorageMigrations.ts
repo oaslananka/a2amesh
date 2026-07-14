@@ -14,7 +14,7 @@ export interface SqliteFleetStorageMigrationOptions {
   now?: (() => Date) | undefined;
 }
 
-const SQLITE_FLEET_STORAGE_SCHEMA_VERSION = 1;
+const SQLITE_FLEET_STORAGE_SCHEMA_VERSION = 2;
 
 const migrations: readonly Migration[] = [
   {
@@ -44,6 +44,17 @@ const migrations: readonly Migration[] = [
           detail_json TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_fleet_audit_run_id ON fleet_audit(run_id, sequence);
+      `);
+    },
+  },
+  {
+    version: 2,
+    apply(db) {
+      db.exec(`
+        ALTER TABLE fleet_runs ADD COLUMN tenant_id TEXT;
+        CREATE INDEX IF NOT EXISTS idx_fleet_runs_tenant_id ON fleet_runs(tenant_id, created_at);
+        ALTER TABLE fleet_audit ADD COLUMN tenant_id TEXT;
+        CREATE INDEX IF NOT EXISTS idx_fleet_audit_tenant_id ON fleet_audit(tenant_id, sequence);
       `);
     },
   },

@@ -1,4 +1,5 @@
 import { mkdtempSync, rmSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -110,6 +111,62 @@ describe('SqliteFleetStorage', () => {
     storage.close();
   });
 
+  it('atomically transitions a run only from the expected state', async () => {
+    const storage = new SqliteFleetStorage(databasePath('fleet.db'));
+    await storage.createRun(run({ status: 'PENDING', approvalState: 'PENDING' }));
+
+    const approved = await storage.transitionRun(
+      'run-1',
+      { status: 'PENDING', approvalState: 'PENDING' },
+      { status: 'RUNNING', approvalState: 'APPROVED' },
+    );
+    expect(approved.outcome).toBe('updated');
+
+    const repeatedApproval = await storage.transitionRun(
+      'run-1',
+      { status: 'PENDING', approvalState: 'PENDING' },
+      { status: 'RUNNING', approvalState: 'APPROVED' },
+    );
+    expect(repeatedApproval).toMatchObject({
+      outcome: 'unchanged',
+      run: { status: 'RUNNING', approvalState: 'APPROVED' },
+    });
+
+    const rejectedAfterApproval = await storage.transitionRun(
+      'run-1',
+      { status: 'PENDING', approvalState: 'PENDING' },
+      { status: 'FAILED', approvalState: 'REJECTED' },
+    );
+    expect(rejectedAfterApproval).toMatchObject({
+      outcome: 'conflict',
+      run: { status: 'RUNNING', approvalState: 'APPROVED' },
+    });
+    storage.close();
+  });
+
+  it('filters runs and audit entries by tenant including unscoped records', async () => {
+    const storage = new SqliteFleetStorage(databasePath('fleet.db'));
+    await storage.createRun(run({ id: 'tenant-a', tenantId: 'tenant-a' }));
+    await storage.createRun(run({ id: 'tenant-b', tenantId: 'tenant-b' }));
+    await storage.createRun(run({ id: 'unscoped' }));
+    await storage.appendAudit({ timestamp: 't1', action: 'task-routed', tenantId: 'tenant-a' });
+    await storage.appendAudit({ timestamp: 't2', action: 'task-routed' });
+
+    expect((await storage.listRuns({ tenantId: 'tenant-a' })).map((item) => item.id)).toEqual([
+      'tenant-a',
+    ]);
+    expect((await storage.listRuns({ tenantId: null })).map((item) => item.id)).toEqual([
+      'unscoped',
+    ]);
+    expect(
+      (await storage.listAudit({ tenantId: 'tenant-a' })).map((item) => item.timestamp),
+    ).toEqual(['t1']);
+    expect((await storage.listAudit({ tenantId: null })).map((item) => item.timestamp)).toEqual([
+      't2',
+    ]);
+    storage.close();
+  });
+
   it('limits audit results to the most recent N entries', async () => {
     const storage = new SqliteFleetStorage(databasePath('fleet.db'));
     for (let index = 0; index < 5; index += 1) {
@@ -119,6 +176,50 @@ describe('SqliteFleetStorage', () => {
     const limited = await storage.listAudit({ limit: 2 });
     expect(limited.map((entry) => entry.sequence)).toEqual([3, 4]);
     storage.close();
+  });
+
+  it('migrates an existing schema-v1 database to tenant-aware schema v2', async () => {
+    const path = databasePath('legacy-fleet.db');
+    const legacy = new DatabaseSync(path);
+    legacy.exec(`
+      CREATE TABLE storage_schema_migrations (
+        version INTEGER PRIMARY KEY,
+        applied_at TEXT NOT NULL
+      );
+      INSERT INTO storage_schema_migrations (version, applied_at)
+      VALUES (1, '2026-07-01T00:00:00.000Z');
+      CREATE TABLE fleet_runs (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        approval_state TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        run_json TEXT NOT NULL
+      );
+      CREATE TABLE fleet_audit (
+        sequence INTEGER PRIMARY KEY,
+        run_id TEXT,
+        task_id TEXT,
+        action TEXT NOT NULL,
+        actor TEXT,
+        timestamp TEXT NOT NULL,
+        detail_json TEXT
+      );
+    `);
+    legacy.close();
+
+    const migrated = new SqliteFleetStorage(path);
+    await migrated.createRun(run({ tenantId: 'tenant-a' }));
+    await migrated.appendAudit({
+      timestamp: 't1',
+      action: 'task-routed',
+      tenantId: 'tenant-a',
+    });
+
+    expect(await migrated.listRuns({ tenantId: 'tenant-a' })).toHaveLength(1);
+    expect(await migrated.listAudit({ tenantId: 'tenant-a' })).toHaveLength(1);
+    migrated.close();
   });
 
   it('persists runs and audit entries across a reopen of the same database file', async () => {

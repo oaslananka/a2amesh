@@ -19,3 +19,7 @@ This package is consumed inside the A2A Mesh monorepo through workspace dependen
 ## Compatibility
 
 See the workspace [Compatibility](../../docs/compatibility.md) matrix for supported Node.js and pnpm versions.
+
+## Security boundary
+
+Production mode requires authentication, binds to loopback by default, rejects wildcard CORS, enforces Fleet RBAC and tenant isolation, derives audit actors from verified principals, and uses atomic approval/rejection transitions. See the Fleet Control Plane Server guide for the role matrix and deployment configuration.

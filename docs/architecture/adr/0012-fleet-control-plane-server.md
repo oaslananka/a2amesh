@@ -125,3 +125,18 @@ Relevant coverage:
 - [`InMemoryFleetStorage tests`](../../../packages/fleet-server/tests/InMemoryFleetStorage.test.ts)
 - [`FleetControlPlaneServer route tests`](../../../packages/fleet-server/tests/FleetControlPlaneServer.test.ts)
 - [`Fleet control-plane vs. a real registry integration test`](../../../tests/integration/fleet-control-plane.test.ts)
+
+### Security hardening amendment (2026-07)
+
+The control plane now treats authentication and authorization as an explicit trust
+boundary. Production mode requires `JwtAuthMiddleware` configuration, the listener
+binds to loopback by default, browser CORS uses an exact allowlist, and every
+`/fleet` route declares a Fleet permission. Verified principals supply audit actor
+identity and tenant scope; request-body actor values have no authority.
+
+The role model separates viewer, worker, operator, approver, and administrator
+responsibilities. High-risk self-approval is disabled by default. Run and audit
+records carry tenant identity, SSE delivery is tenant-aware, and pending approval or
+rejection uses an atomic storage transition so concurrent decisions cannot both
+succeed. Worker registration remains owned by the registry rather than adding a
+second registration authority to Fleet Server.

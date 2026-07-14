@@ -13,6 +13,7 @@ export interface FleetServerContext {
   sse: FleetSseController;
   activeRunCounts: Map<string, number>;
   now: () => Date;
+  allowHighRiskSelfApproval: boolean;
 }
 
 export const HIGH_RISK_LEVELS: ReadonlySet<FleetSideEffectLevel> = new Set([

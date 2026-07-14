@@ -20,6 +20,8 @@ export interface FleetRunRecord {
   status: FleetRunStatus;
   approvalState: FleetApprovalState;
   riskLevel?: FleetSideEffectLevel;
+  tenantId?: string;
+  requestedByPrincipalId?: string;
   routingDecision: FleetRoutingDecision;
   artifacts: FleetArtifactRecord[];
   createdAt: string;
@@ -31,9 +33,26 @@ export interface FleetRunRecord {
 export type FleetRunPatch = Partial<
   Pick<
     FleetRunRecord,
-    'status' | 'approvalState' | 'completedAt' | 'failureReason' | 'updatedAt' | 'workerId'
+    | 'status'
+    | 'approvalState'
+    | 'artifacts'
+    | 'completedAt'
+    | 'failureReason'
+    | 'updatedAt'
+    | 'workerId'
   >
 >;
+
+export interface FleetRunTransitionCondition {
+  status?: FleetRunStatus;
+  approvalState?: FleetApprovalState;
+}
+
+export type FleetRunTransitionResult =
+  | { outcome: 'updated'; run: FleetRunRecord }
+  | { outcome: 'unchanged'; run: FleetRunRecord }
+  | { outcome: 'not-found' }
+  | { outcome: 'conflict'; run: FleetRunRecord };
 
 export type FleetAuditAction =
   | 'task-routed'
@@ -42,6 +61,7 @@ export type FleetAuditAction =
   | 'run-rejected'
   | 'run-completed'
   | 'run-failed'
+  | 'run-canceled'
   | 'artifact-added';
 
 export interface FleetAuditEntry {
@@ -51,17 +71,22 @@ export interface FleetAuditEntry {
   runId?: string;
   taskId?: string;
   actor?: string;
+  tenantId?: string;
   detail?: Record<string, unknown>;
 }
 
 export interface FleetRunListFilter {
   status?: FleetRunStatus;
   approvalState?: FleetApprovalState;
+  /** `null` selects unscoped runs; `undefined` means all tenants. */
+  tenantId?: string | null;
 }
 
 export interface FleetAuditListFilter {
   runId?: string;
   limit?: number;
+  /** `null` selects unscoped entries; `undefined` means all tenants. */
+  tenantId?: string | null;
 }
 
 export interface IFleetStorage {
@@ -69,6 +94,11 @@ export interface IFleetStorage {
   getRun(id: string): Promise<FleetRunRecord | null>;
   listRuns(filter?: FleetRunListFilter): Promise<FleetRunRecord[]>;
   updateRun(id: string, patch: FleetRunPatch): Promise<FleetRunRecord | null>;
+  transitionRun(
+    id: string,
+    expected: FleetRunTransitionCondition,
+    patch: FleetRunPatch,
+  ): Promise<FleetRunTransitionResult>;
   addArtifact(runId: string, artifact: FleetArtifactRecord): Promise<FleetRunRecord | null>;
   appendAudit(entry: Omit<FleetAuditEntry, 'sequence'>): Promise<FleetAuditEntry>;
   listAudit(filter?: FleetAuditListFilter): Promise<FleetAuditEntry[]>;

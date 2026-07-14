@@ -51,6 +51,8 @@ export interface FleetRun {
   status: FleetRunStatus;
   approvalState: FleetApprovalState;
   riskLevel?: FleetSideEffectLevel;
+  tenantId?: string;
+  requestedByPrincipalId?: string;
   routingDecision: FleetRoutingDecision;
   artifacts: FleetArtifactRecord[];
   createdAt: string;
@@ -66,6 +68,7 @@ type FleetAuditAction =
   | 'run-rejected'
   | 'run-completed'
   | 'run-failed'
+  | 'run-canceled'
   | 'artifact-added';
 
 export interface FleetAuditEntry {
@@ -75,6 +78,7 @@ export interface FleetAuditEntry {
   runId?: string;
   taskId?: string;
   actor?: string;
+  tenantId?: string;
   detail?: Record<string, unknown>;
 }
 
@@ -160,17 +164,17 @@ export async function routeTask(request: RouteTaskRequest): Promise<RouteTaskRes
   return requestJson('/fleet/tasks/route', { method: 'POST', body: JSON.stringify(request) });
 }
 
-export async function approveRun(id: string, actor?: string): Promise<FleetRun> {
+export async function approveRun(id: string): Promise<FleetRun> {
   return requestJson(`/fleet/runs/${id}/approve`, {
     method: 'POST',
-    body: JSON.stringify(actor ? { actor } : {}),
+    body: JSON.stringify({}),
   });
 }
 
-export async function rejectRun(id: string, actor?: string, reason?: string): Promise<FleetRun> {
+export async function rejectRun(id: string, reason?: string): Promise<FleetRun> {
   return requestJson(`/fleet/runs/${id}/reject`, {
     method: 'POST',
-    body: JSON.stringify({ ...(actor ? { actor } : {}), ...(reason ? { reason } : {}) }),
+    body: JSON.stringify(reason ? { reason } : {}),
   });
 }
 

@@ -88,6 +88,60 @@ describe('InMemoryFleetStorage', () => {
     expect(scoped.map((entry) => entry.action)).toEqual(['task-routed', 'run-completed']);
   });
 
+  it('atomically transitions a run only from the expected state', async () => {
+    const storage = new InMemoryFleetStorage();
+    await storage.createRun(run({ status: 'PENDING', approvalState: 'PENDING' }));
+
+    const approved = await storage.transitionRun(
+      'run-1',
+      { status: 'PENDING', approvalState: 'PENDING' },
+      { status: 'RUNNING', approvalState: 'APPROVED' },
+    );
+    expect(approved.outcome).toBe('updated');
+
+    const repeatedApproval = await storage.transitionRun(
+      'run-1',
+      { status: 'PENDING', approvalState: 'PENDING' },
+      { status: 'RUNNING', approvalState: 'APPROVED' },
+    );
+    expect(repeatedApproval).toMatchObject({
+      outcome: 'unchanged',
+      run: { status: 'RUNNING', approvalState: 'APPROVED' },
+    });
+
+    const rejectedAfterApproval = await storage.transitionRun(
+      'run-1',
+      { status: 'PENDING', approvalState: 'PENDING' },
+      { status: 'FAILED', approvalState: 'REJECTED' },
+    );
+    expect(rejectedAfterApproval).toMatchObject({
+      outcome: 'conflict',
+      run: { status: 'RUNNING', approvalState: 'APPROVED' },
+    });
+  });
+
+  it('filters runs and audit entries by tenant including unscoped records', async () => {
+    const storage = new InMemoryFleetStorage();
+    await storage.createRun(run({ id: 'tenant-a', tenantId: 'tenant-a' }));
+    await storage.createRun(run({ id: 'tenant-b', tenantId: 'tenant-b' }));
+    await storage.createRun(run({ id: 'unscoped' }));
+    await storage.appendAudit({ timestamp: 't1', action: 'task-routed', tenantId: 'tenant-a' });
+    await storage.appendAudit({ timestamp: 't2', action: 'task-routed' });
+
+    expect((await storage.listRuns({ tenantId: 'tenant-a' })).map((item) => item.id)).toEqual([
+      'tenant-a',
+    ]);
+    expect((await storage.listRuns({ tenantId: null })).map((item) => item.id)).toEqual([
+      'unscoped',
+    ]);
+    expect(
+      (await storage.listAudit({ tenantId: 'tenant-a' })).map((item) => item.timestamp),
+    ).toEqual(['t1']);
+    expect((await storage.listAudit({ tenantId: null })).map((item) => item.timestamp)).toEqual([
+      't2',
+    ]);
+  });
+
   it('limits audit results to the most recent N entries', async () => {
     const storage = new InMemoryFleetStorage();
     for (let index = 0; index < 5; index += 1) {
