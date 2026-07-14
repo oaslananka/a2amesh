@@ -13,7 +13,11 @@ import {
   type FleetRoutingCandidate,
   type FleetSideEffectLevel,
 } from '@a2amesh/internal-fleet';
-import type { FleetRunRecord } from '../storage/IFleetStorage.js';
+import type {
+  FleetAuditAction,
+  FleetRunRecord,
+  FleetRunTransitionResult,
+} from '../storage/IFleetStorage.js';
 import {
   canAccessFleetTenant,
   getFleetPrincipal,
@@ -210,26 +214,11 @@ export function registerFleetRoutes(app: Express, context: FleetServerContext): 
         { status: 'PENDING', approvalState: 'PENDING' },
         { approvalState: 'APPROVED', status: 'RUNNING', updatedAt: now },
       );
-      if (transition.outcome === 'unchanged') {
-        res.json(transition.run);
-        return;
-      }
-      if (transition.outcome !== 'updated') {
-        sendTransitionConflict(res, run.id, transition);
-        return;
-      }
+      const updatedRun = resolveTransitionRun(res, run.id, transition, true);
+      if (!updatedRun) return;
 
-      bumpActiveRunCount(context, transition.run.workerId, 1);
-      await context.storage.appendAudit({
-        timestamp: now,
-        action: 'run-approved',
-        runId: transition.run.id,
-        taskId: transition.run.taskId,
-        actor: principal.principalId,
-        ...(transition.run.tenantId ? { tenantId: transition.run.tenantId } : {}),
-      });
-      broadcastRunUpdate(context, transition.run);
-      res.json(transition.run);
+      bumpActiveRunCount(context, updatedRun.workerId, 1);
+      await sendAuditedRunUpdate(context, res, principal, updatedRun, now, 'run-approved');
     },
   );
 
@@ -252,26 +241,18 @@ export function registerFleetRoutes(app: Express, context: FleetServerContext): 
           ...(reason ? { failureReason: reason } : {}),
         },
       );
-      if (transition.outcome === 'unchanged') {
-        res.json(transition.run);
-        return;
-      }
-      if (transition.outcome !== 'updated') {
-        sendTransitionConflict(res, run.id, transition);
-        return;
-      }
+      const updatedRun = resolveTransitionRun(res, run.id, transition, true);
+      if (!updatedRun) return;
 
-      await context.storage.appendAudit({
-        timestamp: now,
-        action: 'run-rejected',
-        runId: transition.run.id,
-        taskId: transition.run.taskId,
-        actor: principal.principalId,
-        ...(transition.run.tenantId ? { tenantId: transition.run.tenantId } : {}),
-        ...(reason ? { detail: { reason } } : {}),
-      });
-      broadcastRunUpdate(context, transition.run);
-      res.json(transition.run);
+      await sendAuditedRunUpdate(
+        context,
+        res,
+        principal,
+        updatedRun,
+        now,
+        'run-rejected',
+        reason ? { reason } : undefined,
+      );
     },
   );
 
@@ -320,33 +301,24 @@ export function registerFleetRoutes(app: Express, context: FleetServerContext): 
           ...(body.failureReason ? { failureReason: body.failureReason } : {}),
         },
       );
-      if (transition.outcome !== 'updated') {
-        sendTransitionConflict(res, run.id, transition);
-        return;
-      }
+      const updatedRun = resolveTransitionRun(res, run.id, transition, false);
+      if (!updatedRun) return;
 
       for (const artifact of body.artifacts ?? []) {
-        await context.storage.appendAudit({
-          timestamp: now,
-          action: 'artifact-added',
-          runId: transition.run.id,
-          taskId: transition.run.taskId,
-          actor: principal.principalId,
-          ...(transition.run.tenantId ? { tenantId: transition.run.tenantId } : {}),
-          detail: { artifactId: artifact.artifactId, kind: artifact.kind },
+        await appendRunAudit(context, principal, updatedRun, now, 'artifact-added', {
+          artifactId: artifact.artifactId,
+          kind: artifact.kind,
         });
       }
-      bumpActiveRunCount(context, transition.run.workerId, -1);
-      await context.storage.appendAudit({
-        timestamp: now,
-        action: body.status === 'COMPLETED' ? 'run-completed' : 'run-failed',
-        runId: transition.run.id,
-        taskId: transition.run.taskId,
-        actor: principal.principalId,
-        ...(transition.run.tenantId ? { tenantId: transition.run.tenantId } : {}),
-      });
-      broadcastRunUpdate(context, transition.run);
-      res.json(transition.run);
+      bumpActiveRunCount(context, updatedRun.workerId, -1);
+      await sendAuditedRunUpdate(
+        context,
+        res,
+        principal,
+        updatedRun,
+        now,
+        body.status === 'COMPLETED' ? 'run-completed' : 'run-failed',
+      );
     },
   );
 
@@ -375,25 +347,21 @@ export function registerFleetRoutes(app: Express, context: FleetServerContext): 
           ...(reason ? { failureReason: reason } : {}),
         },
       );
-      if (transition.outcome !== 'updated') {
-        sendTransitionConflict(res, run.id, transition);
-        return;
-      }
+      const updatedRun = resolveTransitionRun(res, run.id, transition, false);
+      if (!updatedRun) return;
 
       if (run.status === 'RUNNING') {
-        bumpActiveRunCount(context, transition.run.workerId, -1);
+        bumpActiveRunCount(context, updatedRun.workerId, -1);
       }
-      await context.storage.appendAudit({
-        timestamp: now,
-        action: 'run-canceled',
-        runId: transition.run.id,
-        taskId: transition.run.taskId,
-        actor: principal.principalId,
-        ...(transition.run.tenantId ? { tenantId: transition.run.tenantId } : {}),
-        ...(reason ? { detail: { reason } } : {}),
-      });
-      broadcastRunUpdate(context, transition.run);
-      res.json(transition.run);
+      await sendAuditedRunUpdate(
+        context,
+        res,
+        principal,
+        updatedRun,
+        now,
+        'run-canceled',
+        reason ? { reason } : undefined,
+      );
     },
   );
 
@@ -453,6 +421,54 @@ function canAccessCandidate(
   if (targetTenantId !== undefined) return tenants.includes(targetTenantId);
   if (principal.canAccessAllTenants) return true;
   return principal.tenantId !== undefined && tenants.includes(principal.tenantId);
+}
+
+function resolveTransitionRun(
+  res: Response,
+  runId: string,
+  transition: FleetRunTransitionResult,
+  allowUnchanged: boolean,
+): FleetRunRecord | null {
+  if (transition.outcome === 'updated') return transition.run;
+  if (allowUnchanged && transition.outcome === 'unchanged') {
+    res.json(transition.run);
+    return null;
+  }
+  sendTransitionConflict(res, runId, transition);
+  return null;
+}
+
+async function appendRunAudit(
+  context: FleetServerContext,
+  principal: FleetPrincipal,
+  run: FleetRunRecord,
+  timestamp: string,
+  action: FleetAuditAction,
+  detail?: Record<string, unknown>,
+): Promise<void> {
+  await context.storage.appendAudit({
+    timestamp,
+    action,
+    runId: run.id,
+    taskId: run.taskId,
+    actor: principal.principalId,
+    ...(run.tenantId ? { tenantId: run.tenantId } : {}),
+    ...(detail ? { detail } : {}),
+  });
+}
+
+async function sendAuditedRunUpdate(
+  context: FleetServerContext,
+  res: Response,
+  principal: FleetPrincipal,
+  run: FleetRunRecord,
+  timestamp: string,
+  action: FleetAuditAction,
+  detail?: Record<string, unknown>,
+): Promise<void> {
+  await appendRunAudit(context, principal, run, timestamp, action, detail);
+  broadcastRunUpdate(context, run);
+  res.json(run);
 }
 
 function broadcastRunUpdate(context: FleetServerContext, run: FleetRunRecord): void {

@@ -15,6 +15,7 @@ import {
   initializeSqliteFleetStorage,
   type SqliteFleetStorageMigrationOptions,
 } from './SqliteFleetStorageMigrations.js';
+import { matchesRunExpectedState, matchesRunTargetState } from './runStateTransitions.js';
 
 export interface SqliteFleetStorageOptions extends SqliteFleetStorageMigrationOptions {
   databaseConstructor?: SqliteDatabaseConstructor | undefined;
@@ -119,9 +120,9 @@ function transitionRun(
       db.exec('COMMIT');
       return { outcome: 'not-found' };
     }
-    if (!matchesExpectedState(existing, expected)) {
+    if (!matchesRunExpectedState(existing, expected)) {
       db.exec('COMMIT');
-      return matchesTargetState(existing, patch)
+      return matchesRunTargetState(existing, patch)
         ? { outcome: 'unchanged', run: existing }
         : { outcome: 'conflict', run: existing };
     }
@@ -275,20 +276,4 @@ export class SqliteFleetStorage implements IFleetStorage {
   close(): void {
     this.db.close?.();
   }
-}
-
-function matchesTargetState(run: FleetRunRecord, patch: FleetRunPatch): boolean {
-  const hasTargetState = patch.status !== undefined || patch.approvalState !== undefined;
-  return (
-    hasTargetState &&
-    (patch.status === undefined || run.status === patch.status) &&
-    (patch.approvalState === undefined || run.approvalState === patch.approvalState)
-  );
-}
-
-function matchesExpectedState(run: FleetRunRecord, expected: FleetRunTransitionCondition): boolean {
-  return (
-    (expected.status === undefined || run.status === expected.status) &&
-    (expected.approvalState === undefined || run.approvalState === expected.approvalState)
-  );
 }

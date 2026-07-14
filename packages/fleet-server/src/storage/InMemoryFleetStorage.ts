@@ -14,6 +14,7 @@ import type {
   FleetRunTransitionResult,
   IFleetStorage,
 } from './IFleetStorage.js';
+import { matchesRunExpectedState, matchesRunTargetState } from './runStateTransitions.js';
 
 export class InMemoryFleetStorage implements IFleetStorage {
   private readonly runs = new Map<string, FleetRunRecord>();
@@ -55,8 +56,8 @@ export class InMemoryFleetStorage implements IFleetStorage {
   ): Promise<FleetRunTransitionResult> {
     const run = this.runs.get(id);
     if (!run) return { outcome: 'not-found' };
-    if (!matchesExpectedState(run, expected)) {
-      return matchesTargetState(run, patch)
+    if (!matchesRunExpectedState(run, expected)) {
+      return matchesRunTargetState(run, patch)
         ? { outcome: 'unchanged', run: { ...run } }
         : { outcome: 'conflict', run: { ...run } };
     }
@@ -87,22 +88,6 @@ export class InMemoryFleetStorage implements IFleetStorage {
     const ordered = [...filtered].sort((left, right) => left.sequence - right.sequence);
     return (filter.limit ? ordered.slice(-filter.limit) : ordered).map((entry) => ({ ...entry }));
   }
-}
-
-function matchesTargetState(run: FleetRunRecord, patch: FleetRunPatch): boolean {
-  const hasTargetState = patch.status !== undefined || patch.approvalState !== undefined;
-  return (
-    hasTargetState &&
-    (patch.status === undefined || run.status === patch.status) &&
-    (patch.approvalState === undefined || run.approvalState === patch.approvalState)
-  );
-}
-
-function matchesExpectedState(run: FleetRunRecord, expected: FleetRunTransitionCondition): boolean {
-  return (
-    (expected.status === undefined || run.status === expected.status) &&
-    (expected.approvalState === undefined || run.approvalState === expected.approvalState)
-  );
 }
 
 function matchesTenant(
