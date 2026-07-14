@@ -11,7 +11,7 @@ It builds a `WorkerCard` and a `FleetProviderWorkerPlan` for a "local CLI coding
 worker role, routes a sample task to it with `routeFleetTask`, and executes the task
 through `LocalCliWorkerRuntimeAdapter`, capturing a declared output file as a
 checksummed artifact. The default/tested path never runs an external CLI: it invokes a
-bundled `node` stand-in command, so this example never depends on any external binary
+canonical `process.execPath` Node.js stand-in command, so this example never depends on any external binary
 or provider credentials being present.
 
 ## Run
@@ -42,8 +42,9 @@ pnpm --dir examples/local-cli-fleet run smoke
 
 The adapter and routing code are generic; only the command changes:
 
-- Set `A2AMESH_CLI_FLEET_COMMAND` to the CLI you want to run (for example a local
-  coding agent CLI you already have installed and signed in to).
+- Set `A2AMESH_CLI_FLEET_COMMAND` to the **absolute executable path** of the CLI you
+  want to run (for example `/opt/tools/my-agent/bin/agent` or a canonical Windows
+  path). Bare command names are rejected; the adapter never searches the host `PATH`.
 - Set `A2AMESH_CLI_FLEET_API_KEY_ENV` to the _name_ of an environment variable that
   already holds a provider key for that CLI. Only the name is read here
   (`credentialPolicy: 'env-ref'` in `FleetProviderWorkerPlan`) - the key value itself
@@ -60,5 +61,5 @@ a worked registry-discovery example.
 - `src/index.ts` builds the worker card and provider plan, routes a task with
   `routeFleetTask`, and runs it through `LocalCliWorkerRuntimeAdapter`.
 - `tests/smoke.test.ts` verifies routing succeeds and the run completes with a
-  checksummed artifact, using only the bundled stand-in command.
+  checksummed artifact, using only the canonical Node.js stand-in executable.
 - `.env.example` documents the optional env-ref knobs for pointing this at a real CLI.

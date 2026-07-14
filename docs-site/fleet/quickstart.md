@@ -127,7 +127,10 @@ Claude/Codex/Copilot/opencode-specific — it launches whatever command you conf
 workspace, with no secret passthrough by default:
 
 ```typescript
+import { realpathSync } from 'node:fs';
 import { LocalCliWorkerRuntimeAdapter } from '@a2amesh/internal-worker-runtime';
+
+const cliExecutable = realpathSync('/opt/tools/my-coding-agent-cli');
 
 const patchWorker = new LocalCliWorkerRuntimeAdapter({
   id: 'patch-worker',
@@ -138,15 +141,19 @@ const patchWorker = new LocalCliWorkerRuntimeAdapter({
     url: 'local://patch-worker',
     version: '1.0.0',
   },
-  command: 'my-coding-agent-cli', // must appear in policy.commandAllowlist
+  command: cliExecutable,
   buildArgs: (context) => ['run', '--task', context.task.id],
   artifactFiles: () => ['out/patch.diff', 'out/test-report.json'],
   policy: {
-    commandAllowlist: ['my-coding-agent-cli'],
-    envAllowlist: [], // no ambient environment variables are forwarded by default
+    commandAllowlist: [cliExecutable],
+    envAllowlist: [], // PATH and every other ambient value are denied by default
     workspaceRoot: '/workspace/my-repo',
     timeoutMs: 5 * 60_000,
     maxConcurrentRuns: 2,
+    maxArtifactFiles: 8,
+    maxArtifactBytes: 5 * 1024 * 1024,
+    maxTotalArtifactBytes: 10 * 1024 * 1024,
+    allowedArtifactExtensions: ['.diff', '.json'],
   },
 });
 ```
@@ -154,23 +161,37 @@ const patchWorker = new LocalCliWorkerRuntimeAdapter({
 Security defaults, all enforced in code (see `packages/worker-runtime/tests/LocalCliWorkerRuntimeAdapter.test.ts`
 for the executable specification):
 
-- **Command allowlist**: only `policy.commandAllowlist` entries may run; anything else returns a
-  `POLICY_DENIED` failure event instead of spawning a process.
+- **Canonical executable allowlist**: `command` and every `policy.commandAllowlist` entry must be an
+  absolute canonical executable path. Bare names are rejected and the adapter never searches the
+  host `PATH`.
 - **No secret passthrough by default**: only environment variable names listed in
-  `policy.envAllowlist` are forwarded from the host process; `PATH` is always forwarded so the
-  allowlisted binary can be resolved, and nothing else is implicit.
-- **Workspace containment**: the resolved working directory must stay inside `policy.workspaceRoot`;
-  `cwd: '../outside'` is rejected before any process starts.
+  `policy.envAllowlist`, plus explicit `env` values, are forwarded. `PATH` is not implicit; supply a
+  controlled value explicitly only when the child process truly needs it.
+- **Canonical workspace containment**: the workspace root and working directory are resolved with
+  `realpath`; lexical escapes and symlink/junction traversal are rejected before spawning.
+- **Output redaction**: credential-shaped values and explicitly forwarded credential environment
+  values are redacted from stdout/stderr events before they can be persisted or emitted.
 - **Timeouts and cancellation**: `policy.timeoutMs` aborts a hung run with a structured `TIMEOUT`
   failure (`retryable: true`); `adapter.cancel(context, { reason })` aborts an in-flight run on
   request and reports a `canceled` event.
 - **Concurrency limits**: `policy.maxConcurrentRuns` rejects new runs past the limit with a
   `POLICY_DENIED` failure rather than queuing silently.
-- **Artifact capture**: `artifactFiles` declares which output files to read back after a successful
-  run; each is checksummed (SHA-256) before being attached to the result.
-- **Structured failures everywhere**: policy denials, spawn errors, non-zero exits, timeouts, and
-  cancellations all surface as a `WorkerRuntimeResult` with a populated `failure` field — callers
-  never need to catch an adapter-thrown exception to detect a failed run.
+- **Fail-closed artifact capture**: only declared, canonical, regular files inside the working
+  directory are accepted. File identity is checked before and after a bounded descriptor read;
+  symlinks/junctions, replacement races, devices, sockets, FIFOs, disallowed extensions, binary
+  content (unless enabled), and size/count limit violations fail the run with
+  `ARTIFACT_UNAVAILABLE`. Missing declared files remain optional and are omitted.
+- **Structured failures everywhere**: policy denials, spawn errors, non-zero exits, timeouts,
+  cancellations, and unsafe artifacts surface as a `WorkerRuntimeResult` with a populated `failure`
+  field — callers never need to catch an adapter-thrown exception to detect a failed run.
+
+Platform behavior:
+
+- **Linux/macOS**: artifact descriptors use `O_NOFOLLOW`, inode/device identity checks, canonical path
+  checks, and bounded reads.
+- **Windows**: canonical path and reparse-point/junction rejection plus pre/post file identity checks
+  provide the fail-closed boundary available through Node.js. Use canonical drive-qualified
+  executable and workspace paths.
 
 ## A realistic workflow: issue triage to PR-ready patch
 
@@ -259,31 +280,33 @@ looks credential-shaped (API keys, bearer tokens, private key headers) unless it
 
 ## Security defaults (summary)
 
-| Default                               | Where it is enforced                                                 |
-| ------------------------------------- | -------------------------------------------------------------------- |
-| No secrets passed to worker processes | `LocalCliWorkerRuntimeAdapter` env allowlist                         |
-| Command allowlist required            | `LocalCliWorkerRuntimeAdapter` policy check in `prepare()`/`start()` |
-| Workspace containment                 | `LocalCliWorkerRuntimeAdapter.resolveCwd()`                          |
-| Destructive/remote actions gated      | `FleetApprovalGate`, `FleetPolicyDecision` (see policy doc)          |
-| Artifacts scanned for credentials     | `validateFleetArtifact`                                              |
-| No session scraping                   | `MissionControlPlan.unsafeSessionScrapingAllowed` fixed to `false`   |
-| Fail-closed routing                   | `routeFleetTask` returns no `selectedWorkerId` rather than guessing  |
+| Default                               | Where it is enforced                                                |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| No secrets passed to worker processes | `LocalCliWorkerRuntimeAdapter` env allowlist and output redaction   |
+| Canonical executable allowlist        | `resolveWorkerExecution()`; ambient PATH lookup disabled            |
+| Workspace and artifact confinement    | realpath checks plus descriptor/inode validation                    |
+| Destructive/remote actions gated      | `FleetApprovalGate`, `FleetPolicyDecision` (see policy doc)         |
+| Artifacts scanned for credentials     | `validateFleetArtifact`                                             |
+| No session scraping                   | `MissionControlPlan.unsafeSessionScrapingAllowed` fixed to `false`  |
+| Fail-closed routing                   | `routeFleetTask` returns no `selectedWorkerId` rather than guessing |
 
 ## Troubleshooting
 
-- **"command is not in the local CLI adapter allowlist"**: add the executable name to
-  `policy.commandAllowlist`. The adapter never falls back to running an unlisted command.
-- **"resolved working directory ... escapes workspace root"**: `cwd` (or a task-provided path) tried
-  to leave `policy.workspaceRoot`. Use a path inside the workspace, or widen `workspaceRoot` if that
-  is genuinely intended.
+- **"command ... must be an absolute executable path"**: resolve the binary once at configuration
+  time (for example `realpathSync(process.execPath)`) and use that same canonical value for `command`
+  and `policy.commandAllowlist`. Bare names and PATH lookup are intentionally disabled.
+- **"working directory ... escapes workspace root" / "resolves through a symbolic link"**: `cwd`
+  tried to leave the canonical workspace or traverse a symlink/junction. Use a real directory inside
+  `policy.workspaceRoot`; do not widen the root merely to accommodate an untrusted link.
 - **Run never completes / times out**: increase `policy.timeoutMs`, or check whether the wrapped CLI
   is waiting on stdin — the adapter runs with `stdio: ['ignore', 'pipe', 'pipe']`, so an agent that
   blocks on interactive input will hang until the timeout fires.
 - **Environment variable the CLI needs is missing**: add its name to `policy.envAllowlist` (or pass an
   explicit value via `env`) — nothing is forwarded implicitly.
-- **Declared artifact file is missing from the result**: `artifactFiles` paths are resolved relative
-  to the run's working directory and silently omitted (not failed) if the file was never written or
-  would resolve outside that directory; check the worker actually wrote the file before finalize.
+- **Declared artifact file is missing from the result**: a file that was never produced is optional
+  and omitted. An existing path that escapes confinement, traverses a link/junction, is not a regular
+  file, changes during capture, violates extension/content policy, or exceeds a limit fails closed
+  with `ARTIFACT_UNAVAILABLE`; inspect the final failure event.
 - **`routeFleetTask` returns no `selectedWorkerId`**: read `decision.reason` — it names exactly which
   filter emptied the candidate set (capability, workspace scope, concurrency, tenant, or missing
   approval for a risk level).

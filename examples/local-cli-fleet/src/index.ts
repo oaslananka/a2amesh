@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   routeFleetTask,
@@ -27,8 +27,8 @@ import {
  * an operator points `A2AMESH_CLI_FLEET_COMMAND` at their own coding CLI
  * (for example `opencode` or Google's `agy`). Nothing here executes an
  * external CLI in the default/tested path: the demo and smoke test only ever
- * run a bundled `node` stand-in, so this never depends on an external
- * binary or provider credentials being present.
+ * run the canonical `process.execPath` Node.js stand-in, so this never depends
+ * on an external binary or provider credentials being present.
  */
 
 const CODE_EDIT_CAPABILITY = 'code-edit';
@@ -88,7 +88,7 @@ function createDiscoveryRecord(card: WorkerCard): FleetWorkerDiscoveryRecord {
   };
 }
 
-/** Builds the inline `node -e` script the CI-safe stand-in command runs. */
+/** Builds the inline script executed by the canonical Node.js stand-in. */
 function buildStandInScript(taskDescription: string): string {
   const description = JSON.stringify(taskDescription);
   return [
@@ -99,7 +99,11 @@ function buildStandInScript(taskDescription: string): string {
 }
 
 export async function runExample(): Promise<LocalCliFleetExampleResult> {
-  const command = process.env['A2AMESH_CLI_FLEET_COMMAND'] ?? 'node';
+  const configuredCommand = process.env['A2AMESH_CLI_FLEET_COMMAND'] ?? process.execPath;
+  if (!isAbsolute(configuredCommand)) {
+    throw new Error('A2AMESH_CLI_FLEET_COMMAND must be an absolute executable path');
+  }
+  const command = realpathSync(configuredCommand);
   const apiKeyEnvName = process.env['A2AMESH_CLI_FLEET_API_KEY_ENV'];
   const workspaceRoot =
     process.env['A2AMESH_CLI_FLEET_WORKSPACE'] ??
