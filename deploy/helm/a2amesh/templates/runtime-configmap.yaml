@@ -20,9 +20,9 @@ data:
   PORT_RESEARCHER: {{ .Values.runtime.service.ports.researcher | quote }}
   PORT_WRITER: {{ .Values.runtime.service.ports.writer | quote }}
   PORT_ORCHESTRATOR: {{ .Values.runtime.service.ports.orchestrator | quote }}
-  RESEARCHER_URL: {{ printf "http://%s:%v" (include "a2amesh.runtimeName" .) .Values.runtime.service.ports.researcher | quote }}
-  WRITER_URL: {{ printf "http://%s:%v" (include "a2amesh.runtimeName" .) .Values.runtime.service.ports.writer | quote }}
-  ORCHESTRATOR_URL: {{ printf "http://%s:%v" (include "a2amesh.runtimeName" .) .Values.runtime.service.ports.orchestrator | quote }}
+  RESEARCHER_URL: {{ printf "http://%s:%v" (include "a2amesh.runtimeHost" .) .Values.runtime.service.ports.researcher | quote }}
+  WRITER_URL: {{ printf "http://%s:%v" (include "a2amesh.runtimeHost" .) .Values.runtime.service.ports.writer | quote }}
+  ORCHESTRATOR_URL: {{ printf "http://%s:%v" (include "a2amesh.runtimeHost" .) .Values.runtime.service.ports.orchestrator | quote }}
   RESEARCHER_INTERNAL_URL: {{ printf "http://127.0.0.1:%v" .Values.runtime.service.ports.researcher | quote }}
   WRITER_INTERNAL_URL: {{ printf "http://127.0.0.1:%v" .Values.runtime.service.ports.writer | quote }}
   A2A_SERVICE_VERSION: {{ .Chart.AppVersion | quote }}

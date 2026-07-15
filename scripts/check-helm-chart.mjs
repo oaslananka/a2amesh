@@ -88,6 +88,17 @@ for (const profile of profiles) {
   if (!rendered.includes('drop:\n            - ALL')) {
     throw new Error(`${profileName(profile)} is missing dropped Linux capabilities.`);
   }
+  if (profile) {
+    for (const required of [
+      'REGISTRY_URL: "http://a2amesh-check-registry.a2amesh-check.svc.cluster.local:3099"',
+      'RESEARCHER_URL: "http://a2amesh-check-runtime.a2amesh-check.svc.cluster.local:3001"',
+      'REGISTRY_ALLOWED_HOSTNAMES: "a2amesh-check-registry.a2amesh-check.svc.cluster.local"',
+    ]) {
+      if (!rendered.includes(required)) {
+        throw new Error(`${profileName(profile)} is missing cluster DNS contract: ${required}`);
+      }
+    }
+  }
   if (profile?.endsWith('values-production.yaml')) {
     for (const required of [
       'kind: StatefulSet',

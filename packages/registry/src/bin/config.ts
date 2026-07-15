@@ -54,6 +54,56 @@ function urlHostname(value: string | undefined): string | undefined {
   return value ? new URL(value).hostname.toLowerCase() : undefined;
 }
 
+type RegistryAuthScheme = NonNullable<RegistryServerOptions['auth']>['securitySchemes'][number];
+
+function createAuthScheme(args: {
+  discoveryUrl?: string;
+  jwksUri?: string;
+  issuer?: string;
+  audience?: string | string[];
+  algorithms: string[];
+}): RegistryAuthScheme {
+  const shared = {
+    ...(args.issuer ? { issuer: args.issuer } : {}),
+    ...(args.audience ? { audience: args.audience } : {}),
+    ...(args.algorithms.length > 0 ? { algorithms: args.algorithms } : {}),
+  };
+  if (args.discoveryUrl) {
+    return {
+      id: 'registry-oidc',
+      type: 'openIdConnect',
+      openIdConnectUrl: args.discoveryUrl,
+      ...(args.jwksUri ? { jwksUri: args.jwksUri } : {}),
+      ...shared,
+    };
+  }
+  if (!args.jwksUri) {
+    throw new Error('REGISTRY_AUTH_JWKS_URI is required for JWT auth.');
+  }
+  return {
+    id: 'registry-jwt',
+    type: 'http',
+    scheme: 'bearer',
+    bearerFormat: 'JWT',
+    jwksUri: args.jwksUri,
+    ...shared,
+  };
+}
+
+function readAuthAllowedHostnames(
+  env: NodeJS.ProcessEnv,
+  discoveryUrl: string | undefined,
+  jwksUri: string | undefined,
+): string[] {
+  const configured = readCsv(env, 'REGISTRY_AUTH_ALLOWED_HOSTNAMES').map((value) =>
+    value.toLowerCase(),
+  );
+  const inferred = [urlHostname(discoveryUrl), urlHostname(jwksUri)].filter(
+    (value): value is string => Boolean(value),
+  );
+  return Array.from(new Set([...configured, ...inferred]));
+}
+
 function createJwtAuthOptions(env: NodeJS.ProcessEnv): RegistryServerOptions['auth'] {
   const discoveryUrl = readOptionalString(env, 'REGISTRY_OIDC_DISCOVERY_URL');
   const jwksUri = readOptionalString(env, 'REGISTRY_AUTH_JWKS_URI');
@@ -61,39 +111,13 @@ function createJwtAuthOptions(env: NodeJS.ProcessEnv): RegistryServerOptions['au
 
   const issuer = readOptionalString(env, 'REGISTRY_AUTH_ISSUER');
   const audience = readAudience(env);
-  const algorithms = readCsv(env, 'REGISTRY_AUTH_ALGORITHMS');
-  const configuredHostnames = readCsv(env, 'REGISTRY_AUTH_ALLOWED_HOSTNAMES').map((value) =>
-    value.toLowerCase(),
-  );
-  const inferredHostnames = [urlHostname(discoveryUrl), urlHostname(jwksUri)].filter(
-    (value): value is string => Boolean(value),
-  );
-  const allowedHostnames = Array.from(new Set([...configuredHostnames, ...inferredHostnames]));
-  const scheme = discoveryUrl
-    ? {
-        id: 'registry-oidc',
-        type: 'openIdConnect' as const,
-        openIdConnectUrl: discoveryUrl,
-        ...(issuer ? { issuer } : {}),
-        ...(audience ? { audience } : {}),
-        ...(jwksUri ? { jwksUri } : {}),
-        ...(algorithms.length > 0 ? { algorithms } : {}),
-      }
-    : {
-        id: 'registry-jwt',
-        type: 'http' as const,
-        scheme: 'bearer' as const,
-        bearerFormat: 'JWT',
-        jwksUri:
-          jwksUri ??
-          (() => {
-            throw new Error('REGISTRY_AUTH_JWKS_URI is required for JWT auth.');
-          })(),
-        ...(issuer ? { issuer } : {}),
-        ...(audience ? { audience } : {}),
-        ...(algorithms.length > 0 ? { algorithms } : {}),
-      };
-
+  const scheme = createAuthScheme({
+    ...(discoveryUrl ? { discoveryUrl } : {}),
+    ...(jwksUri ? { jwksUri } : {}),
+    ...(issuer ? { issuer } : {}),
+    ...(audience ? { audience } : {}),
+    algorithms: readCsv(env, 'REGISTRY_AUTH_ALGORITHMS'),
+  });
   return {
     securitySchemes: [scheme],
     security: [{ [scheme.id]: [] }],
@@ -103,7 +127,7 @@ function createJwtAuthOptions(env: NodeJS.ProcessEnv): RegistryServerOptions['au
       allowLocalhost: readBoolean(env, 'REGISTRY_AUTH_ALLOW_LOCALHOST', false),
       allowNetworkTargets: readBoolean(env, 'REGISTRY_AUTH_ALLOW_PRIVATE_NETWORKS', false),
       allowUnresolvedHostnames: false,
-      allowedHostnames,
+      allowedHostnames: readAuthAllowedHostnames(env, discoveryUrl, jwksUri),
     },
   };
 }

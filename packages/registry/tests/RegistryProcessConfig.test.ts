@@ -74,6 +74,36 @@ describe('resolveRegistryProcessConfig', () => {
     );
   });
 
+  it('configures direct JWT verification and merges explicit auth hostnames', () => {
+    const config = resolveRegistryProcessConfig({
+      NODE_ENV: 'production',
+      REGISTRY_AUTH_JWKS_URI: 'https://keys.example.com/jwks.json',
+      REGISTRY_AUTH_AUDIENCE: 'registry-api,registry-operator',
+      REGISTRY_AUTH_ALLOWED_HOSTNAMES: 'keys.example.com,backup.example.com,keys.example.com',
+      REGISTRY_AUTH_ALLOW_PRIVATE_NETWORKS: 'true',
+      REGISTRY_AUTH_RETRY_ATTEMPTS: '2',
+    });
+
+    expect(config.serverOptions.auth).toEqual(
+      expect.objectContaining({
+        securitySchemes: [
+          expect.objectContaining({
+            id: 'registry-jwt',
+            type: 'http',
+            scheme: 'bearer',
+            jwksUri: 'https://keys.example.com/jwks.json',
+            audience: ['registry-api', 'registry-operator'],
+          }),
+        ],
+        outboundPolicy: expect.objectContaining({
+          allowedHostnames: ['keys.example.com', 'backup.example.com'],
+          allowNetworkTargets: true,
+          retries: 1,
+        }),
+      }),
+    );
+  });
+
   it('rejects ambiguous auth and incomplete sqlite configuration', () => {
     expect(() =>
       resolveRegistryProcessConfig({

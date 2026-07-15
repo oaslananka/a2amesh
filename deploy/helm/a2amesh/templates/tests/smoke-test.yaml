@@ -33,6 +33,8 @@ spec:
         capabilities:
           drop:
             - ALL
+      resources:
+        {{- toYaml .Values.smokeTest.resources | nindent 8 }}
       command:
         - sh
         - -ec

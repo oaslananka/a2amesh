@@ -50,12 +50,20 @@ app.kubernetes.io/component: {{ .component }}
 {{- printf "%s-registry" (include "a2amesh.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{- define "a2amesh.registryHost" -}}
+{{- printf "%s.%s.svc.cluster.local" (include "a2amesh.registryName" .) .Release.Namespace -}}
+{{- end -}}
+
 {{- define "a2amesh.registryHeadlessName" -}}
 {{- printf "%s-registry-headless" (include "a2amesh.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{- define "a2amesh.runtimeName" -}}
 {{- printf "%s-runtime" (include "a2amesh.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "a2amesh.runtimeHost" -}}
+{{- printf "%s.%s.svc.cluster.local" (include "a2amesh.runtimeName" .) .Release.Namespace -}}
 {{- end -}}
 
 {{- define "a2amesh.registrySecretName" -}}
@@ -103,14 +111,14 @@ app.kubernetes.io/component: {{ .component }}
 {{- if .Values.runtime.registry.url -}}
 {{- .Values.runtime.registry.url -}}
 {{- else -}}
-{{- printf "http://%s:%v" (include "a2amesh.registryName" .) .Values.registry.service.port -}}
+{{- printf "http://%s:%v" (include "a2amesh.registryHost" .) .Values.registry.service.port -}}
 {{- end -}}
 {{- end -}}
 
 {{- define "a2amesh.runtimeAllowedHostnames" -}}
 {{- $values := list -}}
 {{- if .Values.registry.enabled -}}
-{{- $values = append $values (include "a2amesh.registryName" .) -}}
+{{- $values = append $values (include "a2amesh.registryHost" .) -}}
 {{- end -}}
 {{- range .Values.runtime.registry.allowedHostnames -}}
 {{- $values = append $values . -}}
@@ -121,7 +129,7 @@ app.kubernetes.io/component: {{ .component }}
 {{- define "a2amesh.registryAllowedHostnames" -}}
 {{- $values := list -}}
 {{- if .Values.runtime.enabled -}}
-{{- $values = append $values (include "a2amesh.runtimeName" .) -}}
+{{- $values = append $values (include "a2amesh.runtimeHost" .) -}}
 {{- end -}}
 {{- range .Values.registry.outboundPolicy.allowedHostnames -}}
 {{- $values = append $values . -}}

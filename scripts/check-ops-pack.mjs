@@ -57,8 +57,16 @@ async function readExisting(path) {
 }
 
 function readYamlScalar(content, key) {
-  const match = new RegExp(`^${key}:\\s*['\"]?([^'\"#\\s]+)`, 'm').exec(content);
-  return match?.[1];
+  const prefix = `${key}:`;
+  const line = content.split('\n').find((candidate) => candidate.startsWith(prefix));
+  if (!line) return undefined;
+  const value = line.slice(prefix.length).trim().split(' #', 1)[0]?.trim();
+  if (!value) return undefined;
+  const first = value.at(0);
+  const last = value.at(-1);
+  return (first === "'" && last === "'") || (first === '"' && last === '"')
+    ? value.slice(1, -1)
+    : value;
 }
 
 const manifestPath = '.release-please-manifest.json';

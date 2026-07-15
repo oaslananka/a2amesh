@@ -74,7 +74,7 @@ async function ensureRegistryStarted(config: DemoConfig) {
     await registryClient.health();
     return {
       registryClient,
-      shutdown: () => {},
+      shutdown: async () => {},
     };
   } catch (error) {
     if (!config.runEmbeddedRegistry) {
@@ -105,8 +105,8 @@ async function ensureRegistryStarted(config: DemoConfig) {
 
   return {
     registryClient,
-    shutdown: () => {
-      void registry.stop();
+    shutdown: async () => {
+      await registry.stop();
     },
   };
 }
@@ -169,18 +169,18 @@ async function main() {
     }, 15_000);
 
     let closing = false;
-    const closeAll = () => {
+    const closeAll = async (): Promise<void> => {
       if (closing) return;
       closing = true;
       clearInterval(heartbeatInterval);
-      void researcher.stop();
-      void writer.stop();
-      void orchestrator.stop();
+      researcher.stop();
+      writer.stop();
+      orchestrator.stop();
       researcherServer.close();
       writerServer.close();
       orchestratorServer.close();
-      shutdown();
-      void telemetry.shutdown();
+      await shutdown();
+      await telemetry.shutdown();
     };
 
     process.once('SIGINT', closeAll);
@@ -209,7 +209,9 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+try {
+  await main();
+} catch (error) {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-  process.exit(1);
-});
+  process.exitCode = 1;
+}

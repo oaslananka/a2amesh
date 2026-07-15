@@ -72,15 +72,13 @@ async function main(): Promise<void> {
     await telemetry.shutdown();
   };
 
-  process.once('SIGINT', () => {
-    void shutdown();
-  });
-  process.once('SIGTERM', () => {
-    void shutdown();
-  });
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
 }
 
-main().catch((error) => {
+try {
+  await main();
+} catch (error) {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-  process.exit(1);
-});
+  process.exitCode = 1;
+}
