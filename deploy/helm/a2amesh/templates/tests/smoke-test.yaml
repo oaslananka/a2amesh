@@ -1,0 +1,57 @@
+{{- if .Values.smokeTest.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "a2amesh.fullname" . }}-smoke
+  labels:
+    app.kubernetes.io/name: {{ include "a2amesh.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: smoke-test
+    app.kubernetes.io/part-of: a2amesh
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: smoke
+      image: {{ include "a2amesh.image" (list .Values.smokeTest.image) | quote }}
+      imagePullPolicy: {{ .Values.smokeTest.image.pullPolicy }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        capabilities:
+          drop:
+            - ALL
+      command:
+        - sh
+        - -ec
+      args:
+        - |
+          {{- if .Values.registry.enabled }}
+          curl --fail --silent --show-error --max-time {{ .Values.smokeTest.timeoutSeconds }} \
+            http://{{ include "a2amesh.registryName" . }}:{{ .Values.registry.service.port }}/health >/dev/null
+          {{- end }}
+          {{- if .Values.runtime.enabled }}
+          curl --fail --silent --show-error --max-time {{ .Values.smokeTest.timeoutSeconds }} \
+            http://{{ include "a2amesh.runtimeName" . }}:{{ .Values.runtime.service.ports.orchestrator }}/health >/dev/null
+          {{- end }}
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir:
+        medium: Memory
+        sizeLimit: 16Mi
+{{- end }}

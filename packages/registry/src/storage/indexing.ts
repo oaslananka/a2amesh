@@ -111,3 +111,40 @@ export function applyUpdateStatus(
     ...(meta?.lastSuccessAt !== undefined ? { lastSuccessAt: meta.lastSuccessAt } : {}),
   };
 }
+
+export function sortAgentsByRegistration(agents: RegisteredAgent[]): RegisteredAgent[] {
+  return [...agents].sort((left, right) => {
+    const registeredAtDifference = Date.parse(right.registeredAt) - Date.parse(left.registeredAt);
+    return registeredAtDifference !== 0 ? registeredAtDifference : left.id.localeCompare(right.id);
+  });
+}
+
+export function paginateAgents(
+  agents: RegisteredAgent[],
+  query: Pick<AgentListQuery, 'cursor' | 'limit'>,
+): AgentListResult {
+  const sortedAgents = sortAgentsByRegistration(agents);
+  const parsedCursor = Number(query.cursor ?? '0');
+  const offset = Number.isSafeInteger(parsedCursor) && parsedCursor >= 0 ? parsedCursor : 0;
+  const limit = query.limit ?? 50;
+  const items = sortedAgents.slice(offset, offset + limit);
+  return {
+    items,
+    total: sortedAgents.length,
+    nextCursor: offset + items.length < sortedAgents.length ? String(offset + items.length) : null,
+  };
+}
+
+export function summarizeAgents(agents: RegisteredAgent[]): AgentStorageSummary {
+  const tenantIds = agents
+    .map((agent) => agent.tenantId)
+    .filter((tenantId): tenantId is string => Boolean(tenantId));
+  return {
+    agentCount: agents.length,
+    healthyAgents: agents.filter((agent) => agent.status === 'healthy').length,
+    unhealthyAgents: agents.filter((agent) => agent.status === 'unhealthy').length,
+    unknownAgents: agents.filter((agent) => agent.status === 'unknown').length,
+    activeTenants: new Set(tenantIds).size,
+    publicAgents: agents.filter((agent) => agent.isPublic === true).length,
+  };
+}

@@ -1,14 +1,273 @@
-image:
-  repository: a2amesh
-  tag: '11.0.0'
-  pullPolicy: IfNotPresent
+nameOverride: ''
+fullnameOverride: ''
 
-replicaCount: 2
+commonLabels: {}
+commonAnnotations: {}
+imagePullSecrets: []
 
-service:
-  type: ClusterIP
-  port: 3000
+deploymentEnvironment: production
 
-observability:
-  otlpEndpoint: http://otel-collector:4318
-  metricsPath: /metrics
+serviceAccount:
+  create: true
+  annotations: {}
+  automountServiceAccountToken: false
+  runtimeName: ''
+  registryName: ''
+
+telemetry:
+  enabled: false
+  endpoint: ''
+  traceSampleRatio: 0.1
+  metricExportIntervalMs: 10000
+
+registry:
+  enabled: true
+  replicaCount: 1
+  revisionHistoryLimit: 3
+  image:
+    repository: ghcr.io/oaslananka/a2amesh-registry
+    tag: '0.11.0-alpha.1'
+    digest: ''
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3099
+    annotations: {}
+    clusterIP: ''
+  auth:
+    require: true
+    createSecret: true
+    existingSecret: ''
+    secretKey: token
+    token: ''
+    oidc:
+      enabled: false
+      discoveryUrl: ''
+      jwksUri: ''
+      issuer: ''
+      audiences: []
+      algorithms:
+        - RS256
+        - ES256
+      allowedHostnames: []
+      allowPrivateNetworks: false
+      allowLocalhost: false
+  cors:
+    allowedOrigins: []
+    requireOrigin: false
+  outboundPolicy:
+    allowLocalhost: false
+    allowPrivateNetworks: false
+    allowUnresolvedHostnames: false
+    allowedHostnames: []
+  storage:
+    backend: memory
+    sqlitePath: /var/lib/a2amesh/registry.sqlite
+    trustLog:
+      enabled: false
+      path: /var/lib/a2amesh/trust-log.sqlite
+    distributedPollingLeases: false
+  persistence:
+    enabled: false
+    storageClass: ''
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+    annotations: {}
+    selector: {}
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    capabilities:
+      drop:
+        - ALL
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  startupProbe:
+    enabled: true
+    failureThreshold: 30
+    periodSeconds: 2
+    timeoutSeconds: 2
+  readinessProbe:
+    enabled: true
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  livenessProbe:
+    enabled: true
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+    allowEphemeralReplicas: false
+  pdb:
+    enabled: false
+    minAvailable: 1
+    maxUnavailable: null
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  priorityClassName: ''
+  terminationGracePeriodSeconds: 30
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+
+runtime:
+  enabled: false
+  replicaCount: 1
+  revisionHistoryLimit: 3
+  image:
+    repository: ghcr.io/oaslananka/a2amesh-runtime
+    tag: '0.11.0-alpha.1'
+    digest: ''
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    annotations: {}
+    clusterIP: ''
+    ports:
+      researcher: 3001
+      writer: 3002
+      orchestrator: 3003
+  providerSecrets:
+    createSecret: false
+    existingSecret: ''
+    openAIKeyKey: openai-api-key
+    anthropicKeyKey: anthropic-api-key
+    openAIKey: ''
+    anthropicKey: ''
+  registry:
+    url: ''
+    useChartAuthSecret: true
+    existingAuthSecret: ''
+    authSecretKey: token
+    tenantId: default
+    principalId: runtime-demo
+    allowedHostnames: []
+  outboundPolicy:
+    allowPrivateNetworks: false
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    capabilities:
+      drop:
+        - ALL
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: '1'
+      memory: 1Gi
+  startupProbe:
+    enabled: true
+    failureThreshold: 60
+    periodSeconds: 2
+    timeoutSeconds: 2
+  readinessProbe:
+    enabled: true
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  livenessProbe:
+    enabled: true
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    allowEphemeralReplicas: false
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  pdb:
+    enabled: false
+    minAvailable: 1
+    maxUnavailable: null
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  priorityClassName: ''
+  terminationGracePeriodSeconds: 60
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+
+ingress:
+  registry:
+    enabled: false
+    className: ''
+    annotations: {}
+    hosts: []
+    tls: []
+    allowInsecureHttp: false
+  runtime:
+    enabled: false
+    className: ''
+    annotations: {}
+    hosts: []
+    tls: []
+    allowInsecureHttp: false
+    acknowledgeUnauthenticatedEndpoint: false
+
+networkPolicy:
+  enabled: true
+  registry:
+    allowInternetEgress: false
+    extraIngress: []
+    extraEgress: []
+  runtime:
+    allowInternetEgress: true
+    extraIngress: []
+    extraEgress: []
+
+smokeTest:
+  enabled: true
+  image:
+    repository: curlimages/curl
+    tag: 8.14.1
+    digest: ''
+    pullPolicy: IfNotPresent
+  timeoutSeconds: 120

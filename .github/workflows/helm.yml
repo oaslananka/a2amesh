@@ -1,0 +1,305 @@
+name: Helm
+
+'on':
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/helm.yml'
+      - 'apps/demo/**'
+      - 'deploy/helm/**'
+      - 'packages/registry/**'
+      - 'packages/runtime/**'
+      - 'scripts/check-helm-chart.mjs'
+      - 'scripts/check-ops-pack.mjs'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/helm.yml'
+      - 'apps/demo/**'
+      - 'deploy/helm/**'
+      - 'packages/registry/**'
+      - 'packages/runtime/**'
+      - 'scripts/check-helm-chart.mjs'
+      - 'scripts/check-ops-pack.mjs'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  HELM_VERSION: v3.21.3
+  KUBECONFORM_VERSION: v0.8.0
+  KIND_VERSION: v0.32.0
+  KUBECTL_VERSION: v1.36.1
+  KIND_NODE_IMAGE: kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+  TRIVY_IMAGE: aquasec/trivy@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f
+
+jobs:
+  validate:
+    name: Helm / validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Helm and kubeconform
+        run: |
+          set -euo pipefail
+          tools="${RUNNER_TEMP}/a2amesh-tools"
+          mkdir -p "${tools}"
+
+          helm_archive="helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          curl --fail --silent --show-error --location \
+            --output "${tools}/${helm_archive}" \
+            "https://get.helm.sh/${helm_archive}"
+          curl --fail --silent --show-error --location \
+            --output "${tools}/${helm_archive}.sha256sum" \
+            "https://get.helm.sh/${helm_archive}.sha256sum"
+          (cd "${tools}" && sha256sum --check "${helm_archive}.sha256sum")
+          tar -xzf "${tools}/${helm_archive}" -C "${tools}"
+          install -m 0755 "${tools}/linux-amd64/helm" "${tools}/helm"
+
+          kubeconform_archive="kubeconform-linux-amd64.tar.gz"
+          curl --fail --silent --show-error --location \
+            --output "${tools}/${kubeconform_archive}" \
+            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/${kubeconform_archive}"
+          curl --fail --silent --show-error --location \
+            --output "${tools}/KUBECONFORM_CHECKSUMS" \
+            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/CHECKSUMS"
+          grep " ${kubeconform_archive}$" "${tools}/KUBECONFORM_CHECKSUMS" \
+            | (cd "${tools}" && sha256sum --check -)
+          tar -xzf "${tools}/${kubeconform_archive}" -C "${tools}" kubeconform
+
+          echo "HELM_BIN=${tools}/helm" >> "${GITHUB_ENV}"
+          echo "KUBECONFORM_BIN=${tools}/kubeconform" >> "${GITHUB_ENV}"
+
+      - name: Check chart contracts and negative cases
+        run: node scripts/check-helm-chart.mjs
+
+      - name: Render supported profiles
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/rendered"
+          chart=deploy/helm/a2amesh
+          "${HELM_BIN}" template a2amesh-default "${chart}" \
+            --namespace a2amesh > "${RUNNER_TEMP}/rendered/default.yaml"
+          for profile in values-dev values-single-node values-production; do
+            "${HELM_BIN}" template "a2amesh-${profile}" "${chart}" \
+              --namespace a2amesh \
+              --values "${chart}/${profile}.yaml" \
+              > "${RUNNER_TEMP}/rendered/${profile}.yaml"
+          done
+          "${HELM_BIN}" template a2amesh-kind "${chart}" \
+            --namespace a2amesh \
+            --values "${chart}/ci/values-kind.yaml" \
+            > "${RUNNER_TEMP}/rendered/values-kind.yaml"
+
+      - name: Validate Kubernetes schemas
+        run: |
+          set -euo pipefail
+          "${KUBECONFORM_BIN}" \
+            -strict \
+            -summary \
+            -kubernetes-version 1.36.0 \
+            "${RUNNER_TEMP}/rendered"
+
+      - name: Scan rendered manifests
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --volume "${RUNNER_TEMP}/rendered:/rendered:ro" \
+            "${TRIVY_IMAGE}" config \
+            --exit-code 1 \
+            --severity HIGH,CRITICAL \
+            /rendered
+
+      - name: Package chart
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/chart-package"
+          "${HELM_BIN}" package deploy/helm/a2amesh \
+            --destination "${RUNNER_TEMP}/chart-package"
+          test "$(find "${RUNNER_TEMP}/chart-package" -maxdepth 1 -name 'a2amesh-*.tgz' | wc -l)" -eq 1
+
+  kind:
+    name: Helm / kind lifecycle
+    needs: [validate]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Helm, Kind and kubectl
+        run: |
+          set -euo pipefail
+          tools="${RUNNER_TEMP}/a2amesh-tools"
+          mkdir -p "${tools}"
+
+          helm_archive="helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          curl --fail --silent --show-error --location \
+            --output "${tools}/${helm_archive}" \
+            "https://get.helm.sh/${helm_archive}"
+          curl --fail --silent --show-error --location \
+            --output "${tools}/${helm_archive}.sha256sum" \
+            "https://get.helm.sh/${helm_archive}.sha256sum"
+          (cd "${tools}" && sha256sum --check "${helm_archive}.sha256sum")
+          tar -xzf "${tools}/${helm_archive}" -C "${tools}"
+          install -m 0755 "${tools}/linux-amd64/helm" "${tools}/helm"
+
+          curl --fail --silent --show-error --location \
+            --output "${tools}/kind" \
+            "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64"
+          curl --fail --silent --show-error --location \
+            --output "${tools}/kind.sha256sum" \
+            "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64.sha256sum"
+          (cd "${tools}" && sha256sum --check kind.sha256sum)
+          chmod 0755 "${tools}/kind"
+
+          curl --fail --silent --show-error --location \
+            --output "${tools}/kubectl" \
+            "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          curl --fail --silent --show-error --location \
+            --output "${tools}/kubectl.sha256" \
+            "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl.sha256"
+          printf '%s  %s\n' "$(cat "${tools}/kubectl.sha256")" "${tools}/kubectl" \
+            | sha256sum --check -
+          chmod 0755 "${tools}/kubectl"
+
+          echo "${tools}" >> "${GITHUB_PATH}"
+          echo "HELM_BIN=${tools}/helm" >> "${GITHUB_ENV}"
+
+      - name: Build local runtime and registry images
+        run: |
+          set -euo pipefail
+          created="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          docker build \
+            --file apps/demo/Dockerfile \
+            --tag local/a2amesh-runtime:ci \
+            --build-arg VERSION=0.0.0-ci \
+            --build-arg REVISION="${GITHUB_SHA}" \
+            --build-arg CREATED="${created}" \
+            .
+          docker build \
+            --file packages/registry/Dockerfile \
+            --tag local/a2amesh-registry:ci \
+            --build-arg VERSION=0.0.0-ci \
+            --build-arg REVISION="${GITHUB_SHA}" \
+            --build-arg CREATED="${created}" \
+            .
+
+      - name: Create Kind cluster and load images
+        run: |
+          set -euo pipefail
+          kind create cluster \
+            --name a2amesh-helm \
+            --image "${KIND_NODE_IMAGE}" \
+            --wait 180s
+          kind load docker-image \
+            --name a2amesh-helm \
+            local/a2amesh-runtime:ci \
+            local/a2amesh-registry:ci
+
+      - name: Install chart
+        run: |
+          set -euo pipefail
+          helm install a2amesh deploy/helm/a2amesh \
+            --namespace a2amesh \
+            --create-namespace \
+            --values deploy/helm/a2amesh/ci/values-kind.yaml \
+            --wait \
+            --timeout 10m
+          kubectl rollout status deployment/a2amesh-registry \
+            --namespace a2amesh \
+            --timeout 5m
+          kubectl rollout status deployment/a2amesh-runtime \
+            --namespace a2amesh \
+            --timeout 5m
+
+      - name: Verify health, metrics and chart test
+        run: |
+          set -euo pipefail
+          helm test a2amesh --namespace a2amesh --logs --timeout 5m
+
+          kubectl port-forward --namespace a2amesh service/a2amesh-registry 18099:3099 \
+            > "${RUNNER_TEMP}/registry-port-forward.log" 2>&1 &
+          registry_forward_pid=$!
+          kubectl port-forward --namespace a2amesh service/a2amesh-runtime 18003:3003 \
+            > "${RUNNER_TEMP}/runtime-port-forward.log" 2>&1 &
+          runtime_forward_pid=$!
+          cleanup_forwards() {
+            kill "${registry_forward_pid}" "${runtime_forward_pid}" >/dev/null 2>&1 || true
+          }
+          trap cleanup_forwards EXIT
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18099/health >/dev/null \
+              && curl --fail --silent http://127.0.0.1:18003/health >/dev/null; then
+              break
+            fi
+            if [[ "${attempt}" -eq 30 ]]; then
+              cat "${RUNNER_TEMP}/registry-port-forward.log"
+              cat "${RUNNER_TEMP}/runtime-port-forward.log"
+              exit 1
+            fi
+            sleep 2
+          done
+
+          curl --fail --silent http://127.0.0.1:18099/metrics \
+            | grep --fixed-strings 'a2a_registry_'
+          curl --fail --silent http://127.0.0.1:18003/metrics \
+            | grep --fixed-strings 'a2a_runtime_'
+
+      - name: Upgrade and rollback chart
+        run: |
+          set -euo pipefail
+          helm upgrade a2amesh deploy/helm/a2amesh \
+            --namespace a2amesh \
+            --reuse-values \
+            --set-string deploymentEnvironment=ci-upgrade \
+            --wait \
+            --timeout 10m
+          test "$(kubectl get configmap a2amesh-runtime \
+            --namespace a2amesh \
+            --output jsonpath='{.data.DEPLOYMENT_ENVIRONMENT}')" = 'ci-upgrade'
+          helm test a2amesh --namespace a2amesh --logs --timeout 5m
+
+          helm rollback a2amesh 1 \
+            --namespace a2amesh \
+            --wait \
+            --timeout 10m
+          test "$(kubectl get configmap a2amesh-runtime \
+            --namespace a2amesh \
+            --output jsonpath='{.data.DEPLOYMENT_ENVIRONMENT}')" = 'ci'
+          helm test a2amesh --namespace a2amesh --logs --timeout 5m
+
+      - name: Collect cluster diagnostics
+        if: ${{ failure() }}
+        run: |
+          kubectl get all --all-namespaces --output wide || true
+          kubectl get events --all-namespaces --sort-by=.lastTimestamp || true
+          kubectl logs --namespace a2amesh deployment/a2amesh-registry --all-containers || true
+          kubectl logs --namespace a2amesh deployment/a2amesh-runtime --all-containers || true
+          helm status a2amesh --namespace a2amesh || true
+
+      - name: Delete Kind cluster
+        if: ${{ always() }}
+        run: kind delete cluster --name a2amesh-helm

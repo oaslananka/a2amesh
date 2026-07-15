@@ -1,0 +1,47 @@
+{{- if .Values.registry.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "a2amesh.registryName" . }}
+  labels:
+    {{- include "a2amesh.componentLabels" (dict "root" . "component" "registry") | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  NODE_ENV: production
+  PORT: {{ .Values.registry.service.port | quote }}
+  REGISTRY_REQUIRE_AUTH: {{ .Values.registry.auth.require | quote }}
+  REGISTRY_REQUIRE_ORIGIN: {{ .Values.registry.cors.requireOrigin | quote }}
+  REGISTRY_ALLOWED_ORIGINS: {{ join "," .Values.registry.cors.allowedOrigins | quote }}
+  ALLOW_LOCALHOST: {{ .Values.registry.outboundPolicy.allowLocalhost | quote }}
+  ALLOW_PRIVATE_NETWORKS: {{ .Values.registry.outboundPolicy.allowPrivateNetworks | quote }}
+  ALLOW_UNRESOLVED_HOSTNAMES: {{ .Values.registry.outboundPolicy.allowUnresolvedHostnames | quote }}
+  REGISTRY_ALLOWED_HOSTNAMES: {{ include "a2amesh.registryAllowedHostnames" . | quote }}
+  REGISTRY_STORAGE_BACKEND: {{ .Values.registry.storage.backend | quote }}
+  REGISTRY_DISTRIBUTED_POLLING_LEASES: {{ .Values.registry.storage.distributedPollingLeases | quote }}
+  {{- if eq .Values.registry.storage.backend "sqlite" }}
+  REGISTRY_SQLITE_PATH: {{ .Values.registry.storage.sqlitePath | quote }}
+  {{- end }}
+  {{- if .Values.registry.storage.trustLog.enabled }}
+  REGISTRY_TRUST_LOG_PATH: {{ .Values.registry.storage.trustLog.path | quote }}
+  {{- end }}
+  {{- if .Values.registry.auth.oidc.enabled }}
+  REGISTRY_OIDC_DISCOVERY_URL: {{ .Values.registry.auth.oidc.discoveryUrl | quote }}
+  REGISTRY_AUTH_JWKS_URI: {{ .Values.registry.auth.oidc.jwksUri | quote }}
+  REGISTRY_AUTH_ISSUER: {{ .Values.registry.auth.oidc.issuer | quote }}
+  REGISTRY_AUTH_AUDIENCE: {{ join "," .Values.registry.auth.oidc.audiences | quote }}
+  REGISTRY_AUTH_ALGORITHMS: {{ join "," .Values.registry.auth.oidc.algorithms | quote }}
+  REGISTRY_AUTH_ALLOWED_HOSTNAMES: {{ join "," .Values.registry.auth.oidc.allowedHostnames | quote }}
+  REGISTRY_AUTH_ALLOW_PRIVATE_NETWORKS: {{ .Values.registry.auth.oidc.allowPrivateNetworks | quote }}
+  REGISTRY_AUTH_ALLOW_LOCALHOST: {{ .Values.registry.auth.oidc.allowLocalhost | quote }}
+  {{- end }}
+  A2A_SERVICE_VERSION: {{ .Chart.AppVersion | quote }}
+  A2A_TELEMETRY_ENABLED: {{ .Values.telemetry.enabled | quote }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.telemetry.endpoint | quote }}
+  OTEL_SERVICE_NAME: a2amesh-registry
+  OTEL_TRACES_SAMPLER_ARG: {{ .Values.telemetry.traceSampleRatio | quote }}
+  A2A_OTEL_METRIC_EXPORT_INTERVAL_MS: {{ .Values.telemetry.metricExportIntervalMs | quote }}
+  DEPLOYMENT_ENVIRONMENT: {{ .Values.deploymentEnvironment | quote }}
+{{- end }}

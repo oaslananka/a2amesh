@@ -1,0 +1,68 @@
+deploymentEnvironment: production
+
+registry:
+  replicaCount: 1
+  image:
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  auth:
+    createSecret: false
+    existingSecret: a2amesh-registry-auth
+  cors:
+    allowedOrigins: []
+    requireOrigin: false
+  outboundPolicy:
+    allowPrivateNetworks: true
+  storage:
+    backend: sqlite
+    trustLog:
+      enabled: true
+    distributedPollingLeases: true
+  persistence:
+    enabled: true
+    size: 20Gi
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: '1'
+      memory: 1Gi
+
+runtime:
+  enabled: true
+  image:
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  providerSecrets:
+    createSecret: false
+    existingSecret: a2amesh-provider-secret
+  registry:
+    useChartAuthSecret: true
+    tenantId: production
+    principalId: runtime-production
+  outboundPolicy:
+    allowPrivateNetworks: true
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: '2'
+      memory: 2Gi
+
+networkPolicy:
+  enabled: true
+  registry:
+    allowInternetEgress: false
+  runtime:
+    allowInternetEgress: true
+
+telemetry:
+  enabled: false
+  endpoint: http://otel-collector.observability.svc.cluster.local:4318
+  traceSampleRatio: 0.1
