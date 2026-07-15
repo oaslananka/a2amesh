@@ -91,13 +91,14 @@
     "prepare": "husky",
     "interop:lab": "node scripts/run-interop-lab.mjs",
     "interop:check": "node scripts/run-interop-lab.mjs --check",
-    "ops:check": "node scripts/check-ops-pack.mjs",
+    "ops:check": "node scripts/check-ops-pack.mjs && pnpm run containers:check",
     "release:preflight": "node scripts/check-publish-preflight.mjs",
     "api:surfaces:check": "node scripts/check-api-surfaces.mjs",
     "api:surfaces:write": "node scripts/check-api-surfaces.mjs --write",
     "security:gitleaks": "node scripts/run-gitleaks.mjs",
     "release:tags:check": "node scripts/sync-npm-tags.mjs --check",
-    "release:tags:sync": "node scripts/sync-npm-tags.mjs --write"
+    "release:tags:sync": "node scripts/sync-npm-tags.mjs --write",
+    "containers:check": "node scripts/check-container-config.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

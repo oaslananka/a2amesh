@@ -1,0 +1,51 @@
+name: a2amesh-production-example
+
+services:
+  registry:
+    image: ${A2AMESH_REGISTRY_IMAGE:?Set A2AMESH_REGISTRY_IMAGE to ghcr.io/oaslananka/a2amesh-registry@sha256:<digest>}
+    user: '10001:10001'
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    environment:
+      NODE_ENV: production
+      REGISTRY_TOKEN: ${REGISTRY_TOKEN:?Set REGISTRY_TOKEN}
+      REGISTRY_ALLOWED_ORIGINS: ${REGISTRY_ALLOWED_ORIGINS:?Set REGISTRY_ALLOWED_ORIGINS}
+      REGISTRY_REQUIRE_ORIGIN: 'true'
+      ALLOW_LOCALHOST: 'false'
+      ALLOW_PRIVATE_NETWORKS: 'true'
+      ALLOW_UNRESOLVED_HOSTNAMES: 'false'
+    ports:
+      - '127.0.0.1:3099:3099'
+    restart: unless-stopped
+
+  runtime:
+    image: ${A2AMESH_RUNTIME_IMAGE:?Set A2AMESH_RUNTIME_IMAGE to ghcr.io/oaslananka/a2amesh-runtime@sha256:<digest>}
+    user: '10001:10001'
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    depends_on:
+      registry:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY}
+      REGISTRY_URL: http://registry:3099
+      REGISTRY_TOKEN: ${REGISTRY_TOKEN:?Set REGISTRY_TOKEN}
+      RUN_EMBEDDED_REGISTRY: 'false'
+      ALLOW_PRIVATE_NETWORKS: 'true'
+      RESEARCHER_URL: http://runtime:3001
+      WRITER_URL: http://runtime:3002
+      ORCHESTRATOR_URL: http://runtime:3003
+    ports:
+      - '127.0.0.1:3003:3003'
+    restart: unless-stopped

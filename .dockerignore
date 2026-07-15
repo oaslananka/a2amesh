@@ -17,3 +17,17 @@ reports
 .DS_Store
 Thumbs.db
 review-thread-summary.json
+
+# Files not required by production container builds
+docs
+docs-site
+ops
+deploy
+examples
+tests
+coverage
+reports
+playwright-report
+test-results
+*.md
+!packages/*/README.md

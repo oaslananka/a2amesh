@@ -1,0 +1,36 @@
+name: a2amesh-dev
+
+services:
+  registry:
+    build:
+      context: .
+      dockerfile: packages/registry/Dockerfile
+    environment:
+      NODE_ENV: development
+      REGISTRY_TOKEN: ${REGISTRY_TOKEN:-dev-registry-token}
+      REGISTRY_ALLOWED_ORIGINS: http://localhost:5173
+      ALLOW_LOCALHOST: 'true'
+      ALLOW_PRIVATE_NETWORKS: 'true'
+    ports:
+      - '3099:3099'
+
+  runtime:
+    build:
+      context: .
+      dockerfile: apps/demo/Dockerfile
+    depends_on:
+      registry:
+        condition: service_healthy
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY for the demo runtime}
+      REGISTRY_URL: http://registry:3099
+      REGISTRY_TOKEN: ${REGISTRY_TOKEN:-dev-registry-token}
+      RUN_EMBEDDED_REGISTRY: 'false'
+      ALLOW_PRIVATE_NETWORKS: 'true'
+      RESEARCHER_URL: http://runtime:3001
+      WRITER_URL: http://runtime:3002
+      ORCHESTRATOR_URL: http://runtime:3003
+    ports:
+      - '3001:3001'
+      - '3002:3002'
+      - '3003:3003'
