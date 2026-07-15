@@ -188,7 +188,7 @@ jobs:
             .
           mkdir -p "${layout}"
           tar -xf "${archive}" -C "${layout}"
-          node scripts/check-oci-attestations.mjs "${layout}"
+          (cd "${RUNNER_TEMP}" && node "${GITHUB_WORKSPACE}/scripts/check-oci-attestations.mjs" "${COMPONENT}")
 
       - name: Remove BuildKit builder
         if: ${{ always() }}

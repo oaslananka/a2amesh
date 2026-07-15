@@ -1,4 +1,4 @@
-ARG NODE_IMAGE=node:24-alpine@sha256:9e04e3f9c9164cb2c913593ba0733fbd0caf4e9bea474d743ca8a32aa36d98c9
+ARG NODE_IMAGE=node@sha256:9e04e3f9c9164cb2c913593ba0733fbd0caf4e9bea474d743ca8a32aa36d98c9
 
 FROM ${NODE_IMAGE} AS build
 
@@ -11,7 +11,7 @@ COPY . .
 RUN pnpm install --frozen-lockfile --filter @a2amesh/registry... \
   && pnpm --filter @a2amesh/registry... run build \
   && pnpm --filter @a2amesh/registry deploy --prod /opt/a2amesh/registry \
-  && node scripts/prune-container-deploy.mjs /opt/a2amesh/registry
+  && node scripts/prune-container-deploy.mjs registry
 
 FROM ${NODE_IMAGE} AS registry
 

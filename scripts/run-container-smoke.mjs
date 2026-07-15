@@ -1,8 +1,21 @@
 #!/usr/bin/env node
 import { execFileSync, spawnSync } from 'node:child_process';
+import { statSync } from 'node:fs';
+
+const DOCKER_EXECUTABLE = '/usr/bin/docker';
+
+function assertTrustedDockerExecutable() {
+  const info = statSync(DOCKER_EXECUTABLE);
+  if (!info.isFile()) {
+    throw new Error(`${DOCKER_EXECUTABLE} is not a regular file.`);
+  }
+  if (info.uid !== 0 || (info.mode & 0o022) !== 0) {
+    throw new Error(`${DOCKER_EXECUTABLE} must be root-owned and not group/world writable.`);
+  }
+}
 
 function docker(args, options = {}) {
-  return execFileSync('docker', args, {
+  return execFileSync(DOCKER_EXECUTABLE, args, {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
     ...options,
@@ -51,6 +64,8 @@ async function main() {
     process.exit(2);
   }
 
+  assertTrustedDockerExecutable();
+
   const containerPort = component === 'runtime' ? 3003 : 3099;
   const containerName = `a2amesh-${component}-smoke-${process.pid}`;
   const args = [
@@ -68,8 +83,12 @@ async function main() {
   ];
 
   if (component === 'runtime') {
-    args.push('--env', 'OPENAI_API_KEY=container-smoke-placeholder');
-    args.push('--env', 'RUN_EMBEDDED_REGISTRY=true');
+    args.push(
+      '--env',
+      'OPENAI_API_KEY=container-smoke-placeholder',
+      '--env',
+      'RUN_EMBEDDED_REGISTRY=true',
+    );
   }
 
   args.push(image);
@@ -95,12 +114,12 @@ async function main() {
 
     process.stdout.write(`${component} container smoke test passed on ${port}.\n`);
   } catch (error) {
-    const logs = spawnSync('docker', ['logs', containerName], { encoding: 'utf8' });
+    const logs = spawnSync(DOCKER_EXECUTABLE, ['logs', containerName], { encoding: 'utf8' });
     if (logs.stdout) process.stderr.write(logs.stdout);
     if (logs.stderr) process.stderr.write(logs.stderr);
     throw error;
   } finally {
-    spawnSync('docker', ['rm', '--force', containerName], { stdio: 'ignore' });
+    spawnSync(DOCKER_EXECUTABLE, ['rm', '--force', containerName], { stdio: 'ignore' });
   }
 }
 

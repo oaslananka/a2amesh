@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { access, readFile } from 'node:fs/promises';
+import { verifyOciAttestations } from './check-oci-attestations.mjs';
 import { pruneContainerDeploy } from './prune-container-deploy.mjs';
 
 const dockerfiles = ['apps/demo/Dockerfile', 'packages/registry/Dockerfile'];
@@ -16,6 +17,9 @@ const errors = [];
 
 if (typeof pruneContainerDeploy !== 'function') {
   errors.push('container deploy pruner must export pruneContainerDeploy');
+}
+if (typeof verifyOciAttestations !== 'function') {
+  errors.push('OCI verifier must export verifyOciAttestations');
 }
 
 for (const file of requiredFiles) {
@@ -36,7 +40,7 @@ for (const dockerfile of dockerfiles) {
 
   const fromCount = content.match(/^FROM\s+/gm)?.length ?? 0;
   if (fromCount < 2) errors.push(`${dockerfile} must be multi-stage`);
-  if (!/node:24-alpine@sha256:[a-f0-9]{64}/.test(content)) {
+  if (!/node@sha256:[a-f0-9]{64}/.test(content)) {
     errors.push(`${dockerfile} must pin the Node base image by digest`);
   }
   for (const expected of [

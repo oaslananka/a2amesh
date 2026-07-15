@@ -1,20 +1,68 @@
 #!/usr/bin/env node
-import { readFile, readdir } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { lstat, readFile, readdir, realpath } from 'node:fs/promises';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const OCI_INDEX_MEDIA_TYPE = 'application/vnd.oci.image.index.v1+json';
 const DOCKER_INDEX_MEDIA_TYPE = 'application/vnd.docker.distribution.manifest.list.v2+json';
+const MAX_JSON_BLOB_BYTES = 8 * 1024 * 1024;
+const MAX_ATTESTATION_BLOB_BYTES = 64 * 1024 * 1024;
 
-function blobPath(layoutRoot, digest) {
-  const [algorithm, value] = digest.split(':');
-  if (algorithm !== 'sha256' || !value) {
-    throw new Error(`Unsupported OCI digest: ${digest}`);
+function layoutDirectoryFor(component) {
+  switch (component) {
+    case 'runtime':
+      return 'runtime-oci';
+    case 'registry':
+      return 'registry-oci';
+    default:
+      throw new Error(`Unsupported OCI component: ${component}`);
   }
-  return join(layoutRoot, 'blobs', algorithm, value);
 }
 
-async function readJson(path) {
-  return JSON.parse(await readFile(path, 'utf8'));
+function assertContainedPath(root, candidate) {
+  const pathFromRoot = relative(root, candidate);
+  if (pathFromRoot === '..' || pathFromRoot.startsWith(`..${sep}`) || isAbsolute(pathFromRoot)) {
+    throw new Error('OCI layout resolves outside the trusted working directory.');
+  }
+}
+
+async function resolveLayoutRoot(component) {
+  const trustedRoot = await realpath(process.cwd());
+  const requestedPath = join(trustedRoot, layoutDirectoryFor(component));
+  const requestedInfo = await lstat(requestedPath);
+  if (!requestedInfo.isDirectory() || requestedInfo.isSymbolicLink()) {
+    throw new Error('OCI layout must be a real directory.');
+  }
+
+  const layoutRoot = await realpath(requestedPath);
+  assertContainedPath(trustedRoot, layoutRoot);
+  return layoutRoot;
+}
+
+function blobPath(layoutRoot, digest) {
+  const match = /^sha256:([a-f0-9]{64})$/.exec(digest);
+  if (!match) {
+    throw new Error(`Unsupported OCI digest: ${digest}`);
+  }
+  return join(layoutRoot, 'blobs', 'sha256', match[1]);
+}
+
+async function readBoundedText(path, maximumBytes) {
+  const info = await lstat(path);
+  if (!info.isFile() || info.isSymbolicLink()) {
+    throw new Error('OCI blob must be a regular file.');
+  }
+  if (info.size > maximumBytes) {
+    throw new Error(`OCI blob exceeds the ${maximumBytes}-byte verification limit.`);
+  }
+  return readFile(path, 'utf8');
+}
+
+async function readJson(layoutRoot, digestOrName) {
+  const path = digestOrName.includes(':')
+    ? blobPath(layoutRoot, digestOrName)
+    : join(layoutRoot, digestOrName);
+  return JSON.parse(await readBoundedText(path, MAX_JSON_BLOB_BYTES));
 }
 
 function isIndexDescriptor(descriptor) {
@@ -32,21 +80,15 @@ async function flattenDescriptors(layoutRoot, descriptors, visited = new Set()) 
       continue;
     }
 
-    const nestedIndex = await readJson(blobPath(layoutRoot, descriptor.digest));
+    const nestedIndex = await readJson(layoutRoot, descriptor.digest);
     flattened.push(...(await flattenDescriptors(layoutRoot, nestedIndex.manifests, visited)));
   }
   return flattened;
 }
 
-async function main() {
-  const input = process.argv[2];
-  if (!input) {
-    process.stderr.write('Usage: node scripts/check-oci-attestations.mjs <extracted-oci-layout>\n');
-    process.exit(2);
-  }
-
-  const layoutRoot = resolve(input);
-  const index = await readJson(join(layoutRoot, 'index.json'));
+export async function verifyOciAttestations(component) {
+  const layoutRoot = await resolveLayoutRoot(component);
+  const index = await readJson(layoutRoot, 'index.json');
   if (!Array.isArray(index.manifests) || index.manifests.length === 0) {
     throw new Error('OCI layout does not contain image manifests.');
   }
@@ -60,20 +102,24 @@ async function main() {
     (manifest) => manifest.annotations?.['vnd.docker.reference.type'] === 'attestation-manifest',
   );
 
-  if (imageManifests.length === 0)
+  if (imageManifests.length === 0) {
     throw new Error('OCI layout is missing a runnable image manifest.');
+  }
   if (attestationManifests.length === 0) {
     throw new Error('OCI layout is missing BuildKit attestation manifests.');
   }
 
   const predicateTypes = new Set();
   for (const descriptor of attestationManifests) {
-    const manifest = await readJson(blobPath(layoutRoot, descriptor.digest));
+    const manifest = await readJson(layoutRoot, descriptor.digest);
     for (const layer of manifest.layers ?? []) {
       const annotatedType = layer.annotations?.['in-toto.io/predicate-type'];
       if (annotatedType) predicateTypes.add(annotatedType);
 
-      const payload = await readFile(blobPath(layoutRoot, layer.digest), 'utf8');
+      const payload = await readBoundedText(
+        blobPath(layoutRoot, layer.digest),
+        MAX_ATTESTATION_BLOB_BYTES,
+      );
       for (const match of payload.matchAll(/"predicateType"\s*:\s*"([^"]+)"/g)) {
         predicateTypes.add(match[1]);
       }
@@ -91,7 +137,17 @@ async function main() {
     );
   }
 
-  process.stdout.write(`OCI attestations verified: ${[...predicateTypes].sort().join(', ')}\n`);
+  const sortedPredicateTypes = [...predicateTypes].sort((left, right) => left.localeCompare(right));
+  process.stdout.write(`OCI attestations verified: ${sortedPredicateTypes.join(', ')}\n`);
 }
 
-await main();
+const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : undefined;
+if (invokedPath === import.meta.url) {
+  const component = process.argv[2];
+  if (!component) {
+    process.stderr.write('Usage: node scripts/check-oci-attestations.mjs <runtime|registry>\n');
+    process.exit(2);
+  }
+
+  await verifyOciAttestations(component);
+}
