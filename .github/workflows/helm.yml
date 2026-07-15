@@ -165,14 +165,15 @@ jobs:
           tar -xzf "${tools}/${helm_archive}" -C "${tools}"
           install -m 0755 "${tools}/linux-amd64/helm" "${tools}/helm"
 
+          kind_binary="kind-linux-amd64"
           curl --fail --silent --show-error --location \
-            --output "${tools}/kind" \
-            "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64"
+            --output "${tools}/${kind_binary}" \
+            "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/${kind_binary}"
           curl --fail --silent --show-error --location \
             --output "${tools}/kind.sha256sum" \
             "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64.sha256sum"
           (cd "${tools}" && sha256sum --check kind.sha256sum)
-          chmod 0755 "${tools}/kind"
+          install -m 0755 "${tools}/${kind_binary}" "${tools}/kind"
 
           curl --fail --silent --show-error --location \
             --output "${tools}/kubectl" \
