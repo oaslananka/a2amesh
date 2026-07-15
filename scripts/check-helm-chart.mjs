@@ -88,6 +88,16 @@ for (const profile of profiles) {
   if (!rendered.includes('drop:\n            - ALL')) {
     throw new Error(`${profileName(profile)} is missing dropped Linux capabilities.`);
   }
+  if (!rendered.includes('helm.sh/hook-delete-policy: before-hook-creation')) {
+    throw new Error(
+      `${profileName(profile)} does not retain successful Helm test pods for --logs.`,
+    );
+  }
+  if (rendered.includes('helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded')) {
+    throw new Error(
+      `${profileName(profile)} deletes successful Helm test pods before --logs can read them.`,
+    );
+  }
   if (profile) {
     for (const required of [
       'REGISTRY_URL: "http://a2amesh-check-registry.a2amesh-check.svc.cluster.local:3099"',
