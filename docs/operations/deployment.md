@@ -71,7 +71,7 @@ docker run --rm \
   ghcr.io/oaslananka/a2amesh-registry@sha256:<digest>
 ```
 
-The images do not require writes to the root filesystem. Supply an explicit writable volume only when a future storage backend requires one; do not make the entire root filesystem writable.
+The final images remove npm, npx, Corepack, and Yarn; only the Node runtime and production application dependencies remain. The images do not require writes to the root filesystem. Supply an explicit writable volume only when a future storage backend requires one; do not make the entire root filesystem writable.
 
 ## Compose profiles
 

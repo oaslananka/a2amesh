@@ -3,7 +3,7 @@ ARG NODE_IMAGE=node:24-alpine@sha256:9e04e3f9c9164cb2c913593ba0733fbd0caf4e9bea4
 FROM ${NODE_IMAGE} AS build
 
 ARG PNPM_VERSION=11.7.0
-ENV CI=true
+ENV CI=true HUSKY=0
 WORKDIR /workspace
 
 RUN corepack enable && corepack prepare "pnpm@${PNPM_VERSION}" --activate
@@ -36,7 +36,9 @@ ENV NODE_ENV=production \
 RUN addgroup -S -g 10001 a2amesh \
   && adduser -S -D -H -u 10001 -G a2amesh a2amesh \
   && mkdir -p /home/a2amesh \
-  && chown -R 10001:10001 /home/a2amesh
+  && chown -R 10001:10001 /home/a2amesh \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-v1.22.22 \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
 
 WORKDIR /app
 COPY --from=build --chown=10001:10001 /opt/a2amesh/registry/ ./

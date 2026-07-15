@@ -42,6 +42,7 @@ for (const dockerfile of dockerfiles) {
   for (const expected of [
     'pnpm install --frozen-lockfile',
     'deploy --prod',
+    'rm -rf /usr/local/lib/node_modules/npm',
     'USER 10001:10001',
     'HEALTHCHECK',
     'org.opencontainers.image.version',
