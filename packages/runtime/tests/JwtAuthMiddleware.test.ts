@@ -233,7 +233,7 @@ describe('JwtAuthMiddleware', () => {
         },
         query: {},
       } as never),
-    ).rejects.toThrow('Auth outbound policy rejected restricted address');
+    ).rejects.toThrow(/private|not allowed|restricted/i);
   });
 
   it('honors outbound policy scheme restrictions for oidc discovery', async () => {
@@ -256,7 +256,7 @@ describe('JwtAuthMiddleware', () => {
         },
         query: {},
       } as never),
-    ).rejects.toThrow('Auth outbound policy rejected unsupported protocol');
+    ).rejects.toThrow('Unsupported URL protocol');
   });
 
   it('fetches oidc discovery and jwks through the outbound fetch policy', async () => {
@@ -306,7 +306,12 @@ describe('JwtAuthMiddleware', () => {
           audience: '@a2amesh/runtime',
         },
       ],
-      outboundPolicy: { timeoutMs: 5000, retries: 0, allowedHostnames: ['issuer.invalid'] },
+      outboundPolicy: {
+        timeoutMs: 5000,
+        retries: 0,
+        allowedHostnames: ['issuer.invalid'],
+        resolveHostname: async () => ['93.184.216.34'],
+      },
     });
 
     const result = await middleware.authenticateRequest({
@@ -321,11 +326,52 @@ describe('JwtAuthMiddleware', () => {
       fetchSpy.mock.calls.map(([input, init]) => ({
         url: input.toString(),
         hasSignal: init?.signal instanceof AbortSignal,
+        redirect: init?.redirect,
+        hasDispatcher: Boolean((init as RequestInit & { dispatcher?: unknown })?.dispatcher),
       })),
     ).toEqual([
-      { url: `${issuerBaseUrl}/.well-known/openid-configuration`, hasSignal: true },
-      { url: `${issuerBaseUrl}/jwks`, hasSignal: true },
+      {
+        url: `${issuerBaseUrl}/.well-known/openid-configuration`,
+        hasSignal: true,
+        redirect: 'manual',
+        hasDispatcher: true,
+      },
+      {
+        url: `${issuerBaseUrl}/jwks`,
+        hasSignal: true,
+        redirect: 'manual',
+        hasDispatcher: true,
+      },
     ]);
+  });
+
+  it('rejects OIDC discovery redirects to loopback before a second request', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: { Location: 'http://127.0.0.1/.well-known/openid-configuration' },
+      }),
+    );
+    const middleware = new JwtAuthMiddleware({
+      securitySchemes: [
+        {
+          type: 'openIdConnect',
+          id: 'oidc',
+          openIdConnectUrl: 'https://issuer.example/.well-known/openid-configuration',
+          audience: '@a2amesh/runtime',
+        },
+      ],
+      outboundPolicy: {
+        allowedHostnames: ['issuer.example'],
+        resolveHostname: async () => ['93.184.216.34'],
+      },
+      fetch: fetchMock,
+    });
+
+    await expect(
+      middleware.authenticateRequest({ header: () => 'Bearer a.b.c', query: {} } as never),
+    ).rejects.toThrow(/allowlist|private|not allowed/i);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('times out oidc discovery requests through the outbound policy', async () => {
@@ -357,7 +403,12 @@ describe('JwtAuthMiddleware', () => {
           audience: '@a2amesh/runtime',
         },
       ],
-      outboundPolicy: { timeoutMs: 25, retries: 0, allowedHostnames: ['issuer.invalid'] },
+      outboundPolicy: {
+        timeoutMs: 25,
+        retries: 0,
+        allowedHostnames: ['issuer.invalid'],
+        resolveHostname: async () => ['93.184.216.34'],
+      },
     });
 
     const rejection = middleware
@@ -375,7 +426,7 @@ describe('JwtAuthMiddleware', () => {
     await vi.advanceTimersByTimeAsync(25);
     const error = await rejection;
     expect(error).toBeInstanceOf(Error);
-    expect((error as Error).message).toContain('Auth outbound fetch timed out after 25ms');
+    expect((error as Error).message).toContain('Fetch timed out after 25ms');
   });
 
   it('rejects invalid jwks urls discovered from oidc configuration', async () => {
@@ -647,13 +698,13 @@ describe('JwtAuthMiddleware', () => {
         header: () => 'Bearer a.b.c',
         query: {},
       } as never),
-    ).rejects.toThrow('Invalid URL format');
+    ).rejects.toThrow(/Invalid URL/);
 
     await expect(
       makeMiddleware('https://metadata.internal/.well-known/openid-configuration', {
         resolveHostname: async () => ['10.0.0.1'],
       }).authenticateRequest({ header: () => 'Bearer a.b.c', query: {} } as never),
-    ).rejects.toThrow('Auth outbound policy rejected restricted address');
+    ).rejects.toThrow(/private|not allowed|restricted/i);
 
     await expect(
       makeMiddleware('https://unresolved.example/.well-known/openid-configuration', {
@@ -661,11 +712,12 @@ describe('JwtAuthMiddleware', () => {
           throw new Error('dns failed');
         },
       }).authenticateRequest({ header: () => 'Bearer a.b.c', query: {} } as never),
-    ).rejects.toThrow('Auth outbound policy could not resolve hostname');
+    ).rejects.toThrow('Hostname could not be resolved');
 
     await expect(
       makeMiddleware('https://allowed.example/.well-known/openid-configuration', {
         allowedHostnames: ['allowed.example'],
+        resolveHostname: async () => ['93.184.216.34'],
       }).authenticateRequest({ header: () => 'Bearer a.b.c', query: {} } as never),
     ).rejects.toThrow('Failed to fetch OIDC configuration: 503');
   });
@@ -700,7 +752,7 @@ describe('JwtAuthMiddleware', () => {
 
     await expect(
       middleware.authenticateRequest({ header: () => 'Bearer a.b.c', query: {} } as never),
-    ).rejects.toThrow('Auth outbound policy rejected restricted address');
+    ).rejects.toThrow(/private|not allowed|restricted/i);
   });
 
   it.each([['8.8.8.8'], ['172.32.0.1'], ['100.128.0.1'], ['2001:db8::1']])(
@@ -771,6 +823,7 @@ describe('JwtAuthMiddleware', () => {
       outboundPolicy: {
         retries: 1,
         allowedHostnames: ['issuer.example'],
+        resolveHostname: async () => ['93.184.216.34'],
       },
       fetch: fetchMock,
     });

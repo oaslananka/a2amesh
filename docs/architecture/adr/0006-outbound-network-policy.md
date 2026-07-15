@@ -25,13 +25,34 @@ not call raw `fetch` for those URLs unless the URL has already passed the shared
 the same control path.
 
 The default policy allows only HTTP-family schemes expected by the runtime and rejects
-private, loopback, link-local, and otherwise unsafe hosts. Localhost and unresolved
-hostnames are allowed only through explicit development or test configuration. Each
-operation should pass an operation label so telemetry and errors identify whether the
+private, loopback, link-local, and otherwise unsafe hosts. Localhost is allowed only
+through explicit development or test configuration. Validation-only callers may explicitly
+accept unresolved hostnames, but fetch operations reject them because the connection cannot
+be pinned. Each operation should pass an operation label so telemetry and errors identify whether the
 request came from push notification delivery, OIDC discovery, registry polling, or
 another outbound surface.
 
 Policy exceptions must be narrow, documented near the caller, and covered by tests.
+
+### Boundary hardening update (2026-07-14)
+
+The shared fetch path now treats validation and connection as one operation:
+
+- redirects are handled manually and every hop repeats scheme, restrictive-hostname-allowlist, DNS, and private-network validation;
+- HTTPS-to-HTTP downgrade redirects are rejected unless explicitly enabled;
+- the validated DNS address set is pinned into a request-scoped Undici dispatcher, so connection setup cannot resolve a different address;
+- one deadline covers DNS, connect, headers, redirects, retry delays, and complete body or SSE consumption;
+- JSON, text, binary, and SSE bodies have byte limits, while SSE additionally has event, line, event-buffer, and idle limits;
+- cross-origin redirects strip credential-shaped headers, and logs and spans redact query strings and sensitive headers;
+- retries are limited to idempotent methods, replayable bodies, or requests carrying an explicit `Idempotency-Key`;
+- response bodies that are not consumed are explicitly canceled so request-scoped dispatchers close deterministically.
+
+`A2AClient`, `AgentRegistryClient`, `JwtAuthMiddleware`, registry polling, callbacks, MCP,
+the CLI, CrewAI, and Google ADK use this policy. An explicitly configured loopback literal
+enables local loopback access for that initial trust boundary, but a public hostname cannot
+gain loopback permission through a redirect, Agent Card, OIDC document, or DNS answer. A
+custom `fetchImplementation` remains a trusted integration and test escape hatch and must
+honor the supplied signal and dispatcher.
 
 ## Consequences
 

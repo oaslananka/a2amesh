@@ -2,7 +2,8 @@ import type { Command } from 'commander';
 import {
   A2AClient,
   AgentRegistryClient,
-  fetchWithPolicy,
+  createDefaultClientOutboundPolicy,
+  createOutboundPolicyFetch,
   redactHeaders,
   type A2AClientOptions,
 } from '@a2amesh/runtime';
@@ -15,12 +16,14 @@ export interface NetworkCommandOptions {
   retries?: string;
   requestId?: string;
   origin?: string;
+  allowPrivateNetwork?: boolean;
 }
 
 export interface ParsedNetworkOptions {
   headers: Record<string, string>;
   timeoutMs?: number;
   retries?: number;
+  allowPrivateNetworks: boolean;
 }
 
 function collectOption(value: string, previous: string[] | undefined): string[] {
@@ -39,7 +42,8 @@ export function addNetworkOptions<TCommand extends Command>(command: TCommand): 
     .option('--timeout-ms <ms>', 'Per-request timeout in milliseconds')
     .option('--retries <count>', 'Retry count for transient network failures')
     .option('--request-id <id>', 'Request id sent as x-request-id')
-    .option('--origin <url>', 'Origin header to send');
+    .option('--origin <url>', 'Origin header to send')
+    .option('--allow-private-network', 'Allow explicitly requested private-network destinations');
 
   return command;
 }
@@ -102,7 +106,10 @@ export function parseNetworkOptions(options: NetworkCommandOptions = {}): Parsed
     headers['Origin'] = options.origin;
   }
 
-  const parsed: ParsedNetworkOptions = { headers };
+  const parsed: ParsedNetworkOptions = {
+    headers,
+    allowPrivateNetworks: options.allowPrivateNetwork ?? false,
+  };
   if (options.timeoutMs !== undefined) {
     parsed.timeoutMs = parsePositiveInteger(options.timeoutMs, '--timeout-ms');
   }
@@ -123,34 +130,21 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
   return { ...headers };
 }
 
-function hasNetworkPolicy(options: ParsedNetworkOptions): boolean {
-  return (
-    Object.keys(options.headers).length > 0 ||
-    options.timeoutMs !== undefined ||
-    options.retries !== undefined
-  );
-}
-
-function createPolicyFetch(options: ParsedNetworkOptions): typeof fetch | undefined {
-  if (!hasNetworkPolicy(options)) {
-    return undefined;
-  }
-
+function createPolicyFetch(options: ParsedNetworkOptions): typeof fetch {
   return (async (input, init) => {
-    const url = input instanceof Request ? input.url : input;
+    const requestUrl = input instanceof Request ? input.url : input;
+    const policyFetch = createOutboundPolicyFetch({
+      ...createDefaultClientOutboundPolicy(requestUrl),
+      allowPrivateNetworks: options.allowPrivateNetworks,
+      ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+      ...(options.retries !== undefined ? { retries: options.retries } : {}),
+    });
     const mergedHeaders = {
+      ...headersToRecord(input instanceof Request ? input.headers : undefined),
       ...headersToRecord(init?.headers),
       ...options.headers,
     };
-    const requestInit: RequestInit = {
-      ...init,
-      headers: mergedHeaders,
-    };
-    const policyOptions = {
-      ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
-      ...(options.retries !== undefined ? { retries: options.retries } : {}),
-    };
-    return fetchWithPolicy(url, requestInit, policyOptions);
+    return policyFetch(input, { ...init, headers: mergedHeaders });
   }) as typeof fetch;
 }
 
@@ -159,10 +153,8 @@ export function createA2AClient(url: string, options: NetworkCommandOptions = {}
   const fetchImplementation = createPolicyFetch(networkOptions);
   const clientOptions: A2AClientOptions = {
     ...(Object.keys(networkOptions.headers).length > 0 ? { headers: networkOptions.headers } : {}),
-    ...(fetchImplementation ? { fetchImplementation } : {}),
-    ...(networkOptions.retries !== undefined
-      ? { retry: { maxAttempts: 1, backoffMs: 0, retryOn: [] } }
-      : {}),
+    fetchImplementation,
+    retry: { maxAttempts: 1, backoffMs: 0, retryOn: [] },
   };
 
   return new A2AClient(url, clientOptions);
@@ -174,9 +166,7 @@ export function createRegistryClient(
 ): AgentRegistryClient {
   const networkOptions = parseNetworkOptions(options);
   const fetchImplementation = createPolicyFetch(networkOptions);
-  return fetchImplementation
-    ? new AgentRegistryClient(url, fetchImplementation)
-    : new AgentRegistryClient(url);
+  return new AgentRegistryClient(url, fetchImplementation);
 }
 
 export function redactNetworkHeaders(headers: Record<string, string>): Record<string, string> {

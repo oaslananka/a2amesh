@@ -31,3 +31,15 @@ Run `a2amesh <command> --help` for usage and options.
 | `1`  | Command error or conformance failure |
 
 See [Compatibility](../../docs/compatibility.md) for supported Node.js, protocol, transport, package, and peer ranges.
+
+## Network policy
+
+Network commands use the shared outbound policy. Loopback URLs are accepted for local
+workflows, while other private-network destinations require the explicit
+`--allow-private-network` flag. Redirects are revalidated, DNS is pinned to the validated
+address set, response bodies are bounded, and URL query values and credentials are
+redacted from telemetry.
+
+`--timeout-ms` is a total operation deadline. `--retries` applies only to idempotent
+requests or requests carrying an `Idempotency-Key`; ordinary message-send POSTs are not
+replayed automatically.

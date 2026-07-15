@@ -38,3 +38,8 @@ type-safe evidence only. Tokens, subjects, raw prompts, arguments, and provider
 errors are not included. Local development endpoints therefore require an explicit
 `outboundPolicy: { allowLocalhost: true }`; do not use that setting for untrusted
 agent URLs.
+
+The MCP bridge follows redirects only through the same validating policy used for the
+initial target. DNS results are pinned to connection setup, response and SSE bodies are
+bounded, and the operation deadline remains active through body consumption. JSON-RPC POST
+requests are not retried without an explicit idempotency key.

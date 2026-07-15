@@ -28,3 +28,13 @@ const adapter = new GoogleADKAdapter(
 ```
 
 See [Compatibility](../../docs/compatibility.md) for supported ranges.
+
+## Network and streaming policy
+
+ADK requests use the shared outbound policy for redirect revalidation, DNS pinning, total
+deadlines, response and SSE limits, and telemetry redaction. POST retries carry the A2A
+task id as `Idempotency-Key`.
+
+HTTP `text/event-stream` responses are parsed incrementally under the SSE limits, then
+returned as one buffered artifact. The adapter therefore advertises
+`supportsStreaming: false`; it does not expose live A2A streaming semantics.

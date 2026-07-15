@@ -13,7 +13,7 @@ import {
 } from '@opentelemetry/sdk-node';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { A2AClient } from '../src/client/A2AClient.js';
-import { fetchWithPolicy } from '../src/net/fetchWithPolicy.js';
+import { FetchResponseLimitError, fetchWithPolicy } from '../src/net/fetchWithPolicy.js';
 import { A2AServer, type A2AServerOptions } from '../src/server/A2AServer.js';
 import { RuntimeMetrics } from '@a2amesh/runtime';
 import type { AgentCard } from '../src/types/agent-card.js';
@@ -301,8 +301,8 @@ describe('OpenTelemetry telemetry snapshots', () => {
 
     expect(created.status).toBe(200);
 
-    await fetchWithPolicy(
-      'https://downstream.example/a2a/health',
+    const outboundResponse = await fetchWithPolicy(
+      'https://downstream.example/a2a/health?token=top-secret',
       { method: 'POST' },
       {
         retries: 1,
@@ -312,6 +312,7 @@ describe('OpenTelemetry telemetry snapshots', () => {
         },
       },
     );
+    await outboundResponse.body?.cancel();
 
     const client = new A2AClient('https://agent.example', {
       fetchImplementation: fetchSpy,
@@ -328,6 +329,7 @@ describe('OpenTelemetry telemetry snapshots', () => {
 
     const [, clientInit] = fetchSpy.mock.calls.at(-1) ?? [];
     const spanSnapshot = formatSpans(telemetry.spanExporter);
+    expect(JSON.stringify(spanSnapshot)).not.toContain('top-secret');
     expect(formatHeaders(clientInit?.headers)).toMatchSnapshot('client propagated headers');
     expect(spanSnapshot.map((span) => span.name)).toEqual([
       'a2a.handleRpc',
@@ -335,6 +337,26 @@ describe('OpenTelemetry telemetry snapshots', () => {
       'http.request',
     ]);
     expect(spanSnapshot).toMatchSnapshot('otel spans');
+  });
+
+  it('marks response-limit failures as outbound span errors', async () => {
+    telemetry = setupTelemetryHarness();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('response-too-large', {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' },
+      }),
+    );
+
+    const response = await fetchWithPolicy('https://downstream.example/data', undefined, {
+      maxResponseBytes: 4,
+    });
+    await expect(response.text()).rejects.toBeInstanceOf(FetchResponseLimitError);
+
+    const outbound = formatSpans(telemetry.spanExporter).find(
+      (span) => span.name === 'http.request',
+    );
+    expect(outbound?.status).toBe('ERROR');
   });
 
   it('snapshots runtime task, SSE and auth metric instruments', async () => {

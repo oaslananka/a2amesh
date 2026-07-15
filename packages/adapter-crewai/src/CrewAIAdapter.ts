@@ -51,6 +51,7 @@ export class CrewAIAdapter extends BaseAdapter {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Idempotency-Key': task.id,
         },
         body: JSON.stringify({
           taskId: task.id,
@@ -66,6 +67,7 @@ export class CrewAIAdapter extends BaseAdapter {
     );
 
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`CrewAI bridge failed with status ${response.status}`);
     }
 

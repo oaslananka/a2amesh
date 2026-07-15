@@ -4,7 +4,13 @@
  */
 
 import { BaseAdapter } from '@a2amesh/internal-adapter-base';
-import { isAgentMessage, logger, normalizeAgentCard, validateAndFetch } from '@a2amesh/runtime';
+import {
+  isAgentMessage,
+  logger,
+  normalizeAgentCard,
+  readSseData,
+  validateAndFetch,
+} from '@a2amesh/runtime';
 import type {
   AnyAgentCard,
   Artifact,
@@ -56,6 +62,7 @@ export class GoogleADKAdapter extends BaseAdapter {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Idempotency-Key': task.id,
           ...(this.apiKey ? { 'x-goog-api-key': this.apiKey } : {}),
         },
         body: JSON.stringify({
@@ -69,51 +76,24 @@ export class GoogleADKAdapter extends BaseAdapter {
     );
 
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`Google ADK request failed with status ${response.status}`);
     }
 
     const contentType = response.headers.get('content-type') ?? '';
     if (contentType.includes('text/event-stream')) {
-      const body = response.body;
-      if (!body) {
-        throw new Error('Google ADK stream response has no body');
-      }
-
-      const reader = body.getReader();
-      const decoder = new TextDecoder();
-      let chunks = '';
-      let done = false;
-      let buffer = '';
-
-      while (!done) {
-        const { value, done: streamDone } = await reader.read();
-        done = streamDone;
-        if (value) {
-          buffer += decoder.decode(value, { stream: !done });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              chunks += line.slice('data: '.length) + '\n';
-            }
-          }
-        }
-      }
-      if (buffer && buffer.startsWith('data: ')) {
-        chunks += buffer.slice('data: '.length) + '\n';
-      }
-
+      const chunks = await readSseData(response);
       const artifact = createTextArtifact(task, {
         artifactId: `google-adk-${Date.now()}`,
-        name: 'Google ADK Stream Response',
-        text: chunks.trim(),
+        name: 'Google ADK Buffered SSE Response',
+        text: chunks.join('\n').trim(),
         provider: 'google-adk',
         compatibility: 'beta',
-        streamed: true,
-        supportsStreaming: true,
+        streamed: false,
+        supportsStreaming: false,
         metadata: {
-          streamed: true,
+          sourceTransport: 'sse',
+          buffered: true,
         },
       }) as Artifact;
       return [artifact];
@@ -130,7 +110,7 @@ export class GoogleADKAdapter extends BaseAdapter {
       text: json.output ?? json.result ?? '',
       provider: 'google-adk',
       compatibility: 'beta',
-      supportsStreaming: true,
+      supportsStreaming: false,
       metadata: {
         ...(json.metadata ?? {}),
       },

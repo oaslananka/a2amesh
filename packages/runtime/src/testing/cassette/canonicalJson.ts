@@ -13,7 +13,9 @@ function canonicalize(value: unknown): unknown {
     return value.map(canonicalize);
   }
   if (value !== null && typeof value === 'object') {
-    const sortedKeys = Object.keys(value as Record<string, unknown>).sort();
+    const sortedKeys = Object.keys(value as Record<string, unknown>).sort((left, right) =>
+      left.localeCompare(right, 'en-US'),
+    );
     const result: Record<string, unknown> = {};
     for (const key of sortedKeys) {
       result[key] = canonicalize((value as Record<string, unknown>)[key]);

@@ -1,7 +1,8 @@
+import { promises as dns } from 'node:dns';
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentCard, Task } from '@a2amesh/runtime';
 import { createConformanceCommand } from '../src/commands/conformance.js';
 import { runCli } from '../src/index.js';
@@ -76,6 +77,10 @@ function mockConformanceFetch(
 }
 
 describe('conformance command', () => {
+  beforeEach(() => {
+    vi.spyOn(dns, 'resolve').mockResolvedValue(['93.184.216.34']);
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     process.exitCode = undefined;

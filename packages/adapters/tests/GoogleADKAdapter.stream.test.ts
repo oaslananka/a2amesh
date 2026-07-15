@@ -6,7 +6,7 @@ vi.mock('@a2amesh/runtime', async (importOriginal) => {
   const actual = await importOriginal<typeof a2aWarp>();
   return {
     ...actual,
-    fetchWithPolicy: vi.fn(),
+    validateAndFetch: vi.fn(),
     logger: { info: vi.fn(), error: vi.fn() },
   };
 });
@@ -53,7 +53,7 @@ describe('GoogleADKAdapter Stream Parsing', () => {
       body: { getReader: () => mockReader },
     };
 
-    vi.mocked(a2aWarp.fetchWithPolicy).mockResolvedValue(mockResponse as any);
+    vi.mocked(a2aWarp.validateAndFetch).mockResolvedValue(mockResponse as any);
 
     const task: a2aWarp.Task = {
       id: 'task-1',

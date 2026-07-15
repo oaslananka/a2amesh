@@ -88,8 +88,8 @@ export async function validateSafeUrl(
     (options.allowedHostnames ?? []).map((value) => value.toLowerCase()),
   );
 
-  if (allowedHostnames.has(hostname.toLowerCase())) {
-    return url;
+  if (allowedHostnames.size > 0 && !allowedHostnames.has(hostname.toLowerCase())) {
+    throw new Error(`SSRF Prevention: Hostname is not in the outbound allowlist (${hostname})`);
   }
 
   if (options.allowLocalhost && isLocalHostname) {

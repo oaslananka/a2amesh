@@ -19,6 +19,17 @@ and outbound network policy. Auth and telemetry live in separate packages
 Transports, registry, adapters, bridges, CLI, apps,
 docs-site, and examples consume public package APIs above that layer.
 
+## Outbound boundary
+
+Runtime clients, registry polling, callbacks, adapters, MCP bridges, and CLI commands use
+one outbound policy. Redirect targets are revalidated, DNS answers are pinned to the
+connection, and a total deadline remains active through body or SSE consumption. Response
+bytes and SSE events are bounded, non-idempotent retries require an idempotency key, and
+query values and credential-shaped headers are redacted from telemetry.
+
+See the canonical [SSRF policy](https://github.com/oaslananka/a2amesh/blob/main/docs/security/ssrf.md)
+and [ADR-0006](https://github.com/oaslananka/a2amesh/blob/main/docs/architecture/adr/0006-outbound-network-policy.md).
+
 ## Workspace graph
 
 Run the graph check when package boundaries change:

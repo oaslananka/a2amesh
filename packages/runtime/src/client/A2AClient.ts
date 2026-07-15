@@ -24,9 +24,16 @@ import type {
 import type { AfterArgs, CallInterceptor, ClientCallOptions } from './interceptors.js';
 import { verifyAgentCard, type VerificationKey } from '../security/AgentCardSigner.js';
 import { createEventSourceReader } from './eventSourceReader.js';
+import {
+  createDefaultClientOutboundPolicy,
+  createOutboundPolicyFetch,
+  type OutboundPolicyOptions,
+} from '../net/OutboundPolicy.js';
 
 export interface A2AClientOptions {
   fetchImplementation?: typeof fetch;
+  /** Apply the centralized outbound URL, DNS, redirect, deadline, and response policy. */
+  outboundPolicy?: OutboundPolicyOptions;
   cardPath?: string;
   rpcPath?: string;
   streamPath?: string;
@@ -90,7 +97,11 @@ export class A2AClient {
     public readonly baseUrl: string,
     options: A2AClientOptions = {},
   ) {
-    this.fetchImplementation = options.fetchImplementation ?? fetch;
+    this.fetchImplementation =
+      options.fetchImplementation ??
+      createOutboundPolicyFetch(
+        options.outboundPolicy ?? createDefaultClientOutboundPolicy(this.baseUrl),
+      );
     this.cardPath = options.cardPath ?? '/.well-known/agent-card.json';
     this.rpcPath = options.rpcPath ?? '/a2a/jsonrpc';
     this.streamPath = options.streamPath ?? '/a2a/stream';
@@ -98,7 +109,7 @@ export class A2AClient {
     this.interceptors = options.interceptors ?? [];
     this.headers = options.headers ?? {};
     this.retry = {
-      maxAttempts: options.retry?.maxAttempts ?? 3,
+      maxAttempts: options.retry?.maxAttempts ?? 1,
       backoffMs: options.retry?.backoffMs ?? 1000,
       retryOn: options.retry?.retryOn ?? [502, 503, 504],
     };
@@ -108,11 +119,16 @@ export class A2AClient {
   }
 
   static async connect(agentCardUrl: string, options: A2AClientOptions = {}): Promise<A2AClient> {
-    const fetchImplementation = options.fetchImplementation ?? fetch;
+    const fetchImplementation =
+      options.fetchImplementation ??
+      createOutboundPolicyFetch(
+        options.outboundPolicy ?? createDefaultClientOutboundPolicy(agentCardUrl),
+      );
     const response = await fetchImplementation(agentCardUrl, {
       headers: A2AClient.createProtocolHeaders(options),
     });
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`Failed to resolve agent card from ${agentCardUrl}`);
     }
 
@@ -124,7 +140,10 @@ export class A2AClient {
       protocolVersion: '0.3' as const,
     };
 
-    const clientOptions: A2AClientOptions = { ...options };
+    const clientOptions: A2AClientOptions = {
+      ...options,
+      outboundPolicy: options.outboundPolicy ?? createDefaultClientOutboundPolicy(agentCardUrl),
+    };
     if (selectedInterface.protocolVersion === '1.2') {
       clientOptions.preferredProtocolVersion = '1.2';
     }
@@ -145,10 +164,13 @@ export class A2AClient {
       return card;
     }
 
+    await response.body?.cancel().catch(() => undefined);
+
     const legacyResponse = await this.fetchWithRetry(legacyUrl, {
       headers: this.createProtocolHeaders(),
     });
     if (!legacyResponse.ok) {
+      await legacyResponse.body?.cancel().catch(() => undefined);
       throw new Error(`Failed to resolve agent card from ${canonicalUrl}`);
     }
 
@@ -315,6 +337,7 @@ export class A2AClient {
       headers: this.createProtocolHeaders(),
     });
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`Health check failed with status ${response.status}`);
     }
     return (await response.json()) as A2AHealthResponse;
@@ -373,6 +396,7 @@ export class A2AClient {
     const [response] = await this.executeRpcRequest(method, params, false);
 
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`RPC request failed with status ${response.status}`);
     }
 
@@ -387,6 +411,7 @@ export class A2AClient {
     const [response] = await this.executeRpcRequest(method, params, true);
 
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new Error(`RPC stream failed with status ${response.status}`);
     }
 
@@ -576,20 +601,22 @@ export class A2AClient {
     init?: Parameters<typeof fetch>[1],
   ): Promise<Response> {
     let lastError: unknown;
+    const maxAttempts = isRetrySafeRequest(init) ? this.retry.maxAttempts : 1;
 
-    for (let attempt = 1; attempt <= this.retry.maxAttempts; attempt += 1) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         const response = await this.fetchImplementation(input, init);
         if (
           response.ok ||
-          attempt === this.retry.maxAttempts ||
+          attempt === maxAttempts ||
           !this.retry.retryOn.includes(response.status)
         ) {
           return response;
         }
+        await response.body?.cancel().catch(() => undefined);
       } catch (error) {
         lastError = error;
-        if (attempt === this.retry.maxAttempts) {
+        if (attempt === maxAttempts) {
           throw error;
         }
       }
@@ -599,8 +626,13 @@ export class A2AClient {
       });
     }
 
-    throw new Error(
-      `Request failed after ${this.retry.maxAttempts} attempts: ${String(lastError)}`,
-    );
+    throw new Error(`Request failed after ${maxAttempts} attempts: ${String(lastError)}`);
   }
+}
+
+const RETRY_SAFE_METHODS = new Set(['GET', 'HEAD', 'PUT', 'DELETE', 'OPTIONS', 'TRACE']);
+
+function isRetrySafeRequest(init: RequestInit | undefined): boolean {
+  const method = (init?.method ?? 'GET').toUpperCase();
+  return RETRY_SAFE_METHODS.has(method) || new Headers(init?.headers).has('Idempotency-Key');
 }

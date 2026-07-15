@@ -44,6 +44,7 @@ describe('PushNotificationService', () => {
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
+          'Idempotency-Key': 'task-1',
           'X-A2A-Notification-Token': 'secret',
           Authorization: 'Bearer secret',
         }),
@@ -134,6 +135,7 @@ describe('PushNotificationService', () => {
       'https://example.com/header',
       expect.objectContaining({
         headers: expect.objectContaining({
+          'Idempotency-Key': 'task-1',
           'X-A2A-Notification-Token': 'header-secret',
           'x-api-key': 'header-secret',
         }),

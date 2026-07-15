@@ -1,8 +1,9 @@
+import { promises as dns } from 'node:dns';
 import { generateKeyPairSync } from 'node:crypto';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentCard } from '@a2amesh/runtime';
 import { createTrustCommand } from '../src/commands/trust.js';
 import { runCli } from '../src/index.js';
@@ -38,6 +39,10 @@ function captureStdout(): { read: () => string } {
 }
 
 describe('trust command', () => {
+  beforeEach(() => {
+    vi.spyOn(dns, 'resolve').mockResolvedValue(['93.184.216.34']);
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     process.exitCode = undefined;

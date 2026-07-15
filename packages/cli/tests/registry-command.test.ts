@@ -1,7 +1,8 @@
+import { promises as dns } from 'node:dns';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRegistryCommand } from '../src/commands/registry.js';
 import { runCli } from '../src/index.js';
 import { commandNames, expectCommandHelp, jsonOptions } from './command-test-helpers.js';
@@ -55,6 +56,10 @@ function requestHeaders(input: RequestInfo | URL, init: RequestInit | undefined)
 }
 
 describe('registry command', () => {
+  beforeEach(() => {
+    vi.spyOn(dns, 'resolve').mockResolvedValue(['93.184.216.34']);
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     process.exitCode = undefined;

@@ -20,6 +20,7 @@ const sharedOptionSnippets = [
   '--retries <count>',
   '--request-id <id>',
   '--origin <url>',
+  '--allow-private-network',
 ];
 
 describe('network command option surface', () => {

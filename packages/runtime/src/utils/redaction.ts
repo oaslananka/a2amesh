@@ -22,16 +22,40 @@ function isSensitiveKey(key: string): boolean {
   return SENSITIVE_KEY_PARTS.some((part) => normalized.includes(part));
 }
 
+export function isSensitiveHeaderName(name: string): boolean {
+  return isSensitiveKey(name);
+}
+
+export function redactUrl(value: string | URL): string {
+  const raw = value.toString();
+  try {
+    const parsed = new URL(raw);
+    parsed.username = '';
+    parsed.password = '';
+    parsed.hash = '';
+    if (parsed.search) parsed.search = '?[REDACTED]';
+    return parsed.toString();
+  } catch {
+    return redactKnownSecrets(raw);
+  }
+}
+
 export function redactSensitiveText(value: string, options: RedactionOptions = {}): string {
   const maxStringLength = options.maxStringLength ?? 2_048;
-  const redacted = value
+  const redacted = redactKnownSecrets(value).replace(/https?:\/\/[^\s"'<>]+/gi, (url) =>
+    redactUrl(url),
+  );
+  return redacted.length > maxStringLength ? `${redacted.slice(0, maxStringLength)}…` : redacted;
+}
+
+function redactKnownSecrets(value: string): string {
+  return value
     .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, `Bearer ${REDACTED_VALUE}`)
     .replace(
       /\b(api[_-]?key|token|client[_-]?secret|secret|password)=([^&\s,;"}]+)/gi,
       (_match, key: string) => `${key}=${REDACTED_VALUE}`,
     )
     .replace(/\b(?:sk|pk|rk|ak)-[A-Za-z0-9_-]{12,}\b/g, REDACTED_VALUE);
-  return redacted.length > maxStringLength ? `${redacted.slice(0, maxStringLength)}…` : redacted;
 }
 
 function redactValue(value: unknown, key?: string, seen = new WeakSet<object>()): unknown {

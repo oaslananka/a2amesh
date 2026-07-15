@@ -24,3 +24,10 @@ const adapter = new CrewAIAdapter(card, 'http://localhost:8080/crewai-bridge');
 ```
 
 See [Compatibility](../../docs/compatibility.md) for supported ranges.
+
+## Network policy
+
+Bridge requests use the shared outbound policy for redirect revalidation, DNS pinning,
+total deadlines, response limits, and telemetry redaction. POST retries carry the A2A task
+id as `Idempotency-Key`. Local bridge URLs require
+`outboundPolicy: { allowLocalhost: true }`.

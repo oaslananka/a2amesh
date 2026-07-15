@@ -250,19 +250,28 @@ validates a safe task shape, and emits task projection events when a task versio
 
 All remote fetch and callback paths use the core outbound policy helpers:
 
-- `validateUrl` parses the URL, validates the scheme, resolves hostnames when needed, and
-  applies safe URL checks.
-- `validateAndFetch` runs `validateUrl`, then `fetchWithPolicy` for timeout, retry,
-  backoff, jitter, abort signal, and telemetry labels.
-- `JwtAuthMiddleware` uses the policy for OIDC discovery and JWKS fetches.
-- `PushNotificationService` and push notification config normalization use the policy for
-  callback URLs.
-- Registry registration, import, health polling, and task polling use the same policy.
+- `validateUrl` performs validation-only scheme, hostname, DNS, and private-network checks.
+- `validateAndFetch` validates every redirect hop and pins the validated DNS address set
+  into a request-scoped Undici dispatcher before connecting.
+- `fetchWithPolicy` applies one deadline across DNS, connection, headers, redirects,
+  retry backoff, and complete body or SSE consumption.
+- JSON, text, binary, and SSE bodies have total byte limits. SSE also has event-count,
+  line-size, per-event-buffer, and idle limits.
+- `A2AClient`, `AgentRegistryClient`, `JwtAuthMiddleware`, push callbacks, registry polling,
+  MCP bridges, the CLI, CrewAI, and Google ADK use the same policy surface.
 
-Localhost is allowed by default only outside `NODE_ENV=production` unless the caller
-overrides the policy. Private networks and unresolved hostnames are denied by default.
-Allowed hostnames, allowed schemes, DNS cache TTL, timeout, retry, and backoff controls are
-explicit options.
+Private networks are denied by default. An initial URL containing an explicit loopback
+literal enables local loopback use for that trust boundary; a public hostname cannot inherit
+loopback permission through DNS, redirects, Agent Cards, or OIDC metadata. A non-empty
+hostname allowlist is restrictive and does not bypass private-address checks. Validation-only
+operations may accept unresolved names explicitly, but fetch operations reject them because
+the connection cannot be pinned. Schemes, DNS cache TTL, deadlines, response limits, and
+retry controls are explicit options.
+
+Retries are method-aware. Non-idempotent requests are attempted once unless they carry an
+`Idempotency-Key` or explicitly opt into non-idempotent retry. Streaming request bodies are
+never replayed. Cross-origin redirects strip credential-shaped headers, HTTPS-to-HTTP
+downgrades are blocked by default, and URL query values are redacted from logs and traces.
 
 ## Auth Model
 
