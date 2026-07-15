@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
-import { AnthropicAdapter, OpenAIAdapter } from '@a2amesh/internal-adapters';
+import { AnthropicAdapter } from '@a2amesh/internal-adapter-anthropic';
+import { OpenAIAdapter } from '@a2amesh/internal-adapter-openai';
 import type { AgentCard } from '@a2amesh/runtime';
 
 function createWriterCard(url: string): AgentCard {

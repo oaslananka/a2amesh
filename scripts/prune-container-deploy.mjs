@@ -4,7 +4,7 @@ import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const ALLOWED_ROOT_ENTRIES = new Set(['LICENSE', 'NOTICE', 'dist', 'node_modules', 'package.json']);
-const FORBIDDEN_DIST_SUFFIXES = ['.d.ts', '.d.ts.map', '.map', '.tsbuildinfo'];
+const FORBIDDEN_RUNTIME_SUFFIXES = ['.d.ts', '.d.ts.map', '.map', '.tsbuildinfo'];
 const FORBIDDEN_NODE_MODULE_ENTRIES = [
   '.cache',
   '.pnpm-store',
@@ -21,19 +21,22 @@ async function pathExists(path) {
   }
 }
 
-async function removeDistMetadata(directory) {
+async function removeRuntimeMetadata(directory) {
   if (!(await pathExists(directory))) return;
 
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const path = join(directory, entry.name);
-    if (entry.isDirectory()) {
-      await removeDistMetadata(path);
-      continue;
-    }
-    if (FORBIDDEN_DIST_SUFFIXES.some((suffix) => entry.name.endsWith(suffix))) {
-      await rm(path, { force: true });
-    }
-  }
+  const entries = await readdir(directory, { withFileTypes: true });
+  await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await removeRuntimeMetadata(path);
+        return;
+      }
+      if (FORBIDDEN_RUNTIME_SUFFIXES.some((suffix) => entry.name.endsWith(suffix))) {
+        await rm(path, { force: true });
+      }
+    }),
+  );
 }
 
 async function assertRuntimeLayout(deployRoot) {
@@ -57,6 +60,16 @@ async function assertRuntimeLayout(deployRoot) {
   if (unexpected.length > 0) {
     throw new Error(`Container deploy contains unexpected root entries: ${unexpected.join(', ')}`);
   }
+
+  const runtimeEntries = await readdir(deployRoot, { recursive: true });
+  const metadata = runtimeEntries.filter((entry) =>
+    FORBIDDEN_RUNTIME_SUFFIXES.some((suffix) => String(entry).endsWith(suffix)),
+  );
+  if (metadata.length > 0) {
+    throw new Error(
+      `Container deploy contains runtime metadata: ${metadata.slice(0, 20).join(', ')}`,
+    );
+  }
 }
 
 export async function pruneContainerDeploy(inputPath) {
@@ -74,7 +87,7 @@ export async function pruneContainerDeploy(inputPath) {
     }
   }
 
-  await removeDistMetadata(join(deployRoot, 'dist'));
+  await removeRuntimeMetadata(deployRoot);
   await rm(join(deployRoot, 'node_modules', '.pnpm', 'lock.yaml'), { force: true });
   for (const entry of FORBIDDEN_NODE_MODULE_ENTRIES) {
     await rm(join(deployRoot, 'node_modules', entry), { recursive: true, force: true });

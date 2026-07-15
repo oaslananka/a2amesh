@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { OpenAIAdapter } from '@a2amesh/internal-adapters';
+import { OpenAIAdapter } from '@a2amesh/internal-adapter-openai';
 import type { AgentCard } from '@a2amesh/runtime';
 
 function createResearcherCard(url: string): AgentCard {

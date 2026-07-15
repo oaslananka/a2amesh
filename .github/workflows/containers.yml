@@ -128,9 +128,9 @@ jobs:
           container_id="$(docker create "${IMAGE}")"
           trap 'docker rm --force "${container_id}" >/dev/null 2>&1 || true' EXIT
           docker export "${container_id}" | tar -tf - > "${RUNNER_TEMP}/${COMPONENT}-files.txt"
-          if grep -Eq '^(workspace/|app/(src/|.*\.(ts|tsx|mts|cts|map|tsbuildinfo)$|tsconfig|pnpm-lock\.yaml|pnpm-workspace\.yaml)|root/\.local/share/pnpm/|app/node_modules/\.cache/)' "${RUNNER_TEMP}/${COMPONENT}-files.txt"; then
+          if grep -Eq '^(workspace/|app/(src/|[^/]+\.(ts|tsx|mts|cts)$|.*\.(d\.ts|map|tsbuildinfo)$|tsconfig|pnpm-lock\.yaml|pnpm-workspace\.yaml|node_modules/\.cache/)|root/\.local/share/pnpm/)' "${RUNNER_TEMP}/${COMPONENT}-files.txt"; then
             echo 'Final image contains source, build metadata, or package-manager cache:'
-            grep -E '^(workspace/|app/(src/|.*\.(ts|tsx|mts|cts|map|tsbuildinfo)$|tsconfig|pnpm-lock\.yaml|pnpm-workspace\.yaml)|root/\.local/share/pnpm/|app/node_modules/\.cache/)' "${RUNNER_TEMP}/${COMPONENT}-files.txt" | head -100
+            grep -E '^(workspace/|app/(src/|[^/]+\.(ts|tsx|mts|cts)$|.*\.(d\.ts|map|tsbuildinfo)$|tsconfig|pnpm-lock\.yaml|pnpm-workspace\.yaml|node_modules/\.cache/)|root/\.local/share/pnpm/)' "${RUNNER_TEMP}/${COMPONENT}-files.txt" | head -100
             exit 1
           fi
 

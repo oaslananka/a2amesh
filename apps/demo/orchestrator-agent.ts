@@ -7,7 +7,7 @@ import {
   type Part,
   type Task,
 } from '@a2amesh/runtime';
-import { BaseAdapter } from '@a2amesh/internal-adapters';
+import { BaseAdapter } from '@a2amesh/internal-adapter-base';
 
 interface OrchestratorAgentOptions {
   url: string;

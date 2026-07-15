@@ -10,10 +10,12 @@
     "smoke-test": "tsx run-demo.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.104.0",
-    "@a2amesh/runtime": "workspace:*",
-    "@a2amesh/internal-adapters": "workspace:*",
+    "@a2amesh/internal-adapter-anthropic": "workspace:*",
+    "@a2amesh/internal-adapter-base": "workspace:*",
+    "@a2amesh/internal-adapter-openai": "workspace:*",
     "@a2amesh/registry": "workspace:*",
+    "@a2amesh/runtime": "workspace:*",
+    "@anthropic-ai/sdk": "^0.104.0",
     "dotenv": "^17.4.2",
     "openai": "6.44.0",
     "zod": "^4.4.3"
