@@ -236,10 +236,12 @@ jobs:
           set -euo pipefail
           revision="$(git rev-parse HEAD)"
           created="$(git show -s --format=%cI HEAD)"
-          echo "revision=${revision}" >> "$GITHUB_OUTPUT"
-          echo "created=${created}" >> "$GITHUB_OUTPUT"
-          echo "runtime_ref=ghcr.io/oaslananka/a2amesh-runtime" >> "$GITHUB_OUTPUT"
-          echo "registry_ref=ghcr.io/oaslananka/a2amesh-registry" >> "$GITHUB_OUTPUT"
+          {
+            echo "revision=${revision}"
+            echo "created=${created}"
+            echo "runtime_ref=ghcr.io/oaslananka/a2amesh-runtime"
+            echo "registry_ref=ghcr.io/oaslananka/a2amesh-registry"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Initialize BuildKit builder and authenticate
         env:
