@@ -24,10 +24,10 @@
  * Exit code = number of failed surfaces (0 = all pass).
  */
 
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
@@ -35,10 +35,26 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
-const consumerInstallTimeoutMs = Number.parseInt(
-  process.env.A2AMESH_CONSUMER_INSTALL_TIMEOUT_MS || '240000',
-  10,
+function readPositiveInteger(name, fallback, maximum) {
+  const rawValue = process.env[name] || String(fallback);
+  if (!/^\d+$/.test(rawValue)) {
+    throw new Error(`${name} must be a positive integer.`);
+  }
+  const value = Number.parseInt(rawValue, 10);
+  if (!Number.isSafeInteger(value) || value <= 0 || value > maximum) {
+    throw new Error(`${name} must be between 1 and ${maximum}.`);
+  }
+  return value;
+}
+
+const consumerInstallTimeoutMs = readPositiveInteger(
+  'A2AMESH_CONSUMER_INSTALL_TIMEOUT_MS',
+  process.platform === 'win32' ? 480_000 : 300_000,
+  900_000,
 );
+const consumerInstallAttempts = readPositiveInteger('A2AMESH_CONSUMER_INSTALL_ATTEMPTS', 2, 3);
+const TRANSIENT_NPM_INSTALL_PATTERN =
+  /ETIMEDOUT|ECONNRESET|EAI_AGAIN|ENETUNREACH|ECONNREFUSED|ERR_SOCKET_TIMEOUT|fetch failed|network timeout|network request|503 Service Unavailable|504 Gateway Timeout/i;
 
 function run(cmd, args, opts = {}) {
   // On Windows, batch files (.cmd, .bat) and bare commands that resolve to
@@ -61,6 +77,68 @@ function runNode(args, opts = {}) {
 
 function runPnpm(args, opts = {}) {
   return run('pnpm', args, opts);
+}
+
+function formatInstallDiagnostics(result) {
+  const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim();
+  const boundedOutput = output.length > 4_000 ? output.slice(-4_000) : output;
+  const errorCode = result.error?.code ? ` code=${result.error.code}` : '';
+  const status = result.status === null ? '' : ` status=${result.status}`;
+  const signal = result.signal ? ` signal=${result.signal}` : '';
+  return `npm install failed${errorCode}${status}${signal}${boundedOutput ? `\n${boundedOutput}` : ``}`;
+}
+
+function isTransientInstallFailure(result) {
+  if (result.error?.code === 'ETIMEDOUT') return true;
+  return TRANSIENT_NPM_INSTALL_PATTERN.test(
+    [result.error?.message, result.stdout, result.stderr].filter(Boolean).join('\n'),
+  );
+}
+
+async function installConsumerDependencies(cwd) {
+  const npmArgs = [
+    'install',
+    '--ignore-scripts',
+    '--no-package-lock',
+    '--no-audit',
+    '--no-fund',
+    '--prefer-offline',
+  ];
+  const command = process.platform === 'win32' ? 'cmd' : 'npm';
+  const args = process.platform === 'win32' ? ['/d', '/c', 'npm', ...npmArgs] : npmArgs;
+  const env = {
+    ...process.env,
+    npm_config_audit: 'false',
+    npm_config_fetch_retries: '5',
+    npm_config_fetch_retry_maxtimeout: '60000',
+    npm_config_fetch_retry_mintimeout: '10000',
+    npm_config_fund: 'false',
+    npm_config_prefer_offline: 'true',
+  };
+
+  for (let attempt = 1; attempt <= consumerInstallAttempts; attempt += 1) {
+    const result = spawnSync(command, args, {
+      cwd,
+      encoding: 'utf-8',
+      env,
+      stdio: 'pipe',
+      timeout: consumerInstallTimeoutMs,
+    });
+    if (!result.error && result.status === 0) return;
+
+    const diagnostics = formatInstallDiagnostics(result);
+    const retryable = isTransientInstallFailure(result);
+    if (!retryable || attempt === consumerInstallAttempts) {
+      throw new Error(diagnostics, { cause: result.error });
+    }
+
+    console.warn(
+      `  npm install attempt ${attempt}/${consumerInstallAttempts} hit a transient network failure; retrying.`,
+    );
+    console.warn(diagnostics);
+    rmSync(join(cwd, 'node_modules'), { force: true, recursive: true });
+    await new Promise((resolve_) => setTimeout(resolve_, 5_000));
+  }
 }
 
 function getFreePort() {
@@ -151,10 +229,7 @@ console.log(`  installing in ${tempDir}`);
 // Use npm for consumer install — pnpm v11 aggressively resolves workspace
 // membership from file: deps on this machine (C:\Users\Admin\pnpm-workspace.yaml).
 // npm's file: handling is simpler and cross-platform consistent.
-run('npm', ['install', '--ignore-scripts', '--no-package-lock'], {
-  cwd: tempDir,
-  timeout: consumerInstallTimeoutMs,
-});
+await installConsumerDependencies(tempDir);
 console.log('  install complete');
 
 /* ───────── step 4: run smoke surfaces ───────── */
