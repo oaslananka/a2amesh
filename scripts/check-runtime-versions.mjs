@@ -79,12 +79,6 @@ function syncTextFile(path, expected) {
   writeOrExpect(path, readText(path), expected);
 }
 
-function syncPackageJson(path, update) {
-  const packageJson = readJson(path);
-  const updated = update(structuredClone(packageJson));
-  writeOrExpect(path, normalizeJson(packageJson), normalizeJson(updated));
-}
-
 function syncWorkflowEnv(path, manifest) {
   const original = readText(path);
   let updated = original.replace(/NODE_VERSION:\s*'[^']+'/g, `NODE_VERSION: '${manifest.node}'`);
