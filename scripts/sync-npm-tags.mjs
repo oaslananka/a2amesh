@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { expectedDistTag } from './release-state-core.mjs';
 
 const write = process.argv.includes('--write');
@@ -9,6 +10,10 @@ const manifest = JSON.parse(readFileSync('.release-please-manifest.json', 'utf8'
 const command = 'dist' + '-tag';
 const viewField = 'dist' + '-tags';
 const failures = [];
+const npmExecutable = join(
+  dirname(process.execPath),
+  process.platform === 'win32' ? 'npm.cmd' : 'npm',
+);
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
@@ -19,7 +24,9 @@ for (const packagePath of Object.keys(config.packages ?? {})) {
   const version = manifest[packagePath];
   const expectedTag = expectedDistTag(version);
   const tags = JSON.parse(
-    execFileSync('npm', ['view', packageJson.name, viewField, '--json'], { encoding: 'utf8' }),
+    execFileSync(npmExecutable, ['view', packageJson.name, viewField, '--json'], {
+      encoding: 'utf8',
+    }),
   );
 
   if (tags[expectedTag] === version) {
@@ -28,7 +35,7 @@ for (const packagePath of Object.keys(config.packages ?? {})) {
     console.log(
       `fix ${packageJson.name} ${expectedTag}: ${tags[expectedTag] ?? '<missing>'} -> ${version}`,
     );
-    execFileSync('npm', [command, 'add', `${packageJson.name}@${version}`, expectedTag], {
+    execFileSync(npmExecutable, [command, 'add', `${packageJson.name}@${version}`, expectedTag], {
       stdio: 'inherit',
     });
   } else {

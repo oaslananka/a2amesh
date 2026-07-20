@@ -6,146 +6,45 @@ export function expectedDistTag(version) {
 }
 
 export function evaluateReleaseState(observation) {
-  const blockers = [];
-  const warnings = [];
-  const errors = Array.isArray(observation.errors) ? observation.errors.filter(Boolean) : [];
-  const drift = Array.isArray(observation.drift) ? observation.drift.filter(Boolean) : [];
-  blockers.push(...drift);
-  const sourcePackages = Array.isArray(observation.sourcePackages)
-    ? observation.sourcePackages
-    : [];
-  const sourceVersions = [...new Set(sourcePackages.map((item) => item.version).filter(Boolean))];
-  const version = sourceVersions.length === 1 ? sourceVersions[0] : null;
-  const expectedTag = version ? `@a2amesh/runtime-v${version}` : null;
-  const distTag = version ? expectedDistTag(version) : null;
+  const context = normalizeObservation(observation);
+  if (context.errors.length > 0) return unavailableResult(context, context.errors);
 
-  if (errors.length > 0) {
-    return result({
-      state: 'unavailable',
-      version,
-      expectedTag,
-      expectedDistTag: distTag,
-      blockers: errors,
-      warnings,
-      packages: [],
-      publishAllowed: false,
-    });
-  }
-
-  if (sourcePackages.length === 0) {
-    blockers.push('No release-tracked source packages were observed.');
-  }
-  if (sourceVersions.length !== 1) {
-    blockers.push(
-      `Linked public package versions must agree; found: ${sourceVersions.join(', ') || '<none>'}.`,
-    );
-  }
-
-  const releasePrs = Array.isArray(observation.releasePrs) ? observation.releasePrs : [];
-  if (releasePrs.length > 1) {
-    blockers.push(`Multiple Release Please pull requests are open (${releasePrs.length}).`);
-  }
-  for (const pr of releasePrs) {
-    const versions = [...new Set((pr.versions ?? []).filter(Boolean))];
-    if (versions.length !== 1) {
-      blockers.push(
-        `Release Please PR #${pr.number} must propose one linked version; found: ${versions.join(', ') || '<none>'}.`,
-      );
-    } else if (version && versions[0] === version) {
-      blockers.push(
-        `Release Please PR #${pr.number} does not advance the prepared version ${version}.`,
-      );
-    } else {
-      warnings.push(`Release Please PR #${pr.number} proposes ${versions[0]} (${pr.url}).`);
-    }
-  }
-
-  const canonicalTag = observation.canonicalTag ?? { name: expectedTag, commit: null };
-  const tagMatches = Boolean(
-    version &&
-    expectedTag &&
-    canonicalTag.name === expectedTag &&
-    canonicalTag.commit === observation.checkedOutCommit,
-  );
-  const tagMissing = version && canonicalTag.commit == null;
-  const tagConflicts = Boolean(
-    version && canonicalTag.commit != null && canonicalTag.commit !== observation.checkedOutCommit,
-  );
-
-  if (tagConflicts) {
-    blockers.push(
-      `Canonical tag ${expectedTag} resolves to ${canonicalTag.commit}, not checked-out commit ${observation.checkedOutCommit}.`,
-    );
-  }
-
-  const npmByName = new Map(
-    (Array.isArray(observation.npmPackages) ? observation.npmPackages : []).map((item) => [
-      item.name,
-      item,
-    ]),
-  );
-  const missingObservations = sourcePackages.filter((item) => !npmByName.has(item.name));
-  if (missingObservations.length > 0) {
-    return result({
-      state: 'unavailable',
-      version,
-      expectedTag,
-      expectedDistTag: distTag,
-      blockers: [
+  const sourceValidation = validateSourcePackages(context);
+  const releasePrValidation = validateReleasePullRequests(context.releasePrs, context.version);
+  const tagValidation = validateCanonicalTag(context);
+  const blockers = [
+    ...context.drift,
+    ...sourceValidation.blockers,
+    ...releasePrValidation.blockers,
+    ...tagValidation.blockers,
+  ];
+  const warnings = releasePrValidation.warnings;
+  const npmIndex = new Map(context.npmPackages.map((item) => [item.name, item]));
+  const missingNpmObservations = context.sourcePackages.filter((item) => !npmIndex.has(item.name));
+  if (missingNpmObservations.length > 0) {
+    return unavailableResult(
+      context,
+      [
         ...blockers,
-        ...missingObservations.map((item) => `Missing npm observation for ${item.name}.`),
+        ...missingNpmObservations.map((item) => `Missing npm observation for ${item.name}.`),
       ],
       warnings,
-      packages: [],
-      publishAllowed: false,
-    });
-  }
-
-  const packages = sourcePackages.map((source) => {
-    const npmPackage = npmByName.get(source.name);
-    const versionExists = Boolean(npmPackage?.versionExists);
-    const actualExpectedTag = distTag ? (npmPackage?.distTags?.[distTag] ?? null) : null;
-    const expectedTagMatches = Boolean(version && actualExpectedTag === version);
-    const latest = npmPackage?.distTags?.latest ?? null;
-    return {
-      name: source.name,
-      path: source.path,
-      version: source.version,
-      versionExists,
-      expectedDistTag: distTag,
-      expectedDistTagVersion: actualExpectedTag,
-      expectedDistTagMatches: expectedTagMatches,
-      latest,
-      complete: versionExists && expectedTagMatches,
-    };
-  });
-
-  const prereleaseLatestViolations =
-    version && distTag !== 'latest' ? packages.filter((item) => item.latest === version) : [];
-  if (prereleaseLatestViolations.length > 0) {
-    blockers.push(
-      ...prereleaseLatestViolations.map(
-        (item) => `${item.name}: latest must not point to prerelease ${version}.`,
-      ),
     );
   }
 
-  const hasStructuralDrift =
-    drift.length > 0 ||
-    sourceVersions.length !== 1 ||
-    sourcePackages.length === 0 ||
-    releasePrs.length > 1 ||
-    releasePrs.some((pr) => new Set((pr.versions ?? []).filter(Boolean)).size !== 1) ||
-    releasePrs.some((pr) => version && new Set((pr.versions ?? []).filter(Boolean)).has(version)) ||
-    tagConflicts ||
-    prereleaseLatestViolations.length > 0;
+  const packages = buildPackageResults(context, npmIndex);
+  const latestViolations = findPrereleaseLatestViolations(context, packages);
+  blockers.push(...latestViolations.blockers);
 
+  const hasStructuralDrift =
+    context.drift.length > 0 ||
+    sourceValidation.invalid ||
+    releasePrValidation.invalid ||
+    tagValidation.conflicts ||
+    latestViolations.invalid;
   if (hasStructuralDrift) {
-    return result({
+    return releaseResult(context, {
       state: 'drifted',
-      version,
-      expectedTag,
-      expectedDistTag: distTag,
       blockers,
       warnings,
       packages,
@@ -153,17 +52,10 @@ export function evaluateReleaseState(observation) {
     });
   }
 
-  const exactVersionCount = packages.filter((item) => item.versionExists).length;
-  const completeCount = packages.filter((item) => item.complete).length;
-  const fullyPublished = tagMatches && completeCount === packages.length;
-
-  if (fullyPublished) {
-    const state = releasePrs.length === 1 ? 'release-pr-open' : 'published';
-    return result({
-      state,
-      version,
-      expectedTag,
-      expectedDistTag: distTag,
+  const publication = summarizePublication(packages, tagValidation.matches);
+  if (publication.fullyPublished) {
+    return releaseResult(context, {
+      state: context.releasePrs.length === 1 ? 'release-pr-open' : 'published',
       blockers: [],
       warnings,
       packages,
@@ -171,33 +63,14 @@ export function evaluateReleaseState(observation) {
     });
   }
 
-  if (tagMissing) {
-    blockers.push(
-      `Missing canonical tag ${expectedTag} for checked-out commit ${observation.checkedOutCommit}.`,
-    );
-  }
-  for (const item of packages) {
-    if (!item.versionExists) blockers.push(`${item.name}@${version} is missing from npm.`);
-    if (item.versionExists && !item.expectedDistTagMatches) {
-      blockers.push(
-        `${item.name}: ${distTag} points to ${item.expectedDistTagVersion ?? '<missing>'}, expected ${version}.`,
-      );
-    }
-  }
+  appendUnpublishedBlockers(context, tagValidation, packages, blockers);
+  const state = publication.hasEvidence ? 'partial-publication' : 'prepared-unpublished';
+  const publishAllowed =
+    tagValidation.matches &&
+    (state === 'prepared-unpublished' || isResumablePartial(packages, publication));
 
-  const anyPublicationEvidence = exactVersionCount > 0 || completeCount > 0;
-  const state = anyPublicationEvidence ? 'partial-publication' : 'prepared-unpublished';
-  const resumablePartial =
-    state === 'partial-publication' &&
-    exactVersionCount < packages.length &&
-    packages.every((item) => !item.versionExists || item.expectedDistTagMatches);
-  const publishAllowed = tagMatches && (state === 'prepared-unpublished' || resumablePartial);
-
-  return result({
+  return releaseResult(context, {
     state,
-    version,
-    expectedTag,
-    expectedDistTag: distTag,
     blockers,
     warnings,
     packages,
@@ -205,42 +78,225 @@ export function evaluateReleaseState(observation) {
   });
 }
 
-function result({
-  state,
-  version,
-  expectedTag,
-  expectedDistTag,
-  blockers,
-  warnings,
-  packages,
-  publishAllowed,
-}) {
+function normalizeObservation(observation) {
+  const sourcePackages = Array.isArray(observation.sourcePackages)
+    ? observation.sourcePackages
+    : [];
+  const sourceVersions = uniqueValues(sourcePackages.map((item) => item.version));
+  const version = sourceVersions.length === 1 ? sourceVersions[0] : null;
+  return {
+    checkedOutCommit: observation.checkedOutCommit ?? null,
+    sourcePackages,
+    sourceVersions,
+    version,
+    expectedTag: version ? `@a2amesh/runtime-v${version}` : null,
+    expectedDistTag: version ? expectedDistTag(version) : null,
+    releasePrs: Array.isArray(observation.releasePrs) ? observation.releasePrs : [],
+    npmPackages: Array.isArray(observation.npmPackages) ? observation.npmPackages : [],
+    canonicalTag: observation.canonicalTag ?? { name: null, commit: null },
+    errors: Array.isArray(observation.errors) ? observation.errors.filter(Boolean) : [],
+    drift: Array.isArray(observation.drift) ? observation.drift.filter(Boolean) : [],
+  };
+}
+
+function validateSourcePackages(context) {
+  const blockers = [];
+  if (context.sourcePackages.length === 0) {
+    blockers.push('No release-tracked source packages were observed.');
+  }
+  if (context.sourceVersions.length !== 1) {
+    blockers.push(
+      `Linked public package versions must agree; found: ${context.sourceVersions.join(', ') || '<none>'}.`,
+    );
+  }
+  return {
+    blockers,
+    invalid: context.sourcePackages.length === 0 || context.sourceVersions.length !== 1,
+  };
+}
+
+function validateReleasePullRequests(releasePrs, version) {
+  const blockers = [];
+  const warnings = [];
+  let invalid = releasePrs.length > 1;
+  if (releasePrs.length > 1) {
+    blockers.push(`Multiple Release Please pull requests are open (${releasePrs.length}).`);
+  }
+  for (const pr of releasePrs) {
+    const versions = uniqueValues(pr.versions ?? []);
+    const validation = validateReleasePullRequest(pr, versions, version);
+    blockers.push(...validation.blockers);
+    warnings.push(...validation.warnings);
+    invalid ||= validation.invalid;
+  }
+  return { blockers, warnings, invalid };
+}
+
+function validateReleasePullRequest(pr, versions, version) {
+  if (versions.length !== 1) {
+    return {
+      blockers: [
+        `Release Please PR #${pr.number} must propose one linked version; found: ${versions.join(', ') || '<none>'}.`,
+      ],
+      warnings: [],
+      invalid: true,
+    };
+  }
+  if (version && versions[0] === version) {
+    return {
+      blockers: [
+        `Release Please PR #${pr.number} does not advance the prepared version ${version}.`,
+      ],
+      warnings: [],
+      invalid: true,
+    };
+  }
+  return {
+    blockers: [],
+    warnings: [`Release Please PR #${pr.number} proposes ${versions[0]} (${pr.url}).`],
+    invalid: false,
+  };
+}
+
+function validateCanonicalTag(context) {
+  const commit = context.canonicalTag.commit;
+  const matches = Boolean(
+    context.version &&
+    context.expectedTag &&
+    context.canonicalTag.name === context.expectedTag &&
+    commit === context.checkedOutCommit,
+  );
+  const missing = Boolean(context.version && commit == null);
+  const conflicts = Boolean(
+    context.version && commit != null && commit !== context.checkedOutCommit,
+  );
+  const blockers = conflicts
+    ? [
+        `Canonical tag ${context.expectedTag} resolves to ${commit}, not checked-out commit ${context.checkedOutCommit}.`,
+      ]
+    : [];
+  return { matches, missing, conflicts, blockers };
+}
+
+function buildPackageResults(context, npmIndex) {
+  return context.sourcePackages.map((source) => {
+    const npmPackage = npmIndex.get(source.name);
+    const versionExists = Boolean(npmPackage?.versionExists);
+    const actualExpectedTag = context.expectedDistTag
+      ? (npmPackage?.distTags?.[context.expectedDistTag] ?? null)
+      : null;
+    const expectedTagMatches = Boolean(context.version && actualExpectedTag === context.version);
+    return {
+      name: source.name,
+      path: source.path,
+      version: source.version,
+      versionExists,
+      expectedDistTag: context.expectedDistTag,
+      expectedDistTagVersion: actualExpectedTag,
+      expectedDistTagMatches: expectedTagMatches,
+      latest: npmPackage?.distTags?.latest ?? null,
+      complete: versionExists && expectedTagMatches,
+    };
+  });
+}
+
+function findPrereleaseLatestViolations(context, packages) {
+  if (!context.version || context.expectedDistTag === 'latest') {
+    return { blockers: [], invalid: false };
+  }
+  const violations = packages.filter((item) => item.latest === context.version);
+  return {
+    blockers: violations.map(
+      (item) => `${item.name}: latest must not point to prerelease ${context.version}.`,
+    ),
+    invalid: violations.length > 0,
+  };
+}
+
+function summarizePublication(packages, tagMatches) {
+  const exactVersionCount = packages.filter((item) => item.versionExists).length;
+  const completeCount = packages.filter((item) => item.complete).length;
+  return {
+    exactVersionCount,
+    completeCount,
+    fullyPublished: tagMatches && completeCount === packages.length,
+    hasEvidence: exactVersionCount > 0 || completeCount > 0,
+  };
+}
+
+function appendUnpublishedBlockers(context, tagValidation, packages, blockers) {
+  if (tagValidation.missing) {
+    blockers.push(
+      `Missing canonical tag ${context.expectedTag} for checked-out commit ${context.checkedOutCommit}.`,
+    );
+  }
+  for (const item of packages) {
+    appendPackageBlockers(context, item, blockers);
+  }
+}
+
+function appendPackageBlockers(context, item, blockers) {
+  if (!item.versionExists) {
+    blockers.push(`${item.name}@${context.version} is missing from npm.`);
+    return;
+  }
+  if (!item.expectedDistTagMatches) {
+    blockers.push(
+      `${item.name}: ${context.expectedDistTag} points to ${item.expectedDistTagVersion ?? '<missing>'}, expected ${context.version}.`,
+    );
+  }
+}
+
+function isResumablePartial(packages, publication) {
+  return (
+    publication.exactVersionCount < packages.length &&
+    packages.every((item) => !item.versionExists || item.expectedDistTagMatches)
+  );
+}
+
+function unavailableResult(context, blockers, warnings = []) {
+  return releaseResult(context, {
+    state: 'unavailable',
+    blockers,
+    warnings,
+    packages: [],
+    publishAllowed: false,
+  });
+}
+
+function releaseResult(context, { state, blockers, warnings, packages, publishAllowed }) {
   const gates = {
     releasePlease: PUBLISHED_STATES.has(state),
     publish: Boolean(publishAllowed),
   };
   return {
     state,
-    version,
-    expectedTag,
-    expectedDistTag,
+    version: context.version,
+    expectedTag: context.expectedTag,
+    expectedDistTag: context.expectedDistTag,
     blockers,
     warnings,
     gates,
     packages,
-    nextSafeAction: nextSafeAction(state, gates, expectedTag),
+    nextSafeAction: nextSafeAction(state, gates, context.expectedTag),
   };
 }
 
 function nextSafeAction(state, gates, expectedTag) {
   if (gates.publish) return `Dispatch the protected Publish workflow for ${expectedTag}.`;
-  if (gates.releasePlease)
+  if (gates.releasePlease) {
     return 'Release Please may create or update the next linked-version pull request.';
+  }
   if (state === 'prepared-unpublished' && expectedTag) {
     return `Create ${expectedTag} on the verified release commit before publishing.`;
   }
-  if (state === 'partial-publication')
+  if (state === 'partial-publication') {
     return 'Reconcile the partial npm publication before continuing.';
+  }
   if (state === 'unavailable') return 'Restore reliable GitHub and npm observations, then retry.';
   return 'Resolve release-state blockers before continuing.';
+}
+
+function uniqueValues(values) {
+  return [...new Set(values.filter(Boolean))];
 }

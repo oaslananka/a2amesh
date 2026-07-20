@@ -3,7 +3,8 @@
   "ignore": [
     "tests/performance/k6/*.js",
     "scripts/check-renovate-config.d.mts",
-    "scripts/dispatch-renovate-checks.d.mts"
+    "scripts/dispatch-renovate-checks.d.mts",
+    "scripts/release-state-core.d.mts"
   ],
   "ignoreDependencies": [
     "search-insights",
