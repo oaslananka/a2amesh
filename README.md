@@ -171,10 +171,8 @@ The implementation targets Agent2Agent protocol `v1.0.0`. See [Compatibility](do
 - [Install](docs/install.md)
 - [Compatibility](docs/compatibility.md)
 - [Release process](docs/release/process.md)
-  <<<<<<< HEAD
-- # [Dependency update policy](docs/contributing/dependency-updates.md)
+- [Dependency update policy](docs/contributing/dependency-updates.md)
 - [Release integrity state machine](docs/release/release-integrity.md)
-  > > > > > > > 39a50dc (docs(release): document integrity recovery workflow)
 
 Docs site: [https://oaslananka.github.io/a2amesh/](https://oaslananka.github.io/a2amesh/)
 
