@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignore": ["tests/performance/k6/*.js"],
+  "ignore": ["tests/performance/k6/*.js", "scripts/check-renovate-config.d.mts"],
   "ignoreDependencies": [
     "search-insights",
     "jscpd",

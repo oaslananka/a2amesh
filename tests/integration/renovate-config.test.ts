@@ -109,9 +109,11 @@ describe('Renovate policy validation', () => {
   });
 
   it('rejects missing lockfile maintenance and tool-version extraction', () => {
-    const config = validConfig();
-    delete config.lockFileMaintenance;
-    config.customManagers = [];
+    const config = {
+      ...validConfig(),
+      lockFileMaintenance: undefined,
+      customManagers: [],
+    };
 
     expect(
       validateRenovatePolicy({
@@ -155,7 +157,9 @@ describe('Renovate policy validation', () => {
       readFile(new URL('../../.github/labels.yml', import.meta.url), 'utf8'),
     ]);
     const repositoryLabels = new Set(
-      [...labelsText.matchAll(/^- name: ['"]([^'"]+)['"]$/gm)].map((match) => match[1]),
+      [...labelsText.matchAll(/^- name: ['"]([^'"]+)['"]$/gm)]
+        .map((match) => match[1])
+        .filter((label): label is string => typeof label === 'string'),
     );
 
     expect(
