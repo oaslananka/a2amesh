@@ -27,7 +27,7 @@
 
 ## Architecture
 
-A scheduled/manual `.github/workflows/renovate.yml` invokes `renovatebot/github-action` at a full commit SHA with `github.token`. A global self-hosted config disables onboarding, targets only `oaslananka/a2amesh`, and uses an isolated `self-hosted-renovate/` branch prefix. Repository policy remains in `renovate.json`.
+A scheduled/manual `.github/workflows/renovate.yml` invokes `renovatebot/github-action` at a full commit SHA with `github.token`. A global repository-managed config disables onboarding, targets only `oaslananka/a2amesh`, and uses an isolated `repository-managed-renovate/` branch prefix. Repository policy remains in `renovate.json`.
 
 A local Node validator checks the project-specific contract: valid labels, internal package exclusion, no automerge, pinned managers, bounded concurrency, release-age policy, and workflow permissions. CI also invokes Renovate's official strict validator using an exact Renovate package version.
 
@@ -48,4 +48,4 @@ The repository `GITHUB_TOKEN` has write permissions and can create issues and pu
 
 ## Testing
 
-Tests verify the workflow's permissions, action SHA, repository allowlist, self-hosted settings, labels, internal package exclusion, update policy, and validator script integration. The official `renovate-config-validator --strict` command provides schema and semantic validation.
+Tests verify the workflow's permissions, action SHA, repository allowlist, repository-managed settings, labels, internal package exclusion, update policy, and validator script integration. The official `renovate-config-validator --strict` command provides schema and semantic validation.

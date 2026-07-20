@@ -4,6 +4,6 @@
   "repositories": ["oaslananka/a2amesh"],
   "onboarding": false,
   "requireConfig": "required",
-  "branchPrefix": "self-hosted-renovate/",
+  "branchPrefix": "repository-managed-renovate/",
   "persistRepoData": true
 }

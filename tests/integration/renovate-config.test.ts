@@ -63,7 +63,7 @@ function validGlobalConfig() {
     repositories: ['oaslananka/a2amesh'],
     onboarding: false,
     requireConfig: 'required',
-    branchPrefix: 'self-hosted-renovate/',
+    branchPrefix: 'repository-managed-renovate/',
   };
 }
 
@@ -141,7 +141,7 @@ describe('Renovate policy validation', () => {
       }),
     ).toEqual(
       expect.arrayContaining([
-        'Self-hosted Renovate must target only oaslananka/a2amesh',
+        'Repository-managed Renovate must target only oaslananka/a2amesh',
         'Renovate GitHub Action must be pinned to a full commit SHA',
       ]),
     );

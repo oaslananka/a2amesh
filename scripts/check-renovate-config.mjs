@@ -67,16 +67,16 @@ export function validateRenovatePolicy({ config, globalConfig, workflow, reposit
   }
 
   if (globalConfig.platform !== 'github') {
-    failures.push('Self-hosted Renovate platform must be github');
+    failures.push('Repository-managed Renovate platform must be github');
   }
   if (JSON.stringify(globalConfig.repositories) !== JSON.stringify([CANONICAL_REPOSITORY])) {
-    failures.push(`Self-hosted Renovate must target only ${CANONICAL_REPOSITORY}`);
+    failures.push(`Repository-managed Renovate must target only ${CANONICAL_REPOSITORY}`);
   }
   if (globalConfig.onboarding !== false || globalConfig.requireConfig !== 'required') {
-    failures.push('Self-hosted Renovate must require repository config without onboarding');
+    failures.push('Repository-managed Renovate must require repository config without onboarding');
   }
-  if (globalConfig.branchPrefix !== 'self-hosted-renovate/') {
-    failures.push('Self-hosted Renovate branchPrefix must be self-hosted-renovate/');
+  if (globalConfig.branchPrefix !== 'repository-managed-renovate/') {
+    failures.push('Repository-managed Renovate branchPrefix must be repository-managed-renovate/');
   }
 
   if (!workflow.includes(`renovatebot/github-action@${RENOVATE_ACTION_SHA}`)) {
