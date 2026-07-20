@@ -135,14 +135,14 @@ function isSecurityWorkflowPattern(pattern) {
 
 function validatePnpmPolicy(config, failures) {
   const managers = Array.isArray(config.customManagers) ? config.customManagers : [];
-  const pnpmManager = managers.find(
+  const hasPnpmManager = managers.some(
     (manager) =>
       manager.customType === 'regex' &&
       manager.depNameTemplate === 'pnpm' &&
       manager.datasourceTemplate === 'npm' &&
       manager.managerFilePatterns?.some((pattern) => pattern.includes('runtime-versions')) === true,
   );
-  if (!pnpmManager) failures.push('Renovate must extract the pnpm runtime source of truth');
+  if (!hasPnpmManager) failures.push('Renovate must extract the pnpm runtime source of truth');
 
   const packageRules = Array.isArray(config.packageRules) ? config.packageRules : [];
   const pnpmRule = packageRules.find(
@@ -157,13 +157,13 @@ function validatePnpmPolicy(config, failures) {
     failures.push('Renovate pnpm updates must run the runtime-version synchronizer');
   }
 
-  const internalImageRule = packageRules.find(
+  const hasInternalImageRule = packageRules.some(
     (rule) =>
       rule.enabled === false &&
       rule.matchDatasources?.includes('docker') &&
       rule.matchPackageNames?.some((name) => name.includes('ghcr') && name.includes('a2amesh-')),
   );
-  if (!internalImageRule) {
+  if (!hasInternalImageRule) {
     failures.push('Repository-owned unpublished images must remain disabled in Renovate');
   }
 }
@@ -189,7 +189,7 @@ function validateGlobalConfig(globalConfig, failures) {
   }
   if (
     JSON.stringify(globalConfig.allowedCommands) !==
-    JSON.stringify(['^node scripts/check-runtime-versions\\.mjs --write$'])
+    JSON.stringify([String.raw`^node scripts/check-runtime-versions\.mjs --write$`])
   ) {
     failures.push(
       'Repository-managed Renovate must allow only the runtime-version synchronizer command',

@@ -100,13 +100,22 @@ function syncWorkflowEnv(path, manifest) {
   writeOrExpect(path, original, updated);
 }
 
+function replaceGeneratedDigest(content, digest) {
+  const lines = content.split('\n');
+  const propertyIndex = lines.findIndex((line) => line.trim() === 'nodeDockerAlpineDigest:');
+  if (propertyIndex < 0 || propertyIndex + 1 >= lines.length) return content;
+  const valueLine = lines[propertyIndex + 1];
+  const indentation = /^\s*/.exec(valueLine)?.[0] ?? '';
+  lines[propertyIndex + 1] = `${indentation}'${digest}',`;
+  return lines.join('\n');
+}
+
 function syncGeneratedScaffoldRuntime(manifest) {
   const path = 'packages/cli/src/generated/scaffold-template.ts';
   if (!existsSync(path)) return;
   const original = readText(path);
-  const updated = original
+  const updated = replaceGeneratedDigest(original, manifest.nodeDockerAlpineDigest)
     .replace(/(\bnode:\s*')[^']+(')/, `$1${manifest.node}$2`)
-    .replace(/(nodeDockerAlpineDigest:\s*\n\s*')[^']+(')/, `$1${manifest.nodeDockerAlpineDigest}$2`)
     .replace(/(\bpnpm:\s*')[^']+(')/, `$1${manifest.pnpm}$2`);
   writeOrExpect(path, original, updated);
   for (const snippet of [
