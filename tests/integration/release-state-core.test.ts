@@ -185,6 +185,16 @@ describe('release-state core', () => {
     expect(result.blockers).toContainEqual(expect.stringContaining('linked version'));
   });
 
+  it('classifies deterministic source drift separately from observation failures', () => {
+    const result = evaluateReleaseState({
+      ...observation(),
+      drift: ['packages/runtime: package version does not match release manifest'],
+    });
+
+    expect(result.state).toBe('drifted');
+    expect(result.blockers).toContainEqual(expect.stringContaining('package version'));
+  });
+
   it('classifies observation failures as unavailable', () => {
     const result = evaluateReleaseState(observation({ errors: ['npm registry timed out'] }));
 

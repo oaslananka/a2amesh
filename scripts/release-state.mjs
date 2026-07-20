@@ -15,6 +15,7 @@ if (options.mode === 'publish' && !evaluation.gates.publish) process.exitCode = 
 
 function collectObservation(options) {
   const errors = [];
+  const drift = [];
   const repository = process.env.GITHUB_REPOSITORY ?? getRemoteRepository(errors);
   const config = readJsonFile('release-please-config.json', errors);
   const manifest = readJsonFile('.release-please-manifest.json', errors);
@@ -28,7 +29,7 @@ function collectObservation(options) {
       version: manifest?.[path] ?? packageJson?.version ?? null,
     });
     if (packageJson?.version && manifest?.[path] && packageJson.version !== manifest[path]) {
-      errors.push(
+      drift.push(
         `${path}: package version ${packageJson.version} does not match release manifest ${manifest[path]}.`,
       );
     }
@@ -38,7 +39,7 @@ function collectObservation(options) {
   const version = versions.length === 1 ? versions[0] : null;
   const expectedTag = version ? `@a2amesh/runtime-v${version}` : null;
   if (options.tag && expectedTag && options.tag !== expectedTag) {
-    errors.push(`Requested tag ${options.tag} does not match prepared source tag ${expectedTag}.`);
+    drift.push(`Requested tag ${options.tag} does not match prepared source tag ${expectedTag}.`);
   }
 
   const checkedOutCommit = runText('git', ['rev-parse', 'HEAD'], errors, 'git HEAD') ?? null;
@@ -62,6 +63,7 @@ function collectObservation(options) {
     releasePrs,
     npmPackages,
     errors,
+    drift,
   };
 }
 

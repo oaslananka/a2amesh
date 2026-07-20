@@ -9,6 +9,8 @@ export function evaluateReleaseState(observation) {
   const blockers = [];
   const warnings = [];
   const errors = Array.isArray(observation.errors) ? observation.errors.filter(Boolean) : [];
+  const drift = Array.isArray(observation.drift) ? observation.drift.filter(Boolean) : [];
+  blockers.push(...drift);
   const sourcePackages = Array.isArray(observation.sourcePackages)
     ? observation.sourcePackages
     : [];
@@ -129,6 +131,7 @@ export function evaluateReleaseState(observation) {
   }
 
   const hasStructuralDrift =
+    drift.length > 0 ||
     sourceVersions.length !== 1 ||
     sourcePackages.length === 0 ||
     releasePrs.length > 1 ||
