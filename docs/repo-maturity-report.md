@@ -32,13 +32,13 @@ A2A Mesh is a public TypeScript/pnpm monorepo with CLI, runtime, registry, proto
 
 ## 4. Repository inventory
 
-| Area               | Current state                                                  | Target state                              | Status  | Risk   | Recommended action                |
-| ------------------ | -------------------------------------------------------------- | ----------------------------------------- | ------- | ------ | --------------------------------- |
-| Visibility         | Public repo `oaslananka/a2amesh`.                              | Public OSS.                               | Passed  | Low    | Keep policy docs visible.         |
-| Default branch     | `main`.                                                        | Protected default branch.                 | Passed  | Low    | Keep checks aligned.              |
-| License            | Apache-2.0/REUSE files exist; GitHub metadata reports `Other`. | Apache-2.0 detected.                      | Partial | Medium | Continue license issue follow-up. |
-| Maintained         | Recent commits and PRs.                                        | Active maintained release cadence.        | Partial | Low    | Keep releases/changelog current.  |
-| Archive/deprecated | Not archived.                                                  | No deprecation signal unless intentional. | Passed  | Low    | Keep README status clear.         |
+| Area               | Current state                                                       | Target state                              | Status  | Risk   | Recommended action                     |
+| ------------------ | ------------------------------------------------------------------- | ----------------------------------------- | ------- | ------ | -------------------------------------- |
+| Visibility         | Public repo `oaslananka/a2amesh`.                                   | Public OSS.                               | Passed  | Low    | Keep policy docs visible.              |
+| Default branch     | `main`.                                                             | Protected default branch.                 | Passed  | Low    | Keep checks aligned.                   |
+| License            | Canonical Apache-2.0/REUSE corpus restored; GitHub refresh pending. | Apache-2.0 detected.                      | Partial | Medium | Verify default-branch license refresh. |
+| Maintained         | Recent commits and PRs.                                             | Active maintained release cadence.        | Partial | Low    | Keep releases/changelog current.       |
+| Archive/deprecated | Not archived.                                                       | No deprecation signal unless intentional. | Passed  | Low    | Keep README status clear.              |
 
 ## 5. Language and package ecosystem inventory
 
@@ -64,15 +64,15 @@ A2A Mesh is a public TypeScript/pnpm monorepo with CLI, runtime, registry, proto
 
 ## 7. GitHub Community Standards status
 
-| Area               | Current state                  | Target state                                | Status  | Risk   | Recommended action                       |
-| ------------------ | ------------------------------ | ------------------------------------------- | ------- | ------ | ---------------------------------------- |
-| README             | Exists and badge area cleaned. | Clear scope, install, trust, support links. | Passed  | Low    | Avoid badge sprawl.                      |
-| LICENSE            | Exists.                        | GitHub-detected Apache-2.0.                 | Partial | Medium | Continue license metadata investigation. |
-| CONTRIBUTING       | Exists.                        | Predictable contributor path.               | Passed  | Low    | Keep linked from README.                 |
-| CODE_OF_CONDUCT    | Exists.                        | Visible community policy.                   | Passed  | Low    | Maintain.                                |
-| SECURITY           | Exists.                        | Private reporting confirmed.                | Partial | Medium | Verify GitHub setting.                   |
-| SUPPORT            | Exists.                        | Clear support boundaries.                   | Passed  | Low    | Keep donation secondary.                 |
-| Issue/PR templates | Exist.                         | Structured triage and review.               | Passed  | Low    | Keep aligned with process.               |
+| Area               | Current state                  | Target state                                | Status  | Risk   | Recommended action                      |
+| ------------------ | ------------------------------ | ------------------------------------------- | ------- | ------ | --------------------------------------- |
+| README             | Exists and badge area cleaned. | Clear scope, install, trust, support links. | Passed  | Low    | Avoid badge sprawl.                     |
+| LICENSE            | Canonical corpus restored.     | GitHub-detected Apache-2.0.                 | Partial | Low    | Verify default-branch metadata refresh. |
+| CONTRIBUTING       | Exists.                        | Predictable contributor path.               | Passed  | Low    | Keep linked from README.                |
+| CODE_OF_CONDUCT    | Exists.                        | Visible community policy.                   | Passed  | Low    | Maintain.                               |
+| SECURITY           | Exists.                        | Private reporting confirmed.                | Partial | Medium | Verify GitHub setting.                  |
+| SUPPORT            | Exists.                        | Clear support boundaries.                   | Passed  | Low    | Keep donation secondary.                |
+| Issue/PR templates | Exist.                         | Structured triage and review.               | Passed  | Low    | Keep aligned with process.              |
 
 ## 8. OpenSSF Best Practices status
 
@@ -92,7 +92,7 @@ A2A Mesh is a public TypeScript/pnpm monorepo with CLI, runtime, registry, proto
 | Code review       | Solo maintainer; mandatory review intentionally off. | Enable after independent reviewer exists.   | Partial | Medium | Track governance issue.              |
 | Maintained        | Active recent work.                                  | Sustained releases.                         | Partial | Low    | Keep changelog and releases current. |
 | Security policy   | Exists.                                              | Private reporting confirmed.                | Partial | Medium | Confirm in UI.                       |
-| License           | Files good; GitHub reports `Other`.                  | Apache-2.0 detected.                        | Partial | Medium | Investigate.                         |
+| License           | Canonical files restored; GitHub refresh pending.    | Apache-2.0 detected.                        | Partial | Medium | Verify API refresh.                  |
 | CI tests          | Broad required jobs.                                 | Passing and required.                       | Passed  | Low    | Keep required.                       |
 | Dependency update | Renovate exists; Dependabot security enabled.        | No conflicting version bots.                | Partial | Medium | Audit Renovate/Dependabot behavior.  |
 | SAST/secrets/deps | CodeQL, gitleaks, OSV, dependency review.            | Required security gates.                    | Passed  | Low    | Keep required.                       |

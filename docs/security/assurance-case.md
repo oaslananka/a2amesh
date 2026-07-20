@@ -23,5 +23,5 @@ A2A Mesh aims to provide a professional OSS baseline for A2A runtime, registry, 
 
 - Solo-maintainer bus factor.
 - No independent human review requirement yet.
-- GitHub license detection still reports `Other`.
+- GitHub license metadata refresh is pending after restoring the canonical Apache-2.0 corpus.
 - Release provenance and SBOM publication need ongoing verification.
