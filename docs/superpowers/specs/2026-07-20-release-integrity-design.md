@@ -1,7 +1,7 @@
 # Release Integrity State Machine Design
 
-**Issue:** #144  
-**Date:** 2026-07-20  
+**Issue:** #144
+**Date:** 2026-07-20
 **Status:** Approved for implementation
 
 ## Problem
