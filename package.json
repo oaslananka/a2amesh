@@ -78,7 +78,7 @@
     "release:artifacts": "node scripts/prepare-release-artifacts.mjs",
     "release:validate": "node scripts/validate-release-config.mjs",
     "release:parity": "node scripts/check-package-registry-parity.mjs",
-    "release:state": "node scripts/release-state.mjs",
+    "release:state": "node scripts/release-state.mjs --mode report",
     "release:ready": "pnpm --filter @a2amesh/cli run build && node packages/cli/bin/a2amesh.js release-check",
     "check:name-collisions": "node scripts/check-name-collisions.mjs",
     "check:bundle-sizes": "node scripts/check-bundle-sizes.mjs",
@@ -101,7 +101,9 @@
     "containers:check": "node scripts/check-container-config.mjs",
     "helm:check": "node scripts/check-helm-chart.mjs",
     "renovate:validate": "node scripts/check-renovate-config.mjs",
-    "renovate:dispatch:plan": "node scripts/dispatch-renovate-checks.mjs --dry-run"
+    "renovate:dispatch:plan": "node scripts/dispatch-renovate-checks.mjs --dry-run",
+    "release:state:release-please": "node scripts/release-state.mjs --mode release-please --json",
+    "release:state:publish": "node scripts/release-state.mjs --mode publish --json"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
