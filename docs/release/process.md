@@ -54,9 +54,11 @@ pnpm run release:artifacts
 pnpm run release:validate
 ```
 
-`release:state` reports open Release Please pull requests, draft releases,
-manifest coverage, and whether the current repository is the canonical release
-repository. `release:preflight` validates package names, tag format, runtime and
+`release:state` classifies the linked source, canonical Git tag, npm package
+versions, npm dist-tags, and open Release Please pull request as one release
+state. See [Release Integrity State Machine](./release-integrity.md) for state
+meanings and recovery procedures. `release:preflight` validates package names,
+tag format, runtime and
 package-manager metadata, package `publishConfig`, release-please linked-version
 coverage, and publish workflow OIDC/provenance guardrails.
 
@@ -114,8 +116,9 @@ updated to accept that component tag.
 
 1. Confirms the input must exactly equal `PUBLISH <tag>`.
 2. Validates the tag format and extracts the version.
-3. Runs `node scripts/release-state.mjs --check` to block stale release state,
-   open Release Please pull requests, draft releases, or non-canonical repos.
+3. Stages the current release-state guard modules, checks out the requested
+   canonical tag, and runs publish mode against that tagged source. A newer
+   Release Please pull request is informational rather than a publish blocker.
 4. Runs `node scripts/check-publish-preflight.mjs` to verify package metadata,
    release-please config, runtime requirements, and Trusted Publishing
    workflow requirements.
@@ -139,4 +142,4 @@ instead of republishing existing tarballs.
 
 ## Local release state checks
 
-`pnpm run release:state` calls the GitHub CLI to inspect open Release Please pull requests and release state. When running it outside GitHub Actions, authenticate first with `gh auth login` or configure an equivalent GitHub CLI token in the shell environment. Without that authentication, the command fails before it can read repository release state.
+`corepack pnpm run release:state` calls GitHub CLI and npm to inspect the full release state. When running it outside GitHub Actions, authenticate first with `gh auth login` or configure an equivalent GitHub CLI token in the shell environment. Observation failures are reported as `unavailable` and never treated as release success.

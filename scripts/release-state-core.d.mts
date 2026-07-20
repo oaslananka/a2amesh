@@ -1,0 +1,72 @@
+export type ReleaseState =
+  | 'published'
+  | 'release-pr-open'
+  | 'prepared-unpublished'
+  | 'partial-publication'
+  | 'drifted'
+  | 'unavailable';
+
+export interface SourcePackageObservation {
+  name: string;
+  path: string;
+  version: string | null;
+}
+
+export interface CanonicalTagObservation {
+  name: string | null;
+  commit: string | null;
+}
+
+export interface ReleasePullRequestObservation {
+  number: number;
+  title?: string;
+  url: string;
+  versions: Array<string | null | undefined>;
+}
+
+export interface NpmPackageObservation {
+  name: string;
+  versionExists: boolean;
+  distTags: Record<string, string | undefined>;
+}
+
+export interface ReleaseObservation {
+  repository: string;
+  checkedOutCommit: string | null;
+  sourcePackages: SourcePackageObservation[];
+  canonicalTag: CanonicalTagObservation;
+  releasePrs: ReleasePullRequestObservation[];
+  npmPackages: NpmPackageObservation[];
+  errors?: string[];
+  drift?: string[];
+}
+
+export interface EvaluatedPackage {
+  name: string;
+  path: string;
+  version: string | null;
+  versionExists: boolean;
+  expectedDistTag: string | null;
+  expectedDistTagVersion: string | null;
+  expectedDistTagMatches: boolean;
+  latest: string | null;
+  complete: boolean;
+}
+
+export interface ReleaseEvaluation {
+  state: ReleaseState;
+  version: string | null;
+  expectedTag: string | null;
+  expectedDistTag: string | null;
+  blockers: string[];
+  warnings: string[];
+  gates: {
+    releasePlease: boolean;
+    publish: boolean;
+  };
+  packages: EvaluatedPackage[];
+  nextSafeAction: string;
+}
+
+export function expectedDistTag(version: string): string;
+export function evaluateReleaseState(observation: ReleaseObservation): ReleaseEvaluation;

@@ -27,7 +27,7 @@ env:
 jobs:
   publish:
     name: Publish / npm
-    if: github.repository == 'oaslananka/a2amesh'
+    if: github.repository == 'oaslananka/a2amesh' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: npm-publish
@@ -76,10 +76,24 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Stage release-state guard scripts
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/release-state-guard"
+          cp scripts/release-state.mjs scripts/release-state-core.mjs "${RUNNER_TEMP}/release-state-guard/"
+
+      - name: Checkout release tag
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
       - name: Release state guardrail
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/release-state.mjs --check
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode publish --json --tag "${TAG}"
 
       - name: Publish preflight
         env:

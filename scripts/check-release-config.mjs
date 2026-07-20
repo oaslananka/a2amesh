@@ -123,5 +123,49 @@ if (!publishWorkflow.includes('node scripts/check-publish-preflight.mjs')) {
 if (!releasePleaseWorkflow.includes('skip-github-release: true')) {
   failures.push('Release Please must not create GitHub Releases');
 }
+const releasePleaseGate = 'node scripts/release-state.mjs --mode release-please --json';
+const releasePleaseAction = 'googleapis/release-please-action';
+if (!releasePleaseWorkflow.includes(releasePleaseGate)) {
+  failures.push('Release Please workflow must run the release-state release-please gate');
+} else if (
+  releasePleaseWorkflow.indexOf(releasePleaseGate) >
+  releasePleaseWorkflow.indexOf(releasePleaseAction)
+) {
+  failures.push('Release Please release-state gate must run before release-please-action');
+}
+const publishMainRefGuard =
+  "if: github.repository == 'oaslananka/a2amesh' && github.ref == 'refs/heads/main'";
+if (!publishWorkflow.includes(publishMainRefGuard)) {
+  failures.push('Publish workflow must run only from the canonical main branch ref');
+}
+if (!publishWorkflow.includes('Stage release-state guard scripts')) {
+  failures.push(
+    'Publish workflow must stage current release-state guard scripts before tag checkout',
+  );
+}
+if (
+  !publishWorkflow.includes(
+    'cp scripts/release-state.mjs scripts/release-state-core.mjs "${RUNNER_TEMP}/release-state-guard/"',
+  )
+) {
+  failures.push(
+    'Publish workflow must preserve both release-state guard modules before tag checkout',
+  );
+}
+if (!publishWorkflow.includes('ref: ${{ steps.tag.outputs.tag }}')) {
+  failures.push('Publish workflow must check out the requested canonical tag');
+}
+if (
+  !publishWorkflow.includes(
+    'node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode publish --json --tag "${TAG}"',
+  )
+) {
+  failures.push(
+    'Publish workflow must run the staged release-state publish gate with the requested tag',
+  );
+}
+if (publishWorkflow.includes('node scripts/release-state.mjs --check')) {
+  failures.push('Publish workflow must not use the ambiguous legacy release-state --check mode');
+}
 
 if (failures.length > 0) fail('Release config validation failed.', failures);
