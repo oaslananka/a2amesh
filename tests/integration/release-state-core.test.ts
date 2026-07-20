@@ -31,11 +31,15 @@ function observation(overrides: ObservationOverrides = {}) {
   return {
     repository: 'oaslananka/a2amesh',
     checkedOutCommit,
-    sourcePackages: packageNames.map((name, index) => ({
-      name,
-      path: `packages/${name.split('/')[1]}`,
-      version: sourceVersions[index],
-    })),
+    sourcePackages: packageNames.map((name, index) => {
+      const version = sourceVersions[index];
+      if (!version) throw new Error(`Missing fixture version for ${name}`);
+      return {
+        name,
+        path: `packages/${name.slice('@a2amesh/'.length)}`,
+        version,
+      };
+    }),
     canonicalTag: {
       name: '@a2amesh/runtime-v0.11.0-alpha.1',
       commit: overrides.tagCommit === undefined ? checkedOutCommit : overrides.tagCommit,

@@ -63,6 +63,14 @@ describe.skipIf(process.platform === 'win32')('release-state CLI', () => {
   });
 });
 
+function packageSlug(name: string) {
+  const prefix = '@a2amesh/';
+  if (!name.startsWith(prefix) || name.length === prefix.length) {
+    throw new Error(`Invalid A2A Mesh package name: ${name}`);
+  }
+  return name.slice(prefix.length);
+}
+
 async function runFixture(options: FixtureOptions) {
   const root = await mkdtemp(join(tmpdir(), 'a2amesh-release-state-'));
   tempRoots.push(root);
@@ -70,18 +78,18 @@ async function runFixture(options: FixtureOptions) {
   await mkdir(bin, { recursive: true });
 
   const manifest = Object.fromEntries(
-    packageNames.map((name) => [`packages/${name.split('/')[1]}`, '0.11.0-alpha.1']),
+    packageNames.map((name) => [`packages/${packageSlug(name)}`, '0.11.0-alpha.1']),
   );
   const packages = Object.fromEntries(
     packageNames.map((name) => [
-      `packages/${name.split('/')[1]}`,
+      `packages/${packageSlug(name)}`,
       { 'package-name': name, component: name },
     ]),
   );
   await writeFile(join(root, '.release-please-manifest.json'), JSON.stringify(manifest));
   await writeFile(join(root, 'release-please-config.json'), JSON.stringify({ packages }));
   for (const name of packageNames) {
-    const dir = join(root, 'packages', name.split('/')[1]);
+    const dir = join(root, 'packages', packageSlug(name));
     await mkdir(dir, { recursive: true });
     await writeFile(
       join(dir, 'package.json'),
@@ -128,7 +136,7 @@ async function runFixture(options: FixtureOptions) {
         ...process.env,
         FIXTURE_CONFIG: fixturePath,
         GITHUB_REPOSITORY: 'oaslananka/a2amesh',
-        PATH: `${bin}${delimiter}${process.env.PATH ?? ''}`,
+        PATH: `${bin}${delimiter}${process.env['PATH'] ?? ''}`,
       },
     });
     return { exitCode: 0, json: parseJson(result.stdout) };
