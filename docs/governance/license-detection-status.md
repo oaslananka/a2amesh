@@ -1,35 +1,43 @@
 # GitHub License Detection Investigation (#71)
 
-**Symptom:** the GitHub repository API (`GET /repos/oaslananka/a2amesh`) reports
-`license.key = "other"`, `license.spdx_id = "NOASSERTION"` instead of `apache-2.0`, even though the
-repository has a `LICENSE` file and every `package.json` declares `"license": "Apache-2.0"`.
+## Symptom
 
-## Root cause found
+Before this correction, the GitHub repository and license APIs reported `Other` / `NOASSERTION`
+even though the repository used Apache-2.0 package metadata and passed REUSE validation.
 
-An earlier pass on this file concluded `LICENSE` was byte-identical to the canonical SPDX
-Apache-2.0 text because `diff LICENSE LICENSES/Apache-2.0.txt` showed no difference — but both
-copies were compared only against each other, not against the real canonical text. Both files were
-in fact **truncated at 171 lines**, ending right after `END OF TERMS AND CONDITIONS` and missing the
-final `APPENDIX: How to apply the Apache License to your work.` section (with the
-`Copyright [yyyy] [name of copyright owner]` boilerplate) that is part of the actual Apache-2.0
-license text in `spdx/license-list-data`.
+## Root cause
 
-GitHub's `licensee` gem (and REUSE's own license corpus) score a `LICENSE` file by similarity against
-the full canonical text, appendix included. A file missing roughly the last 15% of that text falls
-below the confidence threshold `licensee` needs to report a known SPDX identifier, so it fell back to
-`"other"` / `NOASSERTION` even though everything present in the file was word-for-word correct
-Apache-2.0 text.
+`LICENSE` and `LICENSES/Apache-2.0.txt` were byte-identical to each other, but neither was the
+canonical Apache-2.0 text. The reconstructed copies omitted several phrases and punctuation from
+Sections 1, 3, 7, and 8 while retaining the appendix. Comparing only the two repository copies hid
+that drift.
 
-## Fix
+The canonical body published by the Apache Software Foundation and the body used by GitHub's
+Choose a License repository are byte-identical. Their SHA-256 digest is:
 
-Restored the missing `APPENDIX` section (standard, unmodified Apache-2.0 boilerplate) to both
-`LICENSE` and `LICENSES/Apache-2.0.txt`, so both files now match the full canonical Apache-2.0 text
-used by GitHub's detector and by REUSE.
+```text
+cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30
+```
 
-## Manual follow-up
+The previous repository copies had digest:
 
-GitHub's `licensee` re-runs on pushes to the default branch that touch `LICENSE`. Once this change
-reaches `main`, confirm the repository sidebar / `GET /repos/oaslananka/a2amesh` reports
-`license.spdx_id = "Apache-2.0"`. If it still reports `NOASSERTION` after that push, allow for normal
-detection lag before treating this as a GitHub-side issue — the file itself is now the complete,
-correct canonical text.
+```text
+8d77d3ae499241b80741a70fde2eb67a4579501e05dd0f497debe7dd6944ce55
+```
+
+## Correction and regression protection
+
+Both repository copies now contain the unmodified canonical Apache-2.0 body. The integration test
+`tests/integration/license-corpus.test.ts` requires both files to match the canonical digest and
+requires every Release Please-managed public package to declare `Apache-2.0`.
+
+REUSE remains the source for per-file license compliance. The exact-digest test serves a different
+purpose: it prevents two mutually matching but noncanonical license copies from passing unnoticed.
+
+## Default-branch verification
+
+GitHub recalculates detected repository license metadata from the default branch. After this change
+reaches `main`, verify both the repository sidebar and `GET /repos/oaslananka/a2amesh/license` report
+`Apache-2.0`. If the canonical digest is present on `main` while GitHub still reports
+`NOASSERTION`, record the timestamp and treat the remaining discrepancy as platform-side detection
+or cache lag rather than modifying the legal text again.
