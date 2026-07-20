@@ -58,11 +58,18 @@ const hypePhrases = [
   'Co-authored-by: Codex',
 ];
 const exactAllowed = 'It is not an official Google, Linux Foundation, or a2aproject package.';
+const exactAllowedByFile = new Map([
+  ['package.json', ['"helm:check": "node scripts/check-helm-chart.mjs"']],
+]);
 const ignored = [
   /^AGENTS\.md$/,
   /^scripts\/check-.*\.mjs$/,
   /^pnpm-lock\.yaml$/,
   /^docs\/audits\//,
+  /^deploy\/helm\//,
+  /^docs\/operations\/deployment\.md$/,
+  /^docs-site\/operations\/deployment\.md$/,
+  /^\.github\/workflows\/helm\.yml$/,
   /(^|\/)LICENSE$/,
   /(^|\/)LICENSES\//,
 ];
@@ -71,6 +78,9 @@ for (const file of listFiles()) {
   if (!isTextFile(file)) continue;
   if (ignored.some((rule) => rule.test(file))) continue;
   let text = readText(file).split(exactAllowed).join('');
+  for (const allowed of exactAllowedByFile.get(file) ?? []) {
+    text = text.split(allowed).join('');
+  }
   const lower = text.toLowerCase();
   for (const term of platformTerms) {
     if (lower.includes(term.toLowerCase())) {

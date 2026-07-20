@@ -19,3 +19,6 @@ docs/audits/
 
 # IDE / tool config
 .serena/
+
+# Go-templated chart manifests are validated after rendering.
+deploy/**/templates/

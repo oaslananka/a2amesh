@@ -1,15 +1,16 @@
-import type { IAgentStorage, AgentStatus, RegisteredAgent } from './IAgentStorage.js';
+import { AgentStorageBase } from './AgentStorageBase.js';
+import type { AgentStatus, RegisteredAgent } from './IAgentStorage.js';
 import {
   buildAgentIndexTerms,
   type AgentListQuery,
   type AgentListResult,
-  type AgentStorageSummary,
   termMatchesQuery,
   matchesVisibility,
-  applyUpdateStatus,
+  paginateAgents,
+  sortAgentsByRegistration,
 } from './indexing.js';
 
-export class InMemoryStorage implements IAgentStorage {
+export class InMemoryStorage extends AgentStorageBase {
   private readonly agents = new Map<string, RegisteredAgent>();
   private readonly statusIndex = new Map<AgentStatus, Set<string>>([
     ['healthy', new Set()],
@@ -40,46 +41,16 @@ export class InMemoryStorage implements IAgentStorage {
   }
 
   async getAll(): Promise<RegisteredAgent[]> {
-    return this.sortAgents(Array.from(this.agents.values()));
+    return sortAgentsByRegistration(Array.from(this.agents.values()));
   }
 
   async list(query: AgentListQuery = {}): Promise<AgentListResult> {
     const candidateIds = this.findCandidateIds(query);
-    let agents = Array.from(candidateIds)
-      .map((id) => this.agents.get(id))
-      .filter((agent): agent is RegisteredAgent => agent !== undefined);
-
-    agents = agents.filter((agent) => this.matchesAgent(agent, query));
-    const sortedAgents = this.sortAgents(agents);
-    const offset = parseCursor(query.cursor);
-    const limit = query.limit ?? 50;
-    const items = sortedAgents.slice(offset, offset + limit);
-
-    return {
-      items,
-      total: sortedAgents.length,
-      nextCursor:
-        offset + items.length < sortedAgents.length ? String(offset + items.length) : null,
-    };
-  }
-
-  async summarize(
-    query: Pick<AgentListQuery, 'tenantId' | 'includePublic' | 'isPublic'> = {},
-  ): Promise<AgentStorageSummary> {
-    const filteredIds = this.findCandidateIds(query);
-    const agents = Array.from(filteredIds)
+    const agents = Array.from(candidateIds)
       .map((id) => this.agents.get(id))
       .filter((agent): agent is RegisteredAgent => agent !== undefined)
-      .filter((agent) => matchesVisibility(agent, query));
-
-    return {
-      agentCount: agents.length,
-      healthyAgents: agents.filter((agent) => agent.status === 'healthy').length,
-      unhealthyAgents: agents.filter((agent) => agent.status === 'unhealthy').length,
-      unknownAgents: agents.filter((agent) => agent.status === 'unknown').length,
-      activeTenants: new Set(agents.map((agent) => agent.tenantId).filter(Boolean)).size,
-      publicAgents: agents.filter((agent) => agent.isPublic).length,
-    };
+      .filter((agent) => this.matchesAgent(agent, query));
+    return paginateAgents(agents, query);
   }
 
   async delete(id: string): Promise<boolean> {
@@ -90,23 +61,6 @@ export class InMemoryStorage implements IAgentStorage {
 
     this.removeFromIndexes(current);
     return this.agents.delete(id);
-  }
-
-  async updateStatus(
-    id: string,
-    status: AgentStatus,
-    meta?: { consecutiveFailures?: number; lastSuccessAt?: string },
-  ): Promise<void> {
-    const current = this.agents.get(id);
-    if (!current) {
-      return;
-    }
-
-    await this.upsert(applyUpdateStatus(current, status, meta));
-  }
-
-  async findBySkill(skill: string): Promise<RegisteredAgent[]> {
-    return (await this.list({ skill, limit: Number.MAX_SAFE_INTEGER })).items;
   }
 
   private addToIndexes(agent: RegisteredAgent): void {
@@ -216,19 +170,6 @@ export class InMemoryStorage implements IAgentStorage {
       index.delete(key);
     }
   }
-
-  private sortAgents(agents: RegisteredAgent[]): RegisteredAgent[] {
-    return agents.sort((left, right) => {
-      const leftTime = Date.parse(left.registeredAt);
-      const rightTime = Date.parse(right.registeredAt);
-      return rightTime - leftTime;
-    });
-  }
-}
-
-function parseCursor(cursor: string | undefined): number {
-  const parsed = Number(cursor ?? '0');
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
 function intersectSets(sets: Set<string>[]): Set<string> {

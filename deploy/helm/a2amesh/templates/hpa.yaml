@@ -1,0 +1,57 @@
+{{- if and .Values.registry.enabled .Values.registry.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "a2amesh.registryName" . }}
+  labels:
+    {{- include "a2amesh.componentLabels" (dict "root" . "component" "registry") | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "a2amesh.registryName" . }}
+  minReplicas: {{ .Values.registry.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.registry.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.registry.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.registry.autoscaling.targetMemoryUtilizationPercentage }}
+---
+{{- end }}
+{{- if and .Values.runtime.enabled .Values.runtime.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "a2amesh.runtimeName" . }}
+  labels:
+    {{- include "a2amesh.componentLabels" (dict "root" . "component" "runtime") | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "a2amesh.runtimeName" . }}
+  minReplicas: {{ .Values.runtime.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.runtime.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.runtime.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.runtime.autoscaling.targetMemoryUtilizationPercentage }}
+{{- end }}

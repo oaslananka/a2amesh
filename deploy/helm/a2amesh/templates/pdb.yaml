@@ -1,0 +1,35 @@
+{{- if and .Values.registry.enabled .Values.registry.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "a2amesh.registryName" . }}
+  labels:
+    {{- include "a2amesh.componentLabels" (dict "root" . "component" "registry") | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "a2amesh.selectorLabels" (dict "root" . "component" "registry") | nindent 6 }}
+  {{- if ne .Values.registry.pdb.maxUnavailable nil }}
+  maxUnavailable: {{ .Values.registry.pdb.maxUnavailable }}
+  {{- else }}
+  minAvailable: {{ .Values.registry.pdb.minAvailable }}
+  {{- end }}
+---
+{{- end }}
+{{- if and .Values.runtime.enabled .Values.runtime.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "a2amesh.runtimeName" . }}
+  labels:
+    {{- include "a2amesh.componentLabels" (dict "root" . "component" "runtime") | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "a2amesh.selectorLabels" (dict "root" . "component" "runtime") | nindent 6 }}
+  {{- if ne .Values.runtime.pdb.maxUnavailable nil }}
+  maxUnavailable: {{ .Values.runtime.pdb.maxUnavailable }}
+  {{- else }}
+  minAvailable: {{ .Values.runtime.pdb.minAvailable }}
+  {{- end }}
+{{- end }}

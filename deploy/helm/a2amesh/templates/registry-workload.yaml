@@ -1,0 +1,183 @@
+{{- if .Values.registry.enabled }}
+{{- $needsData := or (eq .Values.registry.storage.backend "sqlite") .Values.registry.storage.trustLog.enabled }}
+apiVersion: apps/v1
+kind: {{ ternary "StatefulSet" "Deployment" .Values.registry.persistence.enabled }}
+metadata:
+  name: {{ include "a2amesh.registryName" . }}
+  labels:
+    {{- include "a2amesh.componentLabels" (dict "root" . "component" "registry") | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.registry.persistence.enabled }}
+  serviceName: {{ include "a2amesh.registryHeadlessName" . }}
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+  {{- else }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  {{- end }}
+  {{- if not .Values.registry.autoscaling.enabled }}
+  replicas: {{ .Values.registry.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.registry.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "a2amesh.selectorLabels" (dict "root" . "component" "registry") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "a2amesh.selectorLabels" (dict "root" . "component" "registry") | nindent 8 }}
+        {{- with .Values.registry.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/registry-configmap.yaml") . | sha256sum }}
+        checksum/auth: {{ include "a2amesh.checksum" .Values.registry.auth | quote }}
+        {{- with .Values.registry.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "a2amesh.registryServiceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      securityContext:
+        {{- toYaml .Values.registry.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.registry.terminationGracePeriodSeconds }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.registry.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.registry.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.registry.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.registry.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.registry.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: registry
+          image: {{ include "a2amesh.image" (list .Values.registry.image) | quote }}
+          imagePullPolicy: {{ .Values.registry.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.registry.containerSecurityContext | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "a2amesh.registryName" . }}
+            {{- with .Values.registry.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: REGISTRY_POLLING_LEASE_OWNER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- if and (not .Values.registry.auth.oidc.enabled) (or .Values.registry.auth.createSecret .Values.registry.auth.existingSecret) }}
+            - name: REGISTRY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "a2amesh.registrySecretName" . }}
+                  key: {{ .Values.registry.auth.secretKey }}
+            {{- end }}
+            {{- with .Values.registry.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.registry.service.port }}
+              protocol: TCP
+          {{- if .Values.registry.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: {{ .Values.registry.startupProbe.failureThreshold }}
+            periodSeconds: {{ .Values.registry.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.registry.startupProbe.timeoutSeconds }}
+          {{- end }}
+          {{- if .Values.registry.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: {{ .Values.registry.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.registry.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.registry.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.registry.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: {{ .Values.registry.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.registry.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.registry.livenessProbe.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.registry.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if $needsData }}
+            - name: data
+              mountPath: /var/lib/a2amesh
+            {{- end }}
+            {{- with .Values.registry.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+        {{- if and $needsData (not .Values.registry.persistence.enabled) }}
+        - name: data
+          emptyDir: {}
+        {{- end }}
+        {{- with .Values.registry.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+  {{- if .Values.registry.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- with .Values.registry.persistence.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.registry.persistence.accessModes | nindent 10 }}
+        {{- with .Values.registry.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        {{- with .Values.registry.persistence.selector }}
+        selector:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.registry.persistence.size }}
+  {{- end }}
+{{- end }}

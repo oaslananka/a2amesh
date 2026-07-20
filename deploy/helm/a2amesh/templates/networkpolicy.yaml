@@ -1,0 +1,137 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- if .Values.registry.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "a2amesh.registryName" . }}
+  labels:
+    {{- include "a2amesh.componentLabels" (dict "root" . "component" "registry") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "a2amesh.selectorLabels" (dict "root" . "component" "registry") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ include "a2amesh.name" . }}
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.registry.service.port }}
+    {{- with .Values.networkPolicy.registry.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- if .Values.runtime.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "a2amesh.selectorLabels" (dict "root" . "component" "runtime") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.runtime.service.ports.researcher }}
+        - protocol: TCP
+          port: {{ .Values.runtime.service.ports.writer }}
+        - protocol: TCP
+          port: {{ .Values.runtime.service.ports.orchestrator }}
+    {{- end }}
+    {{- if .Values.networkPolicy.registry.allowInternetEgress }}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 0.0.0.0/8
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 127.0.0.0/8
+              - 169.254.0.0/16
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+    {{- end }}
+    {{- with .Values.networkPolicy.registry.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+---
+{{- end }}
+{{- if .Values.runtime.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "a2amesh.runtimeName" . }}
+  labels:
+    {{- include "a2amesh.componentLabels" (dict "root" . "component" "runtime") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "a2amesh.selectorLabels" (dict "root" . "component" "runtime") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ include "a2amesh.name" . }}
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.runtime.service.ports.researcher }}
+        - protocol: TCP
+          port: {{ .Values.runtime.service.ports.writer }}
+        - protocol: TCP
+          port: {{ .Values.runtime.service.ports.orchestrator }}
+    {{- with .Values.networkPolicy.runtime.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- if .Values.registry.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "a2amesh.selectorLabels" (dict "root" . "component" "registry") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.registry.service.port }}
+    {{- end }}
+    {{- if .Values.networkPolicy.runtime.allowInternetEgress }}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 0.0.0.0/8
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 127.0.0.0/8
+              - 169.254.0.0/16
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+    {{- end }}
+    {{- with .Values.networkPolicy.runtime.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+{{- end }}

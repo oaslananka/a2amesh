@@ -2,6 +2,7 @@ export * from './RegistryServer.js';
 export * from './SkillMatcher.js';
 export * from './storage/IAgentStorage.js';
 export * from './storage/InMemoryStorage.js';
+export * from './storage/SqliteAgentStorage.js';
 export * from './storage/RedisStorage.js';
 export * from './storage/ITrustLogStorage.js';
 export * from './storage/InMemoryTrustLogStorage.js';

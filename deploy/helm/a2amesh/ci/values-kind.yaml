@@ -1,0 +1,43 @@
+deploymentEnvironment: ci
+
+registry:
+  image:
+    repository: local/a2amesh-registry
+    tag: ci
+    pullPolicy: Never
+  auth:
+    createSecret: true
+    token: ci-registry-token
+  outboundPolicy:
+    allowPrivateNetworks: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+runtime:
+  enabled: true
+  image:
+    repository: local/a2amesh-runtime
+    tag: ci
+    pullPolicy: Never
+  providerSecrets:
+    createSecret: true
+    openAIKey: container-smoke-placeholder
+  outboundPolicy:
+    allowPrivateNetworks: true
+  startupProbe:
+    failureThreshold: 90
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: '1'
+      memory: 1Gi
+
+networkPolicy:
+  enabled: false

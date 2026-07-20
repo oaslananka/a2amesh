@@ -1,0 +1,34 @@
+deploymentEnvironment: development
+
+registry:
+  auth:
+    createSecret: true
+    token: dev-only-registry-token-change-me
+  outboundPolicy:
+    allowLocalhost: false
+    allowPrivateNetworks: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+runtime:
+  enabled: true
+  providerSecrets:
+    createSecret: true
+    openAIKey: container-smoke-placeholder
+  outboundPolicy:
+    allowPrivateNetworks: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+networkPolicy:
+  enabled: false

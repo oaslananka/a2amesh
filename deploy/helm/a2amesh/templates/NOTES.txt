@@ -1,0 +1,30 @@
+{{/*
+SPDX-FileCopyrightText: 2026 oaslananka
+SPDX-License-Identifier: Apache-2.0
+*/}}
+A2A Mesh has been installed as release {{ .Release.Name }}.
+
+{{- if .Values.registry.enabled }}
+Registry service:
+  {{ include "a2amesh.registryName" . }}:{{ .Values.registry.service.port }}
+
+{{- if and (not .Values.registry.auth.oidc.enabled) .Values.registry.auth.createSecret }}
+Read the chart-managed registry token:
+  kubectl get secret {{ include "a2amesh.registrySecretName" . }} \
+    --namespace {{ .Release.Namespace }} \
+    --output jsonpath='{.data.{{ .Values.registry.auth.secretKey }}}' | base64 --decode
+{{- end }}
+{{- end }}
+
+{{- if .Values.runtime.enabled }}
+Runtime orchestrator service:
+  {{ include "a2amesh.runtimeName" . }}:{{ .Values.runtime.service.ports.orchestrator }}
+{{- else }}
+The runtime demo is disabled. Enable it only after configuring provider credentials.
+{{- end }}
+
+Run the chart smoke test:
+  helm test {{ .Release.Name }} --namespace {{ .Release.Namespace }} --logs
+
+Render the effective manifests before applying production changes:
+  helm template {{ .Release.Name }} {{ .Chart.Name }} --namespace {{ .Release.Namespace }} --values <profile>

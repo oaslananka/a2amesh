@@ -1,0 +1,160 @@
+{{- if .Values.runtime.enabled }}
+{{- $useChartAuthSecret := and .Values.runtime.registry.useChartAuthSecret .Values.registry.enabled .Values.registry.auth.require (not .Values.registry.auth.oidc.enabled) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "a2amesh.runtimeName" . }}
+  labels:
+    {{- include "a2amesh.componentLabels" (dict "root" . "component" "runtime") | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.runtime.autoscaling.enabled }}
+  replicas: {{ .Values.runtime.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.runtime.revisionHistoryLimit }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "a2amesh.selectorLabels" (dict "root" . "component" "runtime") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "a2amesh.selectorLabels" (dict "root" . "component" "runtime") | nindent 8 }}
+        {{- with .Values.runtime.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/runtime-configmap.yaml") . | sha256sum }}
+        checksum/provider-secret: {{ include "a2amesh.checksum" .Values.runtime.providerSecrets | quote }}
+        checksum/registry-auth: {{ include "a2amesh.checksum" (dict "runtimeRegistry" .Values.runtime.registry "registryAuth" .Values.registry.auth) | quote }}
+        {{- with .Values.runtime.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "a2amesh.runtimeServiceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      securityContext:
+        {{- toYaml .Values.runtime.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.runtime.terminationGracePeriodSeconds }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.runtime.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.runtime.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.runtime.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.runtime.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.runtime.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: runtime
+          image: {{ include "a2amesh.image" (list .Values.runtime.image) | quote }}
+          imagePullPolicy: {{ .Values.runtime.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.runtime.containerSecurityContext | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "a2amesh.runtimeName" . }}
+            {{- with .Values.runtime.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "a2amesh.runtimeSecretName" . }}
+                  key: {{ .Values.runtime.providerSecrets.openAIKeyKey }}
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "a2amesh.runtimeSecretName" . }}
+                  key: {{ .Values.runtime.providerSecrets.anthropicKeyKey }}
+                  optional: true
+            {{- if or $useChartAuthSecret .Values.runtime.registry.existingAuthSecret }}
+            - name: REGISTRY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  {{- if $useChartAuthSecret }}
+                  name: {{ include "a2amesh.registrySecretName" . }}
+                  {{- else }}
+                  name: {{ .Values.runtime.registry.existingAuthSecret }}
+                  {{- end }}
+                  key: {{ .Values.runtime.registry.authSecretKey }}
+            {{- end }}
+            {{- with .Values.runtime.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: researcher
+              containerPort: {{ .Values.runtime.service.ports.researcher }}
+              protocol: TCP
+            - name: writer
+              containerPort: {{ .Values.runtime.service.ports.writer }}
+              protocol: TCP
+            - name: orchestrator
+              containerPort: {{ .Values.runtime.service.ports.orchestrator }}
+              protocol: TCP
+          {{- if .Values.runtime.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port: orchestrator
+            failureThreshold: {{ .Values.runtime.startupProbe.failureThreshold }}
+            periodSeconds: {{ .Values.runtime.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.runtime.startupProbe.timeoutSeconds }}
+          {{- end }}
+          {{- if .Values.runtime.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: orchestrator
+            periodSeconds: {{ .Values.runtime.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.runtime.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.runtime.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.runtime.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: orchestrator
+            periodSeconds: {{ .Values.runtime.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.runtime.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.runtime.livenessProbe.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.runtime.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.runtime.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+        {{- with .Values.runtime.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+{{- end }}

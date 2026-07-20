@@ -1,0 +1,80 @@
+{{- if .Values.registry.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "a2amesh.registryName" . }}
+  labels:
+    {{- include "a2amesh.componentLabels" (dict "root" . "component" "registry") | nindent 4 }}
+  {{- with (mergeOverwrite (dict) .Values.commonAnnotations .Values.registry.service.annotations) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.registry.service.type }}
+  {{- with .Values.registry.service.clusterIP }}
+  clusterIP: {{ . | quote }}
+  {{- end }}
+  selector:
+    {{- include "a2amesh.selectorLabels" (dict "root" . "component" "registry") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.registry.service.port }}
+      targetPort: http
+      protocol: TCP
+---
+{{- if .Values.registry.persistence.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "a2amesh.registryHeadlessName" . }}
+  labels:
+    {{- include "a2amesh.componentLabels" (dict "root" . "component" "registry") | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "a2amesh.selectorLabels" (dict "root" . "component" "registry") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.registry.service.port }}
+      targetPort: http
+      protocol: TCP
+---
+{{- end }}
+{{- end }}
+{{- if .Values.runtime.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "a2amesh.runtimeName" . }}
+  labels:
+    {{- include "a2amesh.componentLabels" (dict "root" . "component" "runtime") | nindent 4 }}
+  {{- with (mergeOverwrite (dict) .Values.commonAnnotations .Values.runtime.service.annotations) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.runtime.service.type }}
+  {{- with .Values.runtime.service.clusterIP }}
+  clusterIP: {{ . | quote }}
+  {{- end }}
+  selector:
+    {{- include "a2amesh.selectorLabels" (dict "root" . "component" "runtime") | nindent 4 }}
+  ports:
+    - name: researcher
+      port: {{ .Values.runtime.service.ports.researcher }}
+      targetPort: researcher
+      protocol: TCP
+    - name: writer
+      port: {{ .Values.runtime.service.ports.writer }}
+      targetPort: writer
+      protocol: TCP
+    - name: orchestrator
+      port: {{ .Values.runtime.service.ports.orchestrator }}
+      targetPort: orchestrator
+      protocol: TCP
+{{- end }}

@@ -1,0 +1,35 @@
+deploymentEnvironment: single-node
+
+registry:
+  replicaCount: 1
+  auth:
+    createSecret: true
+  outboundPolicy:
+    allowPrivateNetworks: true
+  storage:
+    backend: sqlite
+    trustLog:
+      enabled: true
+    distributedPollingLeases: true
+  persistence:
+    enabled: true
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+runtime:
+  enabled: true
+  replicaCount: 1
+  providerSecrets:
+    createSecret: false
+    existingSecret: a2amesh-provider-credentials
+  outboundPolicy:
+    allowPrivateNetworks: true
+
+networkPolicy:
+  enabled: true

@@ -1,0 +1,35 @@
+{{- if .Values.runtime.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "a2amesh.runtimeName" . }}
+  labels:
+    {{- include "a2amesh.componentLabels" (dict "root" . "component" "runtime") | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  NODE_ENV: production
+  RUN_EMBEDDED_REGISTRY: 'false'
+  REGISTRY_URL: {{ include "a2amesh.registryUrl" . | quote }}
+  REGISTRY_TENANT_ID: {{ .Values.runtime.registry.tenantId | quote }}
+  REGISTRY_PRINCIPAL_ID: {{ .Values.runtime.registry.principalId | quote }}
+  REGISTRY_ALLOWED_HOSTNAMES: {{ include "a2amesh.runtimeAllowedHostnames" . | quote }}
+  ALLOW_PRIVATE_NETWORKS: {{ .Values.runtime.outboundPolicy.allowPrivateNetworks | quote }}
+  PORT_RESEARCHER: {{ .Values.runtime.service.ports.researcher | quote }}
+  PORT_WRITER: {{ .Values.runtime.service.ports.writer | quote }}
+  PORT_ORCHESTRATOR: {{ .Values.runtime.service.ports.orchestrator | quote }}
+  RESEARCHER_URL: {{ printf "http://%s:%v" (include "a2amesh.runtimeHost" .) .Values.runtime.service.ports.researcher | quote }}
+  WRITER_URL: {{ printf "http://%s:%v" (include "a2amesh.runtimeHost" .) .Values.runtime.service.ports.writer | quote }}
+  ORCHESTRATOR_URL: {{ printf "http://%s:%v" (include "a2amesh.runtimeHost" .) .Values.runtime.service.ports.orchestrator | quote }}
+  RESEARCHER_INTERNAL_URL: {{ printf "http://127.0.0.1:%v" .Values.runtime.service.ports.researcher | quote }}
+  WRITER_INTERNAL_URL: {{ printf "http://127.0.0.1:%v" .Values.runtime.service.ports.writer | quote }}
+  A2A_SERVICE_VERSION: {{ .Chart.AppVersion | quote }}
+  A2A_TELEMETRY_ENABLED: {{ .Values.telemetry.enabled | quote }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.telemetry.endpoint | quote }}
+  OTEL_SERVICE_NAME: a2amesh-runtime
+  OTEL_TRACES_SAMPLER_ARG: {{ .Values.telemetry.traceSampleRatio | quote }}
+  A2A_OTEL_METRIC_EXPORT_INTERVAL_MS: {{ .Values.telemetry.metricExportIntervalMs | quote }}
+  DEPLOYMENT_ENVIRONMENT: {{ .Values.deploymentEnvironment | quote }}
+{{- end }}

@@ -98,7 +98,8 @@
     "security:gitleaks": "node scripts/run-gitleaks.mjs",
     "release:tags:check": "node scripts/sync-npm-tags.mjs --check",
     "release:tags:sync": "node scripts/sync-npm-tags.mjs --write",
-    "containers:check": "node scripts/check-container-config.mjs"
+    "containers:check": "node scripts/check-container-config.mjs",
+    "helm:check": "node scripts/check-helm-chart.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

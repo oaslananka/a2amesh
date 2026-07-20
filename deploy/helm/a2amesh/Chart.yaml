@@ -1,6 +1,15 @@
 apiVersion: v2
 name: a2amesh
-description: A2A Mesh runtime and registry deployment chart
+description: A2A Mesh runtime demo and registry service deployment chart
 type: application
-version: 0.1.0
-appVersion: 11.0.0
+version: 0.11.0-alpha.1
+appVersion: 0.11.0-alpha.1
+kubeVersion: '>=1.28.0-0'
+home: https://oaslananka.github.io/a2amesh/
+sources:
+  - https://github.com/oaslananka/a2amesh
+maintainers:
+  - name: oaslananka
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/containsSecurityUpdates: 'false'

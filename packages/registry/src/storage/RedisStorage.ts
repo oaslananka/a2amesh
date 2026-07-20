@@ -1,12 +1,12 @@
-import type { IAgentStorage, AgentStatus, RegisteredAgent } from './IAgentStorage.js';
+import { AgentStorageBase } from './AgentStorageBase.js';
+import type { RegisteredAgent } from './IAgentStorage.js';
 import {
   buildAgentIndexTerms,
   type AgentListQuery,
   type AgentListResult,
-  type AgentStorageSummary,
   termMatchesQuery,
   matchesVisibility,
-  applyUpdateStatus,
+  paginateAgents,
 } from './indexing.js';
 
 export interface RegistryRedisClient {
@@ -69,13 +69,14 @@ interface RedisMutationBatch {
   queued: boolean;
 }
 
-export class RedisStorage implements IAgentStorage {
+export class RedisStorage extends AgentStorageBase {
   private readonly setCommands: RedisSetCommands | null;
 
   constructor(
     private readonly client: RegistryRedisClient,
     private readonly prefix = 'a2a:registry',
   ) {
+    super();
     this.setCommands = resolveSetCommands(client);
   }
 
@@ -113,32 +114,10 @@ export class RedisStorage implements IAgentStorage {
   async list(query: AgentListQuery = {}): Promise<AgentListResult> {
     const candidateIds = await this.findCandidateIds(query);
     const agents = await this.loadAgents(candidateIds);
-    const filtered = agents.filter((agent) => matchesVisibility(agent, query));
-    filtered.sort((left, right) => Date.parse(right.registeredAt) - Date.parse(left.registeredAt));
-
-    const offset = parseCursor(query.cursor);
-    const limit = query.limit ?? 50;
-    const items = filtered.slice(offset, offset + limit);
-
-    return {
-      items,
-      total: filtered.length,
-      nextCursor: offset + items.length < filtered.length ? String(offset + items.length) : null,
-    };
-  }
-
-  async summarize(
-    query: Pick<AgentListQuery, 'tenantId' | 'includePublic' | 'isPublic'> = {},
-  ): Promise<AgentStorageSummary> {
-    const agents = (await this.list({ ...query, limit: Number.MAX_SAFE_INTEGER })).items;
-    return {
-      agentCount: agents.length,
-      healthyAgents: agents.filter((agent) => agent.status === 'healthy').length,
-      unhealthyAgents: agents.filter((agent) => agent.status === 'unhealthy').length,
-      unknownAgents: agents.filter((agent) => agent.status === 'unknown').length,
-      activeTenants: new Set(agents.map((agent) => agent.tenantId).filter(Boolean)).size,
-      publicAgents: agents.filter((agent) => agent.isPublic).length,
-    };
+    return paginateAgents(
+      agents.filter((agent) => matchesVisibility(agent, query)),
+      query,
+    );
   }
 
   async delete(id: string): Promise<boolean> {
@@ -157,23 +136,6 @@ export class RedisStorage implements IAgentStorage {
 
     await this.removeJsonIndexes(current);
     return (await this.client.del(this.key(id))) > 0;
-  }
-
-  async updateStatus(
-    id: string,
-    status: AgentStatus,
-    meta?: { consecutiveFailures?: number; lastSuccessAt?: string },
-  ): Promise<void> {
-    const current = await this.get(id);
-    if (!current) {
-      return;
-    }
-
-    await this.upsert(applyUpdateStatus(current, status, meta));
-  }
-
-  async findBySkill(skill: string): Promise<RegisteredAgent[]> {
-    return (await this.list({ skill, limit: Number.MAX_SAFE_INTEGER })).items;
   }
 
   async acquirePollingLease(scope: string, ownerId: string, ttlMs: number): Promise<boolean> {
@@ -663,11 +625,6 @@ function isRedisSetSuccess(value: unknown): boolean {
 
 function shouldPassMembersAsArray(name: string): boolean {
   return name === 'sAdd' || name === 'sRem';
-}
-
-function parseCursor(cursor: string | undefined): number {
-  const parsed = Number(cursor ?? '0');
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
 function uniqueValues(values: string[]): string[] {
