@@ -123,5 +123,26 @@ if (!publishWorkflow.includes('node scripts/check-publish-preflight.mjs')) {
 if (!releasePleaseWorkflow.includes('skip-github-release: true')) {
   failures.push('Release Please must not create GitHub Releases');
 }
+const releasePleaseGate = 'node scripts/release-state.mjs --mode release-please --json';
+const releasePleaseAction = 'googleapis/release-please-action';
+if (!releasePleaseWorkflow.includes(releasePleaseGate)) {
+  failures.push('Release Please workflow must run the release-state release-please gate');
+} else if (
+  releasePleaseWorkflow.indexOf(releasePleaseGate) >
+  releasePleaseWorkflow.indexOf(releasePleaseAction)
+) {
+  failures.push('Release Please release-state gate must run before release-please-action');
+}
+if (!publishWorkflow.includes('ref: ${{ steps.tag.outputs.tag }}')) {
+  failures.push('Publish workflow must check out the requested canonical tag');
+}
+if (
+  !publishWorkflow.includes('node scripts/release-state.mjs --mode publish --json --tag "${TAG}"')
+) {
+  failures.push('Publish workflow must run the release-state publish gate with the requested tag');
+}
+if (publishWorkflow.includes('node scripts/release-state.mjs --check')) {
+  failures.push('Publish workflow must not use the ambiguous legacy release-state --check mode');
+}
 
 if (failures.length > 0) fail('Release config validation failed.', failures);

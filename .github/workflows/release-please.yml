@@ -40,6 +40,10 @@ jobs:
           cache: 'false'
       - name: Validate release config
         run: node scripts/check-release-config.mjs
+      - name: Verify current release is reconciled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release-state.mjs --mode release-please --json
       - name: Create or update release pull request
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release

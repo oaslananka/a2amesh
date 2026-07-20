@@ -73,13 +73,15 @@ jobs:
       - name: Checkout publish workflow ref
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
+          ref: ${{ steps.tag.outputs.tag }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Release state guardrail
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/release-state.mjs --check
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: node scripts/release-state.mjs --mode publish --json --tag "${TAG}"
 
       - name: Publish preflight
         env:
