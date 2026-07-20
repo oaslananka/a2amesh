@@ -1,0 +1,9 @@
+{
+  "platform": "github",
+  "endpoint": "https://api.github.com/",
+  "repositories": ["oaslananka/a2amesh"],
+  "onboarding": false,
+  "requireConfig": "required",
+  "branchPrefix": "self-hosted-renovate/",
+  "persistRepoData": true
+}

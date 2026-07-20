@@ -6,16 +6,11 @@ const CANONICAL_REPOSITORY = 'oaslananka/a2amesh';
 const RENOVATE_ACTION_SHA = '3064367f740a1a91cca218698a63902689cce200';
 const RENOVATE_VERSION = '43.272.4';
 
-export function validateRenovatePolicy({
-  config,
-  globalConfig,
-  workflow,
-  repositoryLabels,
-}) {
+export function validateRenovatePolicy({ config, globalConfig, workflow, repositoryLabels }) {
   const failures = [];
 
-  if (JSON.stringify(config.baseBranches) !== JSON.stringify(['main'])) {
-    failures.push('Renovate baseBranches must contain only main');
+  if (JSON.stringify(config.baseBranchPatterns) !== JSON.stringify(['main'])) {
+    failures.push('Renovate baseBranchPatterns must contain only main');
   }
   if (config.timezone !== 'Europe/Istanbul') {
     failures.push('Renovate timezone must be Europe/Istanbul');
@@ -31,6 +26,19 @@ export function validateRenovatePolicy({
   }
   if (config.prCreation !== 'not-pending') {
     failures.push('Renovate prCreation must be not-pending');
+  }
+  if (config.lockFileMaintenance?.enabled !== true) {
+    failures.push('Renovate lockFileMaintenance must be enabled');
+  }
+  const toolManager = (config.customManagers ?? []).find(
+    (manager) =>
+      manager.customType === 'regex' &&
+      manager.managerFilePatterns?.some(
+        (pattern) => pattern.includes('workflows') && pattern.includes('security'),
+      ),
+  );
+  if (!toolManager || !toolManager.matchStrings?.length) {
+    failures.push('Renovate must extract pinned security tool versions');
   }
 
   const packageRules = Array.isArray(config.packageRules) ? config.packageRules : [];

@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { validateRenovatePolicy } from '../../scripts/check-renovate-config.mjs';
 
@@ -14,7 +15,7 @@ const labels = new Set([
 
 function validConfig() {
   return {
-    baseBranches: ['main'],
+    baseBranchPatterns: ['main'],
     timezone: 'Europe/Istanbul',
     labels: ['area:deps', 'type:task'],
     automerge: false,
@@ -23,6 +24,14 @@ function validConfig() {
     minimumReleaseAge: '3 days',
     internalChecksFilter: 'strict',
     prCreation: 'not-pending',
+    lockFileMaintenance: { enabled: true },
+    customManagers: [
+      {
+        customType: 'regex',
+        managerFilePatterns: ['/^\\.github\\/workflows\\/security\\.yml$/'],
+        matchStrings: ['VERSION'],
+      },
+    ],
     packageRules: [
       {
         matchPackageNames: ['/^@a2amesh\\//'],
@@ -99,6 +108,26 @@ describe('Renovate policy validation', () => {
     );
   });
 
+  it('rejects missing lockfile maintenance and tool-version extraction', () => {
+    const config = validConfig();
+    delete config.lockFileMaintenance;
+    config.customManagers = [];
+
+    expect(
+      validateRenovatePolicy({
+        config,
+        globalConfig: validGlobalConfig(),
+        workflow: validWorkflow,
+        repositoryLabels: labels,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        'Renovate lockFileMaintenance must be enabled',
+        'Renovate must extract pinned security tool versions',
+      ]),
+    );
+  });
+
   it('rejects broad repositories and unpinned workflow actions', () => {
     const globalConfig = validGlobalConfig();
     globalConfig.repositories = ['oaslananka/*'];
@@ -116,5 +145,26 @@ describe('Renovate policy validation', () => {
         'Renovate GitHub Action must be pinned to a full commit SHA',
       ]),
     );
+  });
+
+  it('validates the checked-in Renovate configuration and workflow', async () => {
+    const [configText, globalText, workflow, labelsText] = await Promise.all([
+      readFile(new URL('../../renovate.json', import.meta.url), 'utf8'),
+      readFile(new URL('../../.github/renovate-global.json', import.meta.url), 'utf8'),
+      readFile(new URL('../../.github/workflows/renovate.yml', import.meta.url), 'utf8'),
+      readFile(new URL('../../.github/labels.yml', import.meta.url), 'utf8'),
+    ]);
+    const repositoryLabels = new Set(
+      [...labelsText.matchAll(/^- name: ['"]([^'"]+)['"]$/gm)].map((match) => match[1]),
+    );
+
+    expect(
+      validateRenovatePolicy({
+        config: JSON.parse(configText),
+        globalConfig: JSON.parse(globalText),
+        workflow,
+        repositoryLabels,
+      }),
+    ).toEqual([]);
   });
 });
