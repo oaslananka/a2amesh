@@ -38,8 +38,8 @@ importers:
   .:
     devDependencies:
       '@arethetypeswrong/cli':
-        specifier: 0.18.3
-        version: 0.18.3
+        specifier: 0.18.5
+        version: 0.18.5
       '@commitlint/cli':
         specifier: 21.0.2
         version: 21.0.2(@types/node@22.19.21)(conventional-commits-parser@6.4.0)(typescript@6.0.3)
@@ -272,7 +272,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
-        version: 22.19.19
+        version: 22.19.21
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -301,7 +301,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
-        version: 22.19.19
+        version: 22.19.21
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -317,7 +317,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
-        version: 22.19.19
+        version: 22.19.21
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -346,7 +346,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
-        version: 22.19.19
+        version: 22.19.21
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -359,7 +359,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
-        version: 22.19.19
+        version: 22.19.21
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -375,7 +375,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
-        version: 22.19.19
+        version: 22.19.21
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -388,7 +388,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
-        version: 22.19.19
+        version: 22.19.21
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -407,7 +407,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
-        version: 22.19.19
+        version: 22.19.21
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -896,13 +896,13 @@ packages:
       zod:
         optional: true
 
-  '@arethetypeswrong/cli@0.18.3':
-    resolution: {integrity: sha512-GeAlc+lUD4gKHD/LDQNvQY30FfQ+xAXg2inbQKUjFZgTOdI5ygEweaOnGHGBPSKXSLGQC7VLhpXu9zMnYk/4sQ==}
+  '@arethetypeswrong/cli@0.18.5':
+    resolution: {integrity: sha512-gM+8vRsQOD/Uc7EnBedUhkG5OCsDWE4uoak5QvomGpMpaky0Eh41p04nIMgrWb8EOmqZUJGc6zz9hsP6E56R7g==}
     engines: {node: '>=20'}
     hasBin: true
 
-  '@arethetypeswrong/core@0.18.3':
-    resolution: {integrity: sha512-sWBB/tdIktaT5xMq0Dz6CJyqcf6oMNdmiKiuPU1lWoJLTL6gjRSsksBuSgqot21hylkklBQY1wiSu+PkZhW7sw==}
+  '@arethetypeswrong/core@0.18.5':
+    resolution: {integrity: sha512-9ytjzGwxjm9Uz7I9avfbt5vlQt6uk9uRRESzJjqrznl6WKvI6dwYTo+vJ3U02Wrq/mR3iql/PzhvHhKdJIAjDQ==}
     engines: {node: '>=20'}
 
   '@asamuzakjp/css-color@5.1.11':
@@ -2797,9 +2797,6 @@ packages:
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
-  '@types/node@22.19.19':
-    resolution: {integrity: sha512-dyh/xO2Fh5bYrfWaaqGrRQQGkNdmYw6AmaAUvYeUMNTWQtvb796ikLdmTchRmOlOiIJ1TDXfWgVx1QkUlQ6Hew==}
-
   '@types/node@22.19.21':
     resolution: {integrity: sha512-VMeFBSCKQKmm2swI2kW51SFusDqekC6q9trBCvJ/JliDchFSuoYYKN7yVNjPthP1HKZcx3U1gI/wTcEBjEFKTA==}
 
@@ -3068,11 +3065,6 @@ packages:
 
   acorn@7.4.1:
     resolution: {integrity: sha512-nQyp0o1/mNdbTO1PO6kHkwSrmgZ0MT/jCCpNiwbUjGoRN4dlBhqJtoQuCnEOKzgTVwg0ZWiCoQy6SxMebQVh8A==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-
-  acorn@8.16.0:
-    resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
     engines: {node: '>=0.4.0'}
     hasBin: true
 
@@ -5753,9 +5745,9 @@ snapshots:
     optionalDependencies:
       zod: 4.4.3
 
-  '@arethetypeswrong/cli@0.18.3':
+  '@arethetypeswrong/cli@0.18.5':
     dependencies:
-      '@arethetypeswrong/core': 0.18.3
+      '@arethetypeswrong/core': 0.18.5
       chalk: 4.1.2
       cli-table3: 0.6.5
       commander: 10.0.1
@@ -5763,7 +5755,7 @@ snapshots:
       marked-terminal: 7.3.0(marked@9.1.6)
       semver: 7.8.4
 
-  '@arethetypeswrong/core@0.18.3':
+  '@arethetypeswrong/core@0.18.5':
     dependencies:
       '@andrewbranch/untar.js': 1.0.3
       '@loaderkit/resolve': 1.0.6
@@ -7499,10 +7491,6 @@ snapshots:
 
   '@types/ms@2.1.0': {}
 
-  '@types/node@22.19.19':
-    dependencies:
-      undici-types: 6.21.0
-
   '@types/node@22.19.21':
     dependencies:
       undici-types: 6.21.0
@@ -7818,13 +7806,11 @@ snapshots:
     dependencies:
       acorn: 8.17.0
 
-  acorn-jsx@5.3.2(acorn@8.16.0):
+  acorn-jsx@5.3.2(acorn@8.17.0):
     dependencies:
-      acorn: 8.16.0
+      acorn: 8.17.0
 
   acorn@7.4.1: {}
-
-  acorn@8.16.0: {}
 
   acorn@8.17.0: {}
 
@@ -8386,8 +8372,8 @@ snapshots:
 
   espree@11.2.0:
     dependencies:
-      acorn: 8.16.0
-      acorn-jsx: 5.3.2(acorn@8.16.0)
+      acorn: 8.17.0
+      acorn-jsx: 5.3.2(acorn@8.17.0)
       eslint-visitor-keys: 5.0.1
 
   esquery@1.7.0:
