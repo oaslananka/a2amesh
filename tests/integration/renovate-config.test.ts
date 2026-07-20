@@ -68,10 +68,15 @@ function validGlobalConfig() {
 }
 
 const validWorkflow = `permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-uses: renovatebot/github-action@3064367f740a1a91cca218698a63902689cce200 # v46.1.20
+  contents: read
+jobs:
+  renovate:
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: renovatebot/github-action@3064367f740a1a91cca218698a63902689cce200 # v46.1.20
 renovate-version: 43.272.4
 token: \${{ github.token }}
 `;
@@ -128,6 +133,19 @@ describe('Renovate policy validation', () => {
         'Renovate must extract pinned security tool versions',
       ]),
     );
+  });
+
+  it('rejects write permissions at workflow scope', () => {
+    const workflow = validWorkflow.replace('contents: read', 'contents: write');
+
+    expect(
+      validateRenovatePolicy({
+        config: validConfig(),
+        globalConfig: validGlobalConfig(),
+        workflow,
+        repositoryLabels: labels,
+      }),
+    ).toContain('Renovate workflow-level contents permission must remain read-only');
   });
 
   it('rejects broad repositories and unpinned workflow actions', () => {

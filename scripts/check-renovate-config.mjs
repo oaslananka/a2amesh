@@ -88,9 +88,19 @@ export function validateRenovatePolicy({ config, globalConfig, workflow, reposit
   if (!workflow.includes('token: ${{ github.token }}')) {
     failures.push('Renovate workflow must use the repository GitHub token');
   }
+  const workflowPermissions = workflow.match(/^permissions:\n((?: {2}\S.*\n)+)/m)?.[1] ?? '';
+  if (!/^ {2}contents: read$/m.test(workflowPermissions)) {
+    failures.push('Renovate workflow-level contents permission must remain read-only');
+  }
+  if (/^ {2}\S+: write$/m.test(workflowPermissions)) {
+    failures.push('Renovate workflow-level permissions must not grant write access');
+  }
+
+  const renovateJobPermissions =
+    workflow.match(/^  renovate:\n[\s\S]*?^    permissions:\n((?: {6}\S.*\n)+)/m)?.[1] ?? '';
   for (const permission of ['contents: write', 'issues: write', 'pull-requests: write']) {
-    if (!workflow.includes(permission)) {
-      failures.push(`Renovate workflow missing permission: ${permission}`);
+    if (!renovateJobPermissions.includes(permission)) {
+      failures.push(`Renovate job missing permission: ${permission}`);
     }
   }
   if (/mount-docker-socket:\s*true/.test(workflow)) {

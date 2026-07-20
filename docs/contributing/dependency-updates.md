@@ -1,6 +1,7 @@
 # Dependency update policy
 
 A2A Mesh runs Renovate from `.github/workflows/renovate.yml`. The workflow is repository-owned, uses a full-SHA-pinned official Renovate action, and targets only `oaslananka/a2amesh`.
+The workflow defaults to read-only repository access; write access to contents, issues, and pull requests is scoped only to the Renovate job.
 
 ## Schedule and manual runs
 

@@ -6,9 +6,7 @@ name: Renovate
   workflow_dispatch:
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: renovate-${{ github.repository }}
@@ -24,6 +22,10 @@ env:
 jobs:
   renovate:
     name: Renovate / repository
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     if: github.repository == 'oaslananka/a2amesh'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
