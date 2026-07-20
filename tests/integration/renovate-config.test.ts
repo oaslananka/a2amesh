@@ -29,7 +29,31 @@ function validConfig() {
       {
         customType: 'regex',
         managerFilePatterns: ['/^\\.github\\/workflows\\/security\\.yml$/'],
-        matchStrings: ['VERSION'],
+        matchStrings: ['GITLEAKS_VERSION'],
+        datasourceTemplate: 'github-releases',
+        depNameTemplate: 'gitleaks/gitleaks',
+      },
+      {
+        customType: 'regex',
+        managerFilePatterns: ['/^\\.github\\/workflows\\/security\\.yml$/'],
+        matchStrings: ['ACTIONLINT_VERSION'],
+        datasourceTemplate: 'github-releases',
+        depNameTemplate: 'rhysd/actionlint',
+      },
+      {
+        customType: 'regex',
+        managerFilePatterns: ['/^\\.github\\/workflows\\/security\\.yml$/'],
+        matchStrings: ['OSV_SCANNER_VERSION'],
+        datasourceTemplate: 'github-releases',
+        depNameTemplate: 'google/osv-scanner',
+        versioningTemplate: 'loose',
+      },
+      {
+        customType: 'regex',
+        managerFilePatterns: ['/^\\.github\\/workflows\\/security\\.yml$/'],
+        matchStrings: ['ZIZMOR_VERSION'],
+        datasourceTemplate: 'github-releases',
+        depNameTemplate: 'zizmorcore/zizmor',
       },
     ],
     packageRules: [
@@ -70,15 +94,26 @@ function validGlobalConfig() {
 const validWorkflow = `permissions:
   contents: read
 jobs:
+  validate:
+    name: Renovate / validate
+    steps:
+      - uses: renovatebot/github-action@3064367f740a1a91cca218698a63902689cce200 # v46.1.20
+        with:
+          configurationFile: renovate.json
+          docker-cmd-file: .github/renovate-validate.sh
+          renovate-version: 43.272.4
+          token: \${{ github.token }}
   renovate:
+    needs: validate
     permissions:
       contents: write
       issues: write
       pull-requests: write
     steps:
       - uses: renovatebot/github-action@3064367f740a1a91cca218698a63902689cce200 # v46.1.20
-renovate-version: 43.272.4
-token: \${{ github.token }}
+        with:
+          renovate-version: 43.272.4
+          token: \${{ github.token }}
 `;
 
 describe('Renovate policy validation', () => {
@@ -130,9 +165,23 @@ describe('Renovate policy validation', () => {
     ).toEqual(
       expect.arrayContaining([
         'Renovate lockFileMaintenance must be enabled',
-        'Renovate must extract pinned security tool versions',
+        'Renovate must extract pinned security tool versions: GITLEAKS_VERSION, ACTIONLINT_VERSION, OSV_SCANNER_VERSION, ZIZMOR_VERSION',
       ]),
     );
+  });
+
+  it('rejects on-demand npx execution for the official validator', () => {
+    const workflow = `${validWorkflow}
+run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
+
+    expect(
+      validateRenovatePolicy({
+        config: validConfig(),
+        globalConfig: validGlobalConfig(),
+        workflow,
+        repositoryLabels: labels,
+      }),
+    ).toContain('Renovate workflow must validate with the pinned container instead of npx');
   });
 
   it('rejects write permissions at workflow scope', () => {
@@ -156,7 +205,7 @@ describe('Renovate policy validation', () => {
       validateRenovatePolicy({
         config: validConfig(),
         globalConfig,
-        workflow: validWorkflow.replace('3064367f740a1a91cca218698a63902689cce200', 'v46.1.20'),
+        workflow: validWorkflow.replaceAll('3064367f740a1a91cca218698a63902689cce200', 'v46.1.20'),
         repositoryLabels: labels,
       }),
     ).toEqual(

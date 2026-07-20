@@ -36,7 +36,7 @@ Major updates are not created until a maintainer approves them in the Dashboard.
 - GitHub Actions and container dependencies remain pinned.
 - Vitest, Hono, OpenTelemetry, registry UI, docs-site, and security-tool updates are grouped intentionally.
 - Lockfile maintenance runs once per month.
-- Security-tool versions in `.github/workflows/security.yml` are discovered from `# renovate:` annotations.
+- Security-tool versions in `.github/workflows/security.yml` are mapped by explicit regex managers; the workflow itself does not need inline Renovate annotations.
 - Runtime versions remain governed by `tools/runtime-versions.json` and `scripts/check-runtime-versions.mjs`; Renovate must not change one runtime pin independently.
 
 ## Local validation
@@ -50,7 +50,9 @@ corepack pnpm run renovate:validate
 Run Renovate's official strict validator with the repository-pinned version and Node 24:
 
 ```bash
-npx --yes --package=renovate@43.272.4 renovate-config-validator --strict renovate.json
+docker run --rm --entrypoint renovate-config-validator \
+  -v "$PWD/renovate.json:/renovate.json:ro" \
+  ghcr.io/renovatebot/renovate:43.272.4 --strict /renovate.json
 ```
 
 Configuration changes must also pass YAML, actionlint, zizmor, formatting, and the integration test in `tests/integration/renovate-config.test.ts`.

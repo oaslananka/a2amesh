@@ -27,10 +27,31 @@
     {
       "customType": "regex",
       "managerFilePatterns": ["/^\\.github\\/workflows\\/security\\.yml$/"],
-      "matchStrings": [
-        "[A-Z0-9_]+_VERSION:\\s*['\"]?(?<currentValue>[^'\"\\s#]+)['\"]?\\s+# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?"
-      ],
-      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+      "matchStrings": ["GITLEAKS_VERSION:\\\\s*['\\\"]?(?<currentValue>[^'\\\"\\\\s]+)['\\\"]?"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "gitleaks/gitleaks"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github\\/workflows\\/security\\.yml$/"],
+      "matchStrings": ["ACTIONLINT_VERSION:\\\\s*['\\\"]?(?<currentValue>[^'\\\"\\\\s]+)['\\\"]?"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "rhysd/actionlint"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github\\/workflows\\/security\\.yml$/"],
+      "matchStrings": ["OSV_SCANNER_VERSION:\\\\s*['\\\"]?(?<currentValue>[^'\\\"\\\\s]+)['\\\"]?"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "google/osv-scanner",
+      "versioningTemplate": "loose"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github\\/workflows\\/security\\.yml$/"],
+      "matchStrings": ["ZIZMOR_VERSION:\\\\s*['\\\"]?(?<currentValue>[^'\\\"\\\\s]+)['\\\"]?"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "zizmorcore/zizmor"
     }
   ],
   "packageRules": [

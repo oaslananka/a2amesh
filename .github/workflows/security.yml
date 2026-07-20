@@ -22,10 +22,10 @@ defaults:
 
 env:
   NODE_VERSION: '24.16.0'
-  GITLEAKS_VERSION: '8.30.1' # renovate: datasource=github-releases depName=gitleaks/gitleaks
-  ACTIONLINT_VERSION: '1.7.12' # renovate: datasource=github-releases depName=rhysd/actionlint
-  OSV_SCANNER_VERSION: 'v2.3.8' # renovate: datasource=github-releases depName=google/osv-scanner versioning=loose
-  ZIZMOR_VERSION: '1.25.2' # renovate: datasource=github-releases depName=zizmorcore/zizmor
+  GITLEAKS_VERSION: '8.30.1'
+  ACTIONLINT_VERSION: '1.7.12'
+  OSV_SCANNER_VERSION: 'v2.3.8'
+  ZIZMOR_VERSION: '1.25.2'
   GO_VERSION: '1.26.2'
 
 jobs:
