@@ -2,7 +2,7 @@
   "name": "a2amesh-workspace",
   "version": "0.1.0-alpha.0",
   "private": true,
-  "packageManager": "pnpm@11.7.0",
+  "packageManager": "pnpm@11.8.0",
   "author": "oaslananka",
   "homepage": "https://oaslananka.github.io/a2amesh/",
   "repository": {
@@ -30,7 +30,7 @@
     "pnpm": ">=11 <12"
   },
   "scripts": {
-    "setup": "corepack prepare pnpm@11.7.0 --activate && pnpm install --frozen-lockfile",
+    "setup": "corepack prepare pnpm@11.8.0 --activate && pnpm install --frozen-lockfile",
     "clean": "node scripts/clean.mjs",
     "format": "pnpm run format:write",
     "format:write": "prettier --ignore-path .prettierignore --ignore-unknown --write .",

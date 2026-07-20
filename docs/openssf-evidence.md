@@ -6,7 +6,7 @@ This file records evidence for OpenSSF Best Practices and Scorecard-oriented rev
 
 - Repository: `https://github.com/oaslananka/a2amesh`
 - Language/runtime: TypeScript / Node.js / pnpm workspace
-- Package manager: `pnpm@11.7.0`
+- Package manager: `pnpm@11.8.0`
 - Target maturity: Professional OSS / Mature OSS
 - Gold claim: No
 

@@ -9,7 +9,7 @@
   <a href="https://www.npmjs.com/package/@a2amesh/runtime?activeTab=versions"><img src="https://img.shields.io/npm/v/%40a2amesh%2Fruntime/alpha?style=flat-square&logo=npm&label=alpha&color=cb3837" alt="npm alpha version" /></a>
   <a href="https://www.npmjs.com/package/@a2amesh/runtime"><img src="https://img.shields.io/npm/dt/%40a2amesh%2Fruntime?style=flat-square&logo=npm&label=total%20downloads&color=4c1" alt="npm total downloads" /></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-%3E%3D24.16%20%3C27-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js >=24.16 <27" /></a>
-  <a href="https://pnpm.io/"><img src="https://img.shields.io/badge/pnpm-11.7.0-F69220?style=flat-square&logo=pnpm&logoColor=white" alt="pnpm 11.7.0" /></a>
+  <a href="https://pnpm.io/"><img src="https://img.shields.io/badge/pnpm-11.8.0-F69220?style=flat-square&logo=pnpm&logoColor=white" alt="pnpm 11.8.0" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/npm/l/%40a2amesh%2Fruntime?style=flat-square&label=license&color=blue" alt="license" /></a>
 </p>
 

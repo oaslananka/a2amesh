@@ -45,7 +45,7 @@ A2A Mesh is a public TypeScript/pnpm monorepo with CLI, runtime, registry, proto
 | Area                  | Current state                                                                 | Target state                     | Status         | Risk   | Recommended action             |
 | --------------------- | ----------------------------------------------------------------------------- | -------------------------------- | -------------- | ------ | ------------------------------ |
 | Primary language      | TypeScript.                                                                   | TypeScript standards documented. | Passed         | Low    | Keep coding standards doc.     |
-| Package manager       | pnpm 11.7.0 with lockfile.                                                    | Keep pnpm; do not switch.        | Passed         | Low    | Use frozen lockfile.           |
+| Package manager       | pnpm 11.8.0 with lockfile.                                                    | Keep pnpm; do not switch.        | Passed         | Low    | Use frozen lockfile.           |
 | Monorepo              | Workspace with publishable and internal packages.                             | Package surfaces checked.        | Passed         | Medium | Keep package dry-run.          |
 | Build/test            | pnpm scripts, TypeScript, Vitest, integration/conformance/e2e/smoke/mutation. | CI quality gates.                | Passed         | Medium | Track slow/flaky tests.        |
 | Docs generator        | VitePress, TypeDoc, OpenAPI generation.                                       | Docs build/checks required.      | Passed         | Low    | Keep docs gates.               |

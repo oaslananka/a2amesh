@@ -15,7 +15,7 @@ manifest.
 
 The workspace engine range is Node.js `>=22.22.1 <25` and pnpm `>=11 <12`.
 In plain engine terms, use Node.js `>=22.22.1 <25` and pnpm >=11 <12.
-Development tooling pins pnpm `11.7.0` through `packageManager` and
+Development tooling pins pnpm `11.8.0` through `packageManager` and
 `tools/runtime-versions.json`.
 
 | Runtime            | Repository status         | Current repository version                | Upstream status on 2026-05-26                                 | Support policy                                                                 |
@@ -23,7 +23,7 @@ Development tooling pins pnpm `11.7.0` through `packageManager` and
 | Node.js 22 Jod     | Supported LTS floor       | `22.22.3` in CI smoke                     | Maintenance LTS, EOL `2027-04-30`                             | Supported until the repository announces a higher floor through this page.     |
 | Node.js 24 Krypton | Preferred LTS line        | `24.16.0` in `.node-version` and `.nvmrc` | Active LTS, maintenance starts `2026-10-20`, EOL `2028-04-30` | Preferred local, CI, docs, and scaffold runtime.                               |
 | Node 25            | Not supported             | Not used                                  | Current/maintenance line ending `2026-06-01`                  | Odd-numbered Current lines are not supported until the engine range is raised. |
-| pnpm 11            | Supported package manager | `11.7.0`                                  | Latest registry metadata checked separately                   | Required for workspace scripts and lockfile consistency.                       |
+| pnpm 11            | Supported package manager | `11.8.0`                                  | Latest registry metadata checked separately                   | Required for workspace scripts and lockfile consistency.                       |
 
 Do not rely on Node.js 20 or older. Node.js 20 is outside the repository engine
 range and is already EOL in the Node.js project schedule checked for this policy.
