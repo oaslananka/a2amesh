@@ -1,0 +1,72 @@
+name: Renovate
+
+'on':
+  schedule:
+    - cron: '23 3 * * 1,3,5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate-${{ github.repository }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  NODE_VERSION: '24.16.0'
+
+jobs:
+  validate:
+    name: Renovate / validate
+    if: github.repository == 'oaslananka/a2amesh'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          install: 'false'
+          cache: 'false'
+
+      - name: Validate repository Renovate policy
+        run: node scripts/check-renovate-config.mjs
+
+      - name: Validate official Renovate schema
+        uses: renovatebot/github-action@3064367f740a1a91cca218698a63902689cce200 # v46.1.20
+        with:
+          configurationFile: renovate.json
+          docker-cmd-file: .github/renovate-validate.sh
+          renovate-version: 43.272.4
+          token: ${{ github.token }}
+
+  renovate:
+    name: Renovate / repository
+    needs: validate
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    if: github.repository == 'oaslananka/a2amesh'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - name: Run repository-managed Renovate
+        uses: renovatebot/github-action@3064367f740a1a91cca218698a63902689cce200 # v46.1.20
+        with:
+          configurationFile: .github/renovate-global.json
+          renovate-version: 43.272.4
+          token: ${{ github.token }}
+        env:
+          LOG_LEVEL: info

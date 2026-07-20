@@ -7,23 +7,68 @@
     ":semanticCommits"
   ],
   "timezone": "Europe/Istanbul",
-  "labels": ["area:deps"],
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Dependency Dashboard",
+  "labels": ["area:deps", "type:task"],
+  "automerge": false,
   "prHourlyLimit": 3,
   "prConcurrentLimit": 6,
+  "branchConcurrentLimit": 6,
   "minimumReleaseAge": "3 days",
   "internalChecksFilter": "strict",
+  "prCreation": "not-pending",
+  "rebaseWhen": "conflicted",
+  "postUpdateOptions": ["pnpmDedupe"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 7am on the first day of the month"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github\\/workflows\\/security\\.yml$/"],
+      "matchStrings": ["GITLEAKS_VERSION:\\\\s*['\\\"]?(?<currentValue>[^'\\\"\\\\s]+)['\\\"]?"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "gitleaks/gitleaks"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github\\/workflows\\/security\\.yml$/"],
+      "matchStrings": ["ACTIONLINT_VERSION:\\\\s*['\\\"]?(?<currentValue>[^'\\\"\\\\s]+)['\\\"]?"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "rhysd/actionlint"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github\\/workflows\\/security\\.yml$/"],
+      "matchStrings": ["OSV_SCANNER_VERSION:\\\\s*['\\\"]?(?<currentValue>[^'\\\"\\\\s]+)['\\\"]?"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "google/osv-scanner",
+      "versioningTemplate": "loose"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github\\/workflows\\/security\\.yml$/"],
+      "matchStrings": ["ZIZMOR_VERSION:\\\\s*['\\\"]?(?<currentValue>[^'\\\"\\\\s]+)['\\\"]?"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "zizmorcore/zizmor"
+    }
+  ],
   "packageRules": [
     {
+      "description": "Keep routine upgrades review-required.",
       "matchUpdateTypes": ["minor", "patch"],
       "automerge": false
     },
     {
+      "description": "Require explicit approval for breaking upgrades.",
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true,
       "automerge": false,
-      "labels": ["area:deps", "type:breaking"]
+      "labels": ["priority:P1", "type:task", "area:deps"]
     },
     {
+      "description": "Workspace-owned linked packages are versioned only by Release Please.",
       "matchPackageNames": ["/^@a2amesh\\//"],
       "enabled": false
     },
@@ -50,15 +95,24 @@
       "matchFileNames": ["docs-site/**"]
     },
     {
+      "description": "Keep externally executed automation immutable and review-required.",
       "matchManagers": ["github-actions", "dockerfile", "docker-compose"],
       "pinDigests": true,
       "automerge": false,
-      "labels": ["area:deps", "area:ci"]
+      "labels": ["area:ci", "area:deps", "type:task"]
+    },
+    {
+      "description": "Update pinned security tools together for one evidence review.",
+      "groupName": "security toolchain",
+      "matchManagers": ["custom.regex"],
+      "automerge": false,
+      "labels": ["area:security", "area:deps", "type:task"]
     }
   ],
   "vulnerabilityAlerts": {
     "enabled": true,
-    "labels": ["area:deps", "type:security"]
+    "labels": ["priority:P1", "type:security", "area:deps"]
   },
-  "osvVulnerabilityAlerts": true
+  "osvVulnerabilityAlerts": true,
+  "baseBranchPatterns": ["main"]
 }
