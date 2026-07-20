@@ -171,6 +171,7 @@ The implementation targets Agent2Agent protocol `v1.0.0`. See [Compatibility](do
 - [Install](docs/install.md)
 - [Compatibility](docs/compatibility.md)
 - [Release process](docs/release/process.md)
+- [Dependency update policy](docs/contributing/dependency-updates.md)
 
 Docs site: [https://oaslananka.github.io/a2amesh/](https://oaslananka.github.io/a2amesh/)
 
