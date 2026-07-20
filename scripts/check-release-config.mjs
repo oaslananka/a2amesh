@@ -133,13 +133,31 @@ if (!releasePleaseWorkflow.includes(releasePleaseGate)) {
 ) {
   failures.push('Release Please release-state gate must run before release-please-action');
 }
+if (!publishWorkflow.includes('Stage release-state guard scripts')) {
+  failures.push(
+    'Publish workflow must stage current release-state guard scripts before tag checkout',
+  );
+}
+if (
+  !publishWorkflow.includes(
+    'cp scripts/release-state.mjs scripts/release-state-core.mjs "${RUNNER_TEMP}/release-state-guard/"',
+  )
+) {
+  failures.push(
+    'Publish workflow must preserve both release-state guard modules before tag checkout',
+  );
+}
 if (!publishWorkflow.includes('ref: ${{ steps.tag.outputs.tag }}')) {
   failures.push('Publish workflow must check out the requested canonical tag');
 }
 if (
-  !publishWorkflow.includes('node scripts/release-state.mjs --mode publish --json --tag "${TAG}"')
+  !publishWorkflow.includes(
+    'node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode publish --json --tag "${TAG}"',
+  )
 ) {
-  failures.push('Publish workflow must run the release-state publish gate with the requested tag');
+  failures.push(
+    'Publish workflow must run the staged release-state publish gate with the requested tag',
+  );
 }
 if (publishWorkflow.includes('node scripts/release-state.mjs --check')) {
   failures.push('Publish workflow must not use the ambiguous legacy release-state --check mode');

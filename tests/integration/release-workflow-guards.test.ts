@@ -21,9 +21,13 @@ describe('release workflow guards', () => {
   it('checks out the requested tag and runs publish-mode validation', async () => {
     const workflow = await readFile(new URL('.github/workflows/publish.yml', repoRoot), 'utf8');
 
+    expect(workflow).toContain('Stage release-state guard scripts');
+    expect(workflow).toContain(
+      'cp scripts/release-state.mjs scripts/release-state-core.mjs "${RUNNER_TEMP}/release-state-guard/"',
+    );
     expect(workflow).toContain('ref: ${{ steps.tag.outputs.tag }}');
     expect(workflow).toContain(
-      'node scripts/release-state.mjs --mode publish --json --tag "${TAG}"',
+      'node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode publish --json --tag "${TAG}"',
     );
     expect(workflow).not.toContain('node scripts/release-state.mjs --check');
   });
@@ -33,6 +37,7 @@ describe('release workflow guards', () => {
 
     expect(checker).toContain('--mode release-please --json');
     expect(checker).toContain('--mode publish --json --tag');
+    expect(checker).toContain('Stage release-state guard scripts');
     expect(checker).toContain('ref: ${{ steps.tag.outputs.tag }}');
   });
 });
