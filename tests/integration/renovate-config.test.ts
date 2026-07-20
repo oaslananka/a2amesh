@@ -25,6 +25,8 @@ function validConfig() {
     internalChecksFilter: 'strict',
     prCreation: 'not-pending',
     lockFileMaintenance: { enabled: true },
+    dependencyDashboard: true,
+    dependencyDashboardTitle: 'Dependency Dashboard',
     customManagers: [
       {
         customType: 'regex',
@@ -55,6 +57,13 @@ function validConfig() {
         datasourceTemplate: 'github-releases',
         depNameTemplate: 'zizmorcore/zizmor',
       },
+      {
+        customType: 'regex',
+        managerFilePatterns: ['/^tools\\/runtime-versions\\.json$/'],
+        matchStrings: ['"pnpm"'],
+        datasourceTemplate: 'npm',
+        depNameTemplate: 'pnpm',
+      },
     ],
     packageRules: [
       {
@@ -73,6 +82,20 @@ function validConfig() {
         automerge: false,
         labels: ['area:ci', 'area:deps', 'type:task'],
       },
+      {
+        groupName: 'pnpm toolchain',
+        matchPackageNames: ['pnpm'],
+        postUpgradeTasks: {
+          commands: ['node scripts/check-runtime-versions.mjs --write'],
+          fileFilters: ['**/*'],
+          executionMode: 'branch',
+        },
+      },
+      {
+        matchDatasources: ['docker'],
+        matchPackageNames: ['/^ghcr\\.io\\/oaslananka\\/a2amesh-/'],
+        enabled: false,
+      },
     ],
     vulnerabilityAlerts: {
       enabled: true,
@@ -88,6 +111,7 @@ function validGlobalConfig() {
     onboarding: false,
     requireConfig: 'required',
     branchPrefix: 'repository-managed-renovate/',
+    allowedCommands: ['^node scripts/check-runtime-versions\\.mjs --write$'],
   };
 }
 
@@ -109,11 +133,44 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      actions: write
+      security-events: read
     steps:
       - uses: renovatebot/github-action@3064367f740a1a91cca218698a63902689cce200 # v46.1.20
         with:
           renovate-version: 43.272.4
           token: \${{ github.token }}
+      - run: node scripts/dispatch-renovate-checks.mjs
+`;
+
+const validDocsWorkflow = `workflow_dispatch:
+  inputs:
+    deploy:
+      type: boolean
+      default: false
+if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
+`;
+
+const validDependencyReviewWorkflow = `workflow_dispatch:
+  inputs:
+    base_ref:
+      required: true
+    head_ref:
+      required: true
+base-ref: \${{ github.event_name == 'workflow_dispatch' && inputs.base_ref || github.event.pull_request.base.sha }}
+head-ref: \${{ github.event_name == 'workflow_dispatch' && inputs.head_ref || github.event.pull_request.head.sha }}
+`;
+
+const validDispatchScript = `repository-managed-renovate/
+.github/rulesets/main.json
+required_status_checks
+'ci.yml': 'CI / '
+'docs.yml': 'Docs / '
+'security.yml': 'Security / '
+'codeql.yml': 'CodeQL / '
+'scorecard.yml': 'Scorecard / '
+'dependency-review.yml': 'Dependency Review / '
+gh workflow run
 `;
 
 describe('Renovate policy validation', () => {
@@ -124,6 +181,9 @@ describe('Renovate policy validation', () => {
         globalConfig: validGlobalConfig(),
         workflow: validWorkflow,
         repositoryLabels: labels,
+        docsWorkflow: validDocsWorkflow,
+        dependencyReviewWorkflow: validDependencyReviewWorkflow,
+        dispatchScript: validDispatchScript,
       }),
     ).toEqual([]);
   });
@@ -139,6 +199,9 @@ describe('Renovate policy validation', () => {
         globalConfig: validGlobalConfig(),
         workflow: validWorkflow,
         repositoryLabels: labels,
+        docsWorkflow: validDocsWorkflow,
+        dependencyReviewWorkflow: validDependencyReviewWorkflow,
+        dispatchScript: validDispatchScript,
       }),
     ).toEqual(
       expect.arrayContaining([
@@ -161,6 +224,9 @@ describe('Renovate policy validation', () => {
         globalConfig: validGlobalConfig(),
         workflow: validWorkflow,
         repositoryLabels: labels,
+        docsWorkflow: validDocsWorkflow,
+        dependencyReviewWorkflow: validDependencyReviewWorkflow,
+        dispatchScript: validDispatchScript,
       }),
     ).toEqual(
       expect.arrayContaining([
@@ -180,6 +246,9 @@ run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
         globalConfig: validGlobalConfig(),
         workflow,
         repositoryLabels: labels,
+        docsWorkflow: validDocsWorkflow,
+        dependencyReviewWorkflow: validDependencyReviewWorkflow,
+        dispatchScript: validDispatchScript,
       }),
     ).toContain('Renovate workflow must validate with the pinned container instead of npx');
   });
@@ -193,8 +262,48 @@ run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
         globalConfig: validGlobalConfig(),
         workflow,
         repositoryLabels: labels,
+        docsWorkflow: validDocsWorkflow,
+        dependencyReviewWorkflow: validDependencyReviewWorkflow,
+        dispatchScript: validDispatchScript,
       }),
     ).toContain('Renovate workflow-level contents permission must remain read-only');
+  });
+
+  it('rejects missing Dashboard, dispatch permissions, and pnpm synchronization', () => {
+    const config = validConfig();
+    config.dependencyDashboard = false;
+    config.customManagers = config.customManagers.filter(
+      (manager) => manager.depNameTemplate !== 'pnpm',
+    );
+    config.packageRules = config.packageRules.filter((rule) => rule.groupName !== 'pnpm toolchain');
+    const globalConfig = validGlobalConfig();
+    globalConfig.allowedCommands = [];
+    const workflow = validWorkflow
+      .replace('      actions: write\n', '')
+      .replace('      security-events: read\n', '')
+      .replace('      - run: node scripts/dispatch-renovate-checks.mjs\n', '');
+
+    expect(
+      validateRenovatePolicy({
+        config,
+        globalConfig,
+        workflow,
+        repositoryLabels: labels,
+        docsWorkflow: validDocsWorkflow,
+        dependencyReviewWorkflow: validDependencyReviewWorkflow,
+        dispatchScript: validDispatchScript,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        'Renovate Dependency Dashboard must be explicitly enabled',
+        'Renovate must extract the pnpm runtime source of truth',
+        'Renovate pnpm updates must run the runtime-version synchronizer',
+        'Repository-managed Renovate must allow only the runtime-version synchronizer command',
+        'Renovate job missing permission: actions: write',
+        'Renovate job missing permission: security-events: read',
+        'Renovate workflow must dispatch required checks after repository updates',
+      ]),
+    );
   });
 
   it('rejects broad repositories and unpinned workflow actions', () => {
@@ -207,6 +316,9 @@ run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
         globalConfig,
         workflow: validWorkflow.replaceAll('3064367f740a1a91cca218698a63902689cce200', 'v46.1.20'),
         repositoryLabels: labels,
+        docsWorkflow: validDocsWorkflow,
+        dependencyReviewWorkflow: validDependencyReviewWorkflow,
+        dispatchScript: validDispatchScript,
       }),
     ).toEqual(
       expect.arrayContaining([
@@ -217,11 +329,22 @@ run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
   });
 
   it('validates the checked-in Renovate configuration and workflow', async () => {
-    const [configText, globalText, workflow, labelsText] = await Promise.all([
+    const [
+      configText,
+      globalText,
+      workflow,
+      labelsText,
+      docsWorkflow,
+      dependencyReviewWorkflow,
+      dispatchScript,
+    ] = await Promise.all([
       readFile(new URL('../../renovate.json', import.meta.url), 'utf8'),
       readFile(new URL('../../.github/renovate-global.json', import.meta.url), 'utf8'),
       readFile(new URL('../../.github/workflows/renovate.yml', import.meta.url), 'utf8'),
       readFile(new URL('../../.github/labels.yml', import.meta.url), 'utf8'),
+      readFile(new URL('../../.github/workflows/docs.yml', import.meta.url), 'utf8'),
+      readFile(new URL('../../.github/workflows/dependency-review.yml', import.meta.url), 'utf8'),
+      readFile(new URL('../../scripts/dispatch-renovate-checks.mjs', import.meta.url), 'utf8'),
     ]);
     const repositoryLabels = new Set(
       [...labelsText.matchAll(/^- name: ['"]([^'"]+)['"]$/gm)]
@@ -235,6 +358,9 @@ run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
         globalConfig: JSON.parse(globalText),
         workflow,
         repositoryLabels,
+        docsWorkflow,
+        dependencyReviewWorkflow,
+        dispatchScript,
       }),
     ).toEqual([]);
   });

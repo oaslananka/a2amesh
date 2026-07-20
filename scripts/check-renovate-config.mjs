@@ -28,14 +28,24 @@ const SECURITY_TOOL_POLICIES = [
   },
 ];
 
-export function validateRenovatePolicy({ config, globalConfig, workflow, repositoryLabels }) {
+export function validateRenovatePolicy({
+  config,
+  globalConfig,
+  workflow,
+  repositoryLabels,
+  docsWorkflow,
+  dependencyReviewWorkflow,
+  dispatchScript,
+}) {
   const failures = [];
   validateRepositoryConfig(config, failures);
   validatePackageRules(config, failures);
   validateSecurityToolManagers(config, failures);
+  validatePnpmPolicy(config, failures);
   validateLabels(config, repositoryLabels, failures);
   validateGlobalConfig(globalConfig, failures);
   validateWorkflow(workflow, failures);
+  validateDispatchContract({ docsWorkflow, dependencyReviewWorkflow, dispatchScript }, failures);
   return failures;
 }
 
@@ -60,6 +70,12 @@ function validateRepositoryConfig(config, failures) {
   }
   if (config.lockFileMaintenance?.enabled !== true) {
     failures.push('Renovate lockFileMaintenance must be enabled');
+  }
+  if (config.dependencyDashboard !== true) {
+    failures.push('Renovate Dependency Dashboard must be explicitly enabled');
+  }
+  if (config.dependencyDashboardTitle !== 'Dependency Dashboard') {
+    failures.push('Renovate Dependency Dashboard title must remain stable');
   }
 }
 
@@ -117,6 +133,41 @@ function isSecurityWorkflowPattern(pattern) {
   return pattern.includes('workflows') && pattern.includes('security');
 }
 
+function validatePnpmPolicy(config, failures) {
+  const managers = Array.isArray(config.customManagers) ? config.customManagers : [];
+  const pnpmManager = managers.find(
+    (manager) =>
+      manager.customType === 'regex' &&
+      manager.depNameTemplate === 'pnpm' &&
+      manager.datasourceTemplate === 'npm' &&
+      manager.managerFilePatterns?.some((pattern) => pattern.includes('runtime-versions')) === true,
+  );
+  if (!pnpmManager) failures.push('Renovate must extract the pnpm runtime source of truth');
+
+  const packageRules = Array.isArray(config.packageRules) ? config.packageRules : [];
+  const pnpmRule = packageRules.find(
+    (rule) => rule.matchPackageNames?.includes('pnpm') && rule.groupName === 'pnpm toolchain',
+  );
+  const postUpgradeTasks = pnpmRule?.postUpgradeTasks;
+  if (
+    postUpgradeTasks?.commands?.includes('node scripts/check-runtime-versions.mjs --write') !==
+      true ||
+    postUpgradeTasks.executionMode !== 'branch'
+  ) {
+    failures.push('Renovate pnpm updates must run the runtime-version synchronizer');
+  }
+
+  const internalImageRule = packageRules.find(
+    (rule) =>
+      rule.enabled === false &&
+      rule.matchDatasources?.includes('docker') &&
+      rule.matchPackageNames?.some((name) => name.includes('ghcr') && name.includes('a2amesh-')),
+  );
+  if (!internalImageRule) {
+    failures.push('Repository-owned unpublished images must remain disabled in Renovate');
+  }
+}
+
 function validateLabels(config, repositoryLabels, failures) {
   for (const label of collectLabels(config)) {
     if (!repositoryLabels.has(label)) failures.push(`Unknown Renovate label: ${label}`);
@@ -135,6 +186,14 @@ function validateGlobalConfig(globalConfig, failures) {
   }
   if (globalConfig.branchPrefix !== 'repository-managed-renovate/') {
     failures.push('Repository-managed Renovate branchPrefix must be repository-managed-renovate/');
+  }
+  if (
+    JSON.stringify(globalConfig.allowedCommands) !==
+    JSON.stringify(['^node scripts/check-runtime-versions\\.mjs --write$'])
+  ) {
+    failures.push(
+      'Repository-managed Renovate must allow only the runtime-version synchronizer command',
+    );
   }
 }
 
@@ -160,6 +219,9 @@ function validateWorkflow(workflow, failures) {
   if (!workflow.includes('needs: validate')) {
     failures.push('Renovate execution job must depend on validation');
   }
+  if (!workflow.includes('node scripts/dispatch-renovate-checks.mjs')) {
+    failures.push('Renovate workflow must dispatch required checks after repository updates');
+  }
   validateWorkflowPermissions(workflow, failures);
   if (/mount-docker-socket:\s*true/.test(workflow)) {
     failures.push('Renovate workflow must not mount the Docker socket');
@@ -177,9 +239,55 @@ function validateWorkflowPermissions(workflow, failures) {
 
   const renovateJobPermissions =
     workflow.match(/^ {2}renovate:\n[\s\S]*?^ {4}permissions:\n((?: {6}\S.*\n)+)/m)?.[1] ?? '';
-  for (const permission of ['contents: write', 'issues: write', 'pull-requests: write']) {
+  for (const permission of [
+    'contents: write',
+    'issues: write',
+    'pull-requests: write',
+    'actions: write',
+    'security-events: read',
+  ]) {
     if (!renovateJobPermissions.includes(permission)) {
       failures.push(`Renovate job missing permission: ${permission}`);
+    }
+  }
+}
+
+function validateDispatchContract(
+  { docsWorkflow, dependencyReviewWorkflow, dispatchScript },
+  failures,
+) {
+  for (const value of ['workflow_dispatch:', 'deploy:', 'default: false', 'inputs.deploy']) {
+    if (!docsWorkflow.includes(value)) {
+      failures.push(`Docs workflow missing Renovate-safe dispatch contract: ${value}`);
+    }
+  }
+  for (const value of [
+    'workflow_dispatch:',
+    'base_ref:',
+    'head_ref:',
+    'inputs.base_ref',
+    'inputs.head_ref',
+  ]) {
+    if (!dependencyReviewWorkflow.includes(value)) {
+      failures.push(`Dependency Review workflow missing dispatch contract: ${value}`);
+    }
+  }
+  for (const value of [
+    'repository-managed-renovate/',
+    '.github/rulesets/main.json',
+    'required_status_checks',
+    "'ci.yml': 'CI / '",
+    "'docs.yml': 'Docs / '",
+    "'security.yml': 'Security / '",
+    "'codeql.yml': 'CodeQL / '",
+    "'scorecard.yml': 'Scorecard / '",
+    "'dependency-review.yml': 'Dependency Review / '",
+    'gh',
+    'workflow',
+    'run',
+  ]) {
+    if (!dispatchScript.includes(value)) {
+      failures.push(`Renovate check dispatcher missing contract value: ${value}`);
     }
   }
 }
@@ -218,6 +326,9 @@ function runCli() {
     globalConfig: readJson('.github/renovate-global.json'),
     workflow: readFileSync('.github/workflows/renovate.yml', 'utf8'),
     repositoryLabels: readDeclaredLabels('.github/labels.yml'),
+    docsWorkflow: readFileSync('.github/workflows/docs.yml', 'utf8'),
+    dependencyReviewWorkflow: readFileSync('.github/workflows/dependency-review.yml', 'utf8'),
+    dispatchScript: readFileSync('scripts/dispatch-renovate-checks.mjs', 'utf8'),
   });
   if (failures.length > 0) {
     console.error('Renovate policy validation failed.');

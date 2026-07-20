@@ -52,6 +52,13 @@
       "matchStrings": ["ZIZMOR_VERSION:\\\\s*['\\\"]?(?<currentValue>[^'\\\"\\\\s]+)['\\\"]?"],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "zizmorcore/zizmor"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^tools\\/runtime-versions\\.json$/"],
+      "matchStrings": ["\"pnpm\"\\s*:\\s*\"(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "npm",
+      "depNameTemplate": "pnpm"
     }
   ],
   "packageRules": [
@@ -107,6 +114,24 @@
       "matchManagers": ["custom.regex"],
       "automerge": false,
       "labels": ["area:security", "area:deps", "type:task"]
+    },
+    {
+      "description": "Update the pnpm source of truth and regenerate every governed runtime mirror.",
+      "groupName": "pnpm toolchain",
+      "matchPackageNames": ["pnpm"],
+      "automerge": false,
+      "labels": ["area:deps", "area:dx", "type:task"],
+      "postUpgradeTasks": {
+        "commands": ["node scripts/check-runtime-versions.mjs --write"],
+        "fileFilters": ["**/*"],
+        "executionMode": "branch"
+      }
+    },
+    {
+      "description": "Repository-owned unpublished images are released by the project, not Renovate.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^ghcr\\.io\\/oaslananka\\/a2amesh-/"],
+      "enabled": false
     }
   ],
   "vulnerabilityAlerts": {

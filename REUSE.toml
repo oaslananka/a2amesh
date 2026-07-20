@@ -88,7 +88,7 @@ SPDX-FileCopyrightText = "2025-2026 oaslananka"
 SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
-path = "scripts/check-renovate-config.d.mts"
+path = ["scripts/check-renovate-config.d.mts", "scripts/dispatch-renovate-checks.d.mts"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2025-2026 oaslananka"
 SPDX-License-Identifier = "Apache-2.0"

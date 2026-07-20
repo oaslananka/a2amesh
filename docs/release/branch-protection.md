@@ -34,6 +34,8 @@ The required status checks are:
 - `CodeQL / analyze`
 - `Scorecard / scan`
 
+Repository-managed Renovate pull requests are created with the scoped `GITHUB_TOKEN`, so the Renovate workflow explicitly dispatches these required workflows on each immutable Renovate head SHA. Dependency Review receives the pull request base and head commit IDs as required workflow inputs; Docs dispatches always set `deploy=false`.
+
 Apply or update rulesets with the GitHub REST rulesets API after the repository bootstrap commit has passed CI:
 
 ```powershell

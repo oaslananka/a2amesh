@@ -54,6 +54,8 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      actions: write
+      security-events: read
     if: github.repository == 'oaslananka/a2amesh'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -70,3 +72,8 @@ jobs:
           token: ${{ github.token }}
         env:
           LOG_LEVEL: info
+
+      - name: Dispatch required checks for Renovate pull requests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/dispatch-renovate-checks.mjs

@@ -3,6 +3,9 @@ export interface RenovatePolicyInputs {
   globalConfig: Record<string, unknown>;
   workflow: string;
   repositoryLabels: Set<string>;
+  docsWorkflow: string;
+  dependencyReviewWorkflow: string;
+  dispatchScript: string;
 }
 
 export function validateRenovatePolicy(inputs: RenovatePolicyInputs): string[];

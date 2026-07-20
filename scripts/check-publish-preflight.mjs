@@ -22,6 +22,7 @@ const tag = options.tag ?? process.env.TAG ?? process.env.INPUT_TAG ?? process.e
 const rootPackage = readJson('package.json');
 const config = readJson('release-please-config.json');
 const manifest = readJson('.release-please-manifest.json');
+const runtimeVersions = readJson('tools/runtime-versions.json');
 const publishWorkflow = readText(PUBLISH_WORKFLOW);
 const releasePleaseWorkflow = readText('.github/workflows/release-please.yml');
 const warnings = [];
@@ -50,8 +51,9 @@ if (expectedVersion && !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(expectedVersi
 }
 
 if (rootPackage.private !== true) failures.push('Root package.json must remain private');
-if (rootPackage.packageManager !== 'pnpm@11.7.0') {
-  failures.push('Root packageManager must remain pnpm@11.7.0');
+const expectedPackageManager = `pnpm@${runtimeVersions.pnpm}`;
+if (rootPackage.packageManager !== expectedPackageManager) {
+  failures.push(`Root packageManager must remain ${expectedPackageManager}`);
 }
 if (rootPackage.engines?.node !== '>=22.22.1 <25') {
   failures.push('Root package.json engines.node must be >=22.22.1 <25');
