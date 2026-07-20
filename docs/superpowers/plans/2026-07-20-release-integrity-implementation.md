@@ -39,10 +39,12 @@
 ### Task 1: Pure release-state evaluator
 
 **Files:**
+
 - Create: `scripts/release-state-core.mjs`
 - Create: `tests/integration/release-state-core.test.ts`
 
 **Interfaces:**
+
 - Produces: `expectedDistTag(version: string): string`
 - Produces: `evaluateReleaseState(observation: ReleaseObservation): ReleaseEvaluation`
 - `ReleaseObservation` contains `repository`, `checkedOutCommit`, `sourcePackages`, `canonicalTag`, `releasePrs`, `npmPackages`, and `errors`.
@@ -129,11 +131,13 @@ git commit -m "feat(release): model cross-system release state"
 ### Task 2: Observation collector and mode-aware CLI
 
 **Files:**
+
 - Modify: `scripts/release-state.mjs`
 - Create: `tests/integration/release-state-cli.test.ts`
 - Modify: `package.json`
 
 **Interfaces:**
+
 - Consumes: `evaluateReleaseState()` and `expectedDistTag()` from Task 1.
 - Produces CLI modes: `--mode report`, `--mode release-please`, `--mode publish`.
 - Produces optional `--tag @a2amesh/runtime-v<semver>` validation.
@@ -224,10 +228,12 @@ git commit -m "feat(release): collect and gate release observations"
 ### Task 3: Correct prerelease dist-tag synchronization
 
 **Files:**
+
 - Modify: `scripts/sync-npm-tags.mjs`
 - Modify: `tests/integration/release-state-core.test.ts`
 
 **Interfaces:**
+
 - Consumes: `expectedDistTag(version)` from Task 1.
 - Stable policy: require/write `latest`.
 - Prerelease policy: require/write only the prerelease identifier and reject `latest === version`.
@@ -287,14 +293,16 @@ git commit -m "fix(release): preserve latest for prerelease publication"
 ### Task 4: Enforce workflow gates and tag checkout
 
 **Files:**
+
 - Modify: `.github/workflows/release-please.yml`
 - Modify: `.github/workflows/publish.yml`
 - Modify: `scripts/check-release-config.mjs`
 - Create: `tests/integration/release-workflow-guards.test.ts`
 
 **Interfaces:**
+
 - Release Please invokes `node scripts/release-state.mjs --mode release-please --json` before `release-please-action`.
-- Publish checks out `${{ steps.tag.outputs.tag }}` and invokes `node scripts/release-state.mjs --mode publish --json --tag "${TAG}"`.
+- Publish stages the current guard modules, checks out `${{ steps.tag.outputs.tag }}`, and invokes the staged `release-state.mjs --mode publish --json --tag "${TAG}"` against the tagged source.
 
 - [ ] **Step 1: Write failing workflow static tests**
 
@@ -345,10 +353,12 @@ git commit -m "ci(release): block unreconciled release preparation"
 ### Task 5: Maintainer documentation and full verification
 
 **Files:**
+
 - Create: `docs/release/release-integrity.md`
-- Modify: `docs/README.md` or the existing release-document index that links maintainer release documents.
+- Modify: `README.md` and `docs/release/process.md` to link the maintainer release-integrity guide.
 
 **Interfaces:**
+
 - Documents state meanings, safe commands, tag creation, publish dispatch, partial-publication recovery, and PR #156 recovery decision.
 
 - [ ] **Step 1: Write the maintainer guide**
@@ -360,7 +370,7 @@ corepack pnpm run release:state
 corepack pnpm run release:state:release-please
 git tag '@a2amesh/runtime-v0.11.0-alpha.1' <verified-release-commit>
 git push origin '@a2amesh/runtime-v0.11.0-alpha.1'
-gh workflow run Publish --ref '@a2amesh/runtime-v0.11.0-alpha.1' \
+gh workflow run Publish --ref main \
   -f tag='@a2amesh/runtime-v0.11.0-alpha.1' \
   -f confirmation='PUBLISH @a2amesh/runtime-v0.11.0-alpha.1'
 ```
