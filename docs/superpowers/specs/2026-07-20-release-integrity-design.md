@@ -160,7 +160,7 @@ Static checks will verify that both workflows call the correct release-state mod
 ## Acceptance Criteria Mapping
 
 - One source version authority: manifest plus linked package equality checks.
-- Helm/container/docs alignment: existing source parity checks remain required and consume the prepared version.
+- Deployment, container, and documentation alignment: existing source parity checks remain required and consume the prepared version.
 - Release drift blocked: Release Please and Publish use explicit state modes.
 - Prerelease transitions tested: state evaluator and dist-tag tests cover alpha/stable behavior.
 - CI enforcement: release configuration validation requires both workflow gates.
