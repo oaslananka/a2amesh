@@ -176,7 +176,7 @@ function validateWorkflowPermissions(workflow, failures) {
   }
 
   const renovateJobPermissions =
-    workflow.match(/^  renovate:\n[\s\S]*?^    permissions:\n((?: {6}\S.*\n)+)/m)?.[1] ?? '';
+    workflow.match(/^ {2}renovate:\n[\s\S]*?^ {4}permissions:\n((?: {6}\S.*\n)+)/m)?.[1] ?? '';
   for (const permission of ['contents: write', 'issues: write', 'pull-requests: write']) {
     if (!renovateJobPermissions.includes(permission)) {
       failures.push(`Renovate job missing permission: ${permission}`);
