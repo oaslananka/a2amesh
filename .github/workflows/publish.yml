@@ -27,7 +27,7 @@ env:
 jobs:
   publish:
     name: Publish / npm
-    if: github.repository == 'oaslananka/a2amesh'
+    if: github.repository == 'oaslananka/a2amesh' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: npm-publish

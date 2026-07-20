@@ -133,6 +133,11 @@ if (!releasePleaseWorkflow.includes(releasePleaseGate)) {
 ) {
   failures.push('Release Please release-state gate must run before release-please-action');
 }
+const publishMainRefGuard =
+  "if: github.repository == 'oaslananka/a2amesh' && github.ref == 'refs/heads/main'";
+if (!publishWorkflow.includes(publishMainRefGuard)) {
+  failures.push('Publish workflow must run only from the canonical main branch ref');
+}
 if (!publishWorkflow.includes('Stage release-state guard scripts')) {
   failures.push(
     'Publish workflow must stage current release-state guard scripts before tag checkout',
