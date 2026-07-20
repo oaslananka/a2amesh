@@ -28,7 +28,7 @@
   "type": "module",
   "engines": {
     "node": ">=22.22.1 <25",
-    "pnpm": ">=11 <12"
+    "pnpm": ">=11.8.0 <12"
   },
   "files": [
     "dist",
