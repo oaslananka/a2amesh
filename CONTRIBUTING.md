@@ -4,7 +4,7 @@ Thanks for helping improve A2A Mesh.
 
 ## Local workflow
 
-1. Use Node `24.16.0` and pnpm `11.2.2` by default (`.node-version`, `.nvmrc`, and `packageManager` are the source of truth).
+1. Use Node `24.16.0` and pnpm `11.7.0` by default (`.node-version`, `.nvmrc`, and `packageManager` are the source of truth).
 2. Install dependencies with `pnpm run setup`.
 3. Run focused tests while iterating.
 4. Run `pnpm run ui:install:browsers` once per machine before the full UI smoke path.

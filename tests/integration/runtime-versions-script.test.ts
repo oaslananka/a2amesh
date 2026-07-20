@@ -92,8 +92,105 @@ describe('runtime version manifest checks', () => {
     );
 
     await expect(execRuntimeCheck(workspace)).rejects.toMatchObject({
-      stderr: expect.stringContaining('runtime values must match tools/runtime-versions.json'),
+      stderr: expect.stringContaining('does not match tools/runtime-versions.json'),
     });
+  });
+
+  it('writes every governed pnpm mirror from the runtime manifest', async () => {
+    const workspace = await createRuntimeWorkspace();
+    await writeFixture(
+      workspace,
+      'package.json',
+      `${JSON.stringify(
+        {
+          packageManager: 'pnpm@11.1.0',
+          engines: { pnpm: '>=11.1.0 <12' },
+          scripts: {
+            setup: 'corepack prepare pnpm@11.1.0 --activate && pnpm install --frozen-lockfile',
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    await writeFixture(
+      workspace,
+      'apps/mission-control/package.json',
+      `${JSON.stringify(
+        {
+          packageManager: 'pnpm@11.1.0',
+          engines: { pnpm: '>=11.1.0 <12' },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    await writeFixture(
+      workspace,
+      'apps/demo/package.json',
+      `${JSON.stringify({ engines: { pnpm: '>=11.1.0 <12' } }, null, 2)}\n`,
+    );
+    await writeFixture(workspace, 'apps/demo/Dockerfile', 'ARG PNPM_VERSION=11.1.0\n');
+    await writeFixture(workspace, 'packages/registry/Dockerfile', 'ARG PNPM_VERSION=11.1.0\n');
+    await writeFixture(
+      workspace,
+      'packages/cli/src/generated/scaffold-template.ts',
+      `export const scaffoldTemplateConfig = {
+  runtime: {
+    node: '${manifest.node}',
+    nodeDockerAlpineDigest: '${manifest.nodeDockerAlpineDigest}',
+    pnpm: '11.1.0',
+  },
+} as const;
+`,
+    );
+    await writeFixture(
+      workspace,
+      'README.md',
+      '<img src="https://img.shields.io/badge/pnpm-11.1.0-F69220" alt="pnpm 11.1.0" />\n',
+    );
+    await writeFixture(workspace, 'CONTRIBUTING.md', 'Use pnpm `11.1.0` by default.\n');
+    await writeFixture(workspace, 'docs/compatibility.md', 'pnpm `11.1.0` and `11.1.0`.\n');
+    await writeFixture(
+      workspace,
+      'docs-site/guide/compatibility.md',
+      'pnpm `11.1.0` and `11.1.0`.\n',
+    );
+    await writeFixture(workspace, 'docs/openssf-evidence.md', 'Package manager: `pnpm@11.1.0`\n');
+    await writeFixture(workspace, 'docs/repo-maturity-report.md', 'pnpm 11.1.0 with lockfile.\n');
+
+    await expect(execRuntimeCheck(workspace, ['--write'])).resolves.toBeDefined();
+
+    const rootPackage = JSON.parse(await readFile(join(workspace, 'package.json'), 'utf8'));
+    const appPackage = JSON.parse(
+      await readFile(join(workspace, 'apps/mission-control/package.json'), 'utf8'),
+    );
+    const demoPackage = JSON.parse(
+      await readFile(join(workspace, 'apps/demo/package.json'), 'utf8'),
+    );
+    expect(rootPackage.packageManager).toBe(`pnpm@${manifest.pnpm}`);
+    expect(rootPackage.engines.pnpm).toBe('>=11 <12');
+    expect(rootPackage.scripts.setup).toContain(`pnpm@${manifest.pnpm}`);
+    expect(appPackage.packageManager).toBe(`pnpm@${manifest.pnpm}`);
+    expect(appPackage.engines.pnpm).toBe('>=11 <12');
+    expect(demoPackage.engines.pnpm).toBe('>=11 <12');
+    await expect(readFile(join(workspace, 'apps/demo/Dockerfile'), 'utf8')).resolves.toContain(
+      `ARG PNPM_VERSION=${manifest.pnpm}`,
+    );
+    await expect(
+      readFile(join(workspace, 'packages/cli/src/generated/scaffold-template.ts'), 'utf8'),
+    ).resolves.toContain(`pnpm: '${manifest.pnpm}'`);
+    for (const path of [
+      'README.md',
+      'CONTRIBUTING.md',
+      'docs/compatibility.md',
+      'docs-site/guide/compatibility.md',
+      'docs/openssf-evidence.md',
+      'docs/repo-maturity-report.md',
+    ]) {
+      await expect(readFile(join(workspace, path), 'utf8')).resolves.not.toContain('11.1.0');
+    }
+    await expect(execRuntimeCheck(workspace)).resolves.toBeDefined();
   });
 
   it('writes missing branch protection docs compatibility contexts', async () => {
@@ -346,6 +443,7 @@ async function createRuntimeWorkspace(
     `${JSON.stringify(
       {
         packageManager: `pnpm@${manifest.pnpm}`,
+        engines: { pnpm: '>=11 <12' },
         scripts: {
           setup: `corepack prepare pnpm@${manifest.pnpm} --activate && pnpm install --frozen-lockfile`,
         },
@@ -354,6 +452,58 @@ async function createRuntimeWorkspace(
       2,
     )}\n`,
   );
+  await writeFixture(
+    root,
+    'apps/demo/package.json',
+    `${JSON.stringify({ engines: { pnpm: '>=11 <12' } }, null, 2)}\n`,
+  );
+  for (const path of [
+    'apps/mission-control/package.json',
+    'apps/registry-ui/package.json',
+    'docs-site/package.json',
+  ]) {
+    await writeFixture(
+      root,
+      path,
+      `${JSON.stringify(
+        {
+          packageManager: `pnpm@${manifest.pnpm}`,
+          engines: { pnpm: '>=11 <12' },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+  }
+  await writeFixture(root, 'apps/demo/Dockerfile', `ARG PNPM_VERSION=${manifest.pnpm}\n`);
+  await writeFixture(root, 'packages/registry/Dockerfile', `ARG PNPM_VERSION=${manifest.pnpm}\n`);
+  await writeFixture(
+    root,
+    'README.md',
+    `<img src="https://img.shields.io/badge/pnpm-${manifest.pnpm}-F69220" alt="pnpm ${manifest.pnpm}" />\n`,
+  );
+  await writeFixture(root, 'CONTRIBUTING.md', `Use pnpm \`${manifest.pnpm}\` by default.\n`);
+  await writeFixture(
+    root,
+    'docs/compatibility.md',
+    `pnpm \`${manifest.pnpm}\` and \`${manifest.pnpm}\`.\n`,
+  );
+  await writeFixture(
+    root,
+    'docs-site/guide/compatibility.md',
+    `pnpm \`${manifest.pnpm}\` and \`${manifest.pnpm}\`.\n`,
+  );
+  await writeFixture(
+    root,
+    'docs/openssf-evidence.md',
+    `Package manager: \`pnpm@${manifest.pnpm}\`\n`,
+  );
+  await writeFixture(
+    root,
+    'docs/repo-maturity-report.md',
+    `pnpm ${manifest.pnpm} with lockfile.\n`,
+  );
+
   await writeFixture(
     root,
     'packages/cli/src/generated/scaffold-template.ts',

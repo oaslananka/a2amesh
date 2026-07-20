@@ -1,5 +1,5 @@
-import { writeFileSync } from 'node:fs';
-import { readJson, readText, fail } from './check-utils.mjs';
+import { existsSync, writeFileSync } from 'node:fs';
+import { getWorkspacePackages, readJson, readText, fail } from './check-utils.mjs';
 
 const write = process.argv.includes('--write');
 const manifestPath = 'tools/runtime-versions.json';
@@ -79,12 +79,6 @@ function syncTextFile(path, expected) {
   writeOrExpect(path, readText(path), expected);
 }
 
-function syncPackageJson(path, update) {
-  const packageJson = readJson(path);
-  const updated = update(structuredClone(packageJson));
-  writeOrExpect(path, normalizeJson(packageJson), normalizeJson(updated));
-}
-
 function syncWorkflowEnv(path, manifest) {
   const original = readText(path);
   let updated = original.replace(/NODE_VERSION:\s*'[^']+'/g, `NODE_VERSION: '${manifest.node}'`);
@@ -106,19 +100,93 @@ function syncWorkflowEnv(path, manifest) {
   writeOrExpect(path, original, updated);
 }
 
-function validateGeneratedScaffoldRuntime(manifest) {
+function replaceGeneratedDigest(content, digest) {
+  const lines = content.split('\n');
+  const propertyIndex = lines.findIndex((line) => line.trim() === 'nodeDockerAlpineDigest:');
+  if (propertyIndex < 0 || propertyIndex + 1 >= lines.length) return content;
+  const valueLine = lines[propertyIndex + 1];
+  const indentation = /^\s*/.exec(valueLine)?.[0] ?? '';
+  lines[propertyIndex + 1] = `${indentation}'${digest}',`;
+  return lines.join('\n');
+}
+
+function syncGeneratedScaffoldRuntime(manifest) {
   const path = 'packages/cli/src/generated/scaffold-template.ts';
-  const generated = readText(path);
-  const requiredSnippets = [
+  if (!existsSync(path)) return;
+  const original = readText(path);
+  const updated = replaceGeneratedDigest(original, manifest.nodeDockerAlpineDigest)
+    .replace(/(\bnode:\s*')[^']+(')/, `$1${manifest.node}$2`)
+    .replace(/(\bpnpm:\s*')[^']+(')/, `$1${manifest.pnpm}$2`);
+  writeOrExpect(path, original, updated);
+  for (const snippet of [
     `node: '${manifest.node}'`,
     manifest.nodeDockerAlpineDigest,
     `pnpm: '${manifest.pnpm}'`,
-  ];
-  for (const snippet of requiredSnippets) {
-    if (!generated.includes(snippet)) {
+  ]) {
+    if (!updated.includes(snippet)) {
       failures.push(`${path}: runtime values must match ${manifestPath}`);
       break;
     }
+  }
+}
+
+function pnpmEngineRange(version) {
+  const major = Number(version.split('.')[0]);
+  return `>=${major} <${major + 1}`;
+}
+
+function syncWorkspacePnpm(manifest) {
+  const engineRange = pnpmEngineRange(manifest.pnpm);
+  for (const { path, packageJson } of getWorkspacePackages()) {
+    const updated = structuredClone(packageJson);
+    if (path === 'package.json' || updated.packageManager?.startsWith('pnpm@')) {
+      updated.packageManager = `pnpm@${manifest.pnpm}`;
+    }
+    if (typeof updated.engines?.pnpm === 'string') {
+      updated.engines.pnpm = engineRange;
+    }
+    if (path === 'package.json') {
+      updated.scripts ??= {};
+      updated.scripts.setup = `corepack prepare pnpm@${manifest.pnpm} --activate && pnpm install --frozen-lockfile`;
+    }
+    writeOrExpect(path, normalizeJson(packageJson), normalizeJson(updated));
+  }
+}
+
+function syncPnpmDockerMirrors(manifest) {
+  for (const path of ['apps/demo/Dockerfile', 'packages/registry/Dockerfile']) {
+    if (!existsSync(path)) continue;
+    const original = readText(path);
+    const updated = original.replace(/^ARG PNPM_VERSION=.*$/m, `ARG PNPM_VERSION=${manifest.pnpm}`);
+    writeOrExpect(path, original, updated);
+  }
+}
+
+function replacePnpmMentions(content, version) {
+  return content.replace(
+    /(pnpm(?:@|-|\s+)(?:`)?)\d+\.\d+\.\d+(`?)/gi,
+    (_match, prefix, suffix) => `${prefix}${version}${suffix}`,
+  );
+}
+
+function syncPnpmDocumentation(manifest) {
+  const paths = [
+    'README.md',
+    'CONTRIBUTING.md',
+    'docs/compatibility.md',
+    'docs-site/guide/compatibility.md',
+    'docs/openssf-evidence.md',
+    'docs/repo-maturity-report.md',
+  ];
+  for (const path of paths) {
+    if (!existsSync(path)) continue;
+    const original = readText(path);
+    const major = manifest.pnpm.split('.')[0];
+    const normalized = path.endsWith('compatibility.md')
+      ? original.replace(new RegExp(String.raw`${major}\.\d+\.\d+`, 'g'), manifest.pnpm)
+      : original;
+    const updated = replacePnpmMentions(normalized, manifest.pnpm);
+    writeOrExpect(path, original, updated);
   }
 }
 
@@ -410,11 +478,9 @@ validateRuntimeManifest(manifest);
 if (failures.length === 0) {
   syncTextFile('.node-version', `${manifest.node}\n`);
   syncTextFile('.nvmrc', `${manifest.node}\n`);
-  syncPackageJson('package.json', (packageJson) => {
-    packageJson.packageManager = `pnpm@${manifest.pnpm}`;
-    packageJson.scripts.setup = `corepack prepare pnpm@${manifest.pnpm} --activate && pnpm install --frozen-lockfile`;
-    return packageJson;
-  });
+  syncWorkspacePnpm(manifest);
+  syncPnpmDockerMirrors(manifest);
+  syncPnpmDocumentation(manifest);
   for (const path of [
     '.github/workflows/ci.yml',
     '.github/workflows/docs.yml',
@@ -424,7 +490,7 @@ if (failures.length === 0) {
   ]) {
     syncWorkflowEnv(path, manifest);
   }
-  validateGeneratedScaffoldRuntime(manifest);
+  syncGeneratedScaffoldRuntime(manifest);
   const failuresBeforeMatrixRead = failures.length;
   const compatibilityRows = readCompatibilityMatrix('.github/workflows/ci.yml');
   if (failures.length === failuresBeforeMatrixRead) {

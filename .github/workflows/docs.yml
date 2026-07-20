@@ -8,6 +8,12 @@ name: Docs
   schedule:
     - cron: '17 4 * * 1'
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy the rendered site to GitHub Pages
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -82,7 +88,7 @@ jobs:
 
   deploy:
     name: Docs / deploy
-    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops') }}
+    if: ${{ (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)) && (github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops') }}
     needs: [build, lint-md, command-parity]
     runs-on: ubuntu-24.04
     timeout-minutes: 20

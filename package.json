@@ -100,7 +100,8 @@
     "release:tags:sync": "node scripts/sync-npm-tags.mjs --write",
     "containers:check": "node scripts/check-container-config.mjs",
     "helm:check": "node scripts/check-helm-chart.mjs",
-    "renovate:validate": "node scripts/check-renovate-config.mjs"
+    "renovate:validate": "node scripts/check-renovate-config.mjs",
+    "renovate:dispatch:plan": "node scripts/dispatch-renovate-checks.mjs --dry-run"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
