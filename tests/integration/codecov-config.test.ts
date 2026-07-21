@@ -30,6 +30,33 @@ describe('Codecov observability policy', () => {
     ).toEqual([]);
   });
 
+  it('rejects bundle uploads that race coverage registration', async () => {
+    const [codecovYaml, ciWorkflow, packageJson, ruleset, bundleUploader, documentation] =
+      await Promise.all([
+        read('codecov.yml'),
+        read('.github/workflows/ci.yml'),
+        read('package.json'),
+        read('.github/rulesets/main.json'),
+        read('scripts/upload-codecov-bundles.mjs'),
+        read('docs/development/codecov.md'),
+      ]);
+    const racingWorkflow = ciWorkflow.replace(
+      'Upload unit coverage to Codecov',
+      'Upload JavaScript bundle analysis to Codecov',
+    );
+
+    expect(
+      validateCodecovPolicy({
+        codecovYaml,
+        ciWorkflow: racingWorkflow,
+        packageJson,
+        ruleset,
+        bundleUploader,
+        documentation,
+      }),
+    ).toContain('Bundle analysis must run after coverage and Test Analytics in CI / unit');
+  });
+
   it('rejects blocking Codecov statuses and mutable action references', () => {
     const failures = validateCodecovPolicy({
       codecovYaml: `coverage:\n  status:\n    project:\n      default:\n        informational: false\n`,

@@ -37,14 +37,17 @@ packages and enforce package-level coverage thresholds.
 ## Bundle Analysis
 
 The repository uses the official bundler-independent analyzer rather than the Codecov Vite plugin,
-because the current plugin peer range does not include this repository's Vite major. `CI / build`
-first produces the normal Vite outputs, then analyzes only:
+because the current plugin peer range does not include this repository's Vite major. `CI / unit`
+uses the Vite outputs already produced by the coverage run and uploads bundle reports only after the
+coverage and Test Analytics uploads have registered the commit. It analyzes only:
 
 - `apps/registry-ui/dist` as `registry-ui`;
 - `apps/mission-control/dist` as `mission-control`.
 
-Source maps are excluded. The upload is enabled only by `CODECOV_BUNDLE_ANALYSIS=true` in the Ubuntu
-build job. Bundle status is informational with a 5% warning threshold.
+Source maps are excluded. GitHub Actions supplies explicit branch, head SHA, pull-request, build, and
+repository metadata, and checkout keeps two commits available as recommended by Codecov. The upload
+is enabled only by `CODECOV_BUNDLE_ANALYSIS=true` in the Ubuntu unit job. Bundle status is
+informational with a 5% warning threshold.
 
 A local build can exercise report generation without uploading:
 

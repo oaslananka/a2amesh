@@ -90,9 +90,14 @@ jobs:
     timeout-minutes: 20
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      CODECOV_BUNDLE_BRANCH: ${{ github.head_ref || github.ref_name }}
+      CODECOV_BUNDLE_PR: ${{ github.event.pull_request.number || '' }}
+      CODECOV_BUNDLE_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+      CODECOV_BUNDLE_SLUG: ${{ github.repository }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
+          fetch-depth: 2
           persist-credentials: false
       - uses: ./.github/actions/setup-pnpm
         with:
@@ -121,6 +126,11 @@ jobs:
           flags: unit
           name: unit-tests
           version: ${{ env.CODECOV_CLI_VERSION }}
+      - name: Upload JavaScript bundle analysis to Codecov
+        if: ${{ !cancelled() && env.CODECOV_TOKEN != '' }}
+        env:
+          CODECOV_BUNDLE_ANALYSIS: 'true'
+        run: pnpm run codecov:bundle
 
   integration:
     name: CI / integration
@@ -263,8 +273,6 @@ jobs:
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
@@ -273,11 +281,6 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: pnpm run build
-      - name: Upload JavaScript bundle analysis to Codecov
-        if: ${{ env.CODECOV_TOKEN != '' }}
-        env:
-          CODECOV_BUNDLE_ANALYSIS: 'true'
-        run: pnpm run codecov:bundle
 
   package-dry-run:
     name: CI / package-dry-run
