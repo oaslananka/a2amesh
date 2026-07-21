@@ -59,6 +59,14 @@ function validConfig() {
       },
       {
         customType: 'regex',
+        managerFilePatterns: ['/^\\.github\\/workflows\\/ci\\.yml$/'],
+        matchStrings: ['CODECOV_CLI_VERSION'],
+        datasourceTemplate: 'github-releases',
+        depNameTemplate: 'codecov/codecov-cli',
+        versioningTemplate: 'loose',
+      },
+      {
+        customType: 'regex',
         managerFilePatterns: ['/^tools\\/runtime-versions\\.json$/'],
         matchStrings: ['"pnpm"'],
         datasourceTemplate: 'npm',

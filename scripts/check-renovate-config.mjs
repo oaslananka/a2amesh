@@ -41,6 +41,7 @@ export function validateRenovatePolicy({
   validateRepositoryConfig(config, failures);
   validatePackageRules(config, failures);
   validateSecurityToolManagers(config, failures);
+  validateCodecovToolManager(config, failures);
   validatePnpmPolicy(config, failures);
   validateLabels(config, repositoryLabels, failures);
   validateGlobalConfig(globalConfig, failures);
@@ -131,6 +132,23 @@ function matchesSecurityToolManager(manager, policy) {
 
 function isSecurityWorkflowPattern(pattern) {
   return pattern.includes('workflows') && pattern.includes('security');
+}
+
+function validateCodecovToolManager(config, failures) {
+  const managers = Array.isArray(config.customManagers) ? config.customManagers : [];
+  const hasCodecovManager = managers.some(
+    (manager) =>
+      manager.customType === 'regex' &&
+      manager.managerFilePatterns?.some(
+        (pattern) => pattern.includes('workflows') && pattern.includes('ci'),
+      ) === true &&
+      manager.datasourceTemplate === 'github-releases' &&
+      manager.depNameTemplate === 'codecov/codecov-cli' &&
+      manager.matchStrings?.some((pattern) => pattern.includes('CODECOV_CLI_VERSION')) === true,
+  );
+  if (!hasCodecovManager) {
+    failures.push('Renovate must extract the pinned Codecov CLI version');
+  }
 }
 
 function validatePnpmPolicy(config, failures) {

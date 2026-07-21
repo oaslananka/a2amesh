@@ -59,6 +59,16 @@
       "matchStrings": ["\"pnpm\"\\s*:\\s*\"(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "npm",
       "depNameTemplate": "pnpm"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github\\/workflows\\/ci\\.yml$/"],
+      "matchStrings": [
+        "CODECOV_CLI_VERSION:\\\\s*['\\\"]?(?<currentValue>v?[^'\\\"\\\\s]+)['\\\"]?"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "codecov/codecov-cli",
+      "versioningTemplate": "loose"
     }
   ],
   "packageRules": [
@@ -113,7 +123,20 @@
       "groupName": "security toolchain",
       "matchManagers": ["custom.regex"],
       "automerge": false,
-      "labels": ["area:security", "area:deps", "type:task"]
+      "labels": ["area:security", "area:deps", "type:task"],
+      "matchPackageNames": [
+        "gitleaks/gitleaks",
+        "rhysd/actionlint",
+        "google/osv-scanner",
+        "zizmorcore/zizmor"
+      ]
+    },
+    {
+      "description": "Keep the Codecov upload runtime pinned and review-required.",
+      "groupName": "codecov toolchain",
+      "matchPackageNames": ["codecov/codecov-cli"],
+      "automerge": false,
+      "labels": ["area:ci", "area:deps", "type:task"]
     },
     {
       "description": "Update the pnpm source of truth and regenerate every governed runtime mirror.",

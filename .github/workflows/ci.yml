@@ -22,6 +22,7 @@ defaults:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   NODE_VERSION: '24.16.0'
+  CODECOV_CLI_VERSION: 'v11.3.1'
 
 jobs:
   identity:
@@ -87,14 +88,52 @@ jobs:
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      CODECOV_BUNDLE_BRANCH: ${{ github.head_ref || github.ref_name }}
+      CODECOV_BUNDLE_PR: ${{ github.event.pull_request.number || '' }}
+      CODECOV_BUNDLE_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+      CODECOV_BUNDLE_SLUG: ${{ github.repository }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
+          fetch-depth: 2
           persist-credentials: false
       - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: pnpm run test:coverage
+      - run: pnpm run test:coverage:ci
+      - name: Upload unit coverage to Codecov
+        if: ${{ !cancelled() && env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          disable_search: true
+          fail_ci_if_error: true
+          flags: unit
+          name: unit-coverage
+          version: ${{ env.CODECOV_CLI_VERSION }}
+      - name: Upload unit test results to Codecov
+        if: ${{ !cancelled() && env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: ./test-results/unit.junit.xml
+          report_type: test_results
+          disable_search: true
+          fail_ci_if_error: true
+          flags: unit
+          name: unit-tests
+          version: ${{ env.CODECOV_CLI_VERSION }}
+      - name: Upload JavaScript bundle analysis to Codecov
+        if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        env:
+          CODECOV_BUNDLE_ANALYSIS: 'true'
+        run: pnpm run codecov:bundle
 
   integration:
     name: CI / integration
