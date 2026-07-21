@@ -265,6 +265,7 @@ describe('OutboundPolicy total deadline', () => {
   it('keeps the deadline active after real response headers arrive', async () => {
     const server = createServer((_request, response) => {
       response.writeHead(200, { 'Content-Type': 'text/plain' });
+      response.flushHeaders();
       response.write('partial');
       // Deliberately keep the body open until the policy aborts the connection.
     });
@@ -278,7 +279,7 @@ describe('OutboundPolicy total deadline', () => {
         {
           allowLocalhost: true,
           resolveHostname: async () => ['127.0.0.1'],
-          timeoutMs: 40,
+          timeoutMs: 500,
         },
       );
 
