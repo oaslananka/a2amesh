@@ -12,7 +12,7 @@
 - Unit: fast package-level behavior.
 - Integration: runtime, transport, registry, and examples smoke paths.
 - Conformance: A2A protocol compatibility behavior.
-- Coverage: regression signal for core behavior.
+- Coverage: regression signal for core behavior; see [Codecov coverage and test observability](./codecov.md).
 - Mutation/e2e/performance smoke: higher-cost quality gates.
 - Cassette record/replay: deterministic, LLM-free regression coverage for a recorded task
   lifecycle (`@a2amesh/runtime/testing`'s `CassetteRecorder`/`replayCassette`; see

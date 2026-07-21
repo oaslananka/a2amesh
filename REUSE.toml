@@ -90,6 +90,7 @@ SPDX-License-Identifier = "Apache-2.0"
 [[annotations]]
 path = [
   "scripts/check-renovate-config.d.mts",
+  "scripts/check-codecov-config.d.mts",
   "scripts/dispatch-renovate-checks.d.mts",
   "scripts/release-state-core.d.mts",
 ]
