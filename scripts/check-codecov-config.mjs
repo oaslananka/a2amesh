@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const COVERAGE_ACTION_SHA = 'fb8b3582c8e4def4969c97caa2f19720cb33a72f';
-const TEST_RESULTS_ACTION_SHA = '0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3';
 
 export function validateCodecovPolicy({
   codecovYaml,
@@ -46,11 +45,16 @@ function validateCodecovYaml(codecovYaml, failures) {
 }
 
 function validateWorkflow(ciWorkflow, failures) {
-  if (!ciWorkflow.includes(`codecov/codecov-action@${COVERAGE_ACTION_SHA}`)) {
-    failures.push('Codecov coverage action must be pinned to the approved commit SHA');
+  const pinnedActionUses =
+    ciWorkflow.match(new RegExp(`codecov/codecov-action@${COVERAGE_ACTION_SHA}`, 'g')) ?? [];
+  if (pinnedActionUses.length !== 2) {
+    failures.push('Coverage and test-result uploads must use the approved Codecov action SHA');
   }
-  if (!ciWorkflow.includes(`codecov/test-results-action@${TEST_RESULTS_ACTION_SHA}`)) {
-    failures.push('Codecov test-results action must be pinned to the approved commit SHA');
+  if (ciWorkflow.includes('codecov/test-results-action@')) {
+    failures.push('The deprecated Codecov test-results action must not be used');
+  }
+  if (!/report_type:\s*test_results/.test(ciWorkflow)) {
+    failures.push('The JUnit upload must declare the Codecov test_results report type');
   }
   if (!ciWorkflow.includes("CODECOV_CLI_VERSION: 'v11.3.1'")) {
     failures.push('Codecov CLI must remain pinned to v11.3.1');

@@ -43,7 +43,8 @@ describe('Codecov observability policy', () => {
     expect(failures).toEqual(
       expect.arrayContaining([
         'Codecov project and patch statuses must remain informational',
-        'Codecov coverage action must be pinned to the approved commit SHA',
+        'Coverage and test-result uploads must use the approved Codecov action SHA',
+        'The JUnit upload must declare the Codecov test_results report type',
         'Codecov contexts must not be required while Sonar and local thresholds remain active',
       ]),
     );
