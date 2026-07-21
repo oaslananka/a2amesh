@@ -28,7 +28,7 @@ semgrep scan --config .semgrep.yml --error --disable-version-check --metrics=off
         'security:semgrep': 'semgrep scan --config .semgrep.yml --error --metrics=off',
         'security:tooling:check': 'node scripts/check-security-tooling.mjs',
         'security:precommit': 'pre-commit run --all-files',
-      },
+      } as Record<string, string>,
     },
     ruleset: JSON.stringify({
       rules: [
