@@ -45,6 +45,15 @@ function validateCodecovYaml(codecovYaml, failures) {
 }
 
 function validateWorkflow(ciWorkflow, failures) {
+  validateCodecovActionUsage(ciWorkflow, failures);
+  validateCodecovReportGeneration(ciWorkflow, failures);
+
+  const unitBlock = getWorkflowJobBlock(ciWorkflow, 'unit', 'integration');
+  const buildBlock = getWorkflowJobBlock(ciWorkflow, 'build', 'package-dry-run');
+  validateBundleWorkflow({ unitBlock, buildBlock, failures });
+}
+
+function validateCodecovActionUsage(ciWorkflow, failures) {
   const pinnedActionUses =
     ciWorkflow.match(new RegExp(`codecov/codecov-action@${COVERAGE_ACTION_SHA}`, 'g')) ?? [];
   if (pinnedActionUses.length !== 2) {
@@ -53,23 +62,27 @@ function validateWorkflow(ciWorkflow, failures) {
   if (ciWorkflow.includes('codecov/test-results-action@')) {
     failures.push('The deprecated Codecov test-results action must not be used');
   }
-  if (!/report_type:\s*test_results/.test(ciWorkflow)) {
+  if (!ciWorkflow.includes('report_type: test_results')) {
     failures.push('The JUnit upload must declare the Codecov test_results report type');
   }
   if (!ciWorkflow.includes("CODECOV_CLI_VERSION: 'v11.3.1'")) {
     failures.push('Codecov CLI must remain pinned to v11.3.1');
   }
+
   const pinnedCliInputs =
     ciWorkflow.match(/version:\s*\$\{\{ env\.CODECOV_CLI_VERSION \}\}/g) ?? [];
   if (pinnedCliInputs.length !== 2) {
     failures.push('Coverage and test-result actions must use the pinned Codecov CLI version');
   }
+}
+
+function validateCodecovReportGeneration(ciWorkflow, failures) {
   if (!ciWorkflow.includes('pnpm run test:coverage:ci')) {
     failures.push('CI must generate coverage and JUnit results in one unit-test execution');
   }
-  const tokenAwareUploads =
-    ciWorkflow.match(/if:\s*\$\{\{ !cancelled\(\) && env\.CODECOV_TOKEN != '' \}\}/g) ?? [];
-  if (tokenAwareUploads.length !== 2) {
+
+  const tokenGuard = "if: ${{ !cancelled() && env.CODECOV_TOKEN != '' }}";
+  if (ciWorkflow.split(tokenGuard).length - 1 !== 2) {
     failures.push('Coverage and failed-test uploads must use token-aware !cancelled() guards');
   }
   if (!ciWorkflow.includes('files: ./coverage/lcov.info')) {
@@ -78,43 +91,66 @@ function validateWorkflow(ciWorkflow, failures) {
   if (!ciWorkflow.includes('files: ./test-results/unit.junit.xml')) {
     failures.push('CI must upload the generated JUnit report for Test Analytics');
   }
-  if (!ciWorkflow.includes("CODECOV_BUNDLE_ANALYSIS: 'true'")) {
-    failures.push('CI must explicitly enable bundle analysis only in the unit upload step');
-  }
-  const unitStart = ciWorkflow.indexOf('\n  unit:');
-  const integrationStart = ciWorkflow.indexOf('\n  integration:');
-  const buildStart = ciWorkflow.indexOf('\n  build:');
-  const packageDryRunStart = ciWorkflow.indexOf('\n  package-dry-run:');
-  const unitBlock = ciWorkflow.slice(unitStart, integrationStart);
-  const buildBlock = ciWorkflow.slice(buildStart, packageDryRunStart);
+}
+
+function getWorkflowJobBlock(workflow, jobName, nextJobName) {
+  const startMarker = `\n  ${jobName}:`;
+  const endMarker = `\n  ${nextJobName}:`;
+  const start = workflow.indexOf(startMarker);
+  const end = workflow.indexOf(endMarker, start + startMarker.length);
+  if (start < 0 || end < 0) return '';
+  return workflow.slice(start, end);
+}
+
+function validateBundleWorkflow({ unitBlock, buildBlock, failures }) {
+  validateBundlePlacement(unitBlock, buildBlock, failures);
+  validateBundleIdentity(unitBlock, failures);
+  validateBundleMetadata(unitBlock, failures);
+}
+
+function validateBundlePlacement(unitBlock, buildBlock, failures) {
   const coverageUpload = unitBlock.indexOf('Upload unit coverage to Codecov');
   const testResultsUpload = unitBlock.indexOf('Upload unit test results to Codecov');
   const bundleUpload = unitBlock.indexOf('Upload JavaScript bundle analysis to Codecov');
-  if (
-    !(coverageUpload >= 0 && coverageUpload < testResultsUpload && testResultsUpload < bundleUpload)
-  ) {
+  const correctlyOrdered =
+    coverageUpload >= 0 && coverageUpload < testResultsUpload && testResultsUpload < bundleUpload;
+  if (!correctlyOrdered) {
     failures.push('Bundle analysis must run after coverage and Test Analytics in CI / unit');
   }
   if (buildBlock.includes('codecov:bundle') || buildBlock.includes('CODECOV_TOKEN')) {
     failures.push('CI / build must remain independent from Codecov upload ordering');
   }
+  if (!unitBlock.includes("CODECOV_BUNDLE_ANALYSIS: 'true'")) {
+    failures.push('CI must explicitly enable bundle analysis only in the unit upload step');
+  }
+}
+
+function validateBundleIdentity(unitBlock, failures) {
   if (!unitBlock.includes('fetch-depth: 2')) {
     failures.push('The Codecov unit checkout must retain two commits for bundle metadata');
   }
-  if (!/permissions:\s*[\s\S]*?contents:\s*read[\s\S]*?id-token:\s*write/.test(unitBlock)) {
+
+  const expectedPermissions =
+    '    permissions:\n      contents: read\n      id-token: write\n    env:';
+  if (!unitBlock.includes(expectedPermissions)) {
     failures.push('The Codecov unit job must grant only read contents and OIDC token permissions');
   }
+
   const bundleGuard =
     "if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}";
   if (!unitBlock.includes(bundleGuard)) {
     failures.push('Bundle analysis must use a fork-safe GitHub OIDC guard');
   }
-  for (const metadata of [
+}
+
+function validateBundleMetadata(unitBlock, failures) {
+  const requiredMetadata = [
     'CODECOV_BUNDLE_BRANCH:',
     'CODECOV_BUNDLE_PR:',
     'CODECOV_BUNDLE_SHA:',
     'CODECOV_BUNDLE_SLUG:',
-  ]) {
+  ];
+  for (const metadata of requiredMetadata) {
     if (!unitBlock.includes(metadata)) {
       failures.push(`The Codecov unit job is missing bundle metadata: ${metadata}`);
     }
