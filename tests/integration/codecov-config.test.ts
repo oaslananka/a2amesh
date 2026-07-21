@@ -57,6 +57,40 @@ describe('Codecov observability policy', () => {
     ).toContain('Bundle analysis must run after coverage and Test Analytics in CI / unit');
   });
 
+  it('rejects long-lived bundle tokens and missing OIDC permissions', async () => {
+    const [codecovYaml, ciWorkflow, packageJson, ruleset, bundleUploader, documentation] =
+      await Promise.all([
+        read('codecov.yml'),
+        read('.github/workflows/ci.yml'),
+        read('package.json'),
+        read('.github/rulesets/main.json'),
+        read('scripts/upload-codecov-bundles.mjs'),
+        read('docs/development/codecov.md'),
+      ]);
+
+    expect(
+      validateCodecovPolicy({
+        codecovYaml,
+        ciWorkflow: ciWorkflow
+          .replace('      id-token: write\n', '')
+          .replace(
+            "if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}",
+            "if: ${{ !cancelled() && env.CODECOV_TOKEN != '' }}",
+          ),
+        packageJson,
+        ruleset,
+        bundleUploader: `${bundleUploader}\nconst uploadToken = process.env.CODECOV_TOKEN;`,
+        documentation,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        'The Codecov unit job must grant only read contents and OIDC token permissions',
+        'Bundle analysis must use a fork-safe GitHub OIDC guard',
+        'Codecov bundle uploads must use GitHub OIDC instead of the coverage token',
+      ]),
+    );
+  });
+
   it('rejects blocking Codecov statuses and mutable action references', () => {
     const failures = validateCodecovPolicy({
       codecovYaml: `coverage:\n  status:\n    project:\n      default:\n        informational: false\n`,

@@ -26,7 +26,7 @@ curl --data-binary @codecov.yml https://codecov.io/validate
 - `coverage/lcov.info` for project and patch coverage;
 - `test-results/unit.junit.xml` for Codecov Test Analytics and failed-test reporting.
 
-Both uploads use separate invocations of the same immutable `codecov/codecov-action` commit SHA and a pinned Codecov CLI version managed by Renovate. The JUnit invocation explicitly sets `report_type: test_results`, avoiding the deprecated standalone test-results action. They run with a token-aware `!cancelled()` guard,
+Both uploads use separate invocations of the same immutable `codecov/codecov-action` commit SHA and a pinned Codecov CLI version managed by Renovate. The JUnit invocation explicitly sets `report_type: test_results`, avoiding the deprecated standalone test-results action. Coverage and Test Analytics use the repository `CODECOV_TOKEN` under a token-aware `!cancelled()` guard,
 which allows the JUnit report to be uploaded after a test failure without making fork CI depend on a
 secret it cannot access. The `unit` flag groups both report types.
 
@@ -45,9 +45,10 @@ coverage and Test Analytics uploads have registered the commit. It analyzes only
 - `apps/mission-control/dist` as `mission-control`.
 
 Source maps are excluded. GitHub Actions supplies explicit branch, head SHA, pull-request, build, and
-repository metadata, and checkout keeps two commits available as recommended by Codecov. The upload
-is enabled only by `CODECOV_BUNDLE_ANALYSIS=true` in the Ubuntu unit job. Bundle status is
-informational with a 5% warning threshold.
+repository metadata, and checkout keeps two commits available as recommended by Codecov. Bundle
+uploads authenticate with GitHub OIDC and therefore do not reuse the long-lived coverage token. The
+OIDC step is skipped for fork pull requests and is enabled only by `CODECOV_BUNDLE_ANALYSIS=true` in
+the Ubuntu unit job. Bundle status is informational with a 5% warning threshold.
 
 A local build can exercise report generation without uploading:
 

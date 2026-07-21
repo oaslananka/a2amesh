@@ -3,7 +3,7 @@ import { createAndUploadReport } from '@codecov/bundle-analyzer';
 
 const dryRun = process.argv.includes('--dry-run');
 const enabled = process.env.CODECOV_BUNDLE_ANALYSIS === 'true';
-const uploadToken = process.env.CODECOV_TOKEN;
+const useGitHubOIDC = process.env.GITHUB_ACTIONS === 'true';
 const uploadOverrides = dryRun
   ? undefined
   : {
@@ -22,8 +22,8 @@ if (!dryRun && !enabled) {
   console.log('Codecov bundle analysis is disabled outside the explicit CI upload step.');
   process.exit(0);
 }
-if (!dryRun && !uploadToken) {
-  throw new Error('CODECOV_TOKEN is required for a real bundle analysis upload.');
+if (!dryRun && !useGitHubOIDC) {
+  throw new Error('Real Codecov bundle uploads require GitHub Actions OIDC.');
 }
 if (!dryRun && (!uploadOverrides?.branch || !uploadOverrides.sha || !uploadOverrides.slug)) {
   throw new Error('Codecov bundle upload metadata requires branch, SHA, and repository slug.');
@@ -38,7 +38,7 @@ for (const { bundleName, directory } of bundles) {
       dryRun,
       retryCount: 6,
       enableBundleAnalysis: true,
-      uploadToken,
+      oidc: { useGitHubOIDC },
       uploadOverrides,
       gitService: 'github',
       telemetry: false,

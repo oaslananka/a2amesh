@@ -67,12 +67,10 @@ function validateWorkflow(ciWorkflow, failures) {
   if (!ciWorkflow.includes('pnpm run test:coverage:ci')) {
     failures.push('CI must generate coverage and JUnit results in one unit-test execution');
   }
-  const resilientUploads =
+  const tokenAwareUploads =
     ciWorkflow.match(/if:\s*\$\{\{ !cancelled\(\) && env\.CODECOV_TOKEN != '' \}\}/g) ?? [];
-  if (resilientUploads.length !== 3) {
-    failures.push(
-      'Coverage, failed-test, and bundle uploads must use token-aware !cancelled() guards',
-    );
+  if (tokenAwareUploads.length !== 2) {
+    failures.push('Coverage and failed-test uploads must use token-aware !cancelled() guards');
   }
   if (!ciWorkflow.includes('files: ./coverage/lcov.info')) {
     failures.push('CI must upload only the generated LCOV report');
@@ -102,6 +100,14 @@ function validateWorkflow(ciWorkflow, failures) {
   }
   if (!unitBlock.includes('fetch-depth: 2')) {
     failures.push('The Codecov unit checkout must retain two commits for bundle metadata');
+  }
+  if (!/permissions:\s*[\s\S]*?contents:\s*read[\s\S]*?id-token:\s*write/.test(unitBlock)) {
+    failures.push('The Codecov unit job must grant only read contents and OIDC token permissions');
+  }
+  const bundleGuard =
+    "if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}";
+  if (!unitBlock.includes(bundleGuard)) {
+    failures.push('Bundle analysis must use a fork-safe GitHub OIDC guard');
   }
   for (const metadata of [
     'CODECOV_BUNDLE_BRANCH:',
@@ -158,7 +164,9 @@ function validateBundleUploader(bundleUploader, failures) {
     "ignorePatterns: ['**/*.map']",
     'enableBundleAnalysis: true',
     'retryCount: 6',
+    'oidc: { useGitHubOIDC }',
     'uploadOverrides,',
+    'GITHUB_ACTIONS',
     'CODECOV_BUNDLE_BRANCH',
     'CODECOV_BUNDLE_SHA',
     'CODECOV_BUNDLE_SLUG',
@@ -171,6 +179,12 @@ function validateBundleUploader(bundleUploader, failures) {
   if (!bundleUploader.includes('CODECOV_BUNDLE_ANALYSIS')) {
     failures.push('Codecov bundle uploads must require the explicit CI enable flag');
   }
+  if (bundleUploader.includes('CODECOV_TOKEN') || bundleUploader.includes('uploadToken')) {
+    failures.push('Codecov bundle uploads must use GitHub OIDC instead of the coverage token');
+  }
+  if (!bundleUploader.includes('Real Codecov bundle uploads require GitHub Actions OIDC.')) {
+    failures.push('Codecov bundle uploads must fail closed outside GitHub Actions OIDC');
+  }
 }
 
 function validateDocumentation(documentation, failures) {
@@ -178,6 +192,7 @@ function validateDocumentation(documentation, failures) {
     'informational',
     'CODECOV_TOKEN',
     'GitHub App',
+    'GitHub OIDC',
     'Test Analytics',
     'Bundle Analysis',
     '#148',
