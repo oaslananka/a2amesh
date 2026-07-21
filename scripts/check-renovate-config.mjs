@@ -26,6 +26,11 @@ const SECURITY_TOOL_POLICIES = [
     datasource: 'github-releases',
     depName: 'zizmorcore/zizmor',
   },
+  {
+    variable: 'SEMGREP_VERSION',
+    datasource: 'pypi',
+    depName: 'semgrep',
+  },
 ];
 
 export function validateRenovatePolicy({

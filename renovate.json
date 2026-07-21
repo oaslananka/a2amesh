@@ -55,6 +55,13 @@
     },
     {
       "customType": "regex",
+      "managerFilePatterns": ["/^\\.github\\/workflows\\/security\\.yml$/"],
+      "matchStrings": ["SEMGREP_VERSION:\\\\s*['\\\"]?(?<currentValue>[^'\\\"\\\\s]+)['\\\"]?"],
+      "datasourceTemplate": "pypi",
+      "depNameTemplate": "semgrep"
+    },
+    {
+      "customType": "regex",
       "managerFilePatterns": ["/^tools\\/runtime-versions\\.json$/"],
       "matchStrings": ["\"pnpm\"\\s*:\\s*\"(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "npm",

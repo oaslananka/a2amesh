@@ -69,8 +69,8 @@
     "openapi:generate": "pnpm --filter @a2amesh/registry run build && node scripts/check-openapi.mjs --write",
     "openapi:check": "pnpm --filter @a2amesh/registry run build && node scripts/check-openapi.mjs",
     "security": "pnpm audit --audit-level high && node scripts/run-gitleaks.mjs && node scripts/check-reuse.mjs",
-    "verify:structure": "node scripts/check-workspace-graph.mjs && node scripts/check-workspace-declarations.mjs && node scripts/check-public-surface.mjs && node scripts/check-command-surface.mjs && node scripts/check-release-config.mjs && node scripts/check-api-surfaces.mjs && node scripts/check-renovate-config.mjs && node scripts/check-codecov-config.mjs",
-    "gc": "knip && node scripts/check-duplicates.mjs && node scripts/check-no-generated-artifacts.mjs && node scripts/check-docs-package-parity.mjs && node scripts/check-docs-commands.mjs && node scripts/check-public-surface.mjs && node scripts/check-release-config.mjs && node scripts/check-codecov-config.mjs",
+    "verify:structure": "node scripts/check-workspace-graph.mjs && node scripts/check-workspace-declarations.mjs && node scripts/check-public-surface.mjs && node scripts/check-command-surface.mjs && node scripts/check-release-config.mjs && node scripts/check-api-surfaces.mjs && node scripts/check-renovate-config.mjs && node scripts/check-codecov-config.mjs && node scripts/check-security-tooling.mjs",
+    "gc": "knip && node scripts/check-duplicates.mjs && node scripts/check-no-generated-artifacts.mjs && node scripts/check-docs-package-parity.mjs && node scripts/check-docs-commands.mjs && node scripts/check-public-surface.mjs && node scripts/check-release-config.mjs && node scripts/check-codecov-config.mjs && node scripts/check-security-tooling.mjs",
     "verify": "pnpm run lint && pnpm run build && pnpm run typecheck && pnpm run test:coverage && pnpm run test:integration && pnpm run test:mutation && pnpm run pack:dry-run && pnpm run schemas:check && pnpm run docs:build && pnpm run docs:check && pnpm run security && pnpm run ops:check && pnpm run verify:structure && pnpm run gc",
     "ui:install:browsers": "pnpm --dir apps/registry-ui exec playwright install --with-deps chromium",
     "ui:test:e2e": "pnpm --dir apps/registry-ui run test:e2e",
@@ -107,7 +107,10 @@
     "test:coverage:ci": "pnpm run build && node -e \"require('node:fs').mkdirSync('test-results',{recursive:true})\" && vitest run --project unit --coverage --reporter=default --reporter=github-actions --reporter=junit --outputFile.junit=./test-results/unit.junit.xml",
     "codecov:check": "node scripts/check-codecov-config.mjs",
     "codecov:bundle": "node scripts/upload-codecov-bundles.mjs",
-    "codecov:bundle:dry-run": "node scripts/upload-codecov-bundles.mjs --dry-run"
+    "codecov:bundle:dry-run": "node scripts/upload-codecov-bundles.mjs --dry-run",
+    "security:semgrep": "semgrep scan --config .semgrep.yml --error --disable-version-check --metrics=off",
+    "security:tooling:check": "node scripts/check-security-tooling.mjs",
+    "security:precommit": "pre-commit run --all-files"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

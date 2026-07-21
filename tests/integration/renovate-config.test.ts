@@ -67,6 +67,13 @@ function validConfig() {
       },
       {
         customType: 'regex',
+        managerFilePatterns: ['/^\\.github\\/workflows\\/security\\.yml$/'],
+        matchStrings: ['SEMGREP_VERSION'],
+        datasourceTemplate: 'pypi',
+        depNameTemplate: 'semgrep',
+      },
+      {
+        customType: 'regex',
         managerFilePatterns: ['/^tools\\/runtime-versions\\.json$/'],
         matchStrings: ['"pnpm"'],
         datasourceTemplate: 'npm',
@@ -239,7 +246,7 @@ describe('Renovate policy validation', () => {
     ).toEqual(
       expect.arrayContaining([
         'Renovate lockFileMaintenance must be enabled',
-        'Renovate must extract pinned security tool versions: GITLEAKS_VERSION, ACTIONLINT_VERSION, OSV_SCANNER_VERSION, ZIZMOR_VERSION',
+        'Renovate must extract pinned security tool versions: GITLEAKS_VERSION, ACTIONLINT_VERSION, OSV_SCANNER_VERSION, ZIZMOR_VERSION, SEMGREP_VERSION',
       ]),
     );
   });

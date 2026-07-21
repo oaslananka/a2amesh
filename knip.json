@@ -5,7 +5,8 @@
     "scripts/check-renovate-config.d.mts",
     "scripts/dispatch-renovate-checks.d.mts",
     "scripts/release-state-core.d.mts",
-    "scripts/check-codecov-config.d.mts"
+    "scripts/check-codecov-config.d.mts",
+    "scripts/check-security-tooling.d.mts"
   ],
   "ignoreDependencies": [
     "search-insights",
@@ -17,5 +18,5 @@
     "@arethetypeswrong/cli",
     "publint"
   ],
-  "ignoreBinaries": ["gh", "playwright", "view", "where.exe"]
+  "ignoreBinaries": ["gh", "playwright", "view", "where.exe", "semgrep", "pre-commit"]
 }
