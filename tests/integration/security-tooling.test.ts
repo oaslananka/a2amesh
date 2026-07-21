@@ -30,6 +30,14 @@ semgrep scan --config .semgrep.yml --error --disable-version-check --metrics=off
         'security:precommit': 'pre-commit run --all-files',
       },
     },
+    ruleset: JSON.stringify({
+      rules: [
+        {
+          type: 'required_status_checks',
+          parameters: { required_status_checks: [{ context: 'Security / semgrep' }] },
+        },
+      ],
+    }),
   };
 }
 
@@ -53,13 +61,18 @@ describe('repository-owned Semgrep policy', () => {
     );
   });
 
-  it('rejects duplicate Snyk or broad Semgrep platform scans', () => {
+  it('rejects removed Snyk gates or broad Semgrep platform scans', () => {
     const input = validInputs();
     input.securityWorkflow += 'SNYK_VERSION: 1.1306.1\nsnyk code test\nsemgrep ci\n';
+    input.packageJson.scripts['security:snyk'] = 'snyk test';
+    input.ruleset = input.ruleset.replace('Security / semgrep', 'Snyk Security');
     expect(validateSecurityTooling(input)).toEqual(
       expect.arrayContaining([
-        'Security workflow must not duplicate the installed Snyk GitHub App',
+        'Security workflow must not reintroduce the removed Snyk gate',
         'Semgrep CI must remain limited to repository-owned custom rules',
+        'Local scripts must not reintroduce the removed Snyk gate',
+        'Repository ruleset must require Security / semgrep exactly once',
+        'Repository ruleset must not require a removed Snyk check',
       ]),
     );
   });

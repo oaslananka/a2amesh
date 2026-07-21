@@ -3,6 +3,7 @@ export interface SecurityToolingInputs {
   semgrepConfig: string;
   securityWorkflow: string;
   packageJson: { scripts?: Record<string, string> };
+  ruleset: string;
 }
 
 export function validateSecurityTooling(inputs: SecurityToolingInputs): string[];
