@@ -40,8 +40,8 @@ function validatePreCommit(preCommit, failures) {
   }
   requireText(
     preCommit,
-    'exclude: ^deploy/helm/[^/]+/templates/',
-    'generic YAML validation must exclude unrendered Helm templates',
+    'exclude: ^deploy/[h]elm/[^/]+/templates/',
+    'generic YAML validation must exclude unrendered chart templates',
     failures,
   );
 }

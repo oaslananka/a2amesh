@@ -9,7 +9,7 @@ A2A Mesh assigns one primary tool to each broad responsibility and uses Semgrep 
 - **SonarQube Cloud** remains the installed GitHub App for maintainability and quality-gate feedback.
 - **Codecov** owns coverage, Test Analytics, and JavaScript bundle observability without replacing local Vitest thresholds.
 - **Dependency Review**, **pnpm audit**, and **OSV-Scanner** are the blocking known-vulnerability gates. Socket supplies additional dependency and supply-chain review metadata.
-- **Trivy** remains scoped to Dockerfiles, built images, and rendered Helm manifests in the container and Helm workflows.
+- **Trivy** remains scoped to Dockerfiles, built images, and rendered chart manifests in the container and chart workflows.
 
 Snyk was removed after its account and quota limits became an operational dependency. The repository intentionally has no Snyk action, CLI script, secret, or required check. This also avoids making CodeQL, Semgrep, Snyk Code, and Sonar security rules block the same pull request.
 
@@ -44,7 +44,7 @@ pre-commit install
 
 The hook configuration pins Gitleaks `v8.30.1` and Semgrep `v1.170.0`. Pre-commit passes changed files to Semgrep, keeping the local check bounded. Full-repository scans remain CI responsibilities.
 
-Unrendered Helm templates are excluded from the generic YAML parser and continue to be validated by the chart-aware Helm workflow.
+Unrendered chart templates are excluded from the generic YAML parser and continue to be validated by the chart-aware deployment workflow.
 
 ## Validation
 

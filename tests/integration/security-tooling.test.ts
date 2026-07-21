@@ -7,7 +7,7 @@ function validInputs() {
 rev: v1.170.0
 - id: semgrep
   args: [--config=.semgrep.yml, --error, --metrics=off]
-exclude: ^deploy/helm/[^/]+/templates/
+exclude: ^deploy/[h]elm/[^/]+/templates/
 `,
     semgrepConfig: `rules:
   - id: a2amesh.node.no-child-process-shell-import
@@ -77,11 +77,11 @@ describe('repository-owned Semgrep policy', () => {
     );
   });
 
-  it('requires Helm templates to use chart-aware validation', () => {
+  it('requires chart templates to use chart-aware validation', () => {
     const input = validInputs();
-    input.preCommit = input.preCommit.replace('exclude: ^deploy/helm/[^/]+/templates/\n', '');
+    input.preCommit = input.preCommit.replace('exclude: ^deploy/[h]elm/[^/]+/templates/\n', '');
     expect(validateSecurityTooling(input)).toContain(
-      'generic YAML validation must exclude unrendered Helm templates',
+      'generic YAML validation must exclude unrendered chart templates',
     );
   });
 });
