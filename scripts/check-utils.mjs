@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { extname, isAbsolute, join, relative } from 'node:path';
+import { runPnpmWithShimSync } from './run-pnpm.mjs';
 
 const repoRoot = process.cwd();
 const textExtensions = new Set([
@@ -147,14 +148,11 @@ function quoteCmdArgument(value) {
 }
 
 export function runPnpmSync(args, options = {}) {
-  if (process.platform === 'win32') {
-    return runCommandSync('pnpm.cmd', args, options);
-  }
-  const pnpmExecPath = process.env.npm_execpath;
+  const pnpmExecPath = options.env?.npm_execpath ?? process.env.npm_execpath;
   if (pnpmExecPath) {
     return execFileSync(process.execPath, [pnpmExecPath, ...args], options);
   }
-  return execFileSync('pnpm', args, options);
+  return runPnpmWithShimSync(args, options);
 }
 
 export function fail(message, details = []) {

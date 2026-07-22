@@ -23,10 +23,12 @@
 ### Task 1: Specify the deterministic toolchain contract
 
 **Files:**
+
 - Modify: `tests/integration/runtime-versions-script.test.ts`
 - Create: `tests/integration/toolchain-check.test.ts`
 
 **Interfaces:**
+
 - Consumes: `tools/runtime-versions.json`, the root `packageManager`, compatibility-matrix fixtures.
 - Produces: expected `mise.toml`, setup script, hook commands, CI doctor command, and `validateToolchainDiagnostics()` behavior.
 
@@ -37,12 +39,14 @@
 ### Task 2: Add the toolchain doctor
 
 **Files:**
+
 - Create: `scripts/check-toolchain.mjs`
 - Create: `scripts/check-toolchain.d.mts`
 - Modify: `knip.json`
 - Modify: `REUSE.toml`
 
 **Interfaces:**
+
 - Consumes: `tools/runtime-versions.json`, `package.json`, `PATH`, `process.execPath`.
 - Produces: `validateToolchainDiagnostics(input): string[]` and the `pnpm run toolchain:check` CLI contract.
 
@@ -55,15 +59,20 @@
 ### Task 3: Make repository entry points Corepack-safe
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `.husky/pre-commit`
 - Modify: `.husky/pre-push`
+- Create: `scripts/run-pnpm.mjs`
+- Create: `scripts/run-pnpm.d.mts`
+- Create: `scripts/toolchain-command.mjs`
 - Modify: `scripts/check-utils.mjs`
 - Modify: `tests/integration/check-utils.test.ts`
 
 **Interfaces:**
+
 - Consumes: `npm_execpath` when already running under pnpm.
-- Produces: a deterministic `runPnpmSync()` fallback through `corepack pnpm` and hooks that do not depend on a stale mise pnpm shim.
+- Produces: a repository launcher that prepends an ephemeral Corepack-backed pnpm shim, a deterministic `runPnpmSync()` fallback, and hooks that do not depend on a stale mise pnpm shim.
 
 - [ ] Add a failing command-runner test proving fallback arguments are routed through Corepack.
 - [ ] Preserve the existing `npm_execpath` fast path.
@@ -73,6 +82,7 @@
 ### Task 4: Govern configuration drift and cross-platform CI
 
 **Files:**
+
 - Create: `mise.toml`
 - Modify: `scripts/check-runtime-versions.mjs`
 - Modify: `.github/workflows/ci.yml`
@@ -80,6 +90,7 @@
 - Modify: `tests/integration/runtime-versions-script.test.ts`
 
 **Interfaces:**
+
 - Consumes: runtime manifest values.
 - Produces: synchronized mise config, package scripts, hook commands, and compatibility-matrix toolchain verification.
 
@@ -91,11 +102,13 @@
 ### Task 5: Document clean-shell bootstrap and remediation
 
 **Files:**
+
 - Modify: `CONTRIBUTING.md`
 - Modify: `docs/development/setup.md`
 - Modify: `docs/development/local-setup.md`
 
 **Interfaces:**
+
 - Consumes: the implemented mise/Corepack ownership model.
 - Produces: Linux/macOS and PowerShell instructions for mise users, non-mise users, and immutable automation hosts.
 
@@ -106,9 +119,11 @@
 ### Task 6: Verify, publish, and review
 
 **Files:**
+
 - Modify only files required by validation findings.
 
 **Interfaces:**
+
 - Consumes: completed branch implementation.
 - Produces: an exact validated commit, PR closing #162, and a clean bot/agent review state.
 

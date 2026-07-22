@@ -48,10 +48,15 @@ runs:
       id: pnpm-store
       shell: bash
       run: |
-        pnpm_version="$(pnpm --version)"
-        store_path="$(pnpm store path --silent)"
+        corepack_pnpm_version="$(corepack pnpm --version)"
+        direct_pnpm_version="$(pnpm --version)"
+        if [[ "${direct_pnpm_version}" != "${corepack_pnpm_version}" ]]; then
+          echo "Direct pnpm ${direct_pnpm_version} does not match Corepack pnpm ${corepack_pnpm_version}." >&2
+          exit 1
+        fi
+        store_path="$(corepack pnpm store path --silent)"
         {
-          echo "pnpm_version=${pnpm_version}"
+          echo "pnpm_version=${corepack_pnpm_version}"
           echo "store_path=${store_path}"
         } >> "${GITHUB_OUTPUT}"
 
@@ -69,4 +74,4 @@ runs:
     - name: Install dependencies
       if: ${{ inputs.install == 'true' }}
       shell: bash
-      run: pnpm install --frozen-lockfile
+      run: corepack pnpm install --frozen-lockfile

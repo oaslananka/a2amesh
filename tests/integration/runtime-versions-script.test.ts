@@ -76,6 +76,82 @@ describe('runtime version manifest checks', () => {
     await expect(execRuntimeCheck(workspace)).resolves.toBeDefined();
   });
 
+  it('writes and validates the deterministic mise and Corepack contract', async () => {
+    const workspace = await createRuntimeWorkspace();
+    await writeFixture(
+      workspace,
+      'mise.toml',
+      `[tools]
+node = "23.0.0"
+
+[settings]
+node.corepack = false
+`,
+    );
+    await writeFixture(workspace, '.husky/pre-commit', 'pnpm run lint:staged\n');
+    await writeFixture(workspace, '.husky/pre-push', 'pnpm run check:pre-push\n');
+    const packagePath = join(workspace, 'package.json');
+    const packageJson = JSON.parse(await readFile(packagePath, 'utf8'));
+    packageJson.scripts.setup = 'pnpm install';
+    delete packageJson.scripts['toolchain:check'];
+    await writeFile(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
+    const ciPath = join(workspace, '.github/workflows/ci.yml');
+    await writeFile(
+      ciPath,
+      (await readFile(ciPath, 'utf8')).replace(
+        '      - run: corepack pnpm run toolchain:check\n',
+        '',
+      ),
+    );
+
+    await expect(execRuntimeCheck(workspace)).rejects.toMatchObject({
+      stderr: expect.stringContaining('deterministic toolchain contract'),
+    });
+
+    await expect(execRuntimeCheck(workspace, ['--write'])).resolves.toBeDefined();
+    await expect(readFile(join(workspace, 'mise.toml'), 'utf8')).resolves.toBe(
+      `[tools]
+node = "${manifest.node}"
+
+[settings]
+node.corepack = true
+`,
+    );
+    await expect(readFile(join(workspace, '.husky/pre-commit'), 'utf8')).resolves.toBe(
+      '#!/usr/bin/env sh\n\nnode scripts/run-pnpm.mjs run lint:staged\n',
+    );
+    await expect(readFile(join(workspace, '.husky/pre-push'), 'utf8')).resolves.toBe(
+      '#!/usr/bin/env sh\n\nnode scripts/run-pnpm.mjs run check:pre-push\n',
+    );
+    const updatedPackage = JSON.parse(await readFile(packagePath, 'utf8'));
+    expect(updatedPackage.scripts.setup).toBe(
+      'node scripts/run-pnpm.mjs install --frozen-lockfile',
+    );
+    expect(updatedPackage.scripts['toolchain:check']).toBe('node scripts/check-toolchain.mjs');
+    await expect(readFile(ciPath, 'utf8')).resolves.toContain('corepack pnpm run toolchain:check');
+    await expect(execRuntimeCheck(workspace)).resolves.toBeDefined();
+  });
+
+  it('fails when the shared setup action bypasses Corepack parity checks', async () => {
+    const workspace = await createRuntimeWorkspace();
+    const actionPath = join(workspace, '.github/actions/setup-pnpm/action.yml');
+    await writeFile(
+      actionPath,
+      (await readFile(actionPath, 'utf8'))
+        .replace('direct_pnpm_version="$(pnpm --version)"\n', '')
+        .replace(
+          'run: corepack pnpm install --frozen-lockfile',
+          'run: pnpm install --frozen-lockfile',
+        ),
+    );
+
+    await expect(execRuntimeCheck(workspace)).rejects.toMatchObject({
+      stderr: expect.stringContaining(
+        '.github/actions/setup-pnpm/action.yml: deterministic toolchain contract',
+      ),
+    });
+  });
+
   it('fails when generated scaffold runtime values drift from the runtime manifest', async () => {
     const workspace = await createRuntimeWorkspace();
     await writeFixture(
@@ -170,7 +246,8 @@ describe('runtime version manifest checks', () => {
     );
     expect(rootPackage.packageManager).toBe(`pnpm@${manifest.pnpm}`);
     expect(rootPackage.engines.pnpm).toBe('>=11 <12');
-    expect(rootPackage.scripts.setup).toContain(`pnpm@${manifest.pnpm}`);
+    expect(rootPackage.scripts.setup).toBe('node scripts/run-pnpm.mjs install --frozen-lockfile');
+    expect(rootPackage.scripts['toolchain:check']).toBe('node scripts/check-toolchain.mjs');
     expect(appPackage.packageManager).toBe(`pnpm@${manifest.pnpm}`);
     expect(appPackage.engines.pnpm).toBe('>=11 <12');
     expect(demoPackage.engines.pnpm).toBe('>=11 <12');
@@ -439,13 +516,29 @@ async function createRuntimeWorkspace(
   await writeFixture(root, '.nvmrc', `${manifest.node}\n`);
   await writeFixture(
     root,
+    'mise.toml',
+    `[tools]\nnode = "${manifest.node}"\n\n[settings]\nnode.corepack = true\n`,
+  );
+  await writeFixture(
+    root,
+    '.husky/pre-commit',
+    '#!/usr/bin/env sh\n\nnode scripts/run-pnpm.mjs run lint:staged\n',
+  );
+  await writeFixture(
+    root,
+    '.husky/pre-push',
+    '#!/usr/bin/env sh\n\nnode scripts/run-pnpm.mjs run check:pre-push\n',
+  );
+  await writeFixture(
+    root,
     'package.json',
     `${JSON.stringify(
       {
         packageManager: `pnpm@${manifest.pnpm}`,
         engines: { pnpm: '>=11 <12' },
         scripts: {
-          setup: `corepack prepare pnpm@${manifest.pnpm} --activate && pnpm install --frozen-lockfile`,
+          setup: 'node scripts/run-pnpm.mjs install --frozen-lockfile',
+          'toolchain:check': 'node scripts/check-toolchain.mjs',
         },
       },
       null,
@@ -526,6 +619,7 @@ async function createRuntimeWorkspace(
     await writeFixture(root, `.github/workflows/${workflow}`, workflowWithNodeEnv());
   }
   await writeFixture(root, '.github/workflows/publish.yml', publishWorkflow());
+  await writeFixture(root, '.github/actions/setup-pnpm/action.yml', setupPnpmAction());
   await writeFixture(
     root,
     '.github/rulesets/main.json',
@@ -578,6 +672,9 @@ jobs:
       matrix:
         include:
 ${matrixRows}
+    steps:
+      - run: corepack pnpm run toolchain:check
+      - run: pnpm run lint:identity
 ${suffix}
 `;
 }
@@ -587,6 +684,26 @@ function workflowWithNodeEnv(): string {
 
 env:
   NODE_VERSION: '${manifest.node}'
+`;
+}
+
+function setupPnpmAction(): string {
+  return `name: Setup pnpm
+runs:
+  using: composite
+  steps:
+    - name: Resolve pnpm store
+      shell: bash
+      run: |
+        corepack_pnpm_version="$(corepack pnpm --version)"
+        direct_pnpm_version="$(pnpm --version)"
+        if [[ "\${direct_pnpm_version}" != "\${corepack_pnpm_version}" ]]; then
+          exit 1
+        fi
+        store_path="$(corepack pnpm store path --silent)"
+    - name: Install dependencies
+      shell: bash
+      run: corepack pnpm install --frozen-lockfile
 `;
 }
 

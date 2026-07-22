@@ -147,7 +147,8 @@ function syncWorkspacePnpm(manifest) {
     }
     if (path === 'package.json') {
       updated.scripts ??= {};
-      updated.scripts.setup = `corepack prepare pnpm@${manifest.pnpm} --activate && pnpm install --frozen-lockfile`;
+      updated.scripts.setup = 'node scripts/run-pnpm.mjs install --frozen-lockfile';
+      updated.scripts['toolchain:check'] = 'node scripts/check-toolchain.mjs';
     }
     writeOrExpect(path, normalizeJson(packageJson), normalizeJson(updated));
   }
@@ -187,6 +188,80 @@ function syncPnpmDocumentation(manifest) {
       : original;
     const updated = replacePnpmMentions(normalized, manifest.pnpm);
     writeOrExpect(path, original, updated);
+  }
+}
+
+function writeOrExpectToolchainContract(path, expected) {
+  const actual = existsSync(path) ? readText(path) : '';
+  if (actual === expected) return;
+  if (write) {
+    writeFileSync(path, expected);
+    return;
+  }
+  failures.push(`${path}: deterministic toolchain contract does not match ${manifestPath}`);
+}
+
+function syncDeterministicToolchainContract(manifest) {
+  writeOrExpectToolchainContract(
+    'mise.toml',
+    `[tools]\nnode = "${manifest.node}"\n\n[settings]\nnode.corepack = true\n`,
+  );
+  writeOrExpectToolchainContract(
+    '.husky/pre-commit',
+    '#!/usr/bin/env sh\n\nnode scripts/run-pnpm.mjs run lint:staged\n',
+  );
+  writeOrExpectToolchainContract(
+    '.husky/pre-push',
+    '#!/usr/bin/env sh\n\nnode scripts/run-pnpm.mjs run check:pre-push\n',
+  );
+}
+
+function syncCompatibilityToolchainStep(path) {
+  const original = readText(path);
+  const jobMatch = /^  compatibility-smoke:\s*(?:#.*)?$/m.exec(original);
+  if (!jobMatch) {
+    failures.push(`${path}: deterministic toolchain contract is missing compatibility-smoke`);
+    return;
+  }
+  const jobStart = jobMatch.index;
+  const remainder = original.slice(jobStart + jobMatch[0].length + 1);
+  const nextJob = /^  [A-Za-z0-9_-]+:\s*(?:#.*)?$/m.exec(remainder);
+  const jobEnd =
+    nextJob === null ? original.length : jobStart + jobMatch[0].length + 1 + nextJob.index;
+  const block = original.slice(jobStart, jobEnd);
+  const command = '      - run: corepack pnpm run toolchain:check';
+  if (block.includes(command)) return;
+
+  const lintCommand = '      - run: pnpm run lint:identity';
+  const insertion = block.indexOf(lintCommand);
+  if (insertion < 0) {
+    failures.push(
+      `${path}: deterministic toolchain contract cannot place the doctor before lint:identity`,
+    );
+    return;
+  }
+  const updatedBlock = `${block.slice(0, insertion)}${command}\n${block.slice(insertion)}`;
+  const updated = `${original.slice(0, jobStart)}${updatedBlock}${original.slice(jobEnd)}`;
+  if (write) writeFileSync(path, updated);
+  else failures.push(`${path}: deterministic toolchain contract must run the toolchain doctor`);
+}
+
+function validateSetupActionToolchainContract(path) {
+  const action = readText(path);
+  const required = [
+    'corepack pnpm --version',
+    'direct_pnpm_version="$(pnpm --version)"',
+    'direct_pnpm_version}" != "${corepack_pnpm_version',
+    'corepack pnpm store path --silent',
+    'run: corepack pnpm install --frozen-lockfile',
+  ];
+  for (const snippet of required) {
+    if (!action.includes(snippet)) {
+      failures.push(`${path}: deterministic toolchain contract is missing ${snippet}`);
+    }
+  }
+  if (action.includes('run: pnpm install --frozen-lockfile')) {
+    failures.push(`${path}: dependency installation must use explicit Corepack pnpm`);
   }
 }
 
@@ -479,6 +554,9 @@ if (failures.length === 0) {
   syncTextFile('.node-version', `${manifest.node}\n`);
   syncTextFile('.nvmrc', `${manifest.node}\n`);
   syncWorkspacePnpm(manifest);
+  syncDeterministicToolchainContract(manifest);
+  syncCompatibilityToolchainStep('.github/workflows/ci.yml');
+  validateSetupActionToolchainContract('.github/actions/setup-pnpm/action.yml');
   syncPnpmDockerMirrors(manifest);
   syncPnpmDocumentation(manifest);
   for (const path of [

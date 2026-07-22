@@ -92,6 +92,8 @@ path = [
   "scripts/check-renovate-config.d.mts",
   "scripts/check-codecov-config.d.mts",
   "scripts/check-security-tooling.d.mts",
+  "scripts/check-toolchain.d.mts",
+  "scripts/run-pnpm.d.mts",
   "scripts/coverage-policy.d.mts",
   "scripts/check-coverage-policy.d.mts",
   "scripts/report-coverage.d.mts",
