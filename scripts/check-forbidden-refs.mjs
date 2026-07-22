@@ -63,6 +63,7 @@ const exactAllowedByFile = new Map([
 ]);
 const ignored = [
   /^AGENTS\.md$/,
+  /(^|\/)CHANGELOG\.md$/,
   /^scripts\/check-.*\.mjs$/,
   /^pnpm-lock\.yaml$/,
   /^docs\/audits\//,
