@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { evaluateReleaseState } from './release-state-core.mjs';
+import { compareSemanticVersions, evaluateReleaseState } from './release-state-core.mjs';
 
 const options = parseArgs(process.argv.slice(2));
 const observation = collectObservation(options);
@@ -43,6 +43,13 @@ function collectObservation(options) {
   }
 
   const checkedOutCommit = runText('git', ['rev-parse', 'HEAD'], errors, 'git HEAD') ?? null;
+  const supersession = collectSupersession(
+    options.recoveryFile,
+    version,
+    checkedOutCommit,
+    errors,
+    drift,
+  );
   let tagCommit = null;
   if (expectedTag) {
     try {
@@ -60,11 +67,135 @@ function collectObservation(options) {
     checkedOutCommit,
     sourcePackages,
     canonicalTag: { name: expectedTag, commit: tagCommit },
+    supersession,
     releasePrs,
     npmPackages,
     errors,
     drift,
   };
+}
+
+function collectSupersession(path, version, checkedOutCommit, errors, drift) {
+  const ledger = readJsonFile(path, errors);
+  if (ledger?.schemaVersion !== 1) {
+    drift.push(`${path}: schemaVersion must be 1.`);
+  }
+  if (!Array.isArray(ledger?.supersededReleases)) {
+    drift.push(`${path}: supersededReleases must be an array.`);
+    return null;
+  }
+
+  const seenVersions = new Set();
+  let current = null;
+  for (const [index, entry] of ledger.supersededReleases.entries()) {
+    const label = `${path}: supersededReleases[${index}]`;
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      drift.push(`${label} must be an object.`);
+      continue;
+    }
+
+    validateRecoveryEntryShape(entry, label, drift);
+    if (typeof entry.version === 'string') {
+      if (seenVersions.has(entry.version)) {
+        drift.push(`${path}: duplicate supersession entry for ${entry.version}.`);
+      }
+      seenVersions.add(entry.version);
+      if (entry.version === version) current = entry;
+    }
+
+    validateRecoveryEntryHistory(entry, label, checkedOutCommit, drift);
+  }
+
+  return current;
+}
+
+function validateRecoveryEntryShape(entry, label, drift) {
+  const semverPattern = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+  if (typeof entry.version !== 'string' || !semverPattern.test(entry.version)) {
+    drift.push(`${label}.version must be a valid semantic version.`);
+  }
+  if (
+    typeof entry.successorVersion !== 'string' ||
+    !semverPattern.test(entry.successorVersion) ||
+    typeof entry.version !== 'string' ||
+    !semverPattern.test(entry.version) ||
+    compareSemanticVersions(entry.successorVersion, entry.version) <= 0
+  ) {
+    drift.push(`${label}.successorVersion must be a strictly newer valid semantic version.`);
+  }
+  if (typeof entry.releaseCommit !== 'string' || !/^[0-9a-f]{40}$/i.test(entry.releaseCommit)) {
+    drift.push(`${label}.releaseCommit must be a full 40-character Git commit id.`);
+  }
+  if (!isValidIsoDate(entry.decisionDate)) {
+    drift.push(`${label}.decisionDate must be a valid YYYY-MM-DD date.`);
+  }
+  if (
+    typeof entry.issue !== 'string' ||
+    !/^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+$/.test(entry.issue)
+  ) {
+    drift.push(`${label}.issue must be a GitHub issue URL.`);
+  }
+  if (typeof entry.reason !== 'string' || entry.reason.trim().length < 20) {
+    drift.push(`${label}.reason must contain a non-empty audit rationale.`);
+  }
+}
+
+function isValidIsoDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+}
+
+function validateRecoveryEntryHistory(entry, label, checkedOutCommit, drift) {
+  if (
+    typeof entry.releaseCommit !== 'string' ||
+    !/^[0-9a-f]{40}$/i.test(entry.releaseCommit) ||
+    typeof entry.version !== 'string'
+  ) {
+    return;
+  }
+
+  let resolvedCommit;
+  try {
+    resolvedCommit = runTextOrThrow('git', ['rev-parse', `${entry.releaseCommit}^{commit}`]);
+  } catch {
+    drift.push(`${label}.releaseCommit ${entry.releaseCommit} does not resolve to a commit.`);
+    return;
+  }
+
+  if (checkedOutCommit) {
+    try {
+      runTextOrThrow('git', ['merge-base', '--is-ancestor', resolvedCommit, checkedOutCommit]);
+    } catch {
+      drift.push(
+        `${label}.releaseCommit ${resolvedCommit} is not an ancestor of checked-out commit ${checkedOutCommit}.`,
+      );
+    }
+  }
+
+  let historicalManifest;
+  try {
+    const content = runTextOrThrow('git', [
+      'show',
+      `${resolvedCommit}:.release-please-manifest.json`,
+    ]);
+    historicalManifest = JSON.parse(content);
+  } catch {
+    drift.push(`${label}.releaseCommit ${resolvedCommit} has no readable release manifest.`);
+    return;
+  }
+
+  const historicalVersions =
+    historicalManifest &&
+    typeof historicalManifest === 'object' &&
+    !Array.isArray(historicalManifest)
+      ? [...new Set(Object.values(historicalManifest))]
+      : [];
+  if (historicalVersions.length !== 1 || historicalVersions[0] !== entry.version) {
+    drift.push(
+      `${label}.releaseCommit ${resolvedCommit} does not prepare linked version ${entry.version}.`,
+    );
+  }
 }
 
 function collectReleasePrs(repository, config, errors) {
@@ -139,7 +270,12 @@ function collectNpmPackage(source, errors) {
 }
 
 function parseArgs(args) {
-  const options = { mode: 'report', json: false, tag: null };
+  const options = {
+    mode: 'report',
+    json: false,
+    tag: null,
+    recoveryFile: '.release-recovery.json',
+  };
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === '--json') options.json = true;
@@ -148,11 +284,15 @@ function parseArgs(args) {
     else if (arg.startsWith('--mode=')) options.mode = arg.slice('--mode='.length);
     else if (arg === '--tag') options.tag = args[++index];
     else if (arg.startsWith('--tag=')) options.tag = arg.slice('--tag='.length);
-    else throw new Error(`Unknown argument: ${arg}`);
+    else if (arg === '--recovery-file') options.recoveryFile = args[++index];
+    else if (arg.startsWith('--recovery-file=')) {
+      options.recoveryFile = arg.slice('--recovery-file='.length);
+    } else throw new Error(`Unknown argument: ${arg}`);
   }
   if (!['report', 'release-please', 'publish'].includes(options.mode)) {
     throw new Error(`Unsupported release-state mode: ${options.mode}`);
   }
+  if (!options.recoveryFile) throw new Error('Recovery file path must not be empty.');
   return options;
 }
 

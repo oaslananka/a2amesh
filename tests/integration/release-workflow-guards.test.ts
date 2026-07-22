@@ -26,11 +26,11 @@ describe('release workflow guards', () => {
     );
     expect(workflow).toContain('Stage release-state guard scripts');
     expect(workflow).toContain(
-      'cp scripts/release-state.mjs scripts/release-state-core.mjs "${RUNNER_TEMP}/release-state-guard/"',
+      'cp scripts/release-state.mjs scripts/release-state-core.mjs .release-recovery.json "${RUNNER_TEMP}/release-state-guard/"',
     );
     expect(workflow).toContain('ref: ${{ steps.tag.outputs.tag }}');
     expect(workflow).toContain(
-      'node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode publish --json --tag "${TAG}"',
+      'node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode publish --json --tag "${TAG}" --recovery-file "${RUNNER_TEMP}/release-state-guard/.release-recovery.json"',
     );
     expect(workflow).not.toContain('node scripts/release-state.mjs --check');
   });
@@ -43,5 +43,7 @@ describe('release workflow guards', () => {
     expect(checker).toContain("github.ref == 'refs/heads/main'");
     expect(checker).toContain('Stage release-state guard scripts');
     expect(checker).toContain('ref: ${{ steps.tag.outputs.tag }}');
+    expect(checker).toContain('.release-recovery.json');
+    expect(checker).toContain('--recovery-file');
   });
 });

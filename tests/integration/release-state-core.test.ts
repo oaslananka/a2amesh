@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateReleaseState, expectedDistTag } from '../../scripts/release-state-core.mjs';
+import {
+  compareSemanticVersions,
+  evaluateReleaseState,
+  expectedDistTag,
+} from '../../scripts/release-state-core.mjs';
 
 type ObservationOverrides = {
   sourceVersions?: string[];
@@ -10,6 +14,14 @@ type ObservationOverrides = {
   latest?: string;
   releasePrVersions?: string[][];
   errors?: string[];
+  supersession?: {
+    version: string;
+    releaseCommit: string;
+    successorVersion: string;
+    decisionDate: string;
+    issue: string;
+    reason: string;
+  } | null;
 };
 
 const packageNames = [
@@ -58,6 +70,7 @@ function observation(overrides: ObservationOverrides = {}) {
       },
     })),
     errors: overrides.errors ?? [],
+    supersession: overrides.supersession ?? null,
   };
 }
 
@@ -66,6 +79,12 @@ describe('release-state core', () => {
     expect(expectedDistTag('1.2.3')).toBe('latest');
     expect(expectedDistTag('0.11.0-alpha.1')).toBe('alpha');
     expect(expectedDistTag('1.0.0-rc.2')).toBe('rc');
+    expect(compareSemanticVersions('0.12.0-alpha.1', '0.11.0-alpha.1')).toBeGreaterThan(0);
+    expect(compareSemanticVersions('1.0.0', '1.0.0-rc.1')).toBeGreaterThan(0);
+    expect(compareSemanticVersions('1.0.0-alpha.2', '1.0.0-alpha.10')).toBeLessThan(0);
+    expect(compareSemanticVersions('1.0.0-alpha', '1.0.0-alpha.1')).toBeLessThan(0);
+    expect(compareSemanticVersions('1.0.0-1', '1.0.0-alpha')).toBeLessThan(0);
+    expect(compareSemanticVersions('invalid', '1.0.0')).toBeNull();
   });
 
   it('classifies a fully published alpha while latest remains on an older version', () => {
@@ -169,6 +188,15 @@ describe('release-state core', () => {
     expect(result.blockers).toContainEqual(expect.stringContaining('Multiple Release Please'));
   });
 
+  it('rejects a release pull request that regresses the prepared version', () => {
+    const result = evaluateReleaseState(
+      observation({ releasePrVersions: [packageNames.map(() => '0.10.0-alpha.1')] }),
+    );
+
+    expect(result.state).toBe('drifted');
+    expect(result.blockers).toContainEqual(expect.stringContaining('must advance'));
+  });
+
   it('rejects a release pull request with inconsistent linked versions', () => {
     const result = evaluateReleaseState(
       observation({
@@ -197,6 +225,97 @@ describe('release-state core', () => {
 
     expect(result.state).toBe('drifted');
     expect(result.blockers).toContainEqual(expect.stringContaining('package version'));
+  });
+
+  it('allows Release Please to advance an explicitly superseded unpublished version', () => {
+    const result = evaluateReleaseState(
+      observation({
+        tagCommit: null,
+        npmPublished: [],
+        expectedTags: [],
+        supersession: {
+          version: '0.11.0-alpha.1',
+          releaseCommit: 'release123',
+          successorVersion: '0.12.0-alpha.1',
+          decisionDate: '2026-07-22',
+          issue: 'https://github.com/oaslananka/a2amesh/issues/184',
+          reason: 'Historical candidate superseded after release-integrity review.',
+        },
+      }),
+    );
+
+    expect(result.state).toBe('superseded');
+    expect(result.gates).toEqual({ releasePlease: true, publish: false });
+    expect(result.blockers).toEqual([]);
+    expect(result.nextSafeAction).toContain('0.12.0-alpha.1');
+  });
+
+  it('rejects a supersession successor that does not advance the prepared version', () => {
+    const result = evaluateReleaseState(
+      observation({
+        tagCommit: null,
+        npmPublished: [],
+        expectedTags: [],
+        supersession: {
+          version: '0.11.0-alpha.1',
+          releaseCommit: 'release123',
+          successorVersion: '0.10.0-alpha.1',
+          decisionDate: '2026-07-22',
+          issue: 'https://github.com/oaslananka/a2amesh/issues/184',
+          reason: 'Historical candidate superseded after release-integrity review.',
+        },
+      }),
+    );
+
+    expect(result.state).toBe('drifted');
+    expect(result.blockers).toContainEqual(expect.stringContaining('strictly advance'));
+  });
+
+  it('rejects supersession after the canonical tag exists', () => {
+    const result = evaluateReleaseState(
+      observation({
+        npmPublished: [],
+        expectedTags: [],
+        supersession: {
+          version: '0.11.0-alpha.1',
+          releaseCommit: 'release123',
+          successorVersion: '0.12.0-alpha.1',
+          decisionDate: '2026-07-22',
+          issue: 'https://github.com/oaslananka/a2amesh/issues/184',
+          reason: 'Historical candidate superseded after release-integrity review.',
+        },
+      }),
+    );
+
+    expect(result.state).toBe('drifted');
+    expect(result.gates).toEqual({ releasePlease: false, publish: false });
+    expect(result.blockers).toContainEqual(
+      expect.stringContaining('must not have a canonical tag'),
+    );
+  });
+
+  it('rejects supersession after any linked package was published', () => {
+    const result = evaluateReleaseState(
+      observation({
+        tagCommit: null,
+        npmPublished: [packageNames[0]!],
+        expectedTags: [packageNames[0]!],
+        supersession: {
+          version: '0.11.0-alpha.1',
+          releaseCommit: 'release123',
+          successorVersion: '0.12.0-alpha.1',
+          decisionDate: '2026-07-22',
+          issue: 'https://github.com/oaslananka/a2amesh/issues/184',
+          reason: 'Historical candidate superseded after release-integrity review.',
+        },
+      }),
+    );
+
+    expect(result.state).toBe('drifted');
+    expect(result.gates).toEqual({ releasePlease: false, publish: false });
+    expect(result.blockers).toContainEqual(
+      expect.stringContaining('must not have npm publication'),
+    );
   });
 
   it('classifies observation failures as unavailable', () => {

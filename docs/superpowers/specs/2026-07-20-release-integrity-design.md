@@ -68,6 +68,10 @@ Source manifests agree, but the prepared version is missing its canonical Git ta
 
 Only a subset of public packages or required dist-tags represents the prepared version. This state is a release incident and blocks both Release Please and further publication until reconciled.
 
+### `superseded`
+
+A committed recovery ledger explicitly rejects an unpublished and untagged prepared candidate in favor of a declared successor. The ledger entry records the exact historical release commit, successor version, decision date, public issue, and audit rationale. This state permits Release Please but permanently blocks Publish for the superseded version. Any later tag or npm evidence converts the condition to `drifted`.
+
 ### `drifted`
 
 Internal source versions disagree, the canonical tag points to a different commit, an open release PR does not propose one linked version, or npm dist-tags violate stable/prerelease policy.
@@ -91,7 +95,8 @@ This boundary allows deterministic unit tests for every state without contacting
 - release configuration and manifest versions;
 - local commit and canonical tag resolution;
 - open Release Please PR metadata and the version proposed by each PR branch;
-- npm package-version existence and dist-tags.
+- npm package-version existence and dist-tags;
+- the committed `.release-recovery.json` ledger, including Git ancestry and historical manifest validation.
 
 Observation failures will be recorded and classified as `unavailable`.
 
@@ -99,7 +104,7 @@ Observation failures will be recorded and classified as `unavailable`.
 
 The Release Please workflow will run the state collector before invoking Release Please:
 
-- `published` and `release-pr-open` permit normal reconciliation of the release PR;
+- `published`, `release-pr-open`, and validated `superseded` states permit normal reconciliation of the release PR;
 - `prepared-unpublished`, `partial-publication`, `drifted`, and `unavailable` block Release Please and publish an actionable summary.
 
 The Publish workflow will evaluate the checked-out tag commit in publish mode:
@@ -107,7 +112,8 @@ The Publish workflow will evaluate the checked-out tag commit in publish mode:
 - the target tag must match the prepared source version and checked-out commit;
 - an open Release Please PR for a newer version is informational, not a blocker;
 - partial npm publication is resumable only for missing packages of the same version;
-- conflicting versions, tag commits, or dist-tag policy remain blockers.
+- conflicting versions, tag commits, or dist-tag policy remain blockers;
+- the current recovery ledger is staged before tag checkout, preventing historical tags from bypassing a later supersession decision.
 
 ### Dist-tag policy
 
@@ -128,15 +134,16 @@ The publish workflow already derives the publish tag from the prerelease identif
 
 ## Current Drift Recovery
 
-The implementation will not publish automatically. It will generate an evidence report for `0.11.0-alpha.1`, identify the exact commit suitable for the canonical tag, and show whether publication can be safely dispatched.
+The evidence review identified `a10452970f9db426f9ef6a407f8be2d69d10eec8` as the historical `0.11.0-alpha.1` release commit, with no canonical tag and no npm package publication. On July 22, 2026, issue #184 recorded that candidate as superseded by `0.12.0-alpha.1`.
 
-PR #156 remains blocked until `0.11.0-alpha.1` is either fully published or an explicit documented decision supersedes it. A stale or misleading release PR may be closed after the new gate is merged and recreated from the reconciled state.
+The committed ledger allows PR #156 to be refreshed from the current default branch while preventing any later tag or publication of `0.11.0-alpha.1`. Partial publication is never eligible for supersession.
 
 ## Error Handling
 
 - GitHub/npm command failures produce `unavailable`, never `published`.
 - Missing individual npm packages produce `prepared-unpublished`; a mixed subset produces `partial-publication`.
 - A canonical tag on the wrong commit produces `drifted`.
+- An invalid supersession ledger, or tag/npm evidence for a superseded version, produces `drifted`.
 - Multiple Release Please PRs or inconsistent proposed versions produce `drifted`.
 - Human-readable output must never hide JSON blockers.
 
@@ -153,7 +160,8 @@ Unit tests will cover at least:
 - canonical tag pointing to another commit;
 - newer open Release Please PR while publishing the prepared version;
 - multiple or internally inconsistent release PRs;
-- GitHub/npm observation failure.
+- GitHub/npm observation failure;
+- valid supersession, invalid ledger history, later tag creation, and later npm evidence.
 
 Static checks will verify that both workflows call the correct release-state modes and that prerelease dist-tag policy is consistent across scripts and workflow YAML.
 

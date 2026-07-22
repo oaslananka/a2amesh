@@ -28,6 +28,7 @@ maintainer operations protected by the `npm-publish` environment.
 | `release-pr-open`      | Current version is published; one newer linked PR is open.    | Allow          | Block                                                 |
 | `prepared-unpublished` | Source agrees, but tag or npm publication is absent.          | Block          | Allow only after the exact tag exists                 |
 | `partial-publication`  | Only part of the linked npm release is visible.               | Block          | Allow only when missing packages are safely resumable |
+| `superseded`           | An unpublished candidate has an audited successor decision.   | Allow          | Block                                                 |
 | `drifted`              | Source, tag commit, release PR, or dist-tag policy conflicts. | Block          | Block                                                 |
 | `unavailable`          | GitHub or npm could not be observed reliably.                 | Block          | Block                                                 |
 
@@ -43,7 +44,7 @@ version-manager shim is misconfigured:
 ```bash
 corepack pnpm run release:state
 corepack pnpm run release:state:release-please
-corepack pnpm run release:state:publish -- --tag '@a2amesh/runtime-v0.11.0-alpha.1'
+corepack pnpm run release:state:publish -- --tag '@a2amesh/runtime-v<version>'
 ```
 
 `release:state` prints a human-readable summary. Gate commands emit deterministic
@@ -71,21 +72,22 @@ gh auth status
    linked version.
 
 The workflow is dispatched from `main`, not from an old release tag. The current
-workflow stages its release-state guard modules before checking out the target
-tag, so historical release commits can still be validated with the current
-policy.
+workflow stages its release-state guard modules and current
+`.release-recovery.json` ledger before checking out the target tag, so
+historical release commits remain subject to the current recovery policy.
 
 ## Tag and publish commands
 
 Review the candidate commit before creating a tag:
 
 ```bash
+release_version='<verified-version>'
 release_commit='<verified-release-commit>'
-release_tag='@a2amesh/runtime-v0.11.0-alpha.1'
+release_tag="@a2amesh/runtime-v${release_version}"
 
 git show --stat "$release_commit"
 git show "$release_commit:.release-please-manifest.json"
-git tag -a "$release_tag" "$release_commit" -m "Release 0.11.0-alpha.1"
+git tag -a "$release_tag" "$release_commit" -m "Release ${release_version}"
 git push origin "$release_tag"
 ```
 
@@ -94,8 +96,8 @@ Then dispatch the protected workflow from `main`:
 ```bash
 gh workflow run Publish \
   --ref main \
-  -f tag='@a2amesh/runtime-v0.11.0-alpha.1' \
-  -f confirmation='PUBLISH @a2amesh/runtime-v0.11.0-alpha.1'
+  -f tag="${release_tag}" \
+  -f confirmation="PUBLISH ${release_tag}"
 ```
 
 Tag creation and workflow dispatch are maintainer actions. The state collector
@@ -114,7 +116,28 @@ same prepared version and already has the expected dist-tag. It blocks when:
 - GitHub or npm observations are unavailable.
 
 Do not delete or overwrite an npm version. Reconcile the incident, preserve
-registry evidence, and rerun Publish only when `gates.publish` is `true`.
+registry evidence, and rerun Publish only when `gates.publish` is `true`. A
+release with any canonical tag or npm publication evidence is not eligible for
+supersession.
+
+## Exceptional supersession
+
+Supersession is an exceptional, version-controlled decision for a prepared
+candidate that was never tagged and has no npm publication evidence. Record it
+in `.release-recovery.json` with:
+
+- the prepared version and exact historical release commit;
+- a strictly newer successor version;
+- the UTC decision date;
+- a public tracking issue;
+- a non-sensitive audit rationale.
+
+The collector verifies that the commit exists, is an ancestor of the checked-out
+revision, and prepared the recorded linked version. A valid entry produces
+`superseded`, permits Release Please to prepare the declared successor, and
+permanently blocks Publish for the superseded version. A later tag, npm package,
+or matching dist-tag is classified as `drifted`; do not remove the ledger entry
+to bypass that evidence.
 
 ## 0.11.0-alpha.1 recovery evidence
 
@@ -136,15 +159,23 @@ A temporary local tag on commit `a104529…` produced
 `prepared-unpublished` with `gates.publish: true`. The temporary tag was deleted
 and was never pushed.
 
+On July 22, 2026, issue #184 recorded `0.11.0-alpha.1` as superseded by
+`0.12.0-alpha.1` in `.release-recovery.json`. The decision preserves the
+historical release commit as evidence while rejecting publication of a candidate
+that predates subsequent security, dependency, runtime, deployment, and release
+integrity changes.
+
 Safe recovery order:
 
-1. Merge the release-integrity guard change.
-2. Create the `0.11.0-alpha.1` canonical tag on `a104529…`.
-3. Dispatch Publish from `main` and verify all six packages plus `alpha`.
-4. Merge or refresh PR #156 so source advances to `0.12.0-alpha.1`.
-5. Keep the next Release Please preparation blocked until `0.12.0-alpha.1` is
-   intentionally tagged and published or explicitly superseded.
+1. Merge the supersession guard and committed recovery ledger.
+2. Confirm `release:state:release-please` reports `superseded` and permits only
+   Release Please.
+3. Refresh PR #156 from current `main` and review the linked
+   `0.12.0-alpha.1` successor.
+4. Merge, tag, and publish the reviewed successor through the protected OIDC and
+   provenance workflow.
+5. Verify all six packages, tarball parity, provenance, and the `alpha` dist-tag.
 
-Do not tag the current main commit as `0.11.0-alpha.1`; later package changes
-would then be published under a changelog and version prepared by the historical
-release commit.
+Never create `@a2amesh/runtime-v0.11.0-alpha.1` and never publish any linked
+package at that version. Any later tag or npm evidence is a release incident and
+must fail closed as `drifted`.

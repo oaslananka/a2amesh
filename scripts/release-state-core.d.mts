@@ -3,6 +3,7 @@ export type ReleaseState =
   | 'release-pr-open'
   | 'prepared-unpublished'
   | 'partial-publication'
+  | 'superseded'
   | 'drifted'
   | 'unavailable';
 
@@ -30,11 +31,21 @@ export interface NpmPackageObservation {
   distTags: Record<string, string | undefined>;
 }
 
+export interface ReleaseSupersessionObservation {
+  version: string;
+  releaseCommit: string;
+  successorVersion: string;
+  decisionDate: string;
+  issue: string;
+  reason: string;
+}
+
 export interface ReleaseObservation {
   repository: string;
   checkedOutCommit: string | null;
   sourcePackages: SourcePackageObservation[];
   canonicalTag: CanonicalTagObservation;
+  supersession?: ReleaseSupersessionObservation | null;
   releasePrs: ReleasePullRequestObservation[];
   npmPackages: NpmPackageObservation[];
   errors?: string[];
@@ -69,4 +80,5 @@ export interface ReleaseEvaluation {
 }
 
 export function expectedDistTag(version: string): string;
+export function compareSemanticVersions(left: string, right: string): number | null;
 export function evaluateReleaseState(observation: ReleaseObservation): ReleaseEvaluation;
