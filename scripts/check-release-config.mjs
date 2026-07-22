@@ -145,11 +145,11 @@ if (!publishWorkflow.includes('Stage release-state guard scripts')) {
 }
 if (
   !publishWorkflow.includes(
-    'cp scripts/release-state.mjs scripts/release-state-core.mjs "${RUNNER_TEMP}/release-state-guard/"',
+    'cp scripts/release-state.mjs scripts/release-state-core.mjs .release-recovery.json "${RUNNER_TEMP}/release-state-guard/"',
   )
 ) {
   failures.push(
-    'Publish workflow must preserve both release-state guard modules before tag checkout',
+    'Publish workflow must preserve both release-state guard modules and the recovery ledger before tag checkout',
   );
 }
 if (!publishWorkflow.includes('ref: ${{ steps.tag.outputs.tag }}')) {
@@ -157,11 +157,11 @@ if (!publishWorkflow.includes('ref: ${{ steps.tag.outputs.tag }}')) {
 }
 if (
   !publishWorkflow.includes(
-    'node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode publish --json --tag "${TAG}"',
+    'node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode publish --json --tag "${TAG}" --recovery-file "${RUNNER_TEMP}/release-state-guard/.release-recovery.json"',
   )
 ) {
   failures.push(
-    'Publish workflow must run the staged release-state publish gate with the requested tag',
+    'Publish workflow must run the staged release-state publish gate with the requested tag and current recovery ledger',
   );
 }
 if (publishWorkflow.includes('node scripts/release-state.mjs --check')) {
