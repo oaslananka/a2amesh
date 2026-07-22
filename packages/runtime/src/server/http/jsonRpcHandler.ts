@@ -127,11 +127,9 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
       if (deps.authMiddleware) {
         try {
           requestContext = await deps.authMiddleware.authenticateRequestContext(req);
-        } catch (error: unknown) {
+        } catch {
           deps.runtimeMetrics.recordAuthReject();
-          throw new JsonRpcError(ErrorCodes.Unauthorized, 'Unauthorized', {
-            reason: String(error),
-          });
+          throw new JsonRpcError(ErrorCodes.Unauthorized, 'Unauthorized');
         }
       }
 

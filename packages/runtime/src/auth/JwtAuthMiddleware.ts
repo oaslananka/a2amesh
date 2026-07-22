@@ -67,30 +67,85 @@ export class JwtAuthMiddleware {
     let lastError: Error | undefined;
     for (const requirement of securityRequirements) {
       try {
-        for (const schemeId of Object.keys(requirement)) {
-          const scheme = this.options.securitySchemes.find((item) => item.id === schemeId);
-          if (!scheme) {
-            throw new Error(`Unknown security scheme: ${schemeId}`);
-          }
-
-          if (scheme.type === 'apiKey') {
-            return this.validateApiKey(req, scheme);
-          }
-
-          if (scheme.type === 'http') {
-            return this.validateBearerToken(req, scheme);
-          }
-
-          if (scheme.type === 'openIdConnect') {
-            return this.validateOidcToken(req, scheme);
-          }
-        }
+        return await this.validateSecurityRequirement(req, requirement);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
       }
     }
 
     throw lastError ?? new Error('Authentication failed');
+  }
+
+  private async validateSecurityRequirement(
+    req: ExpressRequest,
+    requirement: Record<string, string[]>,
+  ): Promise<AuthValidationResult> {
+    const results: AuthValidationResult[] = [];
+
+    for (const [schemeId, requiredScopes] of Object.entries(requirement)) {
+      const scheme = this.options.securitySchemes.find((item) => item.id === schemeId);
+      if (!scheme) {
+        throw new Error(`Unknown security scheme: ${schemeId}`);
+      }
+
+      const result = await this.validateScheme(req, scheme);
+      this.assertRequiredScopes(result, requiredScopes);
+      results.push(result);
+    }
+
+    const primaryResult = results[0];
+    if (!primaryResult) {
+      throw new Error('Authentication failed');
+    }
+
+    this.assertCompatibleIdentity(results);
+    return primaryResult;
+  }
+
+  private async validateScheme(
+    req: ExpressRequest,
+    scheme: AuthScheme,
+  ): Promise<AuthValidationResult> {
+    if (scheme.type === 'apiKey') {
+      return this.validateApiKey(req, scheme);
+    }
+
+    if (scheme.type === 'http') {
+      return this.validateBearerToken(req, scheme);
+    }
+
+    return this.validateOidcToken(req, scheme);
+  }
+
+  private assertRequiredScopes(result: AuthValidationResult, requiredScopes: string[]): void {
+    if (requiredScopes.length === 0) {
+      return;
+    }
+
+    const grantedScopes = new Set(result.scopes ?? []);
+    if (requiredScopes.some((scope) => !grantedScopes.has(scope))) {
+      throw new Error('Insufficient scope');
+    }
+  }
+
+  private assertCompatibleIdentity(results: AuthValidationResult[]): void {
+    const principalIds = new Set(
+      results
+        .map((result) => result.principalId)
+        .filter((principalId): principalId is string => Boolean(principalId)),
+    );
+    if (principalIds.size > 1) {
+      throw new Error('Conflicting authenticated principals');
+    }
+
+    const tenantIds = new Set(
+      results
+        .map((result) => result.tenantId)
+        .filter((tenantId): tenantId is string => Boolean(tenantId)),
+    );
+    if (tenantIds.size > 1) {
+      throw new Error('Conflicting authenticated tenants');
+    }
   }
 
   async authenticateRequestContext(req: ExpressRequest): Promise<RequestContext> {
@@ -109,13 +164,12 @@ export class JwtAuthMiddleware {
         attachRequestContext(req, context);
         Object.assign(req as RequestWithContext, { auth: authResult });
         next();
-      } catch (error) {
+      } catch {
         res.status(401).json({
           jsonrpc: '2.0',
           error: {
             code: -32040,
             message: 'Unauthorized',
-            data: { reason: String(error) },
           },
           id: req.body && typeof req.body === 'object' && 'id' in req.body ? req.body.id : null,
         });
