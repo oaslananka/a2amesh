@@ -81,6 +81,10 @@ describe('release-state core', () => {
     expect(expectedDistTag('1.0.0-rc.2')).toBe('rc');
     expect(compareSemanticVersions('0.12.0-alpha.1', '0.11.0-alpha.1')).toBeGreaterThan(0);
     expect(compareSemanticVersions('1.0.0', '1.0.0-rc.1')).toBeGreaterThan(0);
+    expect(compareSemanticVersions('1.0.0-alpha.2', '1.0.0-alpha.10')).toBeLessThan(0);
+    expect(compareSemanticVersions('1.0.0-alpha', '1.0.0-alpha.1')).toBeLessThan(0);
+    expect(compareSemanticVersions('1.0.0-1', '1.0.0-alpha')).toBeLessThan(0);
+    expect(compareSemanticVersions('invalid', '1.0.0')).toBeNull();
   });
 
   it('classifies a fully published alpha while latest remains on an older version', () => {
@@ -244,6 +248,27 @@ describe('release-state core', () => {
     expect(result.gates).toEqual({ releasePlease: true, publish: false });
     expect(result.blockers).toEqual([]);
     expect(result.nextSafeAction).toContain('0.12.0-alpha.1');
+  });
+
+  it('rejects a supersession successor that does not advance the prepared version', () => {
+    const result = evaluateReleaseState(
+      observation({
+        tagCommit: null,
+        npmPublished: [],
+        expectedTags: [],
+        supersession: {
+          version: '0.11.0-alpha.1',
+          releaseCommit: 'release123',
+          successorVersion: '0.10.0-alpha.1',
+          decisionDate: '2026-07-22',
+          issue: 'https://github.com/oaslananka/a2amesh/issues/184',
+          reason: 'Historical candidate superseded after release-integrity review.',
+        },
+      }),
+    );
+
+    expect(result.state).toBe('drifted');
+    expect(result.blockers).toContainEqual(expect.stringContaining('strictly advance'));
   });
 
   it('rejects supersession after the canonical tag exists', () => {

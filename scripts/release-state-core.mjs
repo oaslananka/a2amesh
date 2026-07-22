@@ -10,31 +10,47 @@ export function compareSemanticVersions(left, right) {
   const rightVersion = parseSemanticVersion(right);
   if (!leftVersion || !rightVersion) return null;
 
-  for (let index = 0; index < 3; index += 1) {
-    const difference = leftVersion.core[index] - rightVersion.core[index];
+  const coreComparison = compareNumericSegments(leftVersion.core, rightVersion.core);
+  return coreComparison !== 0
+    ? coreComparison
+    : comparePrereleaseVersions(leftVersion.prerelease, rightVersion.prerelease);
+}
+
+function compareNumericSegments(left, right) {
+  for (let index = 0; index < left.length; index += 1) {
+    const difference = left[index] - right[index];
     if (difference !== 0) return difference;
   }
+  return 0;
+}
 
-  if (!leftVersion.prerelease && !rightVersion.prerelease) return 0;
-  if (!leftVersion.prerelease) return 1;
-  if (!rightVersion.prerelease) return -1;
+function comparePrereleaseVersions(left, right) {
+  if (left == null && right == null) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  return comparePrereleaseIdentifiers(left, right);
+}
 
-  const length = Math.max(leftVersion.prerelease.length, rightVersion.prerelease.length);
+function comparePrereleaseIdentifiers(left, right) {
+  const length = Math.max(left.length, right.length);
   for (let index = 0; index < length; index += 1) {
-    const leftIdentifier = leftVersion.prerelease[index];
-    const rightIdentifier = rightVersion.prerelease[index];
-    if (leftIdentifier === undefined) return -1;
-    if (rightIdentifier === undefined) return 1;
-    if (leftIdentifier === rightIdentifier) continue;
-
-    const leftNumeric = /^\d+$/.test(leftIdentifier);
-    const rightNumeric = /^\d+$/.test(rightIdentifier);
-    if (leftNumeric && rightNumeric) return Number(leftIdentifier) - Number(rightIdentifier);
-    if (leftNumeric) return -1;
-    if (rightNumeric) return 1;
-    return leftIdentifier.localeCompare(rightIdentifier);
+    const comparison = comparePrereleaseIdentifier(left[index], right[index]);
+    if (comparison !== 0) return comparison;
   }
   return 0;
+}
+
+function comparePrereleaseIdentifier(left, right) {
+  if (left === undefined) return -1;
+  if (right === undefined) return 1;
+  if (left === right) return 0;
+
+  const leftNumeric = /^\d+$/.test(left);
+  const rightNumeric = /^\d+$/.test(right);
+  if (leftNumeric && rightNumeric) return Number(left) - Number(right);
+  if (leftNumeric) return -1;
+  if (rightNumeric) return 1;
+  return left.localeCompare(right);
 }
 
 export function evaluateReleaseState(observation) {
@@ -274,9 +290,12 @@ function validateSupersession(context, packages) {
       `Release supersession version ${supersession.version ?? '<missing>'} does not match prepared version ${context.version ?? '<unknown>'}.`,
     );
   }
-  if (!supersession.successorVersion) {
+  const successorComparison = context.version
+    ? compareSemanticVersions(supersession.successorVersion, context.version)
+    : null;
+  if (successorComparison == null || successorComparison <= 0) {
     blockers.push(
-      `Superseded release ${context.version ?? '<unknown>'} must declare a successor version.`,
+      `Superseded release ${context.version ?? '<unknown>'} must declare a successor that strictly advances the prepared version.`,
     );
   }
   if (context.canonicalTag.commit != null) {
@@ -315,10 +334,13 @@ function validateSupersession(context, packages) {
     valid: blockers.length === 0,
     invalid: blockers.length > 0,
     blockers,
-    warning:
-      `Release ${supersession.version} is explicitly superseded by ${supersession.successorVersion}` +
-      `${supersession.issue ? ` (${supersession.issue})` : ''}.`,
+    warning: formatSupersessionWarning(supersession),
   };
+}
+
+function formatSupersessionWarning(supersession) {
+  const issueReference = supersession.issue ? ` (${supersession.issue})` : '';
+  return `Release ${supersession.version} is explicitly superseded by ${supersession.successorVersion}${issueReference}.`;
 }
 
 function summarizePublication(packages, tagMatches) {
