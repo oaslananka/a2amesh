@@ -1,8 +1,56 @@
-const PUBLISHED_STATES = new Set(['published', 'release-pr-open']);
+const RELEASE_PLEASE_ALLOWED_STATES = new Set(['published', 'release-pr-open', 'superseded']);
 
 export function expectedDistTag(version) {
   const marker = version.indexOf('-');
   return marker === -1 ? 'latest' : version.slice(marker + 1).split('.')[0];
+}
+
+export function compareSemanticVersions(left, right) {
+  const leftVersion = parseSemanticVersion(left);
+  const rightVersion = parseSemanticVersion(right);
+  if (!leftVersion || !rightVersion) return null;
+
+  const coreComparison = compareNumericSegments(leftVersion.core, rightVersion.core);
+  return coreComparison !== 0
+    ? coreComparison
+    : comparePrereleaseVersions(leftVersion.prerelease, rightVersion.prerelease);
+}
+
+function compareNumericSegments(left, right) {
+  for (let index = 0; index < left.length; index += 1) {
+    const difference = left[index] - right[index];
+    if (difference !== 0) return difference;
+  }
+  return 0;
+}
+
+function comparePrereleaseVersions(left, right) {
+  if (left == null && right == null) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  return comparePrereleaseIdentifiers(left, right);
+}
+
+function comparePrereleaseIdentifiers(left, right) {
+  const length = Math.max(left.length, right.length);
+  for (let index = 0; index < length; index += 1) {
+    const comparison = comparePrereleaseIdentifier(left[index], right[index]);
+    if (comparison !== 0) return comparison;
+  }
+  return 0;
+}
+
+function comparePrereleaseIdentifier(left, right) {
+  if (left === undefined) return -1;
+  if (right === undefined) return 1;
+  if (left === right) return 0;
+
+  const leftNumeric = /^\d+$/.test(left);
+  const rightNumeric = /^\d+$/.test(right);
+  if (leftNumeric && rightNumeric) return Number(left) - Number(right);
+  if (leftNumeric) return -1;
+  if (rightNumeric) return 1;
+  return left.localeCompare(right);
 }
 
 export function evaluateReleaseState(observation) {
@@ -35,18 +83,31 @@ export function evaluateReleaseState(observation) {
   const packages = buildPackageResults(context, npmIndex);
   const latestViolations = findPrereleaseLatestViolations(context, packages);
   blockers.push(...latestViolations.blockers);
+  const supersessionValidation = validateSupersession(context, packages);
+  blockers.push(...supersessionValidation.blockers);
 
   const hasStructuralDrift =
     context.drift.length > 0 ||
     sourceValidation.invalid ||
     releasePrValidation.invalid ||
     tagValidation.conflicts ||
-    latestViolations.invalid;
+    latestViolations.invalid ||
+    supersessionValidation.invalid;
   if (hasStructuralDrift) {
     return releaseResult(context, {
       state: 'drifted',
       blockers,
       warnings,
+      packages,
+      publishAllowed: false,
+    });
+  }
+
+  if (supersessionValidation.valid) {
+    return releaseResult(context, {
+      state: 'superseded',
+      blockers: [],
+      warnings: [...warnings, supersessionValidation.warning],
       packages,
       publishAllowed: false,
     });
@@ -94,6 +155,7 @@ function normalizeObservation(observation) {
     releasePrs: Array.isArray(observation.releasePrs) ? observation.releasePrs : [],
     npmPackages: Array.isArray(observation.npmPackages) ? observation.npmPackages : [],
     canonicalTag: observation.canonicalTag ?? { name: null, commit: null },
+    supersession: observation.supersession ?? null,
     errors: Array.isArray(observation.errors) ? observation.errors.filter(Boolean) : [],
     drift: Array.isArray(observation.drift) ? observation.drift.filter(Boolean) : [],
   };
@@ -142,14 +204,17 @@ function validateReleasePullRequest(pr, versions, version) {
       invalid: true,
     };
   }
-  if (version && versions[0] === version) {
-    return {
-      blockers: [
-        `Release Please PR #${pr.number} does not advance the prepared version ${version}.`,
-      ],
-      warnings: [],
-      invalid: true,
-    };
+  if (version) {
+    const comparison = compareSemanticVersions(versions[0], version);
+    if (comparison == null || comparison <= 0) {
+      return {
+        blockers: [
+          `Release Please PR #${pr.number} must advance the prepared version ${version}; found ${versions[0]}.`,
+        ],
+        warnings: [],
+        invalid: true,
+      };
+    }
   }
   return {
     blockers: [],
@@ -213,6 +278,71 @@ function findPrereleaseLatestViolations(context, packages) {
   };
 }
 
+function validateSupersession(context, packages) {
+  const supersession = context.supersession;
+  if (!supersession) {
+    return { present: false, valid: false, invalid: false, blockers: [], warning: '' };
+  }
+
+  const blockers = [];
+  if (!context.version || supersession.version !== context.version) {
+    blockers.push(
+      `Release supersession version ${supersession.version ?? '<missing>'} does not match prepared version ${context.version ?? '<unknown>'}.`,
+    );
+  }
+  const successorComparison = context.version
+    ? compareSemanticVersions(supersession.successorVersion, context.version)
+    : null;
+  if (successorComparison == null || successorComparison <= 0) {
+    blockers.push(
+      `Superseded release ${context.version ?? '<unknown>'} must declare a successor that strictly advances the prepared version.`,
+    );
+  }
+  if (context.canonicalTag.commit != null) {
+    blockers.push(
+      `Superseded release ${context.version ?? '<unknown>'} must not have a canonical tag.`,
+    );
+  }
+
+  const npmEvidence = packages.filter(
+    (item) =>
+      item.versionExists ||
+      item.expectedDistTagVersion === context.version ||
+      item.latest === context.version,
+  );
+  if (npmEvidence.length > 0) {
+    blockers.push(
+      `Superseded release ${context.version ?? '<unknown>'} must not have npm publication evidence; found: ${npmEvidence.map((item) => item.name).join(', ')}.`,
+    );
+  }
+
+  for (const pr of context.releasePrs) {
+    const proposedVersions = uniqueValues(pr.versions ?? []);
+    if (
+      supersession.successorVersion &&
+      proposedVersions.length === 1 &&
+      proposedVersions[0] !== supersession.successorVersion
+    ) {
+      blockers.push(
+        `Release Please PR #${pr.number} proposes ${proposedVersions[0]}, expected supersession successor ${supersession.successorVersion}.`,
+      );
+    }
+  }
+
+  return {
+    present: true,
+    valid: blockers.length === 0,
+    invalid: blockers.length > 0,
+    blockers,
+    warning: formatSupersessionWarning(supersession),
+  };
+}
+
+function formatSupersessionWarning(supersession) {
+  const issueReference = supersession.issue ? ` (${supersession.issue})` : '';
+  return `Release ${supersession.version} is explicitly superseded by ${supersession.successorVersion}${issueReference}.`;
+}
+
 function summarizePublication(packages, tagMatches) {
   const exactVersionCount = packages.filter((item) => item.versionExists).length;
   const completeCount = packages.filter((item) => item.complete).length;
@@ -266,7 +396,7 @@ function unavailableResult(context, blockers, warnings = []) {
 
 function releaseResult(context, { state, blockers, warnings, packages, publishAllowed }) {
   const gates = {
-    releasePlease: PUBLISHED_STATES.has(state),
+    releasePlease: RELEASE_PLEASE_ALLOWED_STATES.has(state),
     publish: Boolean(publishAllowed),
   };
   return {
@@ -278,11 +408,20 @@ function releaseResult(context, { state, blockers, warnings, packages, publishAl
     warnings,
     gates,
     packages,
-    nextSafeAction: nextSafeAction(state, gates, context.expectedTag),
+    nextSafeAction: nextSafeAction(
+      state,
+      gates,
+      context.expectedTag,
+      context.version,
+      context.supersession,
+    ),
   };
 }
 
-function nextSafeAction(state, gates, expectedTag) {
+function nextSafeAction(state, gates, expectedTag, version, supersession) {
+  if (state === 'superseded' && supersession?.successorVersion) {
+    return `Advance Release Please to ${supersession.successorVersion}; do not tag or publish ${version}.`;
+  }
   if (gates.publish) return `Dispatch the protected Publish workflow for ${expectedTag}.`;
   if (gates.releasePlease) {
     return 'Release Please may create or update the next linked-version pull request.';
@@ -295,6 +434,16 @@ function nextSafeAction(state, gates, expectedTag) {
   }
   if (state === 'unavailable') return 'Restore reliable GitHub and npm observations, then retry.';
   return 'Resolve release-state blockers before continuing.';
+}
+
+function parseSemanticVersion(value) {
+  if (typeof value !== 'string') return null;
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.exec(value);
+  if (!match) return null;
+  return {
+    core: [Number(match[1]), Number(match[2]), Number(match[3])],
+    prerelease: match[4] ? match[4].split('.') : null,
+  };
 }
 
 function uniqueValues(values) {
