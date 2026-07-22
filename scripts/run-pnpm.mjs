@@ -37,7 +37,8 @@ export function runPnpmWithShimSync(args, options = {}) {
     childEnv.A2AMESH_COREPACK_EXECUTABLE = invocation.corepackPath;
     childEnv.A2AMESH_NODE_EXECUTABLE = invocation.executable;
     childEnv.A2AMESH_COREPACK_SCRIPT = invocation.corepackPath;
-    const { platform: _platform, ...spawnOptions } = options;
+    const spawnOptions = { ...options };
+    delete spawnOptions.platform;
     const result = spawnCommand(
       invocation.executable,
       [...invocation.argsPrefix, 'pnpm', ...args],

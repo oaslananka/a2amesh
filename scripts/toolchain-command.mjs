@@ -2,6 +2,8 @@ import { accessSync, constants, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+const SIMPLE_WINDOWS_ARGUMENT = new RegExp(String.raw`^[A-Za-z0-9_./:=@+\\-]+$`);
+
 export function resolveExecutable(command, env = process.env, platform = process.platform) {
   if (path.isAbsolute(command)) return executableCandidate(command, platform) ? command : null;
 
@@ -99,7 +101,7 @@ function executableCandidate(candidate, platform) {
 }
 
 function quoteWindowsArgument(value) {
-  if (/^[A-Za-z0-9_./:=@+\-\\]+$/.test(value)) return value;
+  if (SIMPLE_WINDOWS_ARGUMENT.test(value)) return value;
   return `"${value.replaceAll('"', '\\"')}"`;
 }
 

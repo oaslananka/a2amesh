@@ -218,14 +218,14 @@ function syncDeterministicToolchainContract(manifest) {
 
 function syncCompatibilityToolchainStep(path) {
   const original = readText(path);
-  const jobMatch = /^  compatibility-smoke:\s*(?:#.*)?$/m.exec(original);
+  const jobMatch = /^ {2}compatibility-smoke:\s*(?:#.*)?$/m.exec(original);
   if (!jobMatch) {
     failures.push(`${path}: deterministic toolchain contract is missing compatibility-smoke`);
     return;
   }
   const jobStart = jobMatch.index;
   const remainder = original.slice(jobStart + jobMatch[0].length + 1);
-  const nextJob = /^  [A-Za-z0-9_-]+:\s*(?:#.*)?$/m.exec(remainder);
+  const nextJob = /^ {2}[A-Za-z0-9_-]+:\s*(?:#.*)?$/m.exec(remainder);
   const jobEnd =
     nextJob === null ? original.length : jobStart + jobMatch[0].length + 1 + nextJob.index;
   const block = original.slice(jobStart, jobEnd);
