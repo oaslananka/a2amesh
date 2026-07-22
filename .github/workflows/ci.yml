@@ -97,6 +97,7 @@ jobs:
       CODECOV_BUNDLE_PR: ${{ github.event.pull_request.number || '' }}
       CODECOV_BUNDLE_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
       CODECOV_BUNDLE_SLUG: ${{ github.repository }}
+      COVERAGE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
@@ -106,6 +107,19 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: pnpm run test:coverage:ci
+      - name: Publish package coverage summary
+        if: ${{ !cancelled() }}
+        run: cat coverage/package-summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload package coverage report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: package-coverage-${{ github.run_attempt }}
+          path: |
+            coverage/package-summary.json
+            coverage/package-summary.md
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload unit coverage to Codecov
         if: ${{ !cancelled() && env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0

@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "aggregate": {
+    "statements": 86,
+    "branches": 77,
+    "functions": 89,
+    "lines": 87
+  },
+  "packages": {
+    "adapter-anthropic": {
+      "root": "packages/adapter-anthropic/src",
+      "thresholds": {
+        "statements": 95,
+        "branches": 80,
+        "functions": 85,
+        "lines": 95
+      }
+    },
+    "adapter-base": {
+      "root": "packages/adapter-base/src",
+      "thresholds": {
+        "statements": 95,
+        "branches": 55,
+        "functions": 95,
+        "lines": 95
+      }
+    },
+    "adapter-crewai": {
+      "root": "packages/adapter-crewai/src",
+      "thresholds": {
+        "statements": 90,
+        "branches": 85,
+        "functions": 70,
+        "lines": 95
+      }
+    },
+    "adapter-google-adk": {
+      "root": "packages/adapter-google-adk/src",
+      "thresholds": {
+        "statements": 90,
+        "branches": 80,
+        "functions": 70,
+        "lines": 95
+      }
+    },
+    "adapter-langchain": {
+      "root": "packages/adapter-langchain/src",
+      "thresholds": {
+        "statements": 90,
+        "branches": 60,
+        "functions": 95,
+        "lines": 90
+      }
+    },
+    "adapter-llamaindex": {
+      "root": "packages/adapter-llamaindex/src",
+      "thresholds": {
+        "statements": 95,
+        "branches": 70,
+        "functions": 95,
+        "lines": 95
+      }
+    },
+    "adapter-openai": {
+      "root": "packages/adapter-openai/src",
+      "thresholds": {
+        "statements": 80,
+        "branches": 50,
+        "functions": 95,
+        "lines": 85
+      }
+    },
+    "adapters": {
+      "root": "packages/adapters/src",
+      "thresholds": {
+        "statements": 90,
+        "branches": 70,
+        "functions": 90,
+        "lines": 90
+      }
+    },
+    "auth": {
+      "root": "packages/auth/src",
+      "thresholds": {
+        "statements": 95,
+        "branches": 95,
+        "functions": 95,
+        "lines": 95
+      }
+    },
+    "cli": {
+      "root": "packages/cli/src",
+      "thresholds": {
+        "statements": 65,
+        "branches": 60,
+        "functions": 70,
+        "lines": 65
+      }
+    },
+    "create-a2amesh": {
+      "root": "packages/create-a2amesh/src",
+      "thresholds": {
+        "statements": 75,
+        "branches": 70,
+        "functions": 30,
+        "lines": 75
+      }
+    },
+    "fleet": {
+      "root": "packages/fleet/src",
+      "thresholds": {
+        "statements": 90,
+        "branches": 85,
+        "functions": 95,
+        "lines": 90
+      }
+    },
+    "fleet-server": {
+      "root": "packages/fleet-server/src",
+      "thresholds": {
+        "statements": 85,
+        "branches": 80,
+        "functions": 90,
+        "lines": 90
+      }
+    },
+    "mcp": {
+      "root": "packages/mcp/src",
+      "thresholds": {
+        "statements": 85,
+        "branches": 75,
+        "functions": 95,
+        "lines": 90
+      }
+    },
+    "protocol": {
+      "root": "packages/protocol/src",
+      "thresholds": {
+        "statements": 95,
+        "branches": 90,
+        "functions": 95,
+        "lines": 95
+      }
+    },
+    "registry": {
+      "root": "packages/registry/src",
+      "thresholds": {
+        "statements": 85,
+        "branches": 80,
+        "functions": 90,
+        "lines": 85
+      }
+    },
+    "runtime": {
+      "root": "packages/runtime/src",
+      "thresholds": {
+        "statements": 88,
+        "branches": 78,
+        "functions": 90,
+        "lines": 90
+      }
+    },
+    "telemetry": {
+      "root": "packages/telemetry/src",
+      "thresholds": {
+        "statements": 95,
+        "branches": 95,
+        "functions": 95,
+        "lines": 95
+      }
+    },
+    "transport-grpc": {
+      "root": "packages/transport-grpc/src",
+      "thresholds": {
+        "statements": 90,
+        "branches": 68,
+        "functions": 95,
+        "lines": 90
+      }
+    },
+    "transport-ws": {
+      "root": "packages/transport-ws/src",
+      "thresholds": {
+        "statements": 75,
+        "branches": 70,
+        "functions": 90,
+        "lines": 75
+      }
+    },
+    "worker-runtime": {
+      "root": "packages/worker-runtime/src",
+      "thresholds": {
+        "statements": 80,
+        "branches": 65,
+        "functions": 85,
+        "lines": 80
+      }
+    }
+  },
+  "criticalFiles": {
+    "packages/protocol/src/jsonrpc.ts": {
+      "statements": 95,
+      "branches": 90,
+      "functions": 95,
+      "lines": 95
+    },
+    "packages/registry/src/openapi.ts": {
+      "statements": 95,
+      "branches": 95,
+      "functions": 95,
+      "lines": 95
+    },
+    "packages/registry/src/server/auth.ts": {
+      "statements": 80,
+      "branches": 85,
+      "functions": 95,
+      "lines": 80
+    },
+    "packages/runtime/src/net/OutboundPolicy.ts": {
+      "statements": 85,
+      "branches": 80,
+      "functions": 95,
+      "lines": 85
+    },
+    "packages/runtime/src/security/url.ts": {
+      "statements": 85,
+      "branches": 85,
+      "functions": 95,
+      "lines": 85
+    },
+    "packages/runtime/src/telemetry/bootstrap.ts": {
+      "statements": 90,
+      "branches": 70,
+      "functions": 85,
+      "lines": 90
+    },
+    "packages/runtime/src/testing/cassette/redaction.ts": {
+      "statements": 80,
+      "branches": 55,
+      "functions": 95,
+      "lines": 80
+    },
+    "packages/runtime/src/utils/redaction.ts": {
+      "statements": 90,
+      "branches": 85,
+      "functions": 90,
+      "lines": 95
+    },
+    "packages/worker-runtime/src/security/pathConfinement.ts": {
+      "statements": 80,
+      "branches": 60,
+      "functions": 80,
+      "lines": 80
+    },
+    "packages/worker-runtime/src/security/redaction.ts": {
+      "statements": 80,
+      "branches": 75,
+      "functions": 75,
+      "lines": 90
+    }
+  },
+  "exclusions": [
+    {
+      "pattern": "**/*.d.ts",
+      "reason": "Type declarations have no runtime behavior."
+    },
+    {
+      "pattern": "**/*.test.{ts,tsx}",
+      "reason": "Test sources are not production coverage targets."
+    },
+    {
+      "pattern": "**/dist/**",
+      "reason": "Generated build outputs are represented by their source files."
+    },
+    {
+      "pattern": "packages/cli/src/generated/**",
+      "reason": "Generated CLI metadata is validated by generation and parity checks."
+    }
+  ]
+}

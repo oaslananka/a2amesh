@@ -14,7 +14,7 @@
 
 - [ ] `pnpm run lint` passes
 - [ ] `pnpm run typecheck` passes
-- [ ] `pnpm run test -- --coverage` passes with ≥80% coverage
+- [ ] `pnpm run test:coverage` passes aggregate, package, and critical-file floors
 - [ ] Added/updated tests for the change
 - [ ] Updated relevant docs or README
 - [ ] Used Conventional Commits for public package changes

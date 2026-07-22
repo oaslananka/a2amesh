@@ -30,9 +30,10 @@ Both uploads use separate invocations of the same immutable `codecov/codecov-act
 which allows the JUnit report to be uploaded after a test failure without making fork CI depend on a
 secret it cannot access. The `unit` flag groups both report types.
 
-Project and patch statuses use automatic targets with a 1% threshold and remain informational while
-the repository establishes a stable baseline. Issue #148 owns the broader work to measure all
-packages and enforce package-level coverage thresholds.
+Project and patch statuses use automatic targets with a 1% threshold and remain informational.
+The blocking source of truth is `coverage-policy.json`, which inventories every active package and
+enforces aggregate, package-level, and critical-file floors locally and in `CI / unit`. The same run
+publishes machine-readable and Markdown package reports before Codecov uploads begin.
 
 ## Bundle Analysis
 

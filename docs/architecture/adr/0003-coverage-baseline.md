@@ -1,28 +1,52 @@
-# ADR-0003: Coverage Baseline
+# ADR-0003: Monorepo coverage policy
 
 ## Status
 
-Accepted for the 1.0.0 launch baseline.
+Accepted.
 
 ## Context
 
-The launch verification gate runs Vitest coverage against package, CLI, registry, WebSocket, and testing sources. The preferred long-term target is 90% statements, 85% branches, 90% functions, and 90% lines.
-
-During the 1.0.0 rebuild, meaningful tests were added for SQLite task storage without native test dependencies, JSON-RPC error normalization, docs URL configuration, client task-stream subscriptions, and SSE heartbeat/close behavior. The remaining gap to 90/85 is concentrated in branch-heavy HTTP server paths for `A2AServer`, `RegistryServer`, and transport/provider error handling. Raising those numbers further in this cut would require either low-value branch padding or excluding supported runtime files from the measured set.
+The original coverage configuration listed a subset of package roots directly in `vitest.config.ts`.
+That list could become stale without failing and omitted active first-party packages such as protocol,
+MCP, Fleet, Fleet server, telemetry, and worker runtime. A single aggregate percentage therefore did
+not describe the complete monorepo and allowed a well-tested package to hide a regression in a
+smaller security-sensitive package.
 
 ## Decision
 
-Set the fail-closed coverage baseline to the current verified launch floor:
+`coverage-policy.json` is the canonical coverage inventory and threshold policy.
 
-```text
-statements >= 87
-branches   >= 77
-functions  >= 90
-lines      >= 88
-```
+- Every active `packages/*` workspace with runtime TypeScript source must appear exactly once.
+- Missing package roots, stale package entries, missing critical files, and undocumented exclusions
+  fail `pnpm run coverage:inventory:check`.
+- Vitest derives its include patterns, exclusions, and aggregate thresholds from the policy instead
+  of maintaining a second list.
+- `pnpm run test:coverage` enforces aggregate, package-level, and critical-file floors.
+- Critical security and protocol files have explicit branch floors so aggregate coverage cannot hide
+  regressions in those paths.
+- The package report identifies packages touched by the current diff. Changed packages must still
+  satisfy their package floor; unchanged packages are also checked to keep the repository baseline
+  reproducible.
+- CI publishes `coverage/package-summary.json` and `coverage/package-summary.md`, appends the Markdown
+  report to the job summary, and uploads both files as an artifact.
 
-Keep all supported package sources in the coverage include list. Do not add coverage ignores to runtime code solely to pass the gate.
+The policy covers source files under all active package roots. Type declarations, tests, generated
+build output, and generated CLI metadata are excluded with reasons recorded in the policy. Runtime
+source is not excluded merely to improve a percentage.
 
 ## Consequences
 
-`pnpm run test:coverage` fails on real regressions below the 1.0.0 baseline while keeping the measured surface broad. Future changes should ratchet these thresholds upward as server, registry, WebSocket, and adapter branch tests are added.
+Adding or removing a runtime package requires an intentional policy update. Threshold changes are
+reviewable data changes rather than hidden Vitest configuration edits. Package and critical-file
+floors can be ratcheted upward independently as targeted tests are added, while Codecov remains an
+informational visualization layer rather than a duplicate blocking gate.
+
+## Verification
+
+```bash
+pnpm run coverage:inventory:check
+pnpm run test:coverage
+```
+
+The generated JSON report is the machine-readable source for automation. The Markdown report is the
+human-readable CI and local summary.

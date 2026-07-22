@@ -231,7 +231,7 @@ function validateDocumentation(documentation, failures) {
     'GitHub OIDC',
     'Test Analytics',
     'Bundle Analysis',
-    '#148',
+    'coverage-policy.json',
   ]) {
     if (!documentation.includes(expected)) {
       failures.push(`Codecov documentation must mention ${expected}`);

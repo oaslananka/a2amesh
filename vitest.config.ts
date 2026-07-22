@@ -1,5 +1,10 @@
 import path from 'node:path';
 import { defineConfig } from 'vitest/config';
+import {
+  coverageExcludePatterns,
+  coverageGlobalThresholds,
+  coverageIncludePatterns,
+} from './scripts/coverage-policy.mjs';
 
 export default defineConfig({
   resolve: {
@@ -21,35 +26,9 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'json-summary', 'html'],
-      include: [
-        'packages/runtime/src/**/*.ts',
-        'packages/adapters/src/**/*.ts',
-        'packages/client/src/**/*.ts',
-        'packages/transport-ws/src/**/*.ts',
-        'packages/transport-grpc/src/**/*.ts',
-        'packages/create-a2amesh/src/**/*.ts',
-        'packages/registry/src/**/*.ts',
-        'packages/testing/src/**/*.ts',
-        'packages/cli/src/**/*.ts',
-      ],
-      exclude: [
-        'apps/**',
-        '**/*.d.ts',
-        '**/*.test.ts',
-        '**/index.ts',
-        '**/dist/**',
-        'packages/runtime/src/storage/ITaskStorage.ts',
-        'packages/runtime/src/types/auth.ts',
-        'packages/runtime/src/types/extensions.ts',
-        'packages/runtime/src/types/task.ts',
-        'packages/registry/src/storage/IAgentStorage.ts',
-      ],
-      thresholds: {
-        statements: 86,
-        branches: 77,
-        functions: 89,
-        lines: 86,
-      },
+      include: coverageIncludePatterns,
+      exclude: coverageExcludePatterns,
+      thresholds: coverageGlobalThresholds,
     },
     projects: [
       {

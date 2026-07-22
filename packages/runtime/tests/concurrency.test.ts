@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { Server } from 'node:http';
 import { A2AServer, type A2AServerOptions } from '../src/server/A2AServer.js';
 import { A2AClient } from '../src/client/A2AClient.js';
+import { ErrorCodes } from '../src/types/jsonrpc.js';
 import type { Artifact, Message, Task } from '../src/types/task.js';
 
 class DelayAgent extends A2AServer {
@@ -139,7 +140,7 @@ describe('Concurrency safety', () => {
     }
   }, 30000);
 
-  it('handles concurrent cancel and get requests without crashing', async () => {
+  it('handles terminal completion races across concurrent cancel and get requests', async () => {
     const { url, close } = await startServer(new DelayAgent(200));
 
     try {
@@ -149,16 +150,25 @@ describe('Concurrency safety', () => {
         configuration: { returnImmediately: true },
       });
 
-      const [cancelResult, getResult] = await Promise.all([
+      const [cancelAttempt, getAttempt] = await Promise.allSettled([
         client.cancelTask(createdTask.id),
         client.getTask(createdTask.id),
       ]);
 
-      expect(cancelResult.id).toBe(createdTask.id);
-      expect(getResult.id).toBe(createdTask.id);
+      expect(getAttempt.status).toBe('fulfilled');
+      if (getAttempt.status === 'fulfilled') {
+        expect(getAttempt.value.id).toBe(createdTask.id);
+      }
 
       const finalTask = await waitForTerminalTask(client, createdTask.id, 10000);
-      expect(finalTask.status.state).toBe('CANCELED');
+      if (cancelAttempt.status === 'fulfilled') {
+        expect(cancelAttempt.value.id).toBe(createdTask.id);
+        expect(finalTask.status.state).toBe('CANCELED');
+      } else {
+        expect(cancelAttempt.reason).toBeInstanceOf(Error);
+        expect(String(cancelAttempt.reason)).toContain(`(${ErrorCodes.InvalidTaskTransition})`);
+        expect(finalTask.status.state).toBe('COMPLETED');
+      }
     } finally {
       await close();
     }

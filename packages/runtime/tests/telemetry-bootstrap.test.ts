@@ -3,7 +3,7 @@ import {
   bootstrapTelemetry,
   resolveTelemetryConfigFromEnv,
   type TelemetryModuleFactory,
-} from '@a2amesh/runtime';
+} from '../src/telemetry/bootstrap.js';
 
 describe('telemetry bootstrap', () => {
   it('resolves env-driven telemetry defaults safely', () => {

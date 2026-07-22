@@ -6,7 +6,10 @@
     "scripts/dispatch-renovate-checks.d.mts",
     "scripts/release-state-core.d.mts",
     "scripts/check-codecov-config.d.mts",
-    "scripts/check-security-tooling.d.mts"
+    "scripts/check-security-tooling.d.mts",
+    "scripts/coverage-policy.d.mts",
+    "scripts/check-coverage-policy.d.mts",
+    "scripts/report-coverage.d.mts"
   ],
   "ignoreDependencies": [
     "search-insights",
