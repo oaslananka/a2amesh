@@ -1,17 +1,18 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignore": [
-    "tests/performance/k6/*.js",
+    "scripts/check-codecov-config.d.mts",
+    "scripts/check-coverage-policy.d.mts",
     "scripts/check-renovate-config.d.mts",
+    "scripts/check-security-tooling.d.mts",
+    "scripts/check-toolchain.d.mts",
+    "scripts/coverage-policy.d.mts",
     "scripts/dispatch-renovate-checks.d.mts",
     "scripts/release-state-core.d.mts",
-    "scripts/check-codecov-config.d.mts",
-    "scripts/check-security-tooling.d.mts",
-    "scripts/coverage-policy.d.mts",
-    "scripts/check-coverage-policy.d.mts",
     "scripts/report-coverage.d.mts",
-    "scripts/check-toolchain.d.mts",
-    "scripts/run-pnpm.d.mts"
+    "scripts/run-pnpm.d.mts",
+    "scripts/sync-security-policy.d.mts",
+    "tests/performance/k6/*.js"
   ],
   "ignoreDependencies": [
     "search-insights",

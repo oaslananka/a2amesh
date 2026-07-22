@@ -150,6 +150,7 @@ export default defineConfig({
           text: 'Security',
           items: [
             { text: 'Authentication', link: '/security/authentication' },
+            { text: 'Security Upgrades', link: '/security/security-upgrades' },
             { text: 'Rate Limiting', link: '/security/rate-limiting' },
             { text: 'OIDC Publishing', link: '/security/oidc' },
             { text: 'Policy Engine', link: '/security/policy-engine' },

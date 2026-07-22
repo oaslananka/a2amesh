@@ -99,6 +99,7 @@ path = [
   "scripts/report-coverage.d.mts",
   "scripts/dispatch-renovate-checks.d.mts",
   "scripts/release-state-core.d.mts",
+  "scripts/sync-security-policy.d.mts",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2025-2026 oaslananka"
