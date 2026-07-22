@@ -123,6 +123,12 @@ if (!publishWorkflow.includes('node scripts/check-publish-preflight.mjs')) {
 if (!releasePleaseWorkflow.includes('skip-github-release: true')) {
   failures.push('Release Please must not create GitHub Releases');
 }
+if (!releasePleaseWorkflow.includes('node scripts/sync-security-policy.mjs')) {
+  failures.push('Release Please must synchronize the security support policy');
+}
+if (!releasePleaseWorkflow.includes('SECURITY.md .github/SECURITY.md')) {
+  failures.push('Release Please must commit both security policy copies with the release version');
+}
 const releasePleaseGate = 'node scripts/release-state.mjs --mode release-please --json';
 const releasePleaseAction = 'googleapis/release-please-action';
 if (!releasePleaseWorkflow.includes(releasePleaseGate)) {

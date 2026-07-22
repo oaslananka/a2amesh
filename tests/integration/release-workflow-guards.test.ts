@@ -16,6 +16,8 @@ describe('release workflow guards', () => {
 
     expect(gateIndex).toBeGreaterThan(-1);
     expect(gateIndex).toBeLessThan(actionIndex);
+    expect(workflow).toContain('node scripts/sync-security-policy.mjs');
+    expect(workflow).toContain('SECURITY.md .github/SECURITY.md');
   });
 
   it('checks out the requested tag and runs publish-mode validation', async () => {
@@ -45,5 +47,7 @@ describe('release workflow guards', () => {
     expect(checker).toContain('ref: ${{ steps.tag.outputs.tag }}');
     expect(checker).toContain('.release-recovery.json');
     expect(checker).toContain('--recovery-file');
+    expect(checker).toContain('sync-security-policy.mjs');
+    expect(checker).toContain('SECURITY.md .github/SECURITY.md');
   });
 });
