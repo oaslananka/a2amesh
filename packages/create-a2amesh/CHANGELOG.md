@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/create-a2amesh-v0.11.0-alpha.1...@a2amesh/create-a2amesh-v0.12.0-alpha.1) (2026-07-22)
+
+
+### Features
+
+* add TypeScript configuration and runtime versions ([f4d5d6d](https://github.com/oaslananka/a2amesh/commit/f4d5d6dca177aaab8454d706ae21a3522ad33223))
+* complete roadmap foundation for security, storage, conformance, and local agent mesh ([#94](https://github.com/oaslananka/a2amesh/issues/94)) ([06c8013](https://github.com/oaslananka/a2amesh/commit/06c80139389cc87e92548b7ccb1ecd65c0c80c8c))
+
+
+### Bug Fixes
+
+* recover M0 release and repo health checks ([#40](https://github.com/oaslananka/a2amesh/issues/40)) ([e679400](https://github.com/oaslananka/a2amesh/commit/e679400e057b6adc2d9a524c8d2870fb5da6dd81))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/cli bumped to 0.12.0-alpha.1
+
 ## [0.11.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/create-a2amesh-v0.10.0-alpha.1...@a2amesh/create-a2amesh-v0.11.0-alpha.1) (2026-07-14)
 
 
