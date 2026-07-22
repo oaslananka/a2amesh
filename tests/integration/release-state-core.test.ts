@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateReleaseState, expectedDistTag } from '../../scripts/release-state-core.mjs';
+import {
+  compareSemanticVersions,
+  evaluateReleaseState,
+  expectedDistTag,
+} from '../../scripts/release-state-core.mjs';
 
 type ObservationOverrides = {
   sourceVersions?: string[];
@@ -75,6 +79,8 @@ describe('release-state core', () => {
     expect(expectedDistTag('1.2.3')).toBe('latest');
     expect(expectedDistTag('0.11.0-alpha.1')).toBe('alpha');
     expect(expectedDistTag('1.0.0-rc.2')).toBe('rc');
+    expect(compareSemanticVersions('0.12.0-alpha.1', '0.11.0-alpha.1')).toBeGreaterThan(0);
+    expect(compareSemanticVersions('1.0.0', '1.0.0-rc.1')).toBeGreaterThan(0);
   });
 
   it('classifies a fully published alpha while latest remains on an older version', () => {
@@ -176,6 +182,15 @@ describe('release-state core', () => {
 
     expect(result.state).toBe('drifted');
     expect(result.blockers).toContainEqual(expect.stringContaining('Multiple Release Please'));
+  });
+
+  it('rejects a release pull request that regresses the prepared version', () => {
+    const result = evaluateReleaseState(
+      observation({ releasePrVersions: [packageNames.map(() => '0.10.0-alpha.1')] }),
+    );
+
+    expect(result.state).toBe('drifted');
+    expect(result.blockers).toContainEqual(expect.stringContaining('must advance'));
   });
 
   it('rejects a release pull request with inconsistent linked versions', () => {

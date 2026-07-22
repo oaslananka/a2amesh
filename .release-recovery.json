@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "supersededReleases": [
+    {
+      "version": "0.11.0-alpha.1",
+      "releaseCommit": "a10452970f9db426f9ef6a407f8be2d69d10eec8",
+      "successorVersion": "0.12.0-alpha.1",
+      "decisionDate": "2026-07-22",
+      "issue": "https://github.com/oaslananka/a2amesh/issues/184",
+      "reason": "The historical prepared candidate was never published and is superseded after release-integrity review; subsequent main-branch changes require a new reviewed release baseline."
+    }
+  ]
+}

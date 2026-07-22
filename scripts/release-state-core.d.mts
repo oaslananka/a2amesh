@@ -80,4 +80,5 @@ export interface ReleaseEvaluation {
 }
 
 export function expectedDistTag(version: string): string;
+export function compareSemanticVersions(left: string, right: string): number | null;
 export function evaluateReleaseState(observation: ReleaseObservation): ReleaseEvaluation;

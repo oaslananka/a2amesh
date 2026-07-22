@@ -5,6 +5,38 @@ export function expectedDistTag(version) {
   return marker === -1 ? 'latest' : version.slice(marker + 1).split('.')[0];
 }
 
+export function compareSemanticVersions(left, right) {
+  const leftVersion = parseSemanticVersion(left);
+  const rightVersion = parseSemanticVersion(right);
+  if (!leftVersion || !rightVersion) return null;
+
+  for (let index = 0; index < 3; index += 1) {
+    const difference = leftVersion.core[index] - rightVersion.core[index];
+    if (difference !== 0) return difference;
+  }
+
+  if (!leftVersion.prerelease && !rightVersion.prerelease) return 0;
+  if (!leftVersion.prerelease) return 1;
+  if (!rightVersion.prerelease) return -1;
+
+  const length = Math.max(leftVersion.prerelease.length, rightVersion.prerelease.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftIdentifier = leftVersion.prerelease[index];
+    const rightIdentifier = rightVersion.prerelease[index];
+    if (leftIdentifier === undefined) return -1;
+    if (rightIdentifier === undefined) return 1;
+    if (leftIdentifier === rightIdentifier) continue;
+
+    const leftNumeric = /^\d+$/.test(leftIdentifier);
+    const rightNumeric = /^\d+$/.test(rightIdentifier);
+    if (leftNumeric && rightNumeric) return Number(leftIdentifier) - Number(rightIdentifier);
+    if (leftNumeric) return -1;
+    if (rightNumeric) return 1;
+    return leftIdentifier.localeCompare(rightIdentifier);
+  }
+  return 0;
+}
+
 export function evaluateReleaseState(observation) {
   const context = normalizeObservation(observation);
   if (context.errors.length > 0) return unavailableResult(context, context.errors);
@@ -156,14 +188,17 @@ function validateReleasePullRequest(pr, versions, version) {
       invalid: true,
     };
   }
-  if (version && versions[0] === version) {
-    return {
-      blockers: [
-        `Release Please PR #${pr.number} does not advance the prepared version ${version}.`,
-      ],
-      warnings: [],
-      invalid: true,
-    };
+  if (version) {
+    const comparison = compareSemanticVersions(versions[0], version);
+    if (comparison == null || comparison <= 0) {
+      return {
+        blockers: [
+          `Release Please PR #${pr.number} must advance the prepared version ${version}; found ${versions[0]}.`,
+        ],
+        warnings: [],
+        invalid: true,
+      };
+    }
   }
   return {
     blockers: [],
@@ -377,6 +412,16 @@ function nextSafeAction(state, gates, expectedTag, version, supersession) {
   }
   if (state === 'unavailable') return 'Restore reliable GitHub and npm observations, then retry.';
   return 'Resolve release-state blockers before continuing.';
+}
+
+function parseSemanticVersion(value) {
+  if (typeof value !== 'string') return null;
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.exec(value);
+  if (!match) return null;
+  return {
+    core: [Number(match[1]), Number(match[2]), Number(match[3])],
+    prerelease: match[4] ? match[4].split('.') : null,
+  };
 }
 
 function uniqueValues(values) {
