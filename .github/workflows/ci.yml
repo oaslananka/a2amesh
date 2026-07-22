@@ -417,6 +417,7 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ matrix.node }}
+      - run: corepack pnpm run toolchain:check
       - run: pnpm run lint:identity
 
   consumer-smoke:

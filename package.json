@@ -30,7 +30,7 @@
     "pnpm": ">=11 <12"
   },
   "scripts": {
-    "setup": "corepack prepare pnpm@11.8.0 --activate && pnpm install --frozen-lockfile",
+    "setup": "node scripts/run-pnpm.mjs install --frozen-lockfile",
     "clean": "node scripts/clean.mjs",
     "format": "pnpm run format:write",
     "format:write": "prettier --ignore-path .prettierignore --ignore-unknown --write .",
@@ -112,7 +112,8 @@
     "security:tooling:check": "node scripts/check-security-tooling.mjs",
     "security:precommit": "pre-commit run --all-files",
     "coverage:inventory:check": "node scripts/check-coverage-policy.mjs",
-    "coverage:report": "node scripts/report-coverage.mjs"
+    "coverage:report": "node scripts/report-coverage.mjs",
+    "toolchain:check": "node scripts/check-toolchain.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

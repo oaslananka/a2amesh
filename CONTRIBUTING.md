@@ -4,11 +4,12 @@ Thanks for helping improve A2A Mesh.
 
 ## Local workflow
 
-1. Use Node `24.16.0` and pnpm `11.8.0` by default (`.node-version`, `.nvmrc`, and `packageManager` are the source of truth).
-2. Install dependencies with `pnpm run setup`.
-3. Run focused tests while iterating.
-4. Run `pnpm run ui:install:browsers` once per machine before the full UI smoke path.
-5. Run `pnpm run verify` before opening a PR.
+1. Use Node `24.16.0` and pnpm `11.8.0` by default. `mise.toml` owns the default Node.js version; Corepack and the root `packageManager` field own pnpm.
+2. Run `mise trust`, `mise install`, and `mise reshim`, or install a supported Node.js version and run `corepack enable`.
+3. Run `corepack pnpm run toolchain:check`, then install dependencies with `corepack pnpm run setup`.
+4. Run focused tests while iterating.
+5. Run `corepack pnpm run ui:install:browsers` once per machine before the full UI smoke path.
+6. Run `corepack pnpm run verify` before opening a PR.
 
 ## Legal authority and Developer Certificate of Origin
 
@@ -63,17 +64,17 @@ Local git hooks are intentionally tiered:
 To verify your change before submitting a PR, run the full check suite:
 
 ```bash
-pnpm install --frozen-lockfile
-pnpm run ui:install:browsers
-pnpm run verify
+corepack pnpm install --frozen-lockfile
+corepack pnpm run ui:install:browsers
+corepack pnpm run verify
 ```
 
 PowerShell:
 
 ```powershell
-pnpm install --frozen-lockfile
-pnpm run ui:install:browsers
-pnpm run verify
+corepack pnpm install --frozen-lockfile
+corepack pnpm run ui:install:browsers
+corepack pnpm run verify
 ```
 
 Releases are cut by release-please manifest mode after changes merge to `main`.

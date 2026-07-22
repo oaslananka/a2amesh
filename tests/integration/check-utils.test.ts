@@ -1,13 +1,25 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 const tempRoots: string[] = [];
+const expectedPnpmVersion = JSON.parse(
+  readFileSync(new URL('../../tools/runtime-versions.json', import.meta.url), 'utf8'),
+).pnpm as string;
 
 interface CheckUtilsModule {
   runCommandSync(
     file: string,
+    args: string[],
+    options: {
+      encoding: 'utf8';
+      env?: NodeJS.ProcessEnv;
+      stdio: 'pipe';
+    },
+  ): string;
+  runPnpmSync(
     args: string[],
     options: {
       encoding: 'utf8';
@@ -29,6 +41,35 @@ describe('check-utils command execution', () => {
       tempRoots.splice(0).map((root) => rm(root, { force: true, recursive: true })),
     );
   });
+
+  it.runIf(process.platform !== 'win32')(
+    'uses the active Node Corepack instead of a conflicting PATH command',
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), 'a2a-corepack-command-'));
+      tempRoots.push(root);
+      const corepack = join(root, 'corepack');
+      await writeFile(
+        corepack,
+        `#!/bin/sh
+printf '99.0.0\n'
+`,
+      );
+      await chmod(corepack, 0o755);
+
+      const { runPnpmSync } = await loadCheckUtilsModule();
+      const output = runPnpmSync(['--version'], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          npm_execpath: '',
+          PATH: `${root}:/usr/local/bin:/usr/bin:/bin`,
+        },
+        stdio: 'pipe',
+      });
+
+      expect(output.trim()).toBe(expectedPnpmVersion);
+    },
+  );
 
   it.runIf(process.platform === 'win32')(
     'runs cmd shims whose absolute path and arguments contain spaces',
