@@ -193,7 +193,7 @@ function syncPnpmDocumentation(manifest) {
 
 function writeOrExpectToolchainContract(path, expected) {
   const actual = existsSync(path) ? readText(path) : '';
-  if (actual === expected) return;
+  if (actual.replaceAll('\r\n', '\n') === expected) return;
   if (write) {
     writeFileSync(path, expected);
     return;

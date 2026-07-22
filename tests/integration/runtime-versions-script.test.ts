@@ -132,6 +132,16 @@ node.corepack = true
     await expect(execRuntimeCheck(workspace)).resolves.toBeDefined();
   });
 
+  it('accepts Windows-style CRLF line endings in governed toolchain files', async () => {
+    const workspace = await createRuntimeWorkspace();
+    for (const path of ['mise.toml', '.husky/pre-commit', '.husky/pre-push']) {
+      const target = join(workspace, path);
+      await writeFile(target, (await readFile(target, 'utf8')).replaceAll('\n', '\r\n'));
+    }
+
+    await expect(execRuntimeCheck(workspace)).resolves.toBeDefined();
+  });
+
   it('fails when the shared setup action bypasses Corepack parity checks', async () => {
     const workspace = await createRuntimeWorkspace();
     const actionPath = join(workspace, '.github/actions/setup-pnpm/action.yml');
