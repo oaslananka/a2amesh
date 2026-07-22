@@ -164,13 +164,12 @@ export class JwtAuthMiddleware {
         attachRequestContext(req, context);
         Object.assign(req as RequestWithContext, { auth: authResult });
         next();
-      } catch (error) {
+      } catch {
         res.status(401).json({
           jsonrpc: '2.0',
           error: {
             code: -32040,
             message: 'Unauthorized',
-            data: { reason: String(error) },
           },
           id: req.body && typeof req.body === 'object' && 'id' in req.body ? req.body.id : null,
         });
