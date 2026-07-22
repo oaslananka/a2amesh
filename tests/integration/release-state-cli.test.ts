@@ -24,6 +24,7 @@ type FixtureOptions = {
   npmPublished?: string[];
   openReleaseVersion?: string;
   npmFailure?: string;
+  superseded?: boolean;
 };
 
 describe.skipIf(process.platform === 'win32')('release-state CLI', () => {
@@ -52,6 +53,35 @@ describe.skipIf(process.platform === 'win32')('release-state CLI', () => {
     expect(result.exitCode).toBe(0);
     expect(result.json.state).toBe('prepared-unpublished');
     expect(result.json.gates.publish).toBe(true);
+  });
+
+  it('allows release-please mode for a validated superseded release', async () => {
+    const result = await runFixture({
+      mode: 'release-please',
+      npmPublished: [],
+      tagCommit: null,
+      openReleaseVersion: '0.12.0-alpha.1',
+      superseded: true,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.json.state).toBe('superseded');
+    expect(result.json.gates).toEqual({ releasePlease: true, publish: false });
+  });
+
+  it('blocks publish mode when a superseded release is later tagged', async () => {
+    const result = await runFixture({
+      mode: 'publish',
+      npmPublished: [],
+      tagCommit: 'abc123',
+      openReleaseVersion: '0.12.0-alpha.1',
+      superseded: true,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.json.state).toBe('drifted');
+    expect(result.json.gates.publish).toBe(false);
+    expect(result.json.blockers).toContainEqual(expect.stringContaining('canonical tag'));
   });
 
   it('returns unavailable when npm cannot be observed', async () => {
@@ -88,6 +118,24 @@ async function runFixture(options: FixtureOptions) {
   );
   await writeFile(join(root, '.release-please-manifest.json'), JSON.stringify(manifest));
   await writeFile(join(root, 'release-please-config.json'), JSON.stringify({ packages }));
+  await writeFile(
+    join(root, '.release-recovery.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      supersededReleases: options.superseded
+        ? [
+            {
+              version: '0.11.0-alpha.1',
+              releaseCommit: 'def4567',
+              successorVersion: '0.12.0-alpha.1',
+              decisionDate: '2026-07-22',
+              issue: 'https://github.com/oaslananka/a2amesh/issues/184',
+              reason: 'Historical candidate superseded after release-integrity review.',
+            },
+          ]
+        : [],
+    }),
+  );
   for (const name of packageNames) {
     const dir = join(root, 'packages', packageSlug(name));
     await mkdir(dir, { recursive: true });
@@ -103,6 +151,8 @@ async function runFixture(options: FixtureOptions) {
     tagCommit: options.tagCommit === undefined ? 'abc123' : options.tagCommit,
     openReleaseVersion: options.openReleaseVersion ?? null,
     npmFailure: options.npmFailure ?? null,
+    releaseCommit: 'def4567',
+    historicalManifestVersion: '0.11.0-alpha.1',
     npm: Object.fromEntries(
       packageNames.map((name) => [
         name,
@@ -165,7 +215,15 @@ if (command === 'git') {
   if (args[0] === 'remote') out('https://github.com/oaslananka/a2amesh.git\\n');
   else if (args[0] === 'rev-parse' && args[1] === 'HEAD') out(fixture.head + '\\n');
   else if (args[0] === 'rev-parse' && args[1].endsWith('^{commit}')) {
-    if (fixture.tagCommit) out(fixture.tagCommit + '\\n'); else process.exit(1);
+    if (args[1].startsWith('@a2amesh/runtime-v')) {
+      if (fixture.tagCommit) out(fixture.tagCommit + '\n'); else process.exit(1);
+    } else if (args[1].startsWith(fixture.releaseCommit)) out(fixture.releaseCommit + '\n');
+    else process.exit(1);
+  } else if (args[0] === 'merge-base' && args[1] === '--is-ancestor') {
+    process.exit(args[2] === fixture.releaseCommit && args[3] === fixture.head ? 0 : 1);
+  } else if (args[0] === 'show' && args[1] === fixture.releaseCommit + ':.release-please-manifest.json') {
+    const manifest = Object.fromEntries(${JSON.stringify(packageNames)}.map((name) => ['packages/' + name.split('/')[1], fixture.historicalManifestVersion]));
+    out(JSON.stringify(manifest));
   } else process.exit(2);
 } else if (command === 'gh') {
   if (args[0] === 'pr' && args[1] === 'list') {
