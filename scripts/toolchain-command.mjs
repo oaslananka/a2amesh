@@ -103,7 +103,8 @@ function executableCandidate(candidate, platform) {
 
 function quoteWindowsArgument(value) {
   if (SIMPLE_WINDOWS_ARGUMENT.test(value)) return value;
-  return `"${value.replaceAll('"', `${WINDOWS_ESCAPE}"`)}"`;
+  const escaped = value.replaceAll('"', WINDOWS_ESCAPE + '"');
+  return '"' + escaped + '"';
 }
 
 function emptyOutput(encoding) {
