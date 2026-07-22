@@ -195,6 +195,10 @@ describe('JwtAuthMiddleware', () => {
         error: expect.objectContaining({ message: 'Unauthorized' }),
       }),
     );
+    expect((response.body as { error: Record<string, unknown> }).error).not.toHaveProperty('data');
+    expect(JSON.stringify(response.body)).not.toContain(
+      'Bearer JWT verification is not configured',
+    );
   });
 
   it('rejects unknown security schemes in security requirements', async () => {

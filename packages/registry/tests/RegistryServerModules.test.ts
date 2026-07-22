@@ -186,6 +186,34 @@ async function close(server: Server): Promise<void> {
   });
 }
 
+describe('Registry authentication failures', () => {
+  it('does not expose auth middleware errors in control-plane problem responses', async () => {
+    const { app, context } = createRouteHarness();
+    context.authMiddleware = {
+      authenticateRequestContext: vi
+        .fn()
+        .mockRejectedValue(new Error('sensitive OIDC discovery configuration detail')),
+    } as never;
+
+    const response = await request(app)
+      .post('/agents/register')
+      .send({ agentUrl: 'https://agent.example' })
+      .expect(401);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        title: 'Unauthorized',
+        status: 401,
+        detail: 'Unauthorized',
+      }),
+    );
+    expect(response.body).not.toHaveProperty('reason');
+    expect(JSON.stringify(response.body)).not.toContain(
+      'sensitive OIDC discovery configuration detail',
+    );
+  });
+});
+
 describe('RegistryServer control-plane modules', () => {
   afterEach(() => {
     vi.restoreAllMocks();
