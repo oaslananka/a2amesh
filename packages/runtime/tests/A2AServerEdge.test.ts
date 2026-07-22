@@ -1,9 +1,10 @@
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { A2AServer, type A2AServerOptions } from '../src/server/A2AServer.js';
 import { ErrorCodes } from '../src/types/jsonrpc.js';
 import type { AgentCard } from '../src/types/agent-card.js';
 import type { Artifact, Message, Task } from '../src/types/task.js';
+import { logger } from '../src/utils/logger.js';
 
 const agentCard: AgentCard = {
   protocolVersion: '1.0',
@@ -40,6 +41,29 @@ class EdgeHarnessServer extends A2AServer {
         ],
       },
     ];
+  }
+}
+
+class GatedIdempotencyServer extends EdgeHarnessServer {
+  handleTaskCalls = 0;
+  private releaseTask!: () => void;
+  private resolveTaskStarted!: () => void;
+  readonly taskStarted = new Promise<void>((resolve) => {
+    this.resolveTaskStarted = resolve;
+  });
+  private readonly taskGate = new Promise<void>((resolve) => {
+    this.releaseTask = resolve;
+  });
+
+  release(): void {
+    this.releaseTask();
+  }
+
+  override async handleTask(task: Task, message: Message): Promise<Artifact[]> {
+    this.handleTaskCalls += 1;
+    this.resolveTaskStarted();
+    await this.taskGate;
+    return super.handleTask(task, message);
   }
 }
 
@@ -361,19 +385,30 @@ describe('A2AServer edge cases', () => {
       replayed: true,
     });
 
-    const conflict = await request(server.getExpressApp())
-      .post('/rpc')
-      .set('Idempotency-Key', 'create-task-1')
-      .send({
-        ...payload,
-        id: 'idempotency-3',
-        params: {
-          message: createMessage('different body'),
-        },
-      });
+    const warning = vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
+    try {
+      const conflict = await request(server.getExpressApp())
+        .post('/rpc')
+        .set('Idempotency-Key', 'create-task-1')
+        .send({
+          ...payload,
+          id: 'idempotency-3',
+          params: {
+            message: createMessage('different body'),
+          },
+        });
 
-    expect(conflict.status).toBe(200);
-    expect(conflict.body.error.code).toBe(ErrorCodes.IdempotencyConflict);
+      expect(conflict.status).toBe(200);
+      expect(conflict.body.error.code).toBe(ErrorCodes.IdempotencyConflict);
+      expect(warning).toHaveBeenCalledWith('Idempotency reservation conflict', {
+        method: 'message/send',
+        outcome: 'conflict',
+      });
+      expect(JSON.stringify(warning.mock.calls)).not.toContain('create-task-1');
+      expect(JSON.stringify(warning.mock.calls)).not.toContain('different body');
+    } finally {
+      warning.mockRestore();
+    }
   });
 
   it('exposes runtime metrics and rejects invalid terminal transitions', async () => {
@@ -427,5 +462,53 @@ describe('A2AServer edge cases', () => {
 
     expect(first.status).toBe(204);
     expect(second.status).toBe(204);
+  });
+  it('executes one side effect for concurrent identical idempotency keys', async () => {
+    const server = new GatedIdempotencyServer({ idempotencyLeaseMs: 5_000 });
+    const payload = {
+      jsonrpc: '2.0' as const,
+      method: 'message/send',
+      params: { message: createMessage('concurrent-idempotency') },
+    };
+
+    const firstPromise = request(server.getExpressApp())
+      .post('/rpc')
+      .set('Idempotency-Key', 'concurrent-key')
+      .send({ ...payload, id: 'first' })
+      .then((response) => response);
+
+    const firstState = await Promise.race([
+      server.taskStarted.then(() => ({ state: 'started' as const })),
+      firstPromise.then((response) => ({ state: 'completed' as const, response })),
+    ]);
+    expect(firstState).toEqual({ state: 'started' });
+
+    let second;
+    try {
+      second = await request(server.getExpressApp())
+        .post('/rpc')
+        .set('Idempotency-Key', 'concurrent-key')
+        .send({ ...payload, id: 'second' });
+
+      expect(second.status).toBe(200);
+      expect(second.body.error).toMatchObject({
+        code: ErrorCodes.IdempotencyInProgress,
+        message: 'Idempotent request is already in progress',
+      });
+      expect(server.handleTaskCalls).toBe(1);
+      expect(server.getTaskManager().getAllTasks()).toHaveLength(1);
+    } finally {
+      server.release();
+    }
+    const first = await firstPromise;
+    expect(first.body.result.metadata.idempotency.replayed).toBe(false);
+
+    const replay = await request(server.getExpressApp())
+      .post('/rpc')
+      .set('Idempotency-Key', 'concurrent-key')
+      .send({ ...payload, id: 'replay' });
+    expect(replay.body.result.id).toBe(first.body.result.id);
+    expect(replay.body.result.metadata.idempotency.replayed).toBe(true);
+    expect(server.handleTaskCalls).toBe(1);
   });
 });

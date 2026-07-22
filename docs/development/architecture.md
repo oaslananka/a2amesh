@@ -121,8 +121,10 @@ metadata are hidden from authenticated task lists and rejected for direct task a
 ## JSON-RPC Flow
 
 The HTTP JSON-RPC handler rejects batch requests, validates the JSON-RPC envelope, applies
-optional auth, resolves idempotency, and dispatches to the method-specific handler. The
-stable method surface is:
+optional auth, atomically reserves idempotency ownership, and dispatches to the method-specific
+handler. A matching concurrent request cannot reach method dispatch while the owner lease is
+active. Completed and protocol-error responses are replayed; expired leases can be recovered by a
+new owner. The stable method surface is:
 
 | Method                               | Runtime path                                                                                                                                                                                                |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

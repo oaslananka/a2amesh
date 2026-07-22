@@ -43,6 +43,7 @@ export interface A2AHttpRouteDependencies {
   streamer: SSEStreamer;
   idempotencyStore: IdempotencyStore;
   idempotencyTtlMs: number;
+  idempotencyLeaseMs: number;
   handleRpc: HandleRpc;
   handleStreamingRpc: HandleStreamingRpc;
   canAccessTask: CanAccessTask;
@@ -68,6 +69,7 @@ export function registerA2ARoutes(deps: A2AHttpRouteDependencies): void {
     runtimeMetrics: deps.runtimeMetrics,
     idempotencyStore: deps.idempotencyStore,
     idempotencyTtlMs: deps.idempotencyTtlMs,
+    idempotencyLeaseMs: deps.idempotencyLeaseMs,
     handleRpc: deps.handleRpc,
     handleStreamingRpc: deps.handleStreamingRpc,
   });

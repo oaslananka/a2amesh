@@ -154,6 +154,18 @@ jobs:
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      A2AMESH_TEST_REDIS_URL: redis://localhost:6379
+    services:
+      redis:
+        image: redis:8-alpine@sha256:9d317178eceac8454a2284a9e6df2466b93c745529947f0cd42a0fa9609d7005
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:

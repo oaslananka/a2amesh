@@ -14,6 +14,7 @@ const ERROR_REASON_BY_CODE: Record<number, string> = {
   [ErrorCodes.ExtensionRequired]: 'EXTENSION_REQUIRED',
   [ErrorCodes.InvalidTaskTransition]: 'INVALID_TASK_TRANSITION',
   [ErrorCodes.IdempotencyConflict]: 'IDEMPOTENCY_CONFLICT',
+  [ErrorCodes.IdempotencyInProgress]: 'IDEMPOTENCY_IN_PROGRESS',
 };
 
 export function makeErrorInfo(

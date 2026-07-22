@@ -52,6 +52,7 @@ export const ErrorCodes = {
   ExtensionRequired: -32041,
   InvalidTaskTransition: -32042,
   IdempotencyConflict: -32043,
+  IdempotencyInProgress: -32044,
 } as const;
 
 export class JsonRpcError extends Error {
@@ -150,6 +151,8 @@ function reasonForCode(code: number): string {
       return 'INVALID_TASK_TRANSITION';
     case ErrorCodes.IdempotencyConflict:
       return 'IDEMPOTENCY_CONFLICT';
+    case ErrorCodes.IdempotencyInProgress:
+      return 'IDEMPOTENCY_IN_PROGRESS';
     default:
       return 'A2A_ERROR';
   }

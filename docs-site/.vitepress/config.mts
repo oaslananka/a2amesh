@@ -142,7 +142,10 @@ export default defineConfig({
       '/operations/': [
         {
           text: 'Operations',
-          items: [{ text: 'Task Retries', link: '/operations/task-retries' }],
+          items: [
+            { text: 'Task Retries', link: '/operations/task-retries' },
+            { text: 'Idempotency', link: '/operations/idempotency' },
+          ],
         },
       ],
       '/security/': [

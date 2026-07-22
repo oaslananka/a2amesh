@@ -10,7 +10,12 @@ import { validateMessageSendParams } from '../../utils/schema-validator.js';
 import type { IdempotencyStoredResult, IdempotencyStore } from '../IdempotencyStore.js';
 import type { SSEStreamer } from '../SSEStreamer.js';
 import type { TaskManager, TaskUpdatedEvent } from '../TaskManager.js';
-import { decorateIdempotentResult, type IdempotencyResolution } from './idempotency.js';
+import {
+  completeIdempotency,
+  decorateIdempotentResult,
+  startIdempotencyLease,
+  type IdempotencyResolution,
+} from './idempotency.js';
 import {
   A2A_VERSION_NOT_SUPPORTED_PROBLEM_TYPE,
   SUPPORTED_A2A_PROTOCOL_VERSIONS,
@@ -171,34 +176,43 @@ export async function handleStreamingRpc(
   let task: Task;
   const abortController = new AbortController();
   context.req.on('close', () => abortController.abort());
+  const lease = startIdempotencyLease(
+    idempotency,
+    deps.idempotencyStore,
+    deps.runtimeMetrics,
+    rpcReq.method,
+  );
 
-  if (rpcReq.method === 'message/stream') {
-    task = await deps.handleMessageRequest(
-      validateMessageSendParams((rpcReq.params ?? {}) as Record<string, unknown>),
-      rpcReq.method,
-      context.req,
-      abortController.signal,
-    );
-    if (idempotency) {
-      await deps.idempotencyStore.set(
-        idempotency.scope,
-        idempotency.key,
-        idempotency.fingerprint,
-        {
-          kind: 'success',
-          value: structuredClone(decorateIdempotentResult(task, idempotency, false)),
-        },
-        deps.idempotencyTtlMs,
+  try {
+    if (rpcReq.method === 'message/stream') {
+      task = await deps.handleMessageRequest(
+        validateMessageSendParams((rpcReq.params ?? {}) as Record<string, unknown>),
+        rpcReq.method,
+        context.req,
+        abortController.signal,
+      );
+      if (idempotency) {
+        await completeIdempotency(
+          deps.idempotencyStore,
+          idempotency,
+          {
+            kind: 'success',
+            value: structuredClone(decorateIdempotentResult(task, idempotency, false)),
+          },
+          deps.idempotencyTtlMs,
+        );
+      }
+    } else {
+      const params = (rpcReq.params ?? {}) as Record<string, unknown>;
+      task = getTaskOrThrow(
+        params['taskId'],
+        deps.taskManager,
+        context.requestContext,
+        deps.canAccessTask,
       );
     }
-  } else {
-    const params = (rpcReq.params ?? {}) as Record<string, unknown>;
-    task = getTaskOrThrow(
-      params['taskId'],
-      deps.taskManager,
-      context.requestContext,
-      deps.canAccessTask,
-    );
+  } finally {
+    lease?.stop();
   }
 
   initSseResponse(context.req, res, deps.runtimeMetrics);

@@ -35,9 +35,12 @@ import {
 import type { IdempotencyStore } from '../IdempotencyStore.js';
 import { TaskLifecycleError, type TaskManager } from '../TaskManager.js';
 import {
+  completeIdempotency,
   decorateIdempotentResult,
   extractJsonRpcId,
+  releaseIdempotency,
   resolveIdempotency,
+  startIdempotencyLease,
   type IdempotencyResolution,
 } from './idempotency.js';
 import { toLifecycleJsonRpcError } from './lifecycleErrors.js';
@@ -82,6 +85,7 @@ export interface JsonRpcHttpHandlerDependencies {
   runtimeMetrics: RuntimeMetrics;
   idempotencyStore: IdempotencyStore;
   idempotencyTtlMs: number;
+  idempotencyLeaseMs: number;
   handleRpc: HandleRpc;
   handleStreamingRpc: HandleStreamingRpc;
 }
@@ -140,6 +144,8 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
         res,
         deps.idempotencyStore,
         isStreamingRpcMethod(rpcReq.method),
+        deps.idempotencyLeaseMs,
+        deps.runtimeMetrics,
       );
       if (idempotency === null) {
         return;
@@ -155,23 +161,32 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
         return;
       }
 
-      const result = await deps.handleRpc(rpcReq, { req, requestContext });
-      const responseResult = idempotency
-        ? decorateIdempotentResult(result, idempotency, false)
-        : result;
-      if (idempotency) {
-        await deps.idempotencyStore.set(
-          idempotency.scope,
-          idempotency.key,
-          idempotency.fingerprint,
-          {
-            kind: 'success',
-            value: structuredClone(responseResult),
-          },
-          deps.idempotencyTtlMs,
-        );
+      const lease = startIdempotencyLease(
+        idempotency,
+        deps.idempotencyStore,
+        deps.runtimeMetrics,
+        rpcReq.method,
+      );
+      try {
+        const result = await deps.handleRpc(rpcReq, { req, requestContext });
+        const responseResult = idempotency
+          ? decorateIdempotentResult(result, idempotency, false)
+          : result;
+        if (idempotency) {
+          await completeIdempotency(
+            deps.idempotencyStore,
+            idempotency,
+            {
+              kind: 'success',
+              value: structuredClone(responseResult),
+            },
+            deps.idempotencyTtlMs,
+          );
+        }
+        res.json(createJsonRpcSuccessResponse(responseResult, rpcReq.id ?? null));
+      } finally {
+        lease?.stop();
       }
-      res.json(createJsonRpcSuccessResponse(responseResult, rpcReq.id ?? null));
     } catch (err: unknown) {
       await writeJsonRpcErrorResponse(req, res, err, idempotency, deps);
     }
@@ -187,27 +202,45 @@ async function writeJsonRpcErrorResponse(
 ): Promise<void> {
   const responseId = extractJsonRpcId(req.body);
   if (err instanceof JsonRpcError) {
-    if (idempotency && err.code !== ErrorCodes.IdempotencyConflict) {
+    if (
+      idempotency?.ownerId &&
+      err.code !== ErrorCodes.IdempotencyConflict &&
+      err.code !== ErrorCodes.IdempotencyInProgress
+    ) {
       const error = {
         code: err.code,
         message: err.message,
         ...(err.data ? { data: err.data } : {}),
       };
-      await deps.idempotencyStore.set(
-        idempotency.scope,
-        idempotency.key,
-        idempotency.fingerprint,
-        {
-          kind: 'error',
-          error,
-        },
-        deps.idempotencyTtlMs,
-      );
+      try {
+        await completeIdempotency(
+          deps.idempotencyStore,
+          idempotency,
+          { kind: 'error', error },
+          deps.idempotencyTtlMs,
+        );
+      } catch (completionError) {
+        logger.error('Failed to finalize idempotent error response', {
+          error: completionError,
+        });
+        res.json(
+          createJsonRpcErrorResponse(
+            new JsonRpcError(ErrorCodes.InternalError, 'Internal Error'),
+            responseId,
+          ),
+        );
+        return;
+      }
     }
     res.json(createJsonRpcErrorResponse(err, responseId));
     return;
   }
 
+  try {
+    await releaseIdempotency(deps.idempotencyStore, idempotency);
+  } catch (releaseError) {
+    logger.error('Failed to release retryable idempotency reservation', { error: releaseError });
+  }
   logger.error('Unhandled internal error', { error: String(err) });
   res.json(
     createJsonRpcErrorResponse(

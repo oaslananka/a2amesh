@@ -36,3 +36,12 @@ inspect only status or headers must cancel the response body.
 Retries are enabled only for idempotent methods, replayable request bodies, or requests
 carrying an `Idempotency-Key`. URLs and sensitive headers are redacted from logs and spans.
 See [SSRF Policy](../../docs/security/ssrf.md).
+
+## Idempotency reservations
+
+`A2AServer` reserves supported `Idempotency-Key` requests before method dispatch. The default
+`InMemoryIdempotencyStore` coordinates one Node.js process. Multi-replica deployments must inject a
+shared `RedisIdempotencyStore`; its atomic owner-token transitions prevent concurrent replicas from
+executing the same scoped request twice. Configure `idempotencyLeaseMs` for the renewable owner
+lease and `idempotencyTtlMs` for terminal response replay. See
+[Idempotency Reservations](../../docs/operations/idempotency.md).
