@@ -53,6 +53,7 @@
           { "context": "Security / osv" },
           { "context": "Security / zizmor" },
           { "context": "Security / actionlint" },
+          { "context": "Security / semgrep" },
           { "context": "Security / dependency-license" },
           { "context": "Dependency Review / review" },
           { "context": "CodeQL / analyze" },
