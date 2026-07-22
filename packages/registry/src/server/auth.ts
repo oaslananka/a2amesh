@@ -41,11 +41,8 @@ export function createRegistryAuth(context: RegistryServerContext): RegistryAuth
     if (context.authMiddleware) {
       try {
         return await context.authMiddleware.authenticateRequestContext(req);
-      } catch (error: unknown) {
-        writeRegistryProblem(res, 'unauthorized', {
-          detail: 'Unauthorized',
-          extensions: { reason: String(error) },
-        });
+      } catch {
+        writeRegistryProblem(res, 'unauthorized', { detail: 'Unauthorized' });
         return null;
       }
     }

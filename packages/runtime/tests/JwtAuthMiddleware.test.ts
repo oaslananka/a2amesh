@@ -195,6 +195,10 @@ describe('JwtAuthMiddleware', () => {
         error: expect.objectContaining({ message: 'Unauthorized' }),
       }),
     );
+    expect((response.body as { error: Record<string, unknown> }).error).not.toHaveProperty('data');
+    expect(JSON.stringify(response.body)).not.toContain(
+      'Bearer JWT verification is not configured',
+    );
   });
 
   it('rejects unknown security schemes in security requirements', async () => {
@@ -639,6 +643,141 @@ describe('JwtAuthMiddleware', () => {
 
     expect(next).toHaveBeenCalledOnce();
     expect(req['auth']).toEqual(expect.objectContaining({ principalId: 'api-key:api-key' }));
+  });
+
+  it('requires every scheme in a compound security requirement', async () => {
+    const middleware = new JwtAuthMiddleware({
+      securitySchemes: [
+        { type: 'apiKey', id: 'primary', in: 'header', name: 'x-primary-key' },
+        { type: 'apiKey', id: 'secondary', in: 'header', name: 'x-secondary-key' },
+      ],
+      security: [{ primary: [], secondary: [] }],
+      apiKeys: {
+        primary: {
+          value: 'primary-secret',
+          principalId: 'principal-1',
+          tenantId: 'tenant-1',
+        },
+        secondary: {
+          value: 'secondary-secret',
+          principalId: 'principal-1',
+          tenantId: 'tenant-1',
+        },
+      },
+    });
+
+    await expect(
+      middleware.authenticateRequest({
+        header(name: string) {
+          return name === 'x-primary-key' ? 'primary-secret' : undefined;
+        },
+        query: {},
+      } as never),
+    ).rejects.toThrow('Invalid API key');
+
+    const result = await middleware.authenticateRequest({
+      header(name: string) {
+        if (name === 'x-primary-key') return 'primary-secret';
+        if (name === 'x-secondary-key') return 'secondary-secret';
+        return undefined;
+      },
+      query: {},
+    } as never);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        schemeId: 'primary',
+        principalId: 'principal-1',
+        tenantId: 'tenant-1',
+      }),
+    );
+  });
+
+  it('enforces scopes declared by a security requirement', async () => {
+    const createMiddleware = (scopes: string[]) =>
+      new JwtAuthMiddleware({
+        securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+        security: [{ 'api-key': ['tasks:admin'] }],
+        apiKeys: {
+          'api-key': {
+            value: 'secret',
+            principalId: 'principal-1',
+            scopes,
+          },
+        },
+      });
+    const request = {
+      header(name: string) {
+        return name === 'x-api-key' ? 'secret' : undefined;
+      },
+      query: {},
+    } as never;
+
+    await expect(createMiddleware(['tasks:read']).authenticateRequest(request)).rejects.toThrow(
+      'Insufficient scope',
+    );
+
+    await expect(
+      createMiddleware(['tasks:read', 'tasks:admin']).authenticateRequest(request),
+    ).resolves.toEqual(expect.objectContaining({ principalId: 'principal-1' }));
+  });
+
+  it('rejects compound credentials bound to different principals', async () => {
+    const middleware = new JwtAuthMiddleware({
+      securitySchemes: [
+        { type: 'apiKey', id: 'primary', in: 'header', name: 'x-primary-key' },
+        { type: 'apiKey', id: 'secondary', in: 'header', name: 'x-secondary-key' },
+      ],
+      security: [{ primary: [], secondary: [] }],
+      apiKeys: {
+        primary: { value: 'primary-secret', principalId: 'principal-1' },
+        secondary: { value: 'secondary-secret', principalId: 'principal-2' },
+      },
+    });
+
+    await expect(
+      middleware.authenticateRequest({
+        header(name: string) {
+          if (name === 'x-primary-key') return 'primary-secret';
+          if (name === 'x-secondary-key') return 'secondary-secret';
+          return undefined;
+        },
+        query: {},
+      } as never),
+    ).rejects.toThrow('Conflicting authenticated principals');
+  });
+
+  it('rejects compound credentials bound to different tenants', async () => {
+    const middleware = new JwtAuthMiddleware({
+      securitySchemes: [
+        { type: 'apiKey', id: 'primary', in: 'header', name: 'x-primary-key' },
+        { type: 'apiKey', id: 'secondary', in: 'header', name: 'x-secondary-key' },
+      ],
+      security: [{ primary: [], secondary: [] }],
+      apiKeys: {
+        primary: {
+          value: 'primary-secret',
+          principalId: 'principal-1',
+          tenantId: 'tenant-1',
+        },
+        secondary: {
+          value: 'secondary-secret',
+          principalId: 'principal-1',
+          tenantId: 'tenant-2',
+        },
+      },
+    });
+
+    await expect(
+      middleware.authenticateRequest({
+        header(name: string) {
+          if (name === 'x-primary-key') return 'primary-secret';
+          if (name === 'x-secondary-key') return 'secondary-secret';
+          return undefined;
+        },
+        query: {},
+      } as never),
+    ).rejects.toThrow('Conflicting authenticated tenants');
   });
 
   it('continues to the next security requirement after a failed requirement', async () => {

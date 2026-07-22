@@ -1180,7 +1180,6 @@ describe('A2AServer', () => {
     expect(v1Response.status).toBe(200);
   });
 
-
   it('returns explicit errors for unsupported requested protocol versions', async () => {
     const server = new HarnessServer();
     const listener = server.start(0);
@@ -1208,7 +1207,6 @@ describe('A2AServer', () => {
     expect(problem.supportedVersions).toEqual(expect.arrayContaining(['1.0', '1.2', '0.3']));
   });
 
-
   it('requires credentials before returning the extended card through JSON-RPC HTTP', async () => {
     const server = new HarnessServer('success', {}, true);
     const listener = server.start(0);
@@ -1235,18 +1233,25 @@ describe('A2AServer', () => {
       headers: { 'Content-Type': 'application/a2a+json', 'A2A-Version': '1.0' },
       body: JSON.stringify({ jsonrpc: '2.0', id: 'extended-card-unauthenticated', method }),
     });
-    const unauthenticatedPayload = (await unauthenticatedResponse.json()) as { error: { code: number } };
+    const unauthenticatedPayload = (await unauthenticatedResponse.json()) as {
+      error: { code: number; data?: unknown };
+    };
     expect(unauthenticatedResponse.status).toBe(200);
     expect(unauthenticatedPayload.error.code).toBe(ErrorCodes.Unauthorized);
+    expect(unauthenticatedPayload.error).not.toHaveProperty('data');
+    expect(JSON.stringify(unauthenticatedPayload)).not.toContain('Invalid API key');
 
     const authenticatedResponse = await fetch(`${baseUrl}/a2a/jsonrpc`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/a2a+json', 'A2A-Version': '1.0', [headerName]: apiKey },
+      headers: {
+        'Content-Type': 'application/a2a+json',
+        'A2A-Version': '1.0',
+        [headerName]: apiKey,
+      },
       body: JSON.stringify({ jsonrpc: '2.0', id: 'extended-card-authenticated', method }),
     });
     const authenticatedPayload = (await authenticatedResponse.json()) as { result: AgentCard };
     expect(authenticatedResponse.status).toBe(200);
     expect(authenticatedPayload.result).toEqual(expect.objectContaining({ name: 'Harness Agent' }));
   });
-
 });
