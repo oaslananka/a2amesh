@@ -84,5 +84,5 @@ Before upgrading, review the current
 [API stability policy](https://github.com/oaslananka/a2amesh/blob/main/docs/development/api-stability.md).
 Release-integrity and provenance requirements are documented in the
 [release integrity guide](https://github.com/oaslananka/a2amesh/blob/main/docs/release/release-integrity.md).
-Breaking alpha changes and required application updates are documented under
+Breaking alpha changes and required application updates are documented in the
 [security upgrade guide](https://github.com/oaslananka/a2amesh/blob/main/docs/migrating/security-upgrades.md).
