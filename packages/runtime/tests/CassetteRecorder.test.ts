@@ -7,7 +7,7 @@ import {
   serializeCassetteToJsonl,
   verifyCassetteIntegrity,
 } from '../src/testing/cassette/index.js';
-import { redactSecretShapedText } from '../src/testing/cassette/redaction.js';
+import { redactSecretShapedText, redactTask } from '../src/testing/cassette/redaction.js';
 import type { Message, ExtensibleArtifact } from '../src/types/task.js';
 
 function textMessage(text: string): Message {
@@ -151,5 +151,40 @@ describe('redactSecretShapedText', () => {
 
   it('leaves ordinary text untouched', () => {
     expect(redactSecretShapedText('hello world')).toBe('hello world');
+  });
+
+  it('redacts nested message, artifact, and metadata content without changing file parts', () => {
+    const task = redactTask({
+      id: 'task-1',
+      status: { state: 'COMPLETED', timestamp: '2026-07-22T00:00:00.000Z' },
+      history: [
+        {
+          role: 'ROLE_USER',
+          messageId: 'message-1',
+          timestamp: '2026-07-22T00:00:00.000Z',
+          parts: [
+            { type: 'text', text: 'Bearer abcdefghij0123456789' },
+            { type: 'data', data: { nested: ['sk-abcdefghijklmnopqrstuvwxyz'] } },
+            { type: 'file', file: { name: 'safe.txt', mimeType: 'text/plain', bytes: 'safe' } },
+          ],
+        },
+      ],
+      artifacts: [
+        {
+          artifactId: 'artifact-1',
+          index: 0,
+          parts: [{ type: 'text', text: 'api_key=abcdefghij0123456789' }],
+          metadata: { token: 'access' + '_token: abcdefghij0123456789' },
+        },
+      ],
+    });
+
+    expect(task.history[0]?.parts).toEqual([
+      { type: 'text', text: '[REDACTED]' },
+      { type: 'data', data: { nested: ['[REDACTED]'] } },
+      { type: 'file', file: { name: 'safe.txt', mimeType: 'text/plain', bytes: 'safe' } },
+    ]);
+    expect(task.artifacts?.[0]?.parts[0]).toEqual({ type: 'text', text: '[REDACTED]' });
+    expect(task.artifacts?.[0]?.metadata).toEqual({ token: '[REDACTED]' });
   });
 });
