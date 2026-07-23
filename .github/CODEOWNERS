@@ -1,45 +1,35 @@
-# Repo-wide owner
+# Canonical CODEOWNERS file. The repository-wide fallback ensures every path is owned.
 * @oaslananka
 
-# Core runtime and protocol
-/packages/runtime/ @oaslananka
-
-# Adapters
-/packages/adapters/ @oaslananka
-
-# Bridges
-/packages/mcp/ @oaslananka
-
-# Transports
-/packages/transport-ws/ @oaslananka
-/packages/transport-grpc/ @oaslananka
-
-# Registry and testing
-/packages/registry/ @oaslananka
-
-# CLI
-/packages/cli/ @oaslananka
-
-# Scaffolder
-/packages/create-a2amesh/ @oaslananka
-
-# Apps (demos, registry UI)
-/apps/ @oaslananka
-
-# Docs site
-/docs-site/ @oaslananka
-
-# CI/CD and governance
-/.github/ @oaslananka
-
-# Root-level configs
+# Governance, security, CI, and release controls
+/.github/workflows/ @oaslananka
+/.github/rulesets/ @oaslananka
+/.github/CODEOWNERS @oaslananka
+/.github/GOVERNANCE.md @oaslananka
+/.github/SECURITY.md @oaslananka
+/SECURITY.md @oaslananka
 /release-please-config.json @oaslananka
 /.release-please-manifest.json @oaslananka
-
-# Root config files
 /package.json @oaslananka
 /pnpm-lock.yaml @oaslananka
-
-# Documentation and scripts
-/docs/ @oaslananka
 /scripts/ @oaslananka
+/tests/ @oaslananka
+
+# Protocol, runtime, trust, and operator-sensitive surfaces
+/packages/protocol/ @oaslananka
+/packages/runtime/ @oaslananka
+/packages/auth/ @oaslananka
+/packages/mcp/ @oaslananka
+/packages/registry/ @oaslananka
+/packages/telemetry/ @oaslananka
+/packages/transport-ws/ @oaslananka
+/packages/transport-grpc/ @oaslananka
+/deploy/ @oaslananka
+/ops/ @oaslananka
+
+# Product and documentation surfaces
+/packages/ @oaslananka
+/apps/ @oaslananka
+/examples/ @oaslananka
+/docs/ @oaslananka
+/docs-site/ @oaslananka
