@@ -20,7 +20,11 @@ const packageNames = [
 
 type FixtureOptions = {
   mode?: 'report' | 'release-please' | 'publish';
+  head?: string;
   tagCommit?: string | null;
+  tagIsAncestor?: boolean;
+  tagManifestVersion?: string;
+  tagPackageVersion?: string;
   npmPublished?: string[];
   openReleaseVersion?: string;
   npmFailure?: string;
@@ -43,6 +47,60 @@ describe.skipIf(process.platform === 'win32')('release-state CLI', () => {
     expect(result.exitCode).toBe(1);
     expect(result.json.state).toBe('prepared-unpublished');
     expect(result.json.gates.releasePlease).toBe(false);
+  });
+
+  it('permits release-please mode after a fully published ancestor tag', async () => {
+    const result = await runFixture({
+      mode: 'release-please',
+      head: 'post-release-commit',
+      tagCommit: 'release-commit',
+      tagIsAncestor: true,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.json.state).toBe('published');
+    expect(result.json.gates).toEqual({ releasePlease: true, publish: false });
+  });
+
+  it('blocks publish mode from a checkout after the canonical tag', async () => {
+    const result = await runFixture({
+      mode: 'publish',
+      head: 'post-release-commit',
+      tagCommit: 'release-commit',
+      tagIsAncestor: true,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.json.state).toBe('published');
+    expect(result.json.gates.publish).toBe(false);
+  });
+
+  it('rejects a canonical tag outside the checked-out history', async () => {
+    const result = await runFixture({
+      mode: 'release-please',
+      head: 'post-release-commit',
+      tagCommit: 'divergent-release-commit',
+      tagIsAncestor: false,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.json.state).toBe('drifted');
+    expect(result.json.blockers).toContainEqual(expect.stringContaining('not an ancestor'));
+  });
+
+  it('rejects a canonical tag with mismatched historical package versions', async () => {
+    const result = await runFixture({
+      mode: 'release-please',
+      head: 'post-release-commit',
+      tagCommit: 'release-commit',
+      tagIsAncestor: true,
+      tagManifestVersion: '0.10.0-alpha.1',
+      tagPackageVersion: '0.10.0-alpha.1',
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.json.state).toBe('drifted');
+    expect(result.json.blockers).toContainEqual(expect.stringContaining('does not prepare'));
   });
 
   it('permits publish mode with a matching tag and a newer release PR', async () => {
@@ -193,8 +251,14 @@ async function runFixture(options: FixtureOptions) {
 
   const published = new Set(options.npmPublished ?? packageNames);
   const fixture = {
-    head: 'abc123',
-    tagCommit: options.tagCommit === undefined ? 'abc123' : options.tagCommit,
+    head: options.head ?? 'abc123',
+    tagCommit: options.tagCommit === undefined ? (options.head ?? 'abc123') : options.tagCommit,
+    tagIsAncestor:
+      options.tagIsAncestor ??
+      (options.tagCommit === undefined ? (options.head ?? 'abc123') : options.tagCommit) ===
+        (options.head ?? 'abc123'),
+    tagManifestVersion: options.tagManifestVersion ?? '0.11.0-alpha.1',
+    tagPackageVersion: options.tagPackageVersion ?? '0.11.0-alpha.1',
     openReleaseVersion: options.openReleaseVersion ?? null,
     npmFailure: options.npmFailure ?? null,
     releaseCommit,
@@ -266,7 +330,14 @@ if (command === 'git') {
     } else if (args[1].startsWith(fixture.releaseCommit)) out(fixture.releaseCommit + '\\n');
     else process.exit(1);
   } else if (args[0] === 'merge-base' && args[1] === '--is-ancestor') {
-    process.exit(args[2] === fixture.releaseCommit && args[3] === fixture.head ? 0 : 1);
+    const supersessionAncestor = args[2] === fixture.releaseCommit && args[3] === fixture.head;
+    const canonicalTagAncestor = args[2] === fixture.tagCommit && args[3] === fixture.head && fixture.tagIsAncestor;
+    process.exit(supersessionAncestor || canonicalTagAncestor ? 0 : 1);
+  } else if (args[0] === 'show' && args[1] === fixture.tagCommit + ':.release-please-manifest.json') {
+    const manifest = Object.fromEntries(${JSON.stringify(packageNames)}.map((name) => ['packages/' + name.split('/')[1], fixture.tagManifestVersion]));
+    out(JSON.stringify(manifest));
+  } else if (args[0] === 'show' && args[1].startsWith(fixture.tagCommit + ':packages/') && args[1].endsWith('/package.json')) {
+    out(JSON.stringify({ version: fixture.tagPackageVersion }));
   } else if (args[0] === 'show' && args[1] === fixture.releaseCommit + ':.release-please-manifest.json') {
     const manifest = Object.fromEntries(${JSON.stringify(packageNames)}.map((name) => ['packages/' + name.split('/')[1], fixture.historicalManifestVersion]));
     out(JSON.stringify(manifest));
