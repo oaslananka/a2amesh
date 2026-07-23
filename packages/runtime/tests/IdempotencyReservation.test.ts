@@ -3,7 +3,11 @@ import {
   IdempotencyOwnershipError,
   InMemoryIdempotencyStore,
 } from '../src/server/IdempotencyStore.js';
-import { startIdempotencyLease } from '../src/server/http/idempotency.js';
+import {
+  completeIdempotency,
+  releaseIdempotency,
+  startIdempotencyLease,
+} from '../src/server/http/idempotency.js';
 import { RuntimeMetrics } from '../src/telemetry/RuntimeMetrics.js';
 
 describe('atomic idempotency reservations', () => {
@@ -177,6 +181,108 @@ describe('atomic idempotency reservations', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('marks lease ownership lost when renewal is rejected', async () => {
+    vi.useFakeTimers();
+    try {
+      const store = new InMemoryIdempotencyStore();
+      const reservation = await store.reserve('scope', 'key', 'fingerprint', 75);
+      if (reservation.outcome !== 'acquired') throw new Error('expected owner');
+      vi.spyOn(store, 'renew').mockResolvedValue(false);
+      const metrics = new RuntimeMetrics({ serviceName: 'test', serviceVersion: '1.0.0' });
+      const lease = startIdempotencyLease(
+        {
+          scope: 'scope',
+          key: 'key',
+          fingerprint: 'fingerprint',
+          ownerId: reservation.record.ownerId,
+          leaseMs: 75,
+        },
+        store,
+        metrics,
+        'message/send',
+      );
+
+      await vi.advanceTimersByTimeAsync(25);
+
+      expect(lease?.ownershipLost()).toBe(true);
+      expect(metrics.renderPrometheus(emptyTaskCounts())).toContain(
+        'a2a_runtime_idempotency_total{service_name="test",service_version="1.0.0",outcome="lease-lost"} 1',
+      );
+      lease?.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('marks lease ownership lost when renewal throws', async () => {
+    vi.useFakeTimers();
+    try {
+      const store = new InMemoryIdempotencyStore();
+      const reservation = await store.reserve('scope', 'key', 'fingerprint', 75);
+      if (reservation.outcome !== 'acquired') throw new Error('expected owner');
+      vi.spyOn(store, 'renew').mockRejectedValue(new Error('redis unavailable'));
+      const metrics = new RuntimeMetrics({ serviceName: 'test', serviceVersion: '1.0.0' });
+      const lease = startIdempotencyLease(
+        {
+          scope: 'scope',
+          key: 'key',
+          fingerprint: 'fingerprint',
+          ownerId: reservation.record.ownerId,
+          leaseMs: 75,
+        },
+        store,
+        metrics,
+        'message/send',
+      );
+
+      await vi.advanceTimersByTimeAsync(25);
+
+      expect(lease?.ownershipLost()).toBe(true);
+      lease?.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('skips lease and terminal helpers without an owner and forwards owned transitions', async () => {
+    const store = new InMemoryIdempotencyStore();
+    const metrics = new RuntimeMetrics({ serviceName: 'test', serviceVersion: '1.0.0' });
+    expect(
+      startIdempotencyLease(
+        { scope: 'scope', key: 'key', fingerprint: 'fingerprint' },
+        store,
+        metrics,
+        'message/send',
+      ),
+    ).toBeUndefined();
+
+    const complete = vi.spyOn(store, 'complete');
+    const release = vi.spyOn(store, 'release');
+    const ownerless = { scope: 'scope', key: 'key', fingerprint: 'fingerprint' };
+    await completeIdempotency(store, ownerless, { kind: 'success', value: null }, 1_000);
+    await releaseIdempotency(store, ownerless);
+    await releaseIdempotency(store, undefined);
+    expect(complete).not.toHaveBeenCalled();
+    expect(release).not.toHaveBeenCalled();
+
+    const reservation = await store.reserve('scope', 'key', 'fingerprint', 1_000);
+    if (reservation.outcome !== 'acquired') throw new Error('expected owner');
+    const owned = { ...ownerless, ownerId: reservation.record.ownerId, leaseMs: 1_000 };
+    await completeIdempotency(store, owned, { kind: 'success', value: { ok: true } }, 1_000);
+    expect(complete).toHaveBeenCalledTimes(1);
+
+    const second = await store.reserve('scope', 'second', 'fingerprint', 1_000);
+    if (second.outcome !== 'acquired') throw new Error('expected second owner');
+    await releaseIdempotency(store, {
+      scope: 'scope',
+      key: 'second',
+      fingerprint: 'fingerprint',
+      ownerId: second.record.ownerId,
+      leaseMs: 1_000,
+    });
+    expect(release).toHaveBeenCalledTimes(1);
   });
 });
 

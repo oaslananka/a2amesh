@@ -428,19 +428,28 @@ describe('A2AServer edge cases', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 25));
 
+    const cancelPayload = {
+      jsonrpc: '2.0' as const,
+      method: 'tasks/cancel',
+      params: {
+        taskId: created.body.result.id,
+      },
+    };
     const cancelResponse = await request(server.getExpressApp())
       .post('/rpc')
-      .send({
-        jsonrpc: '2.0',
-        id: 'cancel-terminal',
-        method: 'tasks/cancel',
-        params: {
-          taskId: created.body.result.id,
-        },
-      });
+      .set('Idempotency-Key', 'cancel-terminal-key')
+      .send({ ...cancelPayload, id: 'cancel-terminal' });
 
     expect(cancelResponse.status).toBe(200);
     expect(cancelResponse.body.error.code).toBe(ErrorCodes.InvalidTaskTransition);
+
+    const replayedCancel = await request(server.getExpressApp())
+      .post('/rpc')
+      .set('Idempotency-Key', 'cancel-terminal-key')
+      .send({ ...cancelPayload, id: 'cancel-terminal-replay' });
+    expect(replayedCancel.status).toBe(200);
+    expect(replayedCancel.body.error).toMatchObject(cancelResponse.body.error);
+    expect(replayedCancel.body.id).toBe('cancel-terminal-replay');
 
     const metricsResponse = await request(server.getExpressApp()).get('/metrics');
     expect(metricsResponse.status).toBe(200);

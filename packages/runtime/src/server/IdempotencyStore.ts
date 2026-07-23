@@ -245,12 +245,7 @@ export class InMemoryIdempotencyStore implements IdempotencyStore {
     const storageKey = this.buildKey(scope, key);
     const record = this.records.get(storageKey);
     const now = Date.now();
-    if (
-      !record ||
-      record.state !== 'in-flight' ||
-      record.ownerId !== ownerId ||
-      record.expiresAt <= now
-    ) {
+    if (record?.state !== 'in-flight' || record.ownerId !== ownerId || record.expiresAt <= now) {
       return false;
     }
     record.expiresAt = now + leaseMs;
@@ -268,8 +263,7 @@ export class InMemoryIdempotencyStore implements IdempotencyStore {
     const storageKey = this.buildKey(scope, key);
     const existing = this.records.get(storageKey);
     if (
-      !existing ||
-      existing.state !== 'in-flight' ||
+      existing?.state !== 'in-flight' ||
       existing.ownerId !== ownerId ||
       existing.expiresAt <= Date.now()
     ) {
@@ -283,7 +277,7 @@ export class InMemoryIdempotencyStore implements IdempotencyStore {
   async release(scope: string, key: string, ownerId: string): Promise<boolean> {
     const storageKey = this.buildKey(scope, key);
     const existing = this.records.get(storageKey);
-    if (!existing || existing.state !== 'in-flight' || existing.ownerId !== ownerId) {
+    if (existing?.state !== 'in-flight' || existing.ownerId !== ownerId) {
       return false;
     }
     return this.records.delete(storageKey);
@@ -413,7 +407,7 @@ export class RedisIdempotencyStore implements IdempotencyStore {
   private async evalJson<T>(script: string, keys: string[], args: string[]): Promise<T> {
     const result = await this.eval(script, keys, args);
     if (typeof result !== 'string') {
-      throw new Error('Redis idempotency script returned an invalid response');
+      throw new TypeError('Redis idempotency script returned an invalid response');
     }
     return JSON.parse(result) as T;
   }
@@ -453,7 +447,7 @@ interface UnknownIdempotencyRecord {
 function normalizeStoredRecord(record: UnknownIdempotencyRecord): IdempotencyRecord {
   if (record.state === 'in-flight') {
     if (typeof record.ownerId !== 'string' || typeof record.reservedAt !== 'number') {
-      throw new Error('Invalid in-flight idempotency record');
+      throw new TypeError('Invalid in-flight idempotency record');
     }
     return {
       state: 'in-flight',

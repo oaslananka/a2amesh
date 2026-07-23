@@ -39,6 +39,12 @@ export interface IdempotencyLeaseController {
   ownershipLost(): boolean;
 }
 
+export interface ResolveIdempotencyOptions {
+  deferReplay?: boolean;
+  leaseMs?: number;
+  runtimeMetrics?: RuntimeMetrics;
+}
+
 export function isIdempotentMethod(method: string): boolean {
   return (
     method === 'message/send' ||
@@ -64,10 +70,9 @@ export async function resolveIdempotency(
   requestContext: RequestContext,
   res: Response,
   store: IdempotencyStore,
-  deferReplay = false,
-  leaseMs = DEFAULT_IDEMPOTENCY_LEASE_MS,
-  runtimeMetrics?: RuntimeMetrics,
+  options: ResolveIdempotencyOptions = {},
 ): Promise<IdempotencyResolution | null | undefined> {
+  const { deferReplay = false, leaseMs = DEFAULT_IDEMPOTENCY_LEASE_MS, runtimeMetrics } = options;
   if (!isIdempotentMethod(rpcReq.method)) return undefined;
 
   const key = req.header('idempotency-key');

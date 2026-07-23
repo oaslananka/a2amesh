@@ -143,9 +143,11 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
         requestContext,
         res,
         deps.idempotencyStore,
-        isStreamingRpcMethod(rpcReq.method),
-        deps.idempotencyLeaseMs,
-        deps.runtimeMetrics,
+        {
+          deferReplay: isStreamingRpcMethod(rpcReq.method),
+          leaseMs: deps.idempotencyLeaseMs,
+          runtimeMetrics: deps.runtimeMetrics,
+        },
       );
       if (idempotency === null) {
         return;

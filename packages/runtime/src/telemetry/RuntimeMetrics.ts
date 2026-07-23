@@ -188,10 +188,10 @@ export class RuntimeMetrics {
       `${this.renderCounter('a2a_runtime_auth_rejected_total')} `,
       '# HELP a2a_runtime_idempotency_total Idempotency reservation outcomes by bounded outcome label.',
       '# TYPE a2a_runtime_idempotency_total counter',
-      ...IDEMPOTENCY_OUTCOMES.map(
-        (outcome) =>
-          `a2a_runtime_idempotency_total{${serviceLabels},outcome="${outcome}"} ${this.counters.get(`a2a_runtime_idempotency_total{outcome="${outcome}"}`) ?? 0}`,
-      ),
+      ...IDEMPOTENCY_OUTCOMES.map((outcome) => {
+        const counterKey = `a2a_runtime_idempotency_total{outcome="${outcome}"}`;
+        return `a2a_runtime_idempotency_total{${serviceLabels},outcome="${outcome}"} ${this.counters.get(counterKey) ?? 0}`;
+      }),
       '# HELP a2a_runtime_sse_connections_total Total SSE connections opened.',
       '# TYPE a2a_runtime_sse_connections_total counter',
       `${this.renderCounter('a2a_runtime_sse_connections_total')} `,
