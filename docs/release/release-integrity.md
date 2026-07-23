@@ -10,7 +10,7 @@ The linked versions in `.release-please-manifest.json` and the six public
 package manifests define the prepared source version for a checked-out commit.
 Publication additionally requires:
 
-- canonical tag `@a2amesh/runtime-v<version>` on that exact commit;
+- canonical tag `@a2amesh/runtime-v<version>` on the exact checked-out publish commit;
 - the same version for every configured public package on npm;
 - `latest` for stable releases, or the first prerelease identifier such as
   `alpha`, `beta`, or `rc` for prereleases;
@@ -18,19 +18,23 @@ Publication additionally requires:
 
 Release Please prepares source versions and changelogs. It does not create the
 canonical tag, GitHub Release, or npm publication. Those remain explicit
-maintainer operations protected by the `npm-publish` environment.
+maintainer operations protected by the `npm-publish` environment. After a
+release is published, report and Release Please modes accept its immutable tag
+on a verified ancestor commit only when the historical release manifest and all
+tracked package manifests at that tag still prepare the linked version. Publish
+mode continues to require the checked-out commit to equal the canonical tag.
 
 ## States and gates
 
-| State                  | Meaning                                                       | Release Please | Publish                                               |
-| ---------------------- | ------------------------------------------------------------- | -------------- | ----------------------------------------------------- |
-| `published`            | Tag, all npm versions, and required dist-tags agree.          | Allow          | Block                                                 |
-| `release-pr-open`      | Current version is published; one newer linked PR is open.    | Allow          | Block                                                 |
-| `prepared-unpublished` | Source agrees, but tag or npm publication is absent.          | Block          | Allow only after the exact tag exists                 |
-| `partial-publication`  | Only part of the linked npm release is visible.               | Block          | Allow only when missing packages are safely resumable |
-| `superseded`           | An unpublished candidate has an audited successor decision.   | Allow          | Block                                                 |
-| `drifted`              | Source, tag commit, release PR, or dist-tag policy conflicts. | Block          | Block                                                 |
-| `unavailable`          | GitHub or npm could not be observed reliably.                 | Block          | Block                                                 |
+| State                  | Meaning                                                           | Release Please | Publish                                               |
+| ---------------------- | ----------------------------------------------------------------- | -------------- | ----------------------------------------------------- |
+| `published`            | Verified tag history, npm versions, and required dist-tags agree. | Allow          | Block                                                 |
+| `release-pr-open`      | Current version is published; one newer linked PR is open.        | Allow          | Block                                                 |
+| `prepared-unpublished` | Source agrees, but tag or npm publication is absent.              | Block          | Allow only after the exact tag exists                 |
+| `partial-publication`  | Only part of the linked npm release is visible.                   | Block          | Allow only when missing packages are safely resumable |
+| `superseded`           | An unpublished candidate has an audited successor decision.       | Allow          | Block                                                 |
+| `drifted`              | Source, tag commit, release PR, or dist-tag policy conflicts.     | Block          | Block                                                 |
+| `unavailable`          | GitHub or npm could not be observed reliably.                     | Block          | Block                                                 |
 
 An open Release Please PR for a newer version is informational during
 publication of the already prepared version. It does not, by itself, block the
@@ -68,8 +72,9 @@ gh auth status
    passing the canonical tag as input.
 7. Publish builds the tagged source, publishes missing packages idempotently,
    and verifies npm visibility and registry parity.
-8. After state becomes `published`, later qualifying changes may prepare the next
-   linked version.
+8. After state becomes `published`, later commits on `main` remain `published`
+   while the canonical tag is a verified ancestor and its historical source
+   versions still match. Release Please may then prepare the next linked version.
 
 The workflow is dispatched from `main`, not from an old release tag. The current
 workflow stages its release-state guard modules and current
@@ -109,7 +114,9 @@ The publish loop skips package versions that already exist and may resume when
 only some linked packages were published, provided every existing package is the
 same prepared version and already has the expected dist-tag. It blocks when:
 
-- the canonical tag resolves to another commit;
+- the canonical tag is outside the checked-out history;
+- the historical release manifest or package manifests at the tag do not prepare
+  the linked version;
 - existing packages represent conflicting versions;
 - all versions exist but required dist-tags are inconsistent;
 - a prerelease has incorrectly advanced `latest`;

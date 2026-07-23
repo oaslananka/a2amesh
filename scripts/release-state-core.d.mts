@@ -16,6 +16,8 @@ export interface SourcePackageObservation {
 export interface CanonicalTagObservation {
   name: string | null;
   commit: string | null;
+  isAncestorOfCheckout?: boolean;
+  sourceVersionMatches?: boolean;
 }
 
 export interface ReleasePullRequestObservation {

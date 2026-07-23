@@ -59,6 +59,12 @@ function collectObservation(options) {
     }
   }
 
+  const canonicalTag = collectCanonicalTag(
+    expectedTag,
+    tagCommit,
+    checkedOutCommit,
+    sourcePackages,
+  );
   const releasePrs = collectReleasePrs(repository, config, errors);
   const npmPackages = sourcePackages.map((source) => collectNpmPackage(source, errors));
 
@@ -66,13 +72,67 @@ function collectObservation(options) {
     repository,
     checkedOutCommit,
     sourcePackages,
-    canonicalTag: { name: expectedTag, commit: tagCommit },
+    canonicalTag,
     supersession,
     releasePrs,
     npmPackages,
     errors,
     drift,
   };
+}
+
+function collectCanonicalTag(name, commit, checkedOutCommit, sourcePackages) {
+  if (!commit) {
+    return {
+      name,
+      commit: null,
+      isAncestorOfCheckout: false,
+      sourceVersionMatches: false,
+    };
+  }
+
+  return {
+    name,
+    commit,
+    isAncestorOfCheckout: isAncestorCommit(commit, checkedOutCommit),
+    sourceVersionMatches: canonicalTagSourceMatches(commit, sourcePackages),
+  };
+}
+
+function isAncestorCommit(ancestor, descendant) {
+  if (!ancestor || !descendant) return false;
+  if (ancestor === descendant) return true;
+  try {
+    runTextOrThrow('git', ['merge-base', '--is-ancestor', ancestor, descendant]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function canonicalTagSourceMatches(commit, sourcePackages) {
+  let historicalManifest;
+  try {
+    historicalManifest = readJsonAtCommit(commit, '.release-please-manifest.json');
+  } catch {
+    return false;
+  }
+
+  return sourcePackages.every((source) => {
+    if (!source.version || historicalManifest?.[source.path] !== source.version) {
+      return false;
+    }
+    try {
+      const packageJson = readJsonAtCommit(commit, `${source.path}/package.json`);
+      return packageJson?.version === source.version;
+    } catch {
+      return false;
+    }
+  });
+}
+
+function readJsonAtCommit(commit, path) {
+  return JSON.parse(runTextOrThrow('git', ['show', `${commit}:${path}`]));
 }
 
 function collectSupersession(path, version, checkedOutCommit, errors, drift) {

@@ -113,7 +113,7 @@ export function evaluateReleaseState(observation) {
     });
   }
 
-  const publication = summarizePublication(packages, tagValidation.matches);
+  const publication = summarizePublication(packages, tagValidation.publishedMatches);
   if (publication.fullyPublished) {
     return releaseResult(context, {
       state: context.releasePrs.length === 1 ? 'release-pr-open' : 'published',
@@ -145,8 +145,13 @@ function normalizeObservation(observation) {
     : [];
   const sourceVersions = uniqueValues(sourcePackages.map((item) => item.version));
   const version = sourceVersions.length === 1 ? sourceVersions[0] : null;
+  const checkedOutCommit = observation.checkedOutCommit ?? null;
+  const canonicalCommit = observation.canonicalTag?.commit ?? null;
+  const exactCommitMatch = Boolean(
+    canonicalCommit && checkedOutCommit && canonicalCommit === checkedOutCommit,
+  );
   return {
-    checkedOutCommit: observation.checkedOutCommit ?? null,
+    checkedOutCommit,
     sourcePackages,
     sourceVersions,
     version,
@@ -154,7 +159,12 @@ function normalizeObservation(observation) {
     expectedDistTag: version ? expectedDistTag(version) : null,
     releasePrs: Array.isArray(observation.releasePrs) ? observation.releasePrs : [],
     npmPackages: Array.isArray(observation.npmPackages) ? observation.npmPackages : [],
-    canonicalTag: observation.canonicalTag ?? { name: null, commit: null },
+    canonicalTag: {
+      name: observation.canonicalTag?.name ?? null,
+      commit: canonicalCommit,
+      isAncestorOfCheckout: observation.canonicalTag?.isAncestorOfCheckout ?? exactCommitMatch,
+      sourceVersionMatches: observation.canonicalTag?.sourceVersionMatches ?? exactCommitMatch,
+    },
     supersession: observation.supersession ?? null,
     errors: Array.isArray(observation.errors) ? observation.errors.filter(Boolean) : [],
     drift: Array.isArray(observation.drift) ? observation.drift.filter(Boolean) : [],
@@ -225,22 +235,45 @@ function validateReleasePullRequest(pr, versions, version) {
 
 function validateCanonicalTag(context) {
   const commit = context.canonicalTag.commit;
+  const nameMatches = Boolean(
+    context.version && context.expectedTag && context.canonicalTag.name === context.expectedTag,
+  );
+  const sourceVersionMatches = Boolean(context.canonicalTag.sourceVersionMatches);
+  const isAncestorOfCheckout = Boolean(context.canonicalTag.isAncestorOfCheckout);
   const matches = Boolean(
-    context.version &&
-    context.expectedTag &&
-    context.canonicalTag.name === context.expectedTag &&
-    commit === context.checkedOutCommit,
+    nameMatches && commit && commit === context.checkedOutCommit && sourceVersionMatches,
+  );
+  const publishedMatches = Boolean(
+    nameMatches && commit && isAncestorOfCheckout && sourceVersionMatches,
   );
   const missing = Boolean(context.version && commit == null);
-  const conflicts = Boolean(
-    context.version && commit != null && commit !== context.checkedOutCommit,
-  );
-  const blockers = conflicts
-    ? [
-        `Canonical tag ${context.expectedTag} resolves to ${commit}, not checked-out commit ${context.checkedOutCommit}.`,
-      ]
-    : [];
-  return { matches, missing, conflicts, blockers };
+  const blockers = [];
+
+  if (context.version && commit != null) {
+    if (!nameMatches) {
+      blockers.push(
+        `Canonical tag ${context.canonicalTag.name ?? '<missing>'} does not match expected tag ${context.expectedTag}.`,
+      );
+    }
+    if (!isAncestorOfCheckout) {
+      blockers.push(
+        `Canonical tag ${context.expectedTag} resolves to ${commit}, which is not an ancestor of checked-out commit ${context.checkedOutCommit}.`,
+      );
+    }
+    if (!sourceVersionMatches) {
+      blockers.push(
+        `Canonical tag ${context.expectedTag} at ${commit} does not prepare linked version ${context.version}.`,
+      );
+    }
+  }
+
+  return {
+    matches,
+    publishedMatches,
+    missing,
+    conflicts: blockers.length > 0,
+    blockers,
+  };
 }
 
 function buildPackageResults(context, npmIndex) {
