@@ -9,6 +9,8 @@ type ObservationOverrides = {
   sourceVersions?: string[];
   checkedOutCommit?: string;
   tagCommit?: string | null;
+  tagIsAncestor?: boolean;
+  tagSourceVersionMatches?: boolean;
   npmPublished?: string[];
   expectedTags?: string[];
   latest?: string;
@@ -39,6 +41,7 @@ function observation(overrides: ObservationOverrides = {}) {
   const npmPublished = new Set(overrides.npmPublished ?? packageNames);
   const expectedTags = new Set(overrides.expectedTags ?? packageNames);
   const latest = overrides.latest ?? '0.1.0-alpha.1';
+  const tagCommit = overrides.tagCommit === undefined ? checkedOutCommit : overrides.tagCommit;
 
   return {
     repository: 'oaslananka/a2amesh',
@@ -54,7 +57,9 @@ function observation(overrides: ObservationOverrides = {}) {
     }),
     canonicalTag: {
       name: '@a2amesh/runtime-v0.11.0-alpha.1',
-      commit: overrides.tagCommit === undefined ? checkedOutCommit : overrides.tagCommit,
+      commit: tagCommit,
+      isAncestorOfCheckout: overrides.tagIsAncestor ?? tagCommit === checkedOutCommit,
+      sourceVersionMatches: overrides.tagSourceVersionMatches ?? tagCommit === checkedOutCommit,
     },
     releasePrs: (overrides.releasePrVersions ?? []).map((versions, index) => ({
       number: 156 + index,
@@ -94,6 +99,37 @@ describe('release-state core', () => {
     expect(result.expectedDistTag).toBe('alpha');
     expect(result.gates).toEqual({ releasePlease: true, publish: false });
     expect(result.blockers).toEqual([]);
+  });
+
+  it('accepts a fully published canonical tag on an ancestor commit', () => {
+    const result = evaluateReleaseState(
+      observation({
+        checkedOutCommit: 'post-release-commit',
+        tagCommit: 'release-commit',
+        tagIsAncestor: true,
+        tagSourceVersionMatches: true,
+      }),
+    );
+
+    expect(result.state).toBe('published');
+    expect(result.gates).toEqual({ releasePlease: true, publish: false });
+    expect(result.blockers).toEqual([]);
+  });
+
+  it('does not permit publication from a post-release checkout', () => {
+    const result = evaluateReleaseState(
+      observation({
+        checkedOutCommit: 'post-release-commit',
+        tagCommit: 'release-commit',
+        tagIsAncestor: true,
+        tagSourceVersionMatches: true,
+        npmPublished: [],
+        expectedTags: [],
+      }),
+    );
+
+    expect(result.state).toBe('prepared-unpublished');
+    expect(result.gates).toEqual({ releasePlease: false, publish: false });
   });
 
   it('classifies one newer linked release PR as release-pr-open', () => {
@@ -156,11 +192,31 @@ describe('release-state core', () => {
     expect(result.blockers).toContainEqual(expect.stringContaining('latest'));
   });
 
-  it('rejects a canonical tag that resolves to another commit', () => {
-    const result = evaluateReleaseState(observation({ tagCommit: 'def456' }));
+  it('rejects a canonical tag outside the checked-out history', () => {
+    const result = evaluateReleaseState(
+      observation({
+        tagCommit: 'def456',
+        tagIsAncestor: false,
+        tagSourceVersionMatches: true,
+      }),
+    );
 
     expect(result.state).toBe('drifted');
     expect(result.blockers).toContainEqual(expect.stringContaining('def456'));
+  });
+
+  it('rejects a canonical tag whose historical source version does not match', () => {
+    const result = evaluateReleaseState(
+      observation({
+        checkedOutCommit: 'post-release-commit',
+        tagCommit: 'release-commit',
+        tagIsAncestor: true,
+        tagSourceVersionMatches: false,
+      }),
+    );
+
+    expect(result.state).toBe('drifted');
+    expect(result.blockers).toContainEqual(expect.stringContaining('does not prepare'));
   });
 
   it('rejects internally inconsistent source versions', () => {
