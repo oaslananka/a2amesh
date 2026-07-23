@@ -8,7 +8,7 @@ WORKDIR /workspace
 
 RUN corepack enable && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 COPY . .
-RUN pnpm install --frozen-lockfile --filter @a2amesh/registry... \
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter @a2amesh/registry... \
   && pnpm --filter @a2amesh/registry... run build \
   && pnpm --filter @a2amesh/registry deploy --prod /opt/a2amesh/registry \
   && node scripts/prune-container-deploy.mjs registry
