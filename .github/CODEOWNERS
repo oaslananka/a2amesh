@@ -1,6 +1,13 @@
 # Canonical CODEOWNERS file. The repository-wide fallback ensures every path is owned.
 * @oaslananka
 
+# Product and documentation surfaces. More specific sensitive paths follow and take precedence.
+/packages/ @oaslananka
+/apps/ @oaslananka
+/examples/ @oaslananka
+/docs/ @oaslananka
+/docs-site/ @oaslananka
+
 # Governance, security, CI, and release controls
 /.github/workflows/ @oaslananka
 /.github/rulesets/ @oaslananka
@@ -26,10 +33,3 @@
 /packages/transport-grpc/ @oaslananka
 /deploy/ @oaslananka
 /ops/ @oaslananka
-
-# Product and documentation surfaces
-/packages/ @oaslananka
-/apps/ @oaslananka
-/examples/ @oaslananka
-/docs/ @oaslananka
-/docs-site/ @oaslananka
