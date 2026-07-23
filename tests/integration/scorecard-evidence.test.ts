@@ -16,6 +16,7 @@ describe('OpenSSF Scorecard evidence', () => {
     expect(workflow).toContain('CONFORMANCE_RESULT: ${{ needs.conformance.result }}');
     expect(workflow).toContain('Required test job failed or was cancelled');
     expect(workflow).not.toContain('permissions:\n  contents: read');
+    expect(workflow).toContain('permissions: {}');
 
     const jobs = workflow.slice(workflow.indexOf('jobs:\n') + 'jobs:\n'.length);
     const jobBlocks = jobs.split(/\n(?= {2}[a-z0-9-]+:\n)/).filter(Boolean);
