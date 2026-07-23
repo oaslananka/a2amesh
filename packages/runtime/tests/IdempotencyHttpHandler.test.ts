@@ -8,12 +8,14 @@ import {
   type IdempotencyFailedRecord,
   type IdempotencyStoredResult,
 } from '../src/server/IdempotencyStore.js';
+import { createRateLimiter } from '../src/middleware/rateLimiter.js';
 import { createJsonRpcHttpHandler } from '../src/server/http/jsonRpcHandler.js';
 import { RuntimeMetrics } from '../src/telemetry/RuntimeMetrics.js';
 import { ErrorCodes, JsonRpcError } from '../src/types/jsonrpc.js';
 
 function makeApp(options: { store?: InMemoryIdempotencyStore; handleRpc: () => Promise<unknown> }) {
   const app = express();
+  app.use(createRateLimiter({ maxRequests: 1_000 }));
   app.use(express.json());
   app.post(
     '/rpc',
