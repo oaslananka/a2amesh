@@ -94,10 +94,10 @@ function validateRelease(release, localState, failures) {
   const manifest = localState?.manifest ?? {};
   const releaseConfig = localState?.releaseConfig ?? {};
   const packageVersions = localState?.packageVersions ?? {};
-  const configuredPaths = Object.keys(releaseConfig.packages ?? {}).sort();
-  const manifestPaths = Object.keys(manifest).sort();
+  const configuredPaths = Object.keys(releaseConfig.packages ?? {}).sort(compareStrings);
+  const manifestPaths = Object.keys(manifest).sort(compareStrings);
   const evidencePaths = Array.isArray(release.package_paths)
-    ? [...release.package_paths].sort()
+    ? [...release.package_paths].sort(compareStrings)
     : [];
   const manifestVersions = uniqueValues(Object.values(manifest));
 
@@ -205,6 +205,13 @@ export function renderRepositoryEvidence(snapshot) {
   const releasePr = snapshot.release.active_release_pr;
   const githubRelease = snapshot.release.latest_github_release;
   const openWork = snapshot.repository.open_work;
+  const githubReleaseDisplay = githubRelease
+    ? `[\`${githubRelease.tag}\`](${githubRelease.url})`
+    : 'None published';
+  const releasePrDisplay = releasePr
+    ? `[#${releasePr.number}](${releasePr.url}) proposes \`${releasePr.proposed_version}\``
+    : 'None';
+  const pullRequestLabel = openWork.pull_requests === 1 ? 'pull request' : 'pull requests';
   const lines = [
     REPOSITORY_EVIDENCE_START,
     '## Live repository evidence',
@@ -219,9 +226,9 @@ export function renderRepositoryEvidence(snapshot) {
     `| Linked source version | \`${snapshot.release.source_version}\` across ${snapshot.release.package_paths.length} public packages | ${snapshot.provenance.source_versions} |`,
     `| npm publication | \`alpha\` → \`${snapshot.release.npm.alpha}\`; \`latest\` → \`${snapshot.release.npm.latest}\` | ${snapshot.provenance.npm} |`,
     `| Latest canonical release tag | \`${snapshot.release.latest_canonical_tag.name}\` at \`${shortCommit(snapshot.release.latest_canonical_tag.commit)}\` | ${snapshot.provenance.releases} |`,
-    `| Latest GitHub Release | ${githubRelease ? `[\`${githubRelease.tag}\`](${githubRelease.url})` : 'None published'} | ${snapshot.provenance.releases} |`,
-    `| Active Release Please PR | ${releasePr ? `[#${releasePr.number}](${releasePr.url}) proposes \`${releasePr.proposed_version}\`` : 'None'} | ${snapshot.provenance.pull_requests} |`,
-    `| Open work | ${openWork.issues} issues and ${openWork.pull_requests} pull request${openWork.pull_requests === 1 ? '' : 's'} (${openWork.total} total) | ${snapshot.provenance.issues}; ${snapshot.provenance.pull_requests} |`,
+    `| Latest GitHub Release | ${githubReleaseDisplay} | ${snapshot.provenance.releases} |`,
+    `| Active Release Please PR | ${releasePrDisplay} | ${snapshot.provenance.pull_requests} |`,
+    `| Open work | ${openWork.issues} issues and ${openWork.pull_requests} ${pullRequestLabel} (${openWork.total} total) | ${snapshot.provenance.issues}; ${snapshot.provenance.pull_requests} |`,
     '',
     '### Manually verified repository settings',
     '',
@@ -305,6 +312,12 @@ function shortCommit(commit) {
   return typeof commit === 'string' ? commit.slice(0, 12) : '<missing>';
 }
 
+function compareStrings(left, right) {
+  return left.localeCompare(right);
+}
+
 function escapeTable(value) {
-  return String(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
+  return String(value)
+    .replaceAll('|', String.raw`\|`)
+    .replaceAll('\n', ' ');
 }

@@ -167,6 +167,13 @@ describe('repository evidence', () => {
     expect(injectRepositoryEvidence(updated, rendered)).toBe(updated);
   });
 
+  it('escapes table delimiters and normalizes setting line breaks', () => {
+    const evidence = snapshot();
+    evidence.settings[0]!.value = 'enabled | enforced\nverified';
+
+    expect(renderRepositoryEvidence(evidence)).toContain(String.raw`enabled \| enforced verified`);
+  });
+
   it('rejects volatile legacy claims outside the generated section', () => {
     const report = `${renderRepositoryEvidence(snapshot())}\n\nRelease Please PR remains open. Inspect PR #41 separately. Private reporting needs UI confirmation.`;
 

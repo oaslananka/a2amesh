@@ -36,7 +36,7 @@ async function writeEvidence(options) {
   });
   writeFileSync(REPORT_PATH, updatedReport);
   await checkEvidence({ ...options, now: new Date() });
-  console.log(`Repository evidence refreshed at ${snapshot.observed_at}.`);
+  console.log('Repository evidence refreshed.');
 }
 
 async function checkEvidence(options) {
@@ -62,7 +62,7 @@ async function checkEvidence(options) {
 
   if (failures.length > 0) {
     console.error('Repository evidence validation failed.');
-    for (const failure of [...new Set(failures)]) console.error(`- ${failure}`);
+    for (const failure of new Set(failures)) console.error(`- ${failure}`);
     process.exitCode = 1;
     return;
   }
@@ -164,7 +164,7 @@ function collectLiveSnapshot() {
     },
     release: {
       source_version: sourceVersion,
-      package_paths: Object.keys(localState.releaseConfig.packages ?? {}).sort(),
+      package_paths: Object.keys(localState.releaseConfig.packages ?? {}).sort(compareStrings),
       latest_github_release: latestGithubRelease,
       latest_canonical_tag: {
         name: canonicalTag.name,
@@ -348,6 +348,10 @@ function fetchJson(url) {
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
+}
+
+function compareStrings(left, right) {
+  return left.localeCompare(right);
 }
 
 function uniqueValues(values) {
