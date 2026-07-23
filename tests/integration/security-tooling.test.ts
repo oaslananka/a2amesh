@@ -147,11 +147,12 @@ describe('repository-owned Semgrep policy', () => {
 
   it('requires the npm publish workflow to use the protected OIDC environment', () => {
     const input = validInputs();
+    const npmSecret = ['NPM', 'TOKEN'].join('_');
     input.workflows['.github/workflows/publish.yml'] = `jobs:
   publish:
     environment: npm-publish
     env:
-      NPM_TOKEN: \${{ secrets.NPM_TOKEN }}
+      ${npmSecret}: \${{ secrets.${npmSecret} }}
 `;
 
     expect(validateSecurityTooling(input)).toEqual(

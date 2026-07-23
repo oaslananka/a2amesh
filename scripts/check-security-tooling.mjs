@@ -254,7 +254,7 @@ function runCli() {
         ]),
     ),
     credentialInventory: JSON.parse(
-      readFileSync('docs/security/github-actions-credentials.json', 'utf8'),
+      readFileSync('docs/security/github-actions-access-inventory.json', 'utf8'),
     ),
   });
   if (failures.length > 0) {

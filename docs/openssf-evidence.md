@@ -38,5 +38,5 @@ This file records evidence for OpenSSF Best Practices and Scorecard-oriented rev
 
 ## Credential scope evidence
 
-- `docs/security/github-actions-credentials.json` records the remaining GitHub Actions secret, its owner, consumer, purpose, rotation path, and the protected `npm-publish` environment.
+- `docs/security/github-actions-access-inventory.json` records the remaining GitHub Actions secret, its owner, consumer, purpose, rotation path, and the protected `npm-publish` environment.
 - `scripts/check-security-tooling.mjs` rejects undocumented workflow secret references, broad write-all permissions, static npm credentials, and stale credential evidence.

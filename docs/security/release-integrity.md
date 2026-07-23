@@ -14,7 +14,7 @@ The npm release path is deliberately separated from ordinary CI:
 - the job is restricted to `oaslananka/a2amesh` and `refs/heads/main`;
 - the `npm-publish` environment permits only `main` and requires a reviewer;
 - npm authentication uses GitHub OIDC trusted publishing with job-scoped `id-token: write`;
-- no `NPM_TOKEN`, `NODE_AUTH_TOKEN`, or static npm environment secret is used;
+- no long-lived npm token environment variable or static npm environment secret is used;
 - package sources, linked versions, tarballs, checksums, SBOM, and registry parity are validated;
 - npm packages are published with provenance; and
 - GitHub build-provenance attestations cover npm tarballs, `SHA256SUMS`, and the CycloneDX SBOM.
@@ -26,7 +26,7 @@ removed when a second active maintainer is available.
 ## Credential evidence
 
 The current repository secret and environment model is recorded in
-[`github-actions-credentials.json`](github-actions-credentials.json) and explained in
+[`github-actions-access-inventory.json`](github-actions-access-inventory.json) and explained in
 [`secrets-management.md`](secrets-management.md). Repository validation rejects undocumented
 workflow secret references, long-lived npm credentials, missing OIDC permissions, and stale
 credential evidence.

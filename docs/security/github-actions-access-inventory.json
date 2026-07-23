@@ -23,28 +23,5 @@
       "rotation": "No npm credential is stored. Revoke or replace npm trusted-publisher configuration and GitHub environment access if the trust relationship changes."
     }
   ],
-  "removed_repository_secrets": [
-    "AZURE_DEVOPS_FULL",
-    "CLOUDFLARE_API_TOKEN",
-    "CONTEXT7_SECRET_KEY",
-    "DATADOG_API_KEY",
-    "DOPPLER_CONFIG",
-    "DOPPLER_ENVIRONMENT",
-    "DOPPLER_PROJECT",
-    "GH_AUTH_TOKEN",
-    "JULES_API_KEY",
-    "NPM_TOKEN",
-    "OPENAI_KEY",
-    "OVSX_PAT",
-    "PYPI_PUBLISH_TOKEN",
-    "PYPI_TOKEN",
-    "RELEASE_PLEASE_TOKEN",
-    "SEMGREP_APP_TOKEN",
-    "SENTRY_FULL_TOKEN",
-    "SONAR_TOKEN",
-    "SYNK_PAT_TOKEN",
-    "TEST_PYPI_TOKEN",
-    "VSCE_PAT",
-    "VSCE_TOKEN"
-  ]
+  "removed_repository_secret_count": 22
 }

@@ -12,7 +12,7 @@
 - Keep secret scanning and push protection enabled where the GitHub plan permits.
 
 The machine-readable inventory is
-[`github-actions-credentials.json`](github-actions-credentials.json). `node
+[`github-actions-access-inventory.json`](github-actions-access-inventory.json). `node
 scripts/check-security-tooling.mjs` compares every `${{ secrets.NAME }}` workflow reference with
 that inventory, rejects undocumented references and broad `write-all` permissions, and fails after
 the inventory exceeds its 90-day refresh cadence.
@@ -29,8 +29,8 @@ review and refresh process.
 | `CODECOV_TOKEN` | Upload unit coverage and test-result reports securely | `.github/workflows/ci.yml` | Create a replacement in Codecov, update GitHub, verify one CI upload, then revoke the previous token |
 
 All other repository-level credentials present during the audit were removed because no workflow
-referenced them. The removed names are recorded in the machine-readable inventory so the cleanup is
-auditable without preserving any credential value.
+referenced them. The machine-readable inventory records the removal count and observation date
+without turning obsolete credential names into a supported interface or preserving any value.
 
 ### `npm-publish` environment
 
