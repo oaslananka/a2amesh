@@ -1,3 +1,4 @@
+import { readFile, readdir, stat } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 interface PackageEntryFixture {
@@ -36,6 +37,40 @@ async function loadCheckNpmPackModule(): Promise<CheckNpmPackModule> {
 }
 
 describe('check-npm-pack consumer smoke helpers', () => {
+  it('keeps declared workspace binary targets available before build', async () => {
+    const repoRoot = new URL('../..', import.meta.url);
+    const packageDirs = ['docs-site'];
+    for (const workspaceRoot of ['apps', 'examples', 'packages']) {
+      const entries = await readdir(new URL(`${workspaceRoot}/`, repoRoot), {
+        withFileTypes: true,
+      });
+      packageDirs.push(
+        ...entries
+          .filter((entry) => entry.isDirectory())
+          .map((entry) => `${workspaceRoot}/${entry.name}`),
+      );
+    }
+
+    for (const packageDir of packageDirs) {
+      const packageJson = JSON.parse(
+        await readFile(new URL(`${packageDir}/package.json`, repoRoot), 'utf8'),
+      ) as { name: string; bin?: Record<string, string> | string };
+      const targets =
+        typeof packageJson.bin === 'string'
+          ? [packageJson.bin]
+          : Object.values(packageJson.bin ?? {});
+
+      for (const target of targets) {
+        const exists = await stat(new URL(`${packageDir}/${target}`, repoRoot))
+          .then((entry) => entry.isFile())
+          .catch(() => false);
+        expect(exists, `${packageJson.name} binary target ${target} must exist before build`).toBe(
+          true,
+        );
+      }
+    }
+  });
+
   it('generates runtime and typecheck imports for every declared export path', async () => {
     const { createImportSmokeSource, createTypecheckSmokeSource } = await loadCheckNpmPackModule();
     const packages = [
