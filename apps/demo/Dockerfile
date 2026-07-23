@@ -8,7 +8,7 @@ WORKDIR /workspace
 
 RUN corepack enable && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 COPY . .
-RUN pnpm install --frozen-lockfile --filter a2amesh-demo... \
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter a2amesh-demo... \
   && pnpm --filter a2amesh-demo... run build \
   && pnpm --filter a2amesh-demo deploy --prod /opt/a2amesh/runtime \
   && node scripts/prune-container-deploy.mjs runtime

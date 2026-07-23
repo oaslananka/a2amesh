@@ -121,6 +121,21 @@ if (values) {
   }
 }
 
+const helmWorkflow = await readExisting('.github/workflows/helm.yml');
+if (helmWorkflow) {
+  const redirectedDownloads =
+    helmWorkflow.match(/curl --fail --silent --show-error --location/g) ?? [];
+  const httpsOnlyDownloads =
+    helmWorkflow.match(
+      /curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https'/g,
+    ) ?? [];
+  if (redirectedDownloads.length === 0) {
+    errors.push('Helm workflow must contain pinned tool downloads');
+  } else if (httpsOnlyDownloads.length !== redirectedDownloads.length) {
+    errors.push('Every redirected Helm tool download must restrict protocols to HTTPS');
+  }
+}
+
 const productionValues = await readExisting(`${chartRoot}/values-production.yaml`);
 if (productionValues) {
   for (const required of [

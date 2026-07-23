@@ -44,7 +44,7 @@ for (const dockerfile of dockerfiles) {
     errors.push(`${dockerfile} must pin the Node base image by digest`);
   }
   for (const expected of [
-    'pnpm install --frozen-lockfile',
+    'pnpm install --frozen-lockfile --ignore-scripts',
     'deploy --prod',
     'rm -rf /usr/local/lib/node_modules/npm',
     'USER 10001:10001',

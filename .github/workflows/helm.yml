@@ -66,10 +66,10 @@ jobs:
           mkdir -p "${tools}"
 
           helm_archive="helm-${HELM_VERSION}-linux-amd64.tar.gz"
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
             --output "${tools}/${helm_archive}" \
             "https://get.helm.sh/${helm_archive}"
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
             --output "${tools}/${helm_archive}.sha256sum" \
             "https://get.helm.sh/${helm_archive}.sha256sum"
           (cd "${tools}" && sha256sum --check "${helm_archive}.sha256sum")
@@ -77,10 +77,10 @@ jobs:
           install -m 0755 "${tools}/linux-amd64/helm" "${tools}/helm"
 
           kubeconform_archive="kubeconform-linux-amd64.tar.gz"
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
             --output "${tools}/${kubeconform_archive}" \
             "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/${kubeconform_archive}"
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
             --output "${tools}/KUBECONFORM_CHECKSUMS" \
             "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/CHECKSUMS"
           grep " ${kubeconform_archive}$" "${tools}/KUBECONFORM_CHECKSUMS" \
@@ -155,10 +155,10 @@ jobs:
           mkdir -p "${tools}"
 
           helm_archive="helm-${HELM_VERSION}-linux-amd64.tar.gz"
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
             --output "${tools}/${helm_archive}" \
             "https://get.helm.sh/${helm_archive}"
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
             --output "${tools}/${helm_archive}.sha256sum" \
             "https://get.helm.sh/${helm_archive}.sha256sum"
           (cd "${tools}" && sha256sum --check "${helm_archive}.sha256sum")
@@ -166,19 +166,19 @@ jobs:
           install -m 0755 "${tools}/linux-amd64/helm" "${tools}/helm"
 
           kind_binary="kind-linux-amd64"
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
             --output "${tools}/${kind_binary}" \
             "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/${kind_binary}"
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
             --output "${tools}/kind.sha256sum" \
             "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64.sha256sum"
           (cd "${tools}" && sha256sum --check kind.sha256sum)
           install -m 0755 "${tools}/${kind_binary}" "${tools}/kind"
 
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
             --output "${tools}/kubectl" \
             "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
             --output "${tools}/kubectl.sha256" \
             "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl.sha256"
           printf '%s  %s\n' "$(cat "${tools}/kubectl.sha256")" "${tools}/kubectl" \
