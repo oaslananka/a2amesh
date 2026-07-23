@@ -138,7 +138,7 @@ describe('repository-owned Semgrep policy', () => {
 
   it('requires complete ownership and rotation metadata for remaining secrets', () => {
     const input = validInputs();
-    input.credentialInventory.repository_secrets[0].rotation = '';
+    input.credentialInventory.repository_secrets[0]!.rotation = '';
 
     expect(validateSecurityTooling(input)).toContain(
       'CODECOV_TOKEN: credential inventory must include a non-empty rotation path',
