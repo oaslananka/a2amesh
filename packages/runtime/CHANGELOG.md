@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/runtime-v0.12.0-alpha.1...@a2amesh/runtime-v0.13.0-alpha.1) (2026-07-23)
+
+
+### Bug Fixes
+
+* **runtime:** make idempotency reservations atomic ([#192](https://github.com/oaslananka/a2amesh/issues/192)) ([07162a6](https://github.com/oaslananka/a2amesh/commit/07162a69367298e6a067f284aa98edf2f143f7bc))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/protocol bumped to 0.13.0-alpha.1
+
 ## [0.12.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/runtime-v0.11.0-alpha.1...@a2amesh/runtime-v0.12.0-alpha.1) (2026-07-22)
 
 
