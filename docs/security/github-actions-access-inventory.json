@@ -1,0 +1,27 @@
+{
+  "observed_at": "2026-07-23",
+  "settings_owner": "@oaslananka",
+  "refresh_cadence_days": 90,
+  "repository_secrets": [
+    {
+      "name": "CODECOV_TOKEN",
+      "owner": "@oaslananka",
+      "purpose": "Upload unit coverage and test-result reports to Codecov.",
+      "consumer": ".github/workflows/ci.yml",
+      "rotation": "Create a replacement upload token in Codecov, update the GitHub Actions secret, verify one CI upload, then revoke the previous token."
+    }
+  ],
+  "environments": [
+    {
+      "name": "npm-publish",
+      "allowed_branches": ["main"],
+      "reviewers": ["@oaslananka"],
+      "prevent_self_review": false,
+      "admin_bypass": true,
+      "static_secrets": [],
+      "auth_model": "GitHub OIDC trusted publishing to npm; the workflow grants id-token: write and does not use a static npm credential.",
+      "rotation": "No npm credential is stored. Revoke or replace npm trusted-publisher configuration and GitHub environment access if the trust relationship changes."
+    }
+  ],
+  "removed_repository_secret_count": 22
+}

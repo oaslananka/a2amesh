@@ -23,6 +23,47 @@ exclude: ^deploy/[h]elm/[^/]+/templates/
 name: Security / semgrep
 semgrep scan --config .semgrep.yml --error --disable-version-check --metrics=off
 `,
+    workflows: {
+      '.github/workflows/ci.yml': `permissions:
+  contents: read
+env:
+  CODECOV_TOKEN: \${{ secrets.CODECOV_TOKEN }}
+`,
+      '.github/workflows/publish.yml': `permissions:
+  contents: read
+jobs:
+  publish:
+    if: github.repository == 'oaslananka/a2amesh' && github.ref == 'refs/heads/main'
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+`,
+    },
+    credentialInventory: {
+      observed_at: '2026-07-23',
+      settings_owner: '@oaslananka',
+      refresh_cadence_days: 90,
+      repository_secrets: [
+        {
+          name: 'CODECOV_TOKEN',
+          owner: '@oaslananka',
+          purpose: 'Upload unit coverage and test-result reports to Codecov.',
+          consumer: '.github/workflows/ci.yml',
+          rotation: 'Rotate in Codecov, replace the GitHub secret, and revoke the previous token.',
+        },
+      ],
+      environments: [
+        {
+          name: 'npm-publish',
+          allowed_branches: ['main'],
+          reviewers: ['@oaslananka'],
+          prevent_self_review: false,
+          auth_model: 'GitHub OIDC trusted publishing; no static npm credential.',
+        },
+      ],
+    },
     packageJson: {
       scripts: {
         'security:semgrep': 'semgrep scan --config .semgrep.yml --error --metrics=off',
@@ -82,6 +123,62 @@ describe('repository-owned Semgrep policy', () => {
     input.preCommit = input.preCommit.replace('exclude: ^deploy/[h]elm/[^/]+/templates/\n', '');
     expect(validateSecurityTooling(input)).toContain(
       'generic YAML validation must exclude unrendered chart templates',
+    );
+  });
+
+  it('rejects workflow secret references missing from the declared inventory', () => {
+    const input = validInputs();
+    input.workflows['.github/workflows/ci.yml'] +=
+      'env:\n  UNDECLARED_TOKEN: ${{ secrets.UNDECLARED_TOKEN }}\n';
+
+    expect(validateSecurityTooling(input)).toContain(
+      'Workflow secret UNDECLARED_TOKEN is not documented in the credential inventory',
+    );
+  });
+
+  it('requires complete ownership and rotation metadata for remaining secrets', () => {
+    const input = validInputs();
+    input.credentialInventory.repository_secrets[0]!.rotation = '';
+
+    expect(validateSecurityTooling(input)).toContain(
+      'CODECOV_TOKEN: credential inventory must include a non-empty rotation path',
+    );
+  });
+
+  it('requires the npm publish workflow to use the protected OIDC environment', () => {
+    const input = validInputs();
+    const npmSecret = ['NPM', 'TOKEN'].join('_');
+    input.workflows['.github/workflows/publish.yml'] = `jobs:
+  publish:
+    environment: npm-publish
+    env:
+      ${npmSecret}: \${{ secrets.${npmSecret} }}
+`;
+
+    expect(validateSecurityTooling(input)).toEqual(
+      expect.arrayContaining([
+        'Publish workflow must grant id-token: write for short-lived npm authentication',
+        'Publish workflow must be restricted to canonical main',
+        'Publish workflow must not reference long-lived npm credentials',
+      ]),
+    );
+  });
+
+  it('fails when the credential inventory exceeds its refresh cadence', () => {
+    const input = validInputs();
+    input.credentialInventory.observed_at = '2025-01-01';
+
+    expect(validateSecurityTooling(input)).toContain(
+      'Credential inventory observation is older than its refresh cadence',
+    );
+  });
+
+  it('requires an owner for the manual settings refresh', () => {
+    const input = validInputs();
+    input.credentialInventory.settings_owner = '';
+
+    expect(validateSecurityTooling(input)).toContain(
+      'Credential inventory must include a non-empty settings owner',
     );
   });
 });
