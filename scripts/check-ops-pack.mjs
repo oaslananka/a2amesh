@@ -161,6 +161,13 @@ if (existingFiles.has(schemaPath)) {
     if (!schema.properties?.registry || !schema.properties?.runtime) {
       errors.push('Helm values schema must validate registry and runtime values');
     }
+    const pdbSchema = schema.definitions?.pdb;
+    if (!pdbSchema?.properties?.maxUnavailable) {
+      errors.push('Helm values schema must validate PDB maxUnavailable when supplied');
+    }
+    if (pdbSchema?.required?.includes('maxUnavailable')) {
+      errors.push('Helm values schema must keep nullable PDB maxUnavailable optional');
+    }
   } catch (error) {
     errors.push(
       `invalid Helm values schema: ${error instanceof Error ? error.message : String(error)}`,

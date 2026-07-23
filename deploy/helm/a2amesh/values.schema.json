@@ -180,7 +180,7 @@
     "pdb": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled", "minAvailable", "maxUnavailable"],
+      "required": ["enabled", "minAvailable"],
       "properties": {
         "enabled": { "type": "boolean" },
         "minAvailable": { "type": ["integer", "string"], "minimum": 0 },
