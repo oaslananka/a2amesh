@@ -62,6 +62,7 @@ export interface A2AServerOptions {
   bodyLimit?: string;
   idempotencyStore?: IdempotencyStore;
   idempotencyTtlMs?: number;
+  idempotencyLeaseMs?: number;
   signingKey?: SigningKey;
   trustedVerificationKeys?: VerificationKey[];
   taskTtlMs?: number;
@@ -135,6 +136,7 @@ export abstract class A2AServer {
       streamer: this.streamer,
       idempotencyStore: this.idempotencyStore,
       idempotencyTtlMs: this.options.idempotencyTtlMs ?? 60 * 60 * 1000,
+      idempotencyLeaseMs: this.options.idempotencyLeaseMs ?? 30_000,
       handleRpc: (rpcReq, context) => this.handleRpc(rpcReq, context),
       handleStreamingRpc: (rpcReq, context, res, idempotency) =>
         this.handleStreamingRpc(rpcReq, context, res, idempotency),

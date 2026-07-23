@@ -20,6 +20,63 @@ exports[`OpenTelemetry telemetry snapshots > snapshots runtime task, SSE and aut
   },
   {
     "dataPointType": "SUM",
+    "description": "Idempotency reservation outcomes by bounded outcome label.",
+    "name": "a2a_runtime_idempotency_total",
+    "points": [
+      {
+        "attributes": {
+          "outcome": "acquired",
+          "service_name": "Telemetry Snapshot Agent",
+          "service_version": "1.2.3",
+        },
+        "value": 1,
+      },
+      {
+        "attributes": {
+          "outcome": "recovered",
+          "service_name": "Telemetry Snapshot Agent",
+          "service_version": "1.2.3",
+        },
+        "value": 1,
+      },
+      {
+        "attributes": {
+          "outcome": "replay",
+          "service_name": "Telemetry Snapshot Agent",
+          "service_version": "1.2.3",
+        },
+        "value": 1,
+      },
+      {
+        "attributes": {
+          "outcome": "in-progress",
+          "service_name": "Telemetry Snapshot Agent",
+          "service_version": "1.2.3",
+        },
+        "value": 1,
+      },
+      {
+        "attributes": {
+          "outcome": "conflict",
+          "service_name": "Telemetry Snapshot Agent",
+          "service_version": "1.2.3",
+        },
+        "value": 1,
+      },
+      {
+        "attributes": {
+          "outcome": "lease-lost",
+          "service_name": "Telemetry Snapshot Agent",
+          "service_version": "1.2.3",
+        },
+        "value": 1,
+      },
+    ],
+    "scope": "@a2amesh/runtime",
+    "unit": "",
+  },
+  {
+    "dataPointType": "SUM",
     "description": "Active SSE connections.",
     "name": "a2a_runtime_sse_connections_active",
     "points": [
@@ -224,6 +281,14 @@ a2a_runtime_task_canceled_total{service_name="Telemetry Snapshot Agent",service_
 # HELP a2a_runtime_auth_rejected_total Total rejected authenticated requests.
 # TYPE a2a_runtime_auth_rejected_total counter
 a2a_runtime_auth_rejected_total{service_name="Telemetry Snapshot Agent",service_version="1.2.3"} 1
+# HELP a2a_runtime_idempotency_total Idempotency reservation outcomes by bounded outcome label.
+# TYPE a2a_runtime_idempotency_total counter
+a2a_runtime_idempotency_total{service_name="Telemetry Snapshot Agent",service_version="1.2.3",outcome="acquired"} 1
+a2a_runtime_idempotency_total{service_name="Telemetry Snapshot Agent",service_version="1.2.3",outcome="recovered"} 1
+a2a_runtime_idempotency_total{service_name="Telemetry Snapshot Agent",service_version="1.2.3",outcome="replay"} 1
+a2a_runtime_idempotency_total{service_name="Telemetry Snapshot Agent",service_version="1.2.3",outcome="in-progress"} 1
+a2a_runtime_idempotency_total{service_name="Telemetry Snapshot Agent",service_version="1.2.3",outcome="conflict"} 1
+a2a_runtime_idempotency_total{service_name="Telemetry Snapshot Agent",service_version="1.2.3",outcome="lease-lost"} 1
 # HELP a2a_runtime_sse_connections_total Total SSE connections opened.
 # TYPE a2a_runtime_sse_connections_total counter
 a2a_runtime_sse_connections_total{service_name="Telemetry Snapshot Agent",service_version="1.2.3"} 2

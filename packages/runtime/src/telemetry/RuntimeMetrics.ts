@@ -16,6 +16,16 @@ export interface RuntimeMetricsOptions {
 }
 
 const DURATION_BUCKETS_MS = [50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000, 60000];
+const IDEMPOTENCY_OUTCOMES = [
+  'acquired',
+  'recovered',
+  'replay',
+  'in-progress',
+  'conflict',
+  'lease-lost',
+] as const;
+
+export type RuntimeIdempotencyOutcome = (typeof IDEMPOTENCY_OUTCOMES)[number];
 
 function escapeLabel(value: string): string {
   return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
@@ -31,6 +41,7 @@ export class RuntimeMetrics {
   private readonly taskFailedCounter: Counter;
   private readonly taskCanceledCounter: Counter;
   private readonly authRejectedCounter: Counter;
+  private readonly idempotencyCounter: Counter;
   private readonly sseConnectionsCounter: Counter;
   private readonly sseReconnectCounter: Counter;
   private readonly sseActiveConnectionsCounter: UpDownCounter;
@@ -66,6 +77,9 @@ export class RuntimeMetrics {
     });
     this.authRejectedCounter = meter.createCounter('a2a_runtime_auth_rejected_total', {
       description: 'Total rejected authenticated requests.',
+    });
+    this.idempotencyCounter = meter.createCounter('a2a_runtime_idempotency_total', {
+      description: 'Idempotency reservation outcomes by bounded outcome label.',
     });
     this.sseConnectionsCounter = meter.createCounter('a2a_runtime_sse_connections_total', {
       description: 'Total SSE connections opened.',
@@ -127,6 +141,11 @@ export class RuntimeMetrics {
     this.authRejectedCounter.add(1, this.metricAttributes);
   }
 
+  recordIdempotencyOutcome(outcome: RuntimeIdempotencyOutcome): void {
+    this.increment(`a2a_runtime_idempotency_total{outcome="${outcome}"}`);
+    this.idempotencyCounter.add(1, { ...this.metricAttributes, outcome });
+  }
+
   recordSseConnectionOpened(isReconnect = false): void {
     this.increment('a2a_runtime_sse_connections_total');
     this.sseConnectionsCounter.add(1, this.metricAttributes);
@@ -167,6 +186,12 @@ export class RuntimeMetrics {
       '# HELP a2a_runtime_auth_rejected_total Total rejected authenticated requests.',
       '# TYPE a2a_runtime_auth_rejected_total counter',
       `${this.renderCounter('a2a_runtime_auth_rejected_total')} `,
+      '# HELP a2a_runtime_idempotency_total Idempotency reservation outcomes by bounded outcome label.',
+      '# TYPE a2a_runtime_idempotency_total counter',
+      ...IDEMPOTENCY_OUTCOMES.map((outcome) => {
+        const counterKey = `a2a_runtime_idempotency_total{outcome="${outcome}"}`;
+        return `a2a_runtime_idempotency_total{${serviceLabels},outcome="${outcome}"} ${this.counters.get(counterKey) ?? 0}`;
+      }),
       '# HELP a2a_runtime_sse_connections_total Total SSE connections opened.',
       '# TYPE a2a_runtime_sse_connections_total counter',
       `${this.renderCounter('a2a_runtime_sse_connections_total')} `,

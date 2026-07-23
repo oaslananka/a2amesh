@@ -52,6 +52,18 @@ export default tseslint.config(
     },
   },
   {
+    files: ['tests/integration/fixtures/**/*.mjs'],
+    languageOptions: {
+      parserOptions: {
+        project: false,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'off',
+      '@typescript-eslint/await-thenable': 'off',
+    },
+  },
+  {
     ignores: [
       '**/dist/**',
       '**/node_modules/**',

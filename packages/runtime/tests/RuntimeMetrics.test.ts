@@ -31,6 +31,9 @@ describe('RuntimeMetrics', () => {
     metrics.recordTaskStateChange(task('CANCELED'), 'WORKING');
     metrics.recordTaskStateChange(task('INPUT_REQUIRED'), 'SUBMITTED');
     metrics.recordAuthReject();
+    metrics.recordIdempotencyOutcome('acquired');
+    metrics.recordIdempotencyOutcome('replay');
+    metrics.recordIdempotencyOutcome('conflict');
     metrics.recordSseConnectionOpened();
     metrics.recordSseConnectionOpened(true);
     metrics.recordSseConnectionClosed();
@@ -59,6 +62,10 @@ describe('RuntimeMetrics', () => {
     expect(output).toContain('a2a_runtime_task_failed_total');
     expect(output).toContain('a2a_runtime_task_canceled_total');
     expect(output).toContain('a2a_runtime_auth_rejected_total');
+    expect(output).toContain('a2a_runtime_idempotency_total');
+    expect(output).toContain('outcome="acquired"');
+    expect(output).toContain('outcome="replay"');
+    expect(output).toContain('outcome="conflict"');
     expect(output).toContain('a2a_runtime_sse_reconnect_total');
     expect(output).toContain('a2a_runtime_sse_connections_active');
     expect(output).toContain('a2a_runtime_tasks_active');

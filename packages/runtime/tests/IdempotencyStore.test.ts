@@ -279,4 +279,266 @@ describe('IdempotencyStore', () => {
       }),
     );
   });
+
+  it('executes atomic Redis reservation transitions through eval', async () => {
+    const now = Date.now();
+    const inFlight = {
+      state: 'in-flight' as const,
+      scope: 'scope',
+      key: 'key',
+      fingerprint: 'fingerprint',
+      ownerId: 'owner-1',
+      reservedAt: now,
+      expiresAt: now + 1_000,
+    };
+    const completed = {
+      state: 'completed' as const,
+      scope: 'scope',
+      key: 'key',
+      fingerprint: 'fingerprint',
+      storedAt: new Date(now).toISOString(),
+      expiresAt: now + 60_000,
+      result: { kind: 'success' as const, value: { ok: true } },
+    };
+    const evalMock = vi
+      .fn<NonNullable<RedisIdempotencyClient['eval']>>()
+      .mockResolvedValueOnce(JSON.stringify({ outcome: 'acquired', record: inFlight }))
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(JSON.stringify({ outcome: 'completed', record: completed }))
+      .mockResolvedValueOnce(1);
+    const store = new RedisIdempotencyStore(
+      { get: vi.fn(async () => null), eval: evalMock },
+      'prefix',
+    );
+
+    await expect(store.reserve('scope', 'key', 'fingerprint', 1_000)).resolves.toEqual({
+      outcome: 'acquired',
+      record: inFlight,
+    });
+    await expect(store.renew('scope', 'key', 'owner-1', 1_000)).resolves.toBe(true);
+    await expect(
+      store.complete('scope', 'key', 'owner-1', { kind: 'success', value: { ok: true } }, 60_000),
+    ).resolves.toEqual(completed);
+    await expect(store.release('scope', 'key', 'owner-1')).resolves.toBe(true);
+
+    expect(evalMock).toHaveBeenCalledTimes(4);
+    expect(evalMock.mock.calls[0]?.[1]).toMatchObject({
+      keys: ['prefix:scope:key'],
+      arguments: ['scope', 'key', 'fingerprint', expect.any(String), '1000'],
+    });
+  });
+
+  it('normalizes Redis conflict, replay, and in-progress outcomes', async () => {
+    const now = Date.now();
+    const inFlight = {
+      state: 'in-flight' as const,
+      scope: 'scope',
+      key: 'key',
+      fingerprint: 'fingerprint',
+      ownerId: 'owner-1',
+      reservedAt: now,
+      expiresAt: now + 1_000,
+    };
+    const failed = {
+      state: 'failed' as const,
+      scope: 'scope',
+      key: 'key',
+      fingerprint: 'fingerprint',
+      storedAt: new Date(now).toISOString(),
+      expiresAt: now + 60_000,
+      result: { kind: 'error' as const, error: { code: -32000, message: 'failed' } },
+    };
+    const evalMock = vi
+      .fn<NonNullable<RedisIdempotencyClient['eval']>>()
+      .mockResolvedValueOnce(JSON.stringify({ outcome: 'conflict', record: inFlight }))
+      .mockResolvedValueOnce(JSON.stringify({ outcome: 'replay', record: failed }))
+      .mockResolvedValueOnce(JSON.stringify({ outcome: 'in-progress', record: inFlight }));
+    const store = new RedisIdempotencyStore({ get: vi.fn(async () => null), eval: evalMock });
+
+    await expect(store.reserve('scope', 'key', 'other', 1_000)).resolves.toMatchObject({
+      outcome: 'conflict',
+      record: inFlight,
+    });
+    await expect(store.reserve('scope', 'key', 'fingerprint', 1_000)).resolves.toEqual({
+      outcome: 'replay',
+      record: failed,
+    });
+    await expect(store.reserve('scope', 'key', 'fingerprint', 1_000)).resolves.toEqual({
+      outcome: 'in-progress',
+      record: inFlight,
+    });
+  });
+
+  it('fails closed for malformed Redis script responses and records', async () => {
+    const now = Date.now();
+    const inFlight = {
+      state: 'in-flight' as const,
+      scope: 'scope',
+      key: 'key',
+      fingerprint: 'fingerprint',
+      ownerId: 'owner-1',
+      reservedAt: now,
+      expiresAt: now + 1_000,
+    };
+    const completed = {
+      state: 'completed' as const,
+      scope: 'scope',
+      key: 'key',
+      fingerprint: 'fingerprint',
+      storedAt: new Date(now).toISOString(),
+      expiresAt: now + 60_000,
+      result: { kind: 'success' as const, value: { ok: true } },
+    };
+
+    await expect(
+      new RedisIdempotencyStore({ get: vi.fn(async () => null) }).reserve(
+        'scope',
+        'key',
+        'fingerprint',
+        1_000,
+      ),
+    ).rejects.toThrow('require a node-redis compatible eval() client');
+
+    const invalidJsonStore = new RedisIdempotencyStore({
+      get: vi.fn(async () => null),
+      eval: vi.fn(async () => 1),
+    });
+    await expect(
+      invalidJsonStore.reserve('scope', 'key', 'fingerprint', 1_000),
+    ).rejects.toBeInstanceOf(TypeError);
+
+    const invalidReplayStore = new RedisIdempotencyStore({
+      get: vi.fn(async () => null),
+      eval: vi.fn(async () => JSON.stringify({ outcome: 'replay', record: inFlight })),
+    });
+    await expect(invalidReplayStore.reserve('scope', 'key', 'fingerprint', 1_000)).rejects.toThrow(
+      'Invalid Redis replay reservation record',
+    );
+
+    const invalidOwnerStore = new RedisIdempotencyStore({
+      get: vi.fn(async () => null),
+      eval: vi.fn(async () => JSON.stringify({ outcome: 'acquired', record: completed })),
+    });
+    await expect(invalidOwnerStore.reserve('scope', 'key', 'fingerprint', 1_000)).rejects.toThrow(
+      'Invalid Redis acquired reservation record',
+    );
+
+    const lostStore = new RedisIdempotencyStore({
+      get: vi.fn(async () => null),
+      eval: vi.fn(async () => JSON.stringify({ outcome: 'lost' })),
+    });
+    await expect(
+      lostStore.complete('scope', 'key', 'owner-1', { kind: 'success', value: null }, 1_000),
+    ).rejects.toThrow('Idempotency reservation ownership was lost');
+
+    const invalidCompletedStore = new RedisIdempotencyStore({
+      get: vi.fn(async () => null),
+      eval: vi.fn(async () => JSON.stringify({ outcome: 'completed', record: inFlight })),
+    });
+    await expect(
+      invalidCompletedStore.complete(
+        'scope',
+        'key',
+        'owner-1',
+        { kind: 'success', value: null },
+        1_000,
+      ),
+    ).rejects.toThrow('Idempotency reservation ownership was lost');
+
+    const malformedInFlight = new RedisIdempotencyStore({
+      get: vi.fn(async () =>
+        JSON.stringify({
+          state: 'in-flight',
+          scope: 'scope',
+          key: 'key',
+          fingerprint: 'fingerprint',
+          expiresAt: now + 1_000,
+        }),
+      ),
+    });
+    await expect(malformedInFlight.get('scope', 'key')).rejects.toBeInstanceOf(TypeError);
+
+    const malformedTerminal = new RedisIdempotencyStore({
+      get: vi.fn(async () =>
+        JSON.stringify({
+          state: 'completed',
+          scope: 'scope',
+          key: 'key',
+          fingerprint: 'fingerprint',
+          expiresAt: now + 1_000,
+        }),
+      ),
+    });
+    await expect(malformedTerminal.get('scope', 'key')).rejects.toThrow(
+      'Invalid terminal idempotency record',
+    );
+
+    const invalidResult = new RedisIdempotencyStore({
+      get: vi.fn(async () =>
+        JSON.stringify({
+          state: 'completed',
+          scope: 'scope',
+          key: 'key',
+          fingerprint: 'fingerprint',
+          expiresAt: now + 1_000,
+          result: { kind: 'unknown' },
+        }),
+      ),
+    });
+    await expect(invalidResult.get('scope', 'key')).rejects.toThrow('Invalid idempotency result');
+
+    const activeReservation = new RedisIdempotencyStore({
+      get: vi.fn(async () => JSON.stringify(inFlight)),
+      set: vi.fn(async () => undefined),
+      pexpire: vi.fn(async () => 1),
+    });
+    await expect(
+      activeReservation.set('scope', 'key', 'fingerprint', { kind: 'success', value: null }, 1_000),
+    ).rejects.toThrow('Cannot overwrite an active idempotency reservation');
+
+    const missingLegacyMethods = new RedisIdempotencyStore({ get: vi.fn(async () => null) });
+    await expect(
+      missingLegacyMethods.set(
+        'scope',
+        'key',
+        'fingerprint',
+        { kind: 'success', value: null },
+        1_000,
+      ),
+    ).rejects.toThrow('Redis idempotency legacy set requires set() and pexpire() support');
+  });
+
+  it('enforces in-memory ownership and positive TTL guards', async () => {
+    vi.useFakeTimers();
+    try {
+      const store = new InMemoryIdempotencyStore();
+      await expect(store.get('scope', 'missing')).resolves.toBeNull();
+      await expect(store.reserve('scope', 'key', 'fingerprint', 0)).rejects.toBeInstanceOf(
+        RangeError,
+      );
+      await expect(store.renew('scope', 'key', 'owner', 0)).rejects.toBeInstanceOf(RangeError);
+      await expect(store.release('scope', 'key', 'owner')).resolves.toBe(false);
+
+      const reservation = await store.reserve('scope', 'key', 'fingerprint', 1_000);
+      if (reservation.outcome !== 'acquired') throw new Error('expected acquired reservation');
+      await expect(store.renew('scope', 'key', 'wrong-owner', 1_000)).resolves.toBe(false);
+      await expect(store.release('scope', 'key', 'wrong-owner')).resolves.toBe(false);
+      await expect(
+        store.set('scope', 'key', 'fingerprint', { kind: 'success', value: null }, 1_000),
+      ).rejects.toThrow('Cannot overwrite a retained idempotency reservation');
+
+      vi.advanceTimersByTime(1_001);
+      await expect(
+        store.complete(
+          'scope',
+          'key',
+          reservation.record.ownerId,
+          { kind: 'success', value: null },
+          1_000,
+        ),
+      ).rejects.toThrow('Idempotency reservation ownership was lost');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

@@ -372,6 +372,12 @@ describe('OpenTelemetry telemetry snapshots', () => {
     metrics.recordTaskStateChange(createTask('FAILED', 250), 'WORKING');
     metrics.recordTaskStateChange(createTask('CANCELED', 500), 'WORKING');
     metrics.recordAuthReject();
+    metrics.recordIdempotencyOutcome('acquired');
+    metrics.recordIdempotencyOutcome('recovered');
+    metrics.recordIdempotencyOutcome('replay');
+    metrics.recordIdempotencyOutcome('in-progress');
+    metrics.recordIdempotencyOutcome('conflict');
+    metrics.recordIdempotencyOutcome('lease-lost');
     metrics.recordSseConnectionOpened();
     metrics.recordSseConnectionOpened(true);
     metrics.recordSseConnectionClosed();
@@ -396,6 +402,7 @@ describe('OpenTelemetry telemetry snapshots', () => {
     const metricSnapshot = formatMetrics(telemetry.metricExporter);
     expect(metricSnapshot.map((metric) => metric.name)).toEqual([
       'a2a_runtime_auth_rejected_total',
+      'a2a_runtime_idempotency_total',
       'a2a_runtime_sse_connections_active',
       'a2a_runtime_sse_connections_total',
       'a2a_runtime_sse_reconnect_total',
