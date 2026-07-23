@@ -124,6 +124,15 @@ function validateCredentialInventory(workflows, inventory, failures) {
     return;
   }
 
+  validateInventoryMetadata(inventory, failures);
+  const { repositorySecrets, secretNames } = validateRepositorySecretEntries(inventory, failures);
+  const referencedSecrets = collectWorkflowSecretReferences(workflows, secretNames, failures);
+  validateDeclaredConsumers(repositorySecrets, referencedSecrets, failures);
+  validatePublishWorkflow(workflows?.['.github/workflows/publish.yml'] ?? '', failures);
+  validatePublishEnvironment(inventory, failures);
+}
+
+function validateInventoryMetadata(inventory, failures) {
   if (
     typeof inventory.settings_owner !== 'string' ||
     inventory.settings_owner.trim().length === 0
@@ -133,61 +142,84 @@ function validateCredentialInventory(workflows, inventory, failures) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(inventory.observed_at ?? '')) {
     failures.push('Credential inventory must include an ISO observation date');
   }
-  if (
-    !Number.isInteger(inventory.refresh_cadence_days) ||
-    inventory.refresh_cadence_days < 1 ||
-    inventory.refresh_cadence_days > 90
-  ) {
+  if (!isValidRefreshCadence(inventory.refresh_cadence_days)) {
     failures.push('Credential inventory refresh cadence must be between 1 and 90 days');
-  } else {
-    const observedAt = Date.parse(`${inventory.observed_at}T00:00:00Z`);
-    if (Number.isFinite(observedAt)) {
-      const ageDays = Math.floor((Date.now() - observedAt) / 86_400_000);
-      if (ageDays > inventory.refresh_cadence_days) {
-        failures.push('Credential inventory observation is older than its refresh cadence');
-      }
-    }
+    return;
   }
 
+  const observedAt = Date.parse(`${inventory.observed_at}T00:00:00Z`);
+  if (!Number.isFinite(observedAt)) return;
+  const ageDays = Math.floor((Date.now() - observedAt) / 86_400_000);
+  if (ageDays > inventory.refresh_cadence_days) {
+    failures.push('Credential inventory observation is older than its refresh cadence');
+  }
+}
+
+function isValidRefreshCadence(value) {
+  return Number.isInteger(value) && value >= 1 && value <= 90;
+}
+
+function validateRepositorySecretEntries(inventory, failures) {
   const repositorySecrets = Array.isArray(inventory.repository_secrets)
     ? inventory.repository_secrets
     : [];
   const secretNames = new Set();
   for (const secret of repositorySecrets) {
-    const name = typeof secret?.name === 'string' ? secret.name : '<unnamed>';
-    if (secretNames.has(name)) failures.push(`${name}: credential inventory entry is duplicated`);
-    secretNames.add(name);
-    for (const [field, label] of [
-      ['owner', 'owner'],
-      ['purpose', 'purpose'],
-      ['consumer', 'consumer'],
-      ['rotation', 'rotation path'],
-    ]) {
-      if (typeof secret?.[field] !== 'string' || secret[field].trim().length === 0) {
-        failures.push(`${name}: credential inventory must include a non-empty ${label}`);
-      }
+    validateRepositorySecretEntry(secret, secretNames, failures);
+  }
+  return { repositorySecrets, secretNames };
+}
+
+function validateRepositorySecretEntry(secret, secretNames, failures) {
+  const name = typeof secret?.name === 'string' ? secret.name : '<unnamed>';
+  if (secretNames.has(name)) failures.push(`${name}: credential inventory entry is duplicated`);
+  secretNames.add(name);
+  for (const [field, label] of [
+    ['owner', 'owner'],
+    ['purpose', 'purpose'],
+    ['consumer', 'consumer'],
+    ['rotation', 'rotation path'],
+  ]) {
+    if (typeof secret?.[field] !== 'string' || secret[field].trim().length === 0) {
+      failures.push(`${name}: credential inventory must include a non-empty ${label}`);
     }
   }
+}
 
+function collectWorkflowSecretReferences(workflows, secretNames, failures) {
   const referencedSecrets = new Map();
   for (const [path, workflow] of Object.entries(workflows ?? {})) {
-    if (typeof workflow !== 'string') continue;
-    const references = [...workflow.matchAll(/\$\{\{\s*secrets\.([A-Z0-9_]+)\s*\}\}/g)];
-    for (const [, name] of references) {
-      if (!referencedSecrets.has(name)) referencedSecrets.set(name, []);
-      referencedSecrets.get(name).push(path);
-      if (!secretNames.has(name)) {
-        failures.push(`Workflow secret ${name} is not documented in the credential inventory`);
-      }
-    }
-    if (/pull_request_target:/.test(workflow) && references.length > 0) {
-      failures.push(`${path}: pull_request_target workflow must not reference repository secrets`);
-    }
-    if (/permissions:\s*write-all/.test(workflow)) {
-      failures.push(`${path}: workflow must not grant write-all permissions`);
+    validateWorkflowSecretReferences(path, workflow, secretNames, referencedSecrets, failures);
+  }
+  return referencedSecrets;
+}
+
+function validateWorkflowSecretReferences(
+  path,
+  workflow,
+  secretNames,
+  referencedSecrets,
+  failures,
+) {
+  if (typeof workflow !== 'string') return;
+  const references = [...workflow.matchAll(/\$\{\{\s*secrets\.([A-Z0-9_]+)\s*\}\}/g)];
+  for (const [, name] of references) {
+    const paths = referencedSecrets.get(name) ?? [];
+    paths.push(path);
+    referencedSecrets.set(name, paths);
+    if (!secretNames.has(name)) {
+      failures.push(`Workflow secret ${name} is not documented in the credential inventory`);
     }
   }
+  if (/pull_request_target:/.test(workflow) && references.length > 0) {
+    failures.push(`${path}: pull_request_target workflow must not reference repository secrets`);
+  }
+  if (/permissions:\s*write-all/.test(workflow)) {
+    failures.push(`${path}: workflow must not grant write-all permissions`);
+  }
+}
 
+function validateDeclaredConsumers(repositorySecrets, referencedSecrets, failures) {
   for (const secret of repositorySecrets) {
     const paths = referencedSecrets.get(secret.name) ?? [];
     if (!paths.includes(secret.consumer)) {
@@ -196,8 +228,9 @@ function validateCredentialInventory(workflows, inventory, failures) {
       );
     }
   }
+}
 
-  const publishWorkflow = workflows?.['.github/workflows/publish.yml'] ?? '';
+function validatePublishWorkflow(publishWorkflow, failures) {
   if (!/environment:\s*npm-publish/.test(publishWorkflow)) {
     failures.push('Publish workflow must use the npm-publish environment');
   }
@@ -216,7 +249,9 @@ function validateCredentialInventory(workflows, inventory, failures) {
   ) {
     failures.push('Publish workflow must not reference long-lived npm credentials');
   }
+}
 
+function validatePublishEnvironment(inventory, failures) {
   const environments = Array.isArray(inventory.environments) ? inventory.environments : [];
   const npmEnvironment = environments.find((environment) => environment?.name === 'npm-publish');
   if (!npmEnvironment) {
