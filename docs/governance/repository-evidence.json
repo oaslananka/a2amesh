@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-07-23T22:23:41.660Z",
+  "observed_at": "2026-07-23T22:30:45.116Z",
   "refresh_cadence_days": 14,
   "repository": {
     "name": "oaslananka/a2amesh",
@@ -11,8 +11,8 @@
     "license": "Apache-2.0",
     "open_work": {
       "issues": 15,
-      "pull_requests": 1,
-      "total": 16
+      "pull_requests": 2,
+      "total": 17
     }
   },
   "release": {

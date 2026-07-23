@@ -8,7 +8,7 @@ Priority values: `Required now`, `Recommended`, `Optional`, `Future`, `Not appli
 
 ## Live repository evidence
 
-Observed at **2026-07-23T22:23:41.660Z**. This generated section must be refreshed within 14 days from the machine-readable snapshot in [`docs/governance/repository-evidence.json`](governance/repository-evidence.json).
+Observed at **2026-07-23T22:30:45.116Z**. This generated section must be refreshed within 14 days from the machine-readable snapshot in [`docs/governance/repository-evidence.json`](governance/repository-evidence.json).
 
 Refresh with `pnpm run repository:evidence:write`; CI validates freshness and local release parity through `pnpm run repository:evidence:check` in `docs:check`.
 
@@ -20,7 +20,7 @@ Refresh with `pnpm run repository:evidence:write`; CI validates freshness and lo
 | Latest canonical release tag | `@a2amesh/runtime-v0.13.0-alpha.1` at `405005305228`                                                               | GitHub REST API: releases/latest and tags for oaslananka/a2amesh                                                          |
 | Latest GitHub Release        | None published                                                                                                     | GitHub REST API: releases/latest and tags for oaslananka/a2amesh                                                          |
 | Active Release Please PR     | [#202](https://github.com/oaslananka/a2amesh/pull/202) proposes `0.14.0-alpha.1`                                   | GitHub CLI: pr list --repo oaslananka/a2amesh --state open                                                                |
-| Open work                    | 15 issues and 1 pull request (16 total)                                                                            | GitHub CLI: issue list --repo oaslananka/a2amesh --state open; GitHub CLI: pr list --repo oaslananka/a2amesh --state open |
+| Open work                    | 15 issues and 2 pull requests (17 total)                                                                           | GitHub CLI: issue list --repo oaslananka/a2amesh --state open; GitHub CLI: pr list --repo oaslananka/a2amesh --state open |
 
 ### Manually verified repository settings
 
