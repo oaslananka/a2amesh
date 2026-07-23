@@ -98,6 +98,7 @@ path = [
   "scripts/check-coverage-policy.d.mts",
   "scripts/report-coverage.d.mts",
   "scripts/dispatch-renovate-checks.d.mts",
+  "scripts/repository-evidence-core.d.mts",
   "scripts/release-state-core.d.mts",
   "scripts/sync-security-policy.d.mts",
 ]

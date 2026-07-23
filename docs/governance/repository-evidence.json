@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-07-23T22:30:45.116Z",
+  "refresh_cadence_days": 14,
+  "repository": {
+    "name": "oaslananka/a2amesh",
+    "url": "https://github.com/oaslananka/a2amesh",
+    "default_branch": "main",
+    "visibility": "public",
+    "archived": false,
+    "license": "Apache-2.0",
+    "open_work": {
+      "issues": 15,
+      "pull_requests": 2,
+      "total": 17
+    }
+  },
+  "release": {
+    "source_version": "0.13.0-alpha.1",
+    "package_paths": [
+      "packages/cli",
+      "packages/create-a2amesh",
+      "packages/mcp",
+      "packages/protocol",
+      "packages/registry",
+      "packages/runtime"
+    ],
+    "latest_github_release": null,
+    "latest_canonical_tag": {
+      "name": "@a2amesh/runtime-v0.13.0-alpha.1",
+      "commit": "40500530522890f372599a20d35bfad77d94b546"
+    },
+    "npm": {
+      "package": "@a2amesh/runtime",
+      "alpha": "0.13.0-alpha.1",
+      "latest": "0.1.0-alpha.1"
+    },
+    "active_release_pr": {
+      "number": 202,
+      "title": "chore: release main",
+      "url": "https://github.com/oaslananka/a2amesh/pull/202",
+      "proposed_version": "0.14.0-alpha.1"
+    }
+  },
+  "settings": [
+    {
+      "name": "Private vulnerability reporting",
+      "value": "enabled",
+      "owner": "@oaslananka",
+      "observed_at": "2026-07-23",
+      "refresh_cadence_days": 90,
+      "source": "GitHub REST API: private-vulnerability-reporting"
+    },
+    {
+      "name": "Security analysis features",
+      "value": "secret scanning enabled; push protection enabled; Dependabot security updates enabled",
+      "owner": "@oaslananka",
+      "observed_at": "2026-07-23",
+      "refresh_cadence_days": 90,
+      "source": "GitHub REST API: GET /repos/oaslananka/a2amesh"
+    },
+    {
+      "name": "main branch protection",
+      "value": "18 required status checks; strict updates enabled; 0 required approvals; stale-review dismissal enabled; code-owner review disabled; last-push approval disabled; admin enforcement enabled; force pushes blocked; deletion blocked",
+      "owner": "@oaslananka",
+      "observed_at": "2026-07-23",
+      "refresh_cadence_days": 90,
+      "source": "GitHub REST API: branch protection"
+    },
+    {
+      "name": "npm-publish environment",
+      "value": "branches main; reviewers oaslananka; self-review allowed; 0 static environment secrets; OIDC trusted publishing",
+      "owner": "@oaslananka",
+      "observed_at": "2026-07-23",
+      "refresh_cadence_days": 90,
+      "source": "GitHub REST API: environments/npm-publish, branch policies, and environment secrets"
+    }
+  ],
+  "provenance": {
+    "repository": "GitHub REST API: GET /repos/oaslananka/a2amesh",
+    "issues": "GitHub CLI: issue list --repo oaslananka/a2amesh --state open",
+    "pull_requests": "GitHub CLI: pr list --repo oaslananka/a2amesh --state open",
+    "releases": "GitHub REST API: releases/latest and tags for oaslananka/a2amesh",
+    "npm": "npm registry metadata for @a2amesh/runtime",
+    "source_versions": ".release-please-manifest.json and release-tracked package.json files"
+  }
+}
