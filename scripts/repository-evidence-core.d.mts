@@ -74,9 +74,6 @@ export interface RepositoryEvidenceLocalState {
   packageVersions: Record<string, string>;
 }
 
-export const REPOSITORY_EVIDENCE_START: string;
-export const REPOSITORY_EVIDENCE_END: string;
-
 export function validateRepositoryEvidence(
   snapshot: RepositoryEvidenceSnapshot,
   localState: RepositoryEvidenceLocalState,

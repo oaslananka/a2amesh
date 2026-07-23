@@ -1,7 +1,7 @@
 import { compareSemanticVersions } from './release-state-core.mjs';
 
-export const REPOSITORY_EVIDENCE_START = '<!-- repository-evidence:start -->';
-export const REPOSITORY_EVIDENCE_END = '<!-- repository-evidence:end -->';
+const REPOSITORY_EVIDENCE_START = '<!-- repository-evidence:start -->';
+const REPOSITORY_EVIDENCE_END = '<!-- repository-evidence:end -->';
 
 const REQUIRED_PROVENANCE = [
   'repository',
