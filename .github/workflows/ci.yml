@@ -8,9 +8,6 @@ name: CI
   merge_group:
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -27,6 +24,8 @@ env:
 jobs:
   identity:
     name: CI / identity
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -43,6 +42,8 @@ jobs:
 
   install:
     name: CI / install
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -56,6 +57,8 @@ jobs:
 
   lint:
     name: CI / lint
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -70,6 +73,8 @@ jobs:
 
   typecheck:
     name: CI / typecheck
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -151,6 +156,8 @@ jobs:
 
   integration:
     name: CI / integration
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -177,6 +184,8 @@ jobs:
 
   performance-smoke:
     name: CI / performance-smoke
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -194,6 +203,8 @@ jobs:
 
   conformance:
     name: CI / conformance
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -208,6 +219,8 @@ jobs:
 
   schemas:
     name: CI / schemas
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -222,6 +235,8 @@ jobs:
 
   api-surfaces:
     name: CI / api-surfaces
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -236,6 +251,8 @@ jobs:
 
   mutation:
     name: CI / mutation
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     needs: [identity]
     runs-on: ubuntu-latest
@@ -273,6 +290,8 @@ jobs:
 
   ui-e2e:
     name: CI / ui-e2e
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     needs: [identity]
     runs-on: ubuntu-latest
@@ -299,6 +318,8 @@ jobs:
 
   build:
     name: CI / build
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -313,6 +334,8 @@ jobs:
 
   package-dry-run:
     name: CI / package-dry-run
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -328,6 +351,8 @@ jobs:
 
   workspace-graph:
     name: CI / workspace-graph
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -344,6 +369,8 @@ jobs:
 
   public-surface:
     name: CI / public-surface
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -360,6 +387,8 @@ jobs:
 
   command-surface:
     name: CI / command-surface
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -376,6 +405,8 @@ jobs:
 
   no-generated-artifacts:
     name: CI / no-generated-artifacts
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -392,6 +423,8 @@ jobs:
 
   gc:
     name: CI / gc
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -406,6 +439,8 @@ jobs:
 
   compatibility-smoke:
     name: CI / compatibility-smoke (${{ matrix.os }}, node ${{ matrix.node }})
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
@@ -434,6 +469,8 @@ jobs:
 
   consumer-smoke:
     name: CI / consumer-smoke (${{ matrix.os }}, node ${{ matrix.node }})
+    permissions:
+      contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     needs: [identity]
     runs-on: ${{ matrix.runner }}
@@ -462,3 +499,27 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: node scripts/run-consumer-smoke.mjs
+
+  test-evidence:
+    name: CI / tests-required
+    permissions:
+      contents: read
+    if: ${{ always() }}
+    needs: [unit, integration, conformance]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      UNIT_RESULT: ${{ needs.unit.result }}
+      INTEGRATION_RESULT: ${{ needs.integration.result }}
+      CONFORMANCE_RESULT: ${{ needs.conformance.result }}
+    steps:
+      - name: Verify required test jobs
+        run: |
+          set -euo pipefail
+          for result in "${UNIT_RESULT}" "${INTEGRATION_RESULT}" "${CONFORMANCE_RESULT}"; do
+            if [[ "${result}" != "success" ]]; then
+              echo "Required test job failed or was cancelled: ${result}"
+              exit 1
+            fi
+          done
+          echo "Required unit, integration, and conformance tests passed."

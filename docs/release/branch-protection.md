@@ -1,8 +1,10 @@
 # Branch Protection
 
-`main` is protected by the `main-protection` repository ruleset in `.github/rulesets/main.json`.
+`main` is currently protected by GitHub classic branch protection. The file
+`.github/rulesets/main.json` records the declarative desired state used for review, drift checks,
+and a future ruleset migration; it is not evidence that a live repository ruleset is active.
 
-The required status checks are:
+The desired required status checks are:
 
 - `CI / identity`
 - `CI / install`
@@ -10,6 +12,8 @@ The required status checks are:
 - `CI / typecheck`
 - `CI / unit`
 - `CI / integration`
+- `CI / conformance`
+- `CI / tests-required`
 - `CI / mutation`
 - `CI / ui-e2e`
 - `CI / build`
@@ -18,6 +22,7 @@ The required status checks are:
 - `CI / public-surface`
 - `CI / command-surface`
 - `CI / no-generated-artifacts`
+- `CI / gc`
 - `CI / compatibility-smoke (ubuntu-latest, node 22.22.3)`
 - `CI / compatibility-smoke (windows-latest, node 24.16.0)`
 - `CI / compatibility-smoke (macos-latest, node 24.16.0)`
@@ -36,7 +41,9 @@ The required status checks are:
 
 Repository-managed Renovate pull requests are created with the scoped `GITHUB_TOKEN`, so the Renovate workflow explicitly dispatches these required workflows on each immutable Renovate head SHA. Dependency Review receives the pull request base and head commit IDs as required workflow inputs; Docs dispatches always set `deploy=false`.
 
-Apply or update rulesets with the GitHub REST rulesets API after the repository bootstrap commit has passed CI:
+After a new required context has emitted successfully, reconcile classic branch protection through
+the GitHub branch-protection API. To migrate the repository to rulesets later, apply the declarative
+files with the GitHub REST rulesets API after the source commit has passed CI:
 
 ```powershell
 gh api --method POST repos/oaslananka/a2amesh/rulesets --input .github/rulesets/main.json
