@@ -5,6 +5,7 @@ name: Docs
     branches: [main]
   pull_request:
     branches: [main]
+  merge_group:
   schedule:
     - cron: '17 4 * * 1'
   workflow_dispatch:

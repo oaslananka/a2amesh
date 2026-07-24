@@ -35,12 +35,14 @@ describe('OpenSSF Scorecard evidence', () => {
       readFile(new URL('docs/release/branch-protection.md', repoRoot), 'utf8'),
     ]);
 
-    expect(ruleset).toContain('"context": "CI / conformance"');
-    expect(ruleset).toContain('"context": "CI / gc"');
+    expect(ruleset).toContain('"context": "CI / required-summary"');
     expect(ruleset).toContain('"context": "CI / tests-required"');
-    expect(documentation).toContain('`CI / conformance`');
-    expect(documentation).toContain('`CI / gc`');
+    expect(ruleset).not.toContain('"context": "CI / conformance"');
+    expect(ruleset).not.toContain('"context": "CI / gc"');
+    expect(documentation).toContain('`CI / required-summary`');
     expect(documentation).toContain('`CI / tests-required`');
+    expect(documentation).toContain('conformance');
+    expect(documentation).toMatch(/garbage\s+collection/);
     expect(documentation).toContain('classic branch protection');
     expect(documentation).toContain('declarative desired state');
   });
