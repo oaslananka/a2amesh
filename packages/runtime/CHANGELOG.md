@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/runtime-v0.13.0-alpha.1...@a2amesh/runtime-v0.14.0-alpha.1) (2026-07-24)
+
+
+### Miscellaneous Chores
+
+* **@a2amesh/runtime:** Synchronize A2A Mesh public packages versions
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/protocol bumped to 0.14.0-alpha.1
+
 ## [0.13.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/runtime-v0.12.0-alpha.1...@a2amesh/runtime-v0.13.0-alpha.1) (2026-07-23)
 
 
