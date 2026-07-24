@@ -128,10 +128,10 @@ function validateConfiguration(root) {
 
 function validateWorkflowEvents(workflow) {
   const failures = [];
-  if (!/^  pull_request:\s*$/m.test(workflow)) {
+  if (!/^ {2}pull_request:\s*$/m.test(workflow)) {
     failures.push(`pull_request must emit ${SUMMARY_CONTEXT}`);
   }
-  if (!/^  merge_group:\s*$/m.test(workflow)) {
+  if (!/^ {2}merge_group:\s*$/m.test(workflow)) {
     failures.push(`merge_group must emit ${SUMMARY_CONTEXT}`);
   }
   return failures;
@@ -199,7 +199,7 @@ function validateExternalWorkflows(root) {
   const failures = [];
   for (const { path, contexts } of EXTERNAL_REQUIRED_WORKFLOWS) {
     const workflow = readText(root, path);
-    if (!/^  merge_group:\s*$/m.test(workflow)) {
+    if (!/^ {2}merge_group:\s*$/m.test(workflow)) {
       failures.push(`${path} must emit its required contexts for merge_group`);
     }
     for (const context of contexts) {
@@ -259,11 +259,11 @@ function compareNeeds(actualNeeds, failures) {
 
 function extractJobBlock(workflow, jobId) {
   const lines = workflow.split('\n');
-  const start = lines.findIndex((line) => line === `  ${jobId}:`);
+  const start = lines.indexOf(`  ${jobId}:`);
   if (start === -1) return null;
   let end = lines.length;
   for (let index = start + 1; index < lines.length; index += 1) {
-    if (/^  [A-Za-z0-9_-]+:\s*$/.test(lines[index])) {
+    if (/^ {2}[A-Za-z0-9_-]+:\s*$/.test(lines[index])) {
       end = index;
       break;
     }
@@ -273,16 +273,16 @@ function extractJobBlock(workflow, jobId) {
 
 function extractNeeds(jobBlock) {
   const lines = jobBlock.split('\n');
-  const start = lines.findIndex((line) => line === '    needs:');
+  const start = lines.indexOf('    needs:');
   if (start === -1) return [];
   const needs = [];
   for (let index = start + 1; index < lines.length; index += 1) {
-    const match = /^      - ([A-Za-z0-9_-]+)\s*$/.exec(lines[index]);
+    const match = /^ {6}- ([A-Za-z0-9_-]+)\s*$/.exec(lines[index]);
     if (match) {
       needs.push(match[1]);
       continue;
     }
-    if (/^    [A-Za-z0-9_-]+:/.test(lines[index])) break;
+    if (/^ {4}[A-Za-z0-9_-]+:/.test(lines[index])) break;
   }
   return needs;
 }
@@ -290,7 +290,7 @@ function extractNeeds(jobBlock) {
 function extractWorkflowJobs(workflow) {
   const jobsIndex = workflow.indexOf('\njobs:\n');
   const jobsText = jobsIndex === -1 ? '' : workflow.slice(jobsIndex + '\njobs:\n'.length);
-  return new Set([...jobsText.matchAll(/^  ([A-Za-z0-9_-]+):\s*$/gm)].map((match) => match[1]));
+  return new Set([...jobsText.matchAll(/^ {2}([A-Za-z0-9_-]+):\s*$/gm)].map((match) => match[1]));
 }
 
 function requiredContexts(ruleset, failures) {
