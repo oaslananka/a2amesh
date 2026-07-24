@@ -105,3 +105,15 @@ path = [
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2025-2026 oaslananka"
 SPDX-License-Identifier = "Apache-2.0"
+
+
+[[annotations]]
+path = [
+  "scripts/live-interop/*.d.mts",
+  "tests/interop/live/python/.gitignore",
+  "tests/interop/live/python/*.py",
+  "tests/interop/live/python/requirements.txt",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025-2026 oaslananka"
+SPDX-License-Identifier = "Apache-2.0"

@@ -138,8 +138,8 @@ export abstract class A2AServer {
       idempotencyTtlMs: this.options.idempotencyTtlMs ?? 60 * 60 * 1000,
       idempotencyLeaseMs: this.options.idempotencyLeaseMs ?? 30_000,
       handleRpc: (rpcReq, context) => this.handleRpc(rpcReq, context),
-      handleStreamingRpc: (rpcReq, context, res, idempotency) =>
-        this.handleStreamingRpc(rpcReq, context, res, idempotency),
+      handleStreamingRpc: (rpcReq, context, res, idempotency, responseDialect) =>
+        this.handleStreamingRpc(rpcReq, context, res, idempotency, responseDialect),
       canAccessTask: (task, context) => this.canAccessTask(task, context),
       filterTasksByContext: (tasks, context) => this.filterTasksByContext(tasks, context),
     });
@@ -303,15 +303,29 @@ export abstract class A2AServer {
     context: RpcContext,
     res: Response,
     idempotency?: Parameters<typeof handleStreamingRpcRequest>[3],
+    responseDialect?: Parameters<typeof handleStreamingRpcRequest>[5],
   ): Promise<void> {
-    return handleStreamingRpcRequest(rpcReq, context, res, idempotency, {
-      taskManager: this.taskManager,
-      runtimeMetrics: this.runtimeMetrics,
-      idempotencyStore: this.idempotencyStore,
-      idempotencyTtlMs: this.options.idempotencyTtlMs ?? 60 * 60 * 1000,
-      canAccessTask: (task, requestContext) => this.canAccessTask(task, requestContext),
-      handleMessageRequest: (params, method, req, signal) =>
-        handleMessageRequest(params, method, req, signal, this.createMessageRequestDependencies()),
-    });
+    return handleStreamingRpcRequest(
+      rpcReq,
+      context,
+      res,
+      idempotency,
+      {
+        taskManager: this.taskManager,
+        runtimeMetrics: this.runtimeMetrics,
+        idempotencyStore: this.idempotencyStore,
+        idempotencyTtlMs: this.options.idempotencyTtlMs ?? 60 * 60 * 1000,
+        canAccessTask: (task, requestContext) => this.canAccessTask(task, requestContext),
+        handleMessageRequest: (params, method, req, signal) =>
+          handleMessageRequest(
+            params,
+            method,
+            req,
+            signal,
+            this.createMessageRequestDependencies(),
+          ),
+      },
+      responseDialect,
+    );
   }
 }

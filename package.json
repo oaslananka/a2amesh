@@ -94,6 +94,8 @@
     "prepare": "husky",
     "interop:lab": "node scripts/run-interop-lab.mjs",
     "interop:check": "node scripts/run-interop-lab.mjs --check",
+    "interop:live": "node scripts/run-live-interop.mjs",
+    "interop:live:check": "node scripts/run-live-interop.mjs --check",
     "ops:check": "node scripts/check-ops-pack.mjs && pnpm run containers:check",
     "release:preflight": "node scripts/check-publish-preflight.mjs",
     "api:surfaces:check": "node scripts/check-api-surfaces.mjs",
