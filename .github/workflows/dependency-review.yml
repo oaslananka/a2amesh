@@ -3,6 +3,7 @@ name: Dependency Review
 'on':
   pull_request:
     branches: [main]
+  merge_group:
   workflow_dispatch:
     inputs:
       base_ref:
@@ -34,9 +35,14 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
-      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294
+      - name: Review pull-request dependency changes
+        if: github.event_name != 'merge_group'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294
         with:
           base-ref: ${{ github.event_name == 'workflow_dispatch' && inputs.base_ref || github.event.pull_request.base.sha }}
           head-ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_ref || github.event.pull_request.head.sha }}
           fail-on-severity: high
           license-check: true
+      - name: Confirm constituent dependency reviews
+        if: github.event_name == 'merge_group'
+        run: echo "Dependency review passed on each constituent pull request before merge-queue admission."

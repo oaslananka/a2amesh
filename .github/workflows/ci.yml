@@ -525,3 +525,47 @@ jobs:
             fi
           done
           echo "Required unit, integration, and conformance tests passed."
+
+  required-summary:
+    name: CI / required-summary
+    permissions:
+      contents: read
+    if: ${{ always() }}
+    needs:
+      - identity
+      - install
+      - lint
+      - typecheck
+      - unit
+      - integration
+      - performance-smoke
+      - conformance
+      - schemas
+      - api-surfaces
+      - mutation
+      - ui-e2e
+      - build
+      - package-dry-run
+      - workspace-graph
+      - public-surface
+      - command-surface
+      - no-generated-artifacts
+      - gc
+      - compatibility-smoke
+      - consumer-smoke
+      - test-evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          install: false
+          cache: false
+      - name: Verify policy-required CI jobs
+        env:
+          REQUIRED_JOB_RESULTS: ${{ toJSON(needs) }}
+        run: node scripts/check-required-summary.mjs

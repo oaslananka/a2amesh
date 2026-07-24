@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-07-23T22:30:45.116Z",
+  "observed_at": "2026-07-24T01:30:57.917Z",
   "refresh_cadence_days": 14,
   "repository": {
     "name": "oaslananka/a2amesh",
@@ -10,9 +10,9 @@
     "archived": false,
     "license": "Apache-2.0",
     "open_work": {
-      "issues": 15,
+      "issues": 14,
       "pull_requests": 2,
-      "total": 17
+      "total": 16
     }
   },
   "release": {
@@ -47,7 +47,7 @@
       "name": "Private vulnerability reporting",
       "value": "enabled",
       "owner": "@oaslananka",
-      "observed_at": "2026-07-23",
+      "observed_at": "2026-07-24",
       "refresh_cadence_days": 90,
       "source": "GitHub REST API: private-vulnerability-reporting"
     },
@@ -55,15 +55,15 @@
       "name": "Security analysis features",
       "value": "secret scanning enabled; push protection enabled; Dependabot security updates enabled",
       "owner": "@oaslananka",
-      "observed_at": "2026-07-23",
+      "observed_at": "2026-07-24",
       "refresh_cadence_days": 90,
       "source": "GitHub REST API: GET /repos/oaslananka/a2amesh"
     },
     {
       "name": "main branch protection",
-      "value": "18 required status checks; strict updates enabled; 0 required approvals; stale-review dismissal enabled; code-owner review disabled; last-push approval disabled; admin enforcement enabled; force pushes blocked; deletion blocked",
+      "value": "15 required status checks; strict updates enabled; 0 required approvals; stale-review dismissal enabled; code-owner review disabled; last-push approval disabled; admin enforcement enabled; force pushes blocked; deletion blocked",
       "owner": "@oaslananka",
-      "observed_at": "2026-07-23",
+      "observed_at": "2026-07-24",
       "refresh_cadence_days": 90,
       "source": "GitHub REST API: branch protection"
     },
@@ -71,7 +71,7 @@
       "name": "npm-publish environment",
       "value": "branches main; reviewers oaslananka; self-review allowed; 0 static environment secrets; OIDC trusted publishing",
       "owner": "@oaslananka",
-      "observed_at": "2026-07-23",
+      "observed_at": "2026-07-24",
       "refresh_cadence_days": 90,
       "source": "GitHub REST API: environments/npm-publish, branch policies, and environment secrets"
     }

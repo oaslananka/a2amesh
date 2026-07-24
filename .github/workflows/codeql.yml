@@ -5,6 +5,7 @@ name: CodeQL
     branches: [main]
   pull_request:
     branches: [main]
+  merge_group:
   schedule:
     - cron: '21 5 * * 1'
   workflow_dispatch:

@@ -44,22 +44,6 @@ describe('runtime version manifest checks', () => {
     });
   });
 
-  it('fails when branch protection compatibility contexts do not match CI job names', async () => {
-    const workspace = await createRuntimeWorkspace({
-      rulesetContexts: [
-        'CI / compatibility-smoke (ubuntu-latest, node 22.22.3)',
-        'CI / compatibility-smoke (linux-latest, node 24.16.0)',
-        'CI / compatibility-smoke (macos-latest, node 24.16.0)',
-      ],
-    });
-
-    await expect(execRuntimeCheck(workspace)).rejects.toMatchObject({
-      stderr: expect.stringContaining(
-        'required compatibility contexts must match CI matrix job names',
-      ),
-    });
-  });
-
   it('accepts compatibility matrix rows with reordered keys and trailing comments', async () => {
     const workspace = await createRuntimeWorkspace({
       compatibilityRowsYaml: `          - node: '22.22.3' # minimum supported LTS
@@ -280,46 +264,6 @@ node.corepack = true
     await expect(execRuntimeCheck(workspace)).resolves.toBeDefined();
   });
 
-  it('writes missing branch protection docs compatibility contexts', async () => {
-    const workspace = await createRuntimeWorkspace({
-      branchProtectionContexts: ['CI / identity', 'Docs / build'],
-    });
-
-    await expect(execRuntimeCheck(workspace, ['--write'])).resolves.toBeDefined();
-
-    const doc = await readFile(join(workspace, 'docs/release/branch-protection.md'), 'utf8');
-    expect(doc).toContain(`- \`CI / identity\`
-- \`CI / compatibility-smoke (ubuntu-latest, node 22.22.3)\`
-- \`CI / compatibility-smoke (windows-latest, node 24.16.0)\`
-- \`CI / compatibility-smoke (macos-latest, node 24.16.0)\`
-- \`Docs / build\``);
-    await expect(execRuntimeCheck(workspace)).resolves.toBeDefined();
-  });
-
-  it('rewrites split branch protection docs compatibility contexts', async () => {
-    const workspace = await createRuntimeWorkspace({
-      branchProtectionContexts: [
-        'CI / identity',
-        'CI / compatibility-smoke (ubuntu-latest, node 22.22.1)',
-        'Docs / build',
-        'CI / compatibility-smoke (windows-latest, node 24.15.0)',
-        'CI / compatibility-smoke (macos-latest, node 24.15.0)',
-      ],
-    });
-
-    await expect(execRuntimeCheck(workspace, ['--write'])).resolves.toBeDefined();
-
-    const doc = await readFile(join(workspace, 'docs/release/branch-protection.md'), 'utf8');
-    expect(doc).toContain(`- \`CI / identity\`
-- \`CI / compatibility-smoke (ubuntu-latest, node 22.22.3)\`
-- \`CI / compatibility-smoke (windows-latest, node 24.16.0)\`
-- \`CI / compatibility-smoke (macos-latest, node 24.16.0)\`
-- \`Docs / build\``);
-    expect(doc).not.toContain('node 22.22.1');
-    expect(doc).not.toContain('node 24.15.0');
-    await expect(execRuntimeCheck(workspace)).resolves.toBeDefined();
-  });
-
   it('accepts compatibility include rows that start with an auxiliary key', async () => {
     const workspace = await createRuntimeWorkspace({
       compatibilityRowsYaml: `          - label: minimum
@@ -388,73 +332,6 @@ node.corepack = true
     });
 
     await expect(readFile(rulesetPath, 'utf8')).resolves.toBe(rulesetBefore);
-    await expect(readFile(docPath, 'utf8')).resolves.toBe(docBefore);
-  });
-
-  it('preserves ruleset integration IDs when writing compatibility contexts', async () => {
-    const workspace = await createRuntimeWorkspace({
-      branchProtectionContexts: [
-        'CI / compatibility-smoke (ubuntu-latest, node 22.22.1)',
-        'CI / compatibility-smoke (windows-latest, node 24.15.0)',
-        'CI / compatibility-smoke (macos-latest, node 24.15.0)',
-      ],
-      rulesetContexts: [
-        {
-          context: 'CI / compatibility-smoke (ubuntu-latest, node 22.22.1)',
-          integration_id: 15368,
-        },
-        {
-          context: 'CI / compatibility-smoke (windows-latest, node 24.15.0)',
-          integration_id: 15368,
-        },
-        {
-          context: 'CI / compatibility-smoke (macos-latest, node 24.15.0)',
-          integration_id: 15368,
-        },
-      ],
-    });
-
-    await expect(execRuntimeCheck(workspace, ['--write'])).resolves.toBeDefined();
-
-    const rulesetJson = JSON.parse(
-      await readFile(join(workspace, '.github/rulesets/main.json'), 'utf8'),
-    );
-    const statusRule = rulesetJson.rules.find(
-      (rule: { type: string }) => rule.type === 'required_status_checks',
-    );
-    expect(statusRule.parameters.required_status_checks).toEqual([
-      {
-        context: 'CI / compatibility-smoke (ubuntu-latest, node 22.22.3)',
-        integration_id: 15368,
-      },
-      {
-        context: 'CI / compatibility-smoke (windows-latest, node 24.16.0)',
-        integration_id: 15368,
-      },
-      {
-        context: 'CI / compatibility-smoke (macos-latest, node 24.16.0)',
-        integration_id: 15368,
-      },
-    ]);
-    await expect(execRuntimeCheck(workspace)).resolves.toBeDefined();
-  });
-
-  it('does not rewrite docs when ruleset context parsing fails in write mode', async () => {
-    const workspace = await createRuntimeWorkspace({
-      branchProtectionContexts: [
-        'CI / compatibility-smoke (ubuntu-latest, node 22.22.1)',
-        'CI / compatibility-smoke (windows-latest, node 24.15.0)',
-        'CI / compatibility-smoke (macos-latest, node 24.15.0)',
-      ],
-      rulesetRequiredStatusChecks: 'invalid',
-    });
-    const docPath = join(workspace, 'docs/release/branch-protection.md');
-    const docBefore = await readFile(docPath, 'utf8');
-
-    await expect(execRuntimeCheck(workspace, ['--write'])).rejects.toMatchObject({
-      stderr: expect.stringContaining('required_status_checks must be an array'),
-    });
-
     await expect(readFile(docPath, 'utf8')).resolves.toBe(docBefore);
   });
 

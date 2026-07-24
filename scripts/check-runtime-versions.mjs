@@ -4,7 +4,6 @@ import { getWorkspacePackages, readJson, readText, fail } from './check-utils.mj
 const write = process.argv.includes('--write');
 const manifestPath = 'tools/runtime-versions.json';
 const semverPattern = /^\d+\.\d+\.\d+$/;
-const compatibilityContextPrefix = 'CI / compatibility-smoke (';
 const compatibilityMatrixKeys = new Set(['os', 'runner', 'node']);
 const failures = [];
 
@@ -395,121 +394,7 @@ function readCompatibilityMatrix(path) {
   return rows;
 }
 
-function compatibilityContext(row) {
-  return `CI / compatibility-smoke (${row.os}, node ${row.node})`;
-}
-
-function compatibilityContextOs(context) {
-  return /^CI \/ compatibility-smoke \(([^,]+), node [^)]+\)$/.exec(context)?.[1];
-}
-
-function readRulesetCompatibilityContexts(path) {
-  const ruleset = readJson(path);
-  const statusRule = ruleset.rules?.find((rule) => rule.type === 'required_status_checks');
-  const contexts = statusRule?.parameters?.required_status_checks ?? [];
-  if (!Array.isArray(contexts)) {
-    failures.push(`${path}: required_status_checks must be an array`);
-    return [];
-  }
-  return contexts
-    .map((entry) => entry?.context)
-    .filter(
-      (context) => typeof context === 'string' && context.startsWith(compatibilityContextPrefix),
-    );
-}
-
-function syncRulesetCompatibilityContexts(path, expectedContexts) {
-  const original = readText(path);
-  const ruleset = JSON.parse(original);
-  const statusRule = ruleset.rules?.find((rule) => rule.type === 'required_status_checks');
-  const contexts = statusRule?.parameters?.required_status_checks;
-  if (!Array.isArray(contexts)) {
-    failures.push(`${path}: required_status_checks must be an array`);
-    return;
-  }
-
-  const firstCompatibilityIndex = contexts.findIndex((entry) =>
-    entry?.context?.startsWith(compatibilityContextPrefix),
-  );
-  const nonCompatibilityContexts = contexts.filter(
-    (entry) => !entry?.context?.startsWith(compatibilityContextPrefix),
-  );
-  const existingCompatibilityContexts = contexts.filter((entry) =>
-    entry?.context?.startsWith(compatibilityContextPrefix),
-  );
-  const existingCompatibilityByOs = new Map();
-  for (const entry of existingCompatibilityContexts) {
-    const os = compatibilityContextOs(entry.context);
-    if (os && !existingCompatibilityByOs.has(os)) existingCompatibilityByOs.set(os, entry);
-  }
-  const compatibilityContexts = expectedContexts.map((context, index) => {
-    const os = compatibilityContextOs(context);
-    const source =
-      (os && existingCompatibilityByOs.get(os)) ?? existingCompatibilityContexts[index] ?? {};
-    return { ...source, context };
-  });
-  const insertAt =
-    firstCompatibilityIndex === -1 ? nonCompatibilityContexts.length : firstCompatibilityIndex;
-  const updatedContexts = [
-    ...nonCompatibilityContexts.slice(0, insertAt),
-    ...compatibilityContexts,
-    ...nonCompatibilityContexts.slice(insertAt),
-  ];
-  const current = contexts.map((entry) => entry?.context).filter(Boolean);
-  const updated = updatedContexts.map((entry) => entry.context);
-  if (JSON.stringify(current) === JSON.stringify(updated)) return;
-
-  statusRule.parameters.required_status_checks = updatedContexts;
-  writeOrExpect(path, original, normalizeJson(ruleset));
-}
-
-function syncBranchProtectionCompatibilityContexts(path, expectedContexts) {
-  const original = readText(path);
-  const expectedLines = expectedContexts.map((context) => `- \`${context}\``);
-  const compatibilityLinePattern = /^- `CI \/ compatibility-smoke \([^)]+\)`$/;
-  const filteredLines = [];
-  let insertAt = -1;
-
-  for (const line of original.split('\n')) {
-    if (compatibilityLinePattern.test(line)) {
-      if (insertAt === -1) insertAt = filteredLines.length;
-      continue;
-    }
-    filteredLines.push(line);
-  }
-
-  if (insertAt === -1) insertAt = filteredLines.indexOf('- `Docs / build`');
-  if (insertAt === -1) {
-    insertAt = filteredLines.at(-1) === '' ? filteredLines.length - 1 : filteredLines.length;
-    if (insertAt > 0 && filteredLines[insertAt - 1] !== '') {
-      filteredLines.splice(insertAt, 0, '');
-      insertAt += 1;
-    }
-  }
-
-  filteredLines.splice(insertAt, 0, ...expectedLines);
-  const updated = filteredLines.join('\n');
-  writeOrExpect(path, original, updated);
-}
-
-function compareContextSets(path, actual, expected, label) {
-  const missing = expected.filter((context) => !actual.includes(context));
-  const extra = actual.filter((context) => !expected.includes(context));
-  if (missing.length === 0 && extra.length === 0) return;
-  failures.push(
-    `${path}: ${label} compatibility contexts must match CI matrix job names` +
-      `${missing.length > 0 ? `; missing ${missing.join(', ')}` : ''}` +
-      `${extra.length > 0 ? `; extra ${extra.join(', ')}` : ''}`,
-  );
-}
-
-function readBranchProtectionCompatibilityContexts(path) {
-  return [...readText(path).matchAll(/- `(CI \/ compatibility-smoke \([^)]+\))`/g)].map(
-    (match) => match[1],
-  );
-}
-
-function validateCompatibilityConfiguration(manifest, rows, expectedContexts) {
+function validateCompatibilityConfiguration(manifest, rows) {
   const manifestVersions = new Set(manifest.nodeCompatibility);
   for (const row of rows) {
     if (!manifestVersions.has(row.node)) {
@@ -532,19 +417,6 @@ function validateCompatibilityConfiguration(manifest, rows, expectedContexts) {
       );
     }
   }
-
-  compareContextSets(
-    '.github/rulesets/main.json',
-    readRulesetCompatibilityContexts('.github/rulesets/main.json'),
-    expectedContexts,
-    'required',
-  );
-  compareContextSets(
-    'docs/release/branch-protection.md',
-    readBranchProtectionCompatibilityContexts('docs/release/branch-protection.md'),
-    expectedContexts,
-    'documented',
-  );
 }
 
 const manifest = readRuntimeManifest();
@@ -572,20 +444,7 @@ if (failures.length === 0) {
   const failuresBeforeMatrixRead = failures.length;
   const compatibilityRows = readCompatibilityMatrix('.github/workflows/ci.yml');
   if (failures.length === failuresBeforeMatrixRead) {
-    const expectedCompatibilityContexts = compatibilityRows.map(compatibilityContext);
-    const failuresBeforeRulesetSync = failures.length;
-    syncRulesetCompatibilityContexts('.github/rulesets/main.json', expectedCompatibilityContexts);
-    if (!write || failures.length === failuresBeforeRulesetSync) {
-      syncBranchProtectionCompatibilityContexts(
-        'docs/release/branch-protection.md',
-        expectedCompatibilityContexts,
-      );
-      validateCompatibilityConfiguration(
-        manifest,
-        compatibilityRows,
-        expectedCompatibilityContexts,
-      );
-    }
+    validateCompatibilityConfiguration(manifest, compatibilityRows);
   }
 }
 
