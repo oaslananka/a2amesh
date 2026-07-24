@@ -32,8 +32,8 @@ range and is already EOL in the Node.js project schedule checked for this policy
 
 All public packages in the `0.13.0-alpha.1` release line share the same Node engine range: `>=22.22.1 <25`.
 
-| Package                   | Current version | Node range      | Compatibility notes                                                         |
-| ------------------------- | --------------- | --------------- | --------------------------------------------------------------------------- |
+| Package                   | Current version  | Node range      | Compatibility notes                                                         |
+| ------------------------- | ---------------- | --------------- | --------------------------------------------------------------------------- |
 | `@a2amesh/cli`            | `0.13.0-alpha.1` | `>=22.22.1 <25` | Published `a2amesh` command-line interface.                                 |
 | `@a2amesh/mcp`            | `0.13.0-alpha.1` | `>=22.22.1 <25` | A2A and MCP mapping helpers and bridge runtime.                             |
 | `@a2amesh/protocol`       | `0.13.0-alpha.1` | `>=22.22.1 <25` | Protocol types, interfaces, constants, and validators.                      |
@@ -56,6 +56,21 @@ release.
 
 The executable fixture set lives under `tests/conformance/fixtures/` and is run
 with `pnpm run test:conformance`.
+
+## Official SDK Interoperability Matrix
+
+Fixture replay and live SDK execution provide different evidence. `pnpm run interop:lab` validates
+committed golden traces without executing official SDK binaries. `pnpm run interop:live` executes
+local, version-pinned official SDK processes against A2A Mesh.
+
+| Protocol | Ecosystem  | Official SDK        | Runtime           | Directions                                                           | Evidence                                                 |
+| -------- | ---------- | ------------------- | ----------------- | -------------------------------------------------------------------- | -------------------------------------------------------- |
+| `1.0`    | JavaScript | `@a2a-js/sdk@1.0.0` | Node.js `24.16.0` | official client ↔ A2A Mesh server; A2A Mesh client ↔ official server | blocking, streaming, auth challenge, retrieval, artifact |
+| `1.0`    | Python     | `a2a-sdk==1.1.2`    | Python `3.13.14`  | official client ↔ A2A Mesh server; A2A Mesh client ↔ official server | blocking, streaming, retrieval, cancellation, artifact   |
+
+The reviewed source of truth is `tests/interop/live/versions.json`. The live runner also verifies a
+deliberately incompatible version and emits bounded, redacted diagnostics. See
+[`docs/interop/official-sdks.md`](interop/official-sdks.md) for execution and reliability policy.
 
 ## A2A Compatibility Fixture Coverage
 

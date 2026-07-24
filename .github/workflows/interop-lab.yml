@@ -7,10 +7,15 @@ name: Interop Lab
   pull_request:
     paths:
       - '.github/workflows/interop-lab.yml'
+      - 'scripts/live-interop/**'
       - 'scripts/run-interop-lab.mjs'
+      - 'scripts/run-live-interop.mjs'
       - 'tests/interop/**'
+      - 'tests/integration/live-interop-*.test.ts'
+      - 'packages/runtime/**'
       - 'docs/interop/**'
-      - 'docs-site/interop/**'
+      - 'docs/compatibility.md'
+      - 'docs-site/guide/compatibility.md'
       - 'package.json'
 
 permissions:
@@ -27,10 +32,11 @@ defaults:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   NODE_VERSION: '24.16.0'
+  PYTHON_VERSION: '3.13.14'
 
 jobs:
   official-sdk-fixtures:
-    name: Interop Lab / official SDK fixtures
+    name: Interop Lab / official SDK fixture replay
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -43,8 +49,71 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - run: pnpm run interop:lab
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: ${{ always() }}
         with:
           name: interop-lab-report
           path: artifacts/interop-lab/report.json
+          if-no-files-found: error
+          retention-days: 14
+
+  live-javascript:
+    name: Interop Lab / live official JavaScript SDK
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install pinned official JavaScript SDK harness
+        working-directory: tests/interop/live/javascript
+        run: npm ci --ignore-scripts
+      - name: Run live JavaScript interoperability directions
+        run: >-
+          pnpm run interop:live -- --ecosystem javascript
+          --report artifacts/interop-live/javascript/report.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: ${{ always() }}
+        with:
+          name: interop-live-javascript-report
+          path: artifacts/interop-live/javascript/
+          if-no-files-found: error
+          retention-days: 14
+
+  live-python:
+    name: Interop Lab / live official Python SDK
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: tests/interop/live/python/requirements.txt
+      - name: Install pinned official Python SDK harness
+        run: |
+          python -m venv .interop-python
+          .interop-python/bin/python -m pip install --disable-pip-version-check --requirement tests/interop/live/python/requirements.txt
+      - name: Run live Python interoperability directions
+        env:
+          A2A_INTEROP_PYTHON: ${{ github.workspace }}/.interop-python/bin/python
+        run: >-
+          pnpm run interop:live -- --ecosystem python
+          --report artifacts/interop-live/python/report.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: ${{ always() }}
+        with:
+          name: interop-live-python-report
+          path: artifacts/interop-live/python/
           if-no-files-found: error
           retention-days: 14

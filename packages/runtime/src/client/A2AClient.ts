@@ -29,6 +29,11 @@ import {
   createOutboundPolicyFetch,
   type OutboundPolicyOptions,
 } from '../net/OutboundPolicy.js';
+import {
+  normalizeOfficialRpcResult,
+  toOfficialV1RpcRequest,
+  type A2AJsonRpcDialect,
+} from '../utils/officialWire.js';
 
 export interface A2AClientOptions {
   fetchImplementation?: typeof fetch;
@@ -49,6 +54,8 @@ export interface A2AClientOptions {
   requireVerifiedAgentCard?: boolean;
   preferredProtocolVersion?: A2AProtocolVersion;
   allowExperimentalProtocolVersions?: boolean;
+  /** Select the JSON-RPC method and payload dialect. Defaults to the Mesh-compatible dialect. */
+  jsonRpcDialect?: A2AJsonRpcDialect;
 }
 
 interface RetryOptions {
@@ -92,6 +99,7 @@ export class A2AClient {
   private readonly trustedVerificationKeys: VerificationKey[];
   private readonly requireVerifiedAgentCard: boolean;
   private readonly protocolVersion: A2AProtocolVersion;
+  private readonly jsonRpcDialect: A2AJsonRpcDialect;
 
   constructor(
     public readonly baseUrl: string,
@@ -116,6 +124,7 @@ export class A2AClient {
     this.trustedVerificationKeys = options.trustedVerificationKeys ?? [];
     this.requireVerifiedAgentCard = options.requireVerifiedAgentCard ?? false;
     this.protocolVersion = A2AClient.getProtocolPreferences(options)[0] ?? '1.0';
+    this.jsonRpcDialect = options.jsonRpcDialect ?? 'mesh';
   }
 
   static async connect(agentCardUrl: string, options: A2AClientOptions = {}): Promise<A2AClient> {
@@ -350,11 +359,15 @@ export class A2AClient {
   ): Promise<[Response, string]> {
     const options: ClientCallOptions = { headers: { ...this.headers } };
     const id = this.createRequestId();
+    const wireRequest =
+      this.jsonRpcDialect === 'official-v1'
+        ? toOfficialV1RpcRequest(method, params)
+        : { method, params };
     const payload = {
       jsonrpc: '2.0' as const,
       id,
-      method,
-      params,
+      method: wireRequest.method,
+      params: wireRequest.params,
     };
 
     for (const interceptor of this.interceptors) {
@@ -386,10 +399,11 @@ export class A2AClient {
     }
 
     const success = json as JsonRpcSuccessResponse<T>;
+    const normalizedResult = normalizeOfficialRpcResult(method, success.result) as T;
     for (const interceptor of this.interceptors) {
-      await interceptor.after?.({ method, response: success.result } satisfies AfterArgs<T>);
+      await interceptor.after?.({ method, response: normalizedResult } satisfies AfterArgs<T>);
     }
-    return success.result;
+    return normalizedResult;
   }
 
   private async rpc<T, TParams extends object>(method: string, params: TParams): Promise<T> {

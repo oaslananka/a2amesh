@@ -1,54 +1,44 @@
-# Official SDK interop lab
+# Official SDK interoperability
 
-The interop lab is the repeatable compatibility gate for A2A Mesh and the official A2A SDK ecosystem. It starts as a fixture replay suite so every pull request can validate the same protocol traces without depending on external services.
+A2A Mesh maintains two intentionally separate interoperability layers. Neither layer depends on mutable hosted services; both run against loopback-only local processes in CI.
 
-Run it locally with:
+## Fixture replay guarantee
+
+`pnpm run interop:lab` replays committed official-SDK fixtures and golden traces from `tests/interop/`. It is deterministic regression evidence for participant pairs, capabilities, and expected wire events. It does **not** claim that official SDK binaries executed during that run.
+
+The fixture matrix remains in `tests/interop/matrix.json`, and its report is written to `artifacts/interop-lab/report.json`.
+
+## Live official SDK guarantee
+
+`pnpm run interop:live` starts pinned official SDK clients and servers against A2A Mesh participants. The live lanes execute all four directions:
+
+| Client              | Server              | Verified flows                                                                                      |
+| ------------------- | ------------------- | --------------------------------------------------------------------------------------------------- |
+| `@a2a-js/sdk@1.0.0` | A2A Mesh            | Agent Card discovery, authentication challenge/retry, blocking submission, task retrieval, artifact |
+| A2A Mesh            | `@a2a-js/sdk@1.0.0` | streaming submitted/working/artifact/completed events and final task retrieval                      |
+| `a2a-sdk==1.1.2`    | A2A Mesh            | task creation, retrieval, and cancellation                                                          |
+| A2A Mesh            | `a2a-sdk==1.1.2`    | blocking and streaming completion, terminal task state, artifact                                    |
+
+The live protocol target is `1.0`. A deliberate unsupported-version scenario must fail with a bounded diagnostic. Credentials are supplied only through process environment, and generated diagnostics redact authorization headers, API keys, cookies, and explicit secret values while bounding each captured stream to 16 KiB.
+
+Pinned versions are reviewed in `tests/interop/live/versions.json`:
+
+- Node.js `24.16.0`
+- Python `3.13.14`
+- `@a2a-js/sdk@1.0.0`
+- `a2a-sdk==1.1.2`
+
+Run one ecosystem locally with:
 
 ```bash
-pnpm run interop:lab
+pnpm run interop:live -- --ecosystem javascript
+A2A_INTEROP_PYTHON=/path/to/python pnpm run interop:live -- --ecosystem python
 ```
 
-For CI-style validation without writing a report artifact, run:
+Run manifest-only validation with `pnpm run interop:live:check`.
 
-```bash
-pnpm run interop:check
-```
+## CI evidence and reliability policy
 
-## Matrix
+`.github/workflows/interop-lab.yml` runs nightly, manually, and for relevant pull requests. It exposes distinct checks named `Interop Lab / official SDK fixture replay`, `Interop Lab / live official JavaScript SDK`, and `Interop Lab / live official Python SDK`. Each live job uploads its own JSON report and redacted failure diagnostics with `if: always()`.
 
-The matrix lives in `tests/interop/matrix.json` and currently tracks the `official-a2a-v1.0` profile.
-
-| Client                   | Server                   |
-| ------------------------ | ------------------------ |
-| `official-js-client`     | `a2amesh-server`         |
-| `a2amesh-client`         | `official-js-server`     |
-| `official-python-client` | `a2amesh-server`         |
-| `a2amesh-client`         | `official-python-server` |
-| `a2amesh-registry`       | `official-js-server`     |
-| `a2amesh-registry`       | `official-python-server` |
-
-Required capabilities include message send, message stream, task lifecycle, cancellation, callback configuration, challenge handling, version negotiation, extension negotiation, and registry discovery.
-
-## Golden traces
-
-Golden traces live under `tests/interop/golden-traces/`. The runner validates that each scenario:
-
-1. references known participants;
-2. covers required matrix capabilities;
-3. has a trace matching the scenario id, client, server, and profile;
-4. includes protocol events expected for each declared capability.
-
-The default run writes `artifacts/interop-lab/report.json`. The report is ignored by git and uploaded by the nightly workflow.
-
-## Nightly workflow
-
-`.github/workflows/interop-lab.yml` runs the matrix on a nightly schedule, on manual dispatch, and on pull requests that change the lab, docs, or workflow. The current job is fixture based. Future live SDK containers should feed traces into the same matrix instead of creating a separate compatibility surface.
-
-## Adding live SDK containers
-
-When official SDK container fixtures are added, keep the contract stable:
-
-1. write the observed trace to the matching scenario artifact;
-2. keep `tests/interop/matrix.json` as the source of truth for participants and capabilities;
-3. run `pnpm run interop:lab` after trace generation;
-4. fail CI when a required pair or capability is not covered.
+The live lane becomes part of the stable required-summary policy only after seven consecutive scheduled runs succeed with no infrastructure-only retry and the same pinned manifest. Any SDK, runtime, protocol, orchestration, or timeout change resets that observation window. Until then, fixture replay remains the deterministic required regression layer and the live jobs provide release-readiness evidence.
