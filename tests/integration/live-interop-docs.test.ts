@@ -36,6 +36,9 @@ describe('live SDK interoperability workflow and documentation', () => {
     expect(workflow).toContain("A2A_INTEROP_JAVASCRIPT: '1'");
     expect(workflow).toContain('pnpm exec vitest run --project integration');
     expect(workflow).toContain('tests/integration/live-interop-javascript.test.ts');
+    expect(workflow.indexOf('name: Run focused live JavaScript integration tests')).toBeGreaterThan(
+      workflow.indexOf('name: Run live JavaScript interoperability directions'),
+    );
     expect(javascriptIntegration).toContain(
       "process.env['A2A_INTEROP_JAVASCRIPT'] === '1' ? describe : describe.skip",
     );
