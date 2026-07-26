@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, resolve } from 'node:path';
 
@@ -30,6 +30,11 @@ function readRuntimeValue(runtimeVersions, key) {
     throw new Error(`tools/runtime-versions.json must define ${key}`);
   }
   return value;
+}
+
+function writeFileIfChanged(path, content) {
+  if (existsSync(path) && readFileSync(path, 'utf8') === content) return;
+  writeFileSync(path, content);
 }
 
 function quoteTsString(value) {
@@ -97,11 +102,11 @@ function generateCliGeneratedModules() {
   const generatedDir = resolve('src/generated');
   const escapedVersion = version.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   mkdirSync(generatedDir, { recursive: true });
-  writeFileSync(
+  writeFileIfChanged(
     resolve(generatedDir, 'version.ts'),
     `// This file is written by scripts/build-tsc-package.mjs from packages/cli/package.json.\nexport const generatedCliVersion = '${escapedVersion}';\n`,
   );
-  writeFileSync(
+  writeFileIfChanged(
     resolve(generatedDir, 'scaffold-template.ts'),
     renderScaffoldTemplateConfig(scaffoldTemplateConfig),
   );
@@ -109,8 +114,16 @@ function generateCliGeneratedModules() {
 
 generateCliGeneratedModules();
 if (!process.argv.includes('--generated-only')) {
-  rmSync('dist', { recursive: true, force: true });
-  execFileSync(process.execPath, [require.resolve('typescript/bin/tsc'), '-b', '--force'], {
+  const compiler = require.resolve('typescript/bin/tsc');
+  const clean = process.argv.includes('--clean');
+  const force = clean || process.argv.includes('--force') || !existsSync('dist');
+
+  if (clean) {
+    execFileSync(process.execPath, [compiler, '-b', '--clean'], { stdio: 'inherit' });
+    rmSync('dist', { recursive: true, force: true });
+  }
+
+  execFileSync(process.execPath, [compiler, '-b', ...(force ? ['--force'] : [])], {
     stdio: 'inherit',
   });
 }

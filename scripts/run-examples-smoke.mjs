@@ -1,6 +1,5 @@
 import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { runPnpmSync } from './check-utils.mjs';
 
 const examples = [
   'authenticated-server',
@@ -41,10 +40,6 @@ if (failures.length > 0) {
   }
   process.exit(1);
 }
-
-runPnpmSync(['run', 'build'], {
-  stdio: 'inherit',
-});
 
 for (const example of examples) {
   const directory = `examples/${example}`;

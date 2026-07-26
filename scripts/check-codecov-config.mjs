@@ -77,7 +77,10 @@ function validateCodecovActionUsage(ciWorkflow, failures) {
 }
 
 function validateCodecovReportGeneration(ciWorkflow, failures) {
-  if (!ciWorkflow.includes('pnpm run test:coverage:ci')) {
+  if (
+    !ciWorkflow.includes('pnpm run test:coverage:ci') &&
+    !ciWorkflow.includes('pnpm run test:coverage:ci:no-build')
+  ) {
     failures.push('CI must generate coverage and JUnit results in one unit-test execution');
   }
 
@@ -171,7 +174,11 @@ function validatePackage(packageJson, failures) {
   if (pkg.devDependencies?.['@codecov/vite-plugin']) {
     failures.push('The Vite 4-6 Codecov plugin must not be used with Vite 8');
   }
-  const coverageScript = pkg.scripts?.['test:coverage:ci'] ?? '';
+  const scripts = pkg.scripts ?? {};
+  const coverageWrapper = scripts['test:coverage:ci'] ?? '';
+  const coverageScript = coverageWrapper.includes('pnpm run test:coverage:ci:no-build')
+    ? (scripts['test:coverage:ci:no-build'] ?? '')
+    : coverageWrapper;
   if (
     !coverageScript.includes('--reporter=junit') ||
     !coverageScript.includes('--outputFile.junit=./test-results/unit.junit.xml')
