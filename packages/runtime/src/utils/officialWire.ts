@@ -1,4 +1,4 @@
-import type { Artifact, Message, MessageSendParams, Task, TaskState } from '../types/task.js';
+import type { Artifact, Message, Task, TaskState } from '../types/task.js';
 import { normalizeMessageRole, normalizeTaskState } from './compat.js';
 
 type JsonRecord = Record<string, unknown>;
@@ -79,15 +79,33 @@ export function normalizeOfficialPartInput(value: unknown): unknown {
   return value;
 }
 
+function isOfficialPartInput(value: unknown): boolean {
+  if (!isRecord(value) || typeof value['type'] === 'string') return false;
+  return (
+    isRecord(value['content']) ||
+    typeof value['text'] === 'string' ||
+    typeof value['url'] === 'string' ||
+    typeof value['raw'] === 'string' ||
+    isRecord(value['data'])
+  );
+}
+
 export function normalizeOfficialMessageInput(value: unknown): unknown {
   if (!isRecord(value)) return value;
-  const parts = Array.isArray(value['parts'])
-    ? value['parts'].map((part) => normalizeOfficialPartInput(part))
+  const sourceParts = Array.isArray(value['parts']) ? value['parts'] : undefined;
+  const parts = sourceParts
+    ? sourceParts.map((part) => normalizeOfficialPartInput(part))
     : value['parts'];
+  const timestamp = nonEmptyString(value['timestamp']);
+  const needsReceiveTimestamp = sourceParts?.some((part) => isOfficialPartInput(part)) ?? false;
   return {
     ...value,
     parts,
-    timestamp: nonEmptyString(value['timestamp']) ?? new Date().toISOString(),
+    ...(timestamp
+      ? { timestamp }
+      : needsReceiveTimestamp
+        ? { timestamp: new Date().toISOString() }
+        : {}),
   };
 }
 
@@ -127,7 +145,7 @@ function toOfficialPartJson(part: InternalPart): JsonRecord {
   };
 }
 
-export function toOfficialMessageJson(message: Message): JsonRecord {
+function toOfficialMessageJson(message: Message): JsonRecord {
   return {
     messageId: message.messageId,
     role: normalizeMessageRole(message.role),
@@ -137,7 +155,7 @@ export function toOfficialMessageJson(message: Message): JsonRecord {
   };
 }
 
-export function toOfficialArtifactJson(artifact: Artifact): JsonRecord {
+function toOfficialArtifactJson(artifact: Artifact): JsonRecord {
   return {
     artifactId: artifact.artifactId,
     ...(artifact.name ? { name: artifact.name } : {}),
@@ -167,7 +185,7 @@ export function toOfficialSendMessageResponse(result: Task | Message): JsonRecor
     : { message: toOfficialMessageJson(result) };
 }
 
-export function fromOfficialMessageJson(value: unknown): Message {
+function fromOfficialMessageJson(value: unknown): Message {
   if (!isRecord(value)) throw new TypeError('Official message must be an object');
   const normalized = normalizeOfficialMessageInput(value);
   if (!isRecord(normalized) || !Array.isArray(normalized['parts'])) {
@@ -183,7 +201,7 @@ export function fromOfficialMessageJson(value: unknown): Message {
   };
 }
 
-export function fromOfficialArtifactJson(value: unknown, index = 0): Artifact {
+function fromOfficialArtifactJson(value: unknown, index = 0): Artifact {
   if (!isRecord(value) || !Array.isArray(value['parts'])) {
     throw new TypeError('Official artifact must include parts');
   }
@@ -206,7 +224,7 @@ function fromOfficialStatus(value: unknown): Task['status'] {
   };
 }
 
-export function fromOfficialTaskJson(value: unknown): Task {
+function fromOfficialTaskJson(value: unknown): Task {
   if (!isRecord(value)) throw new TypeError('Official task must be an object');
   const contextId = nonEmptyString(value['contextId']);
   return {
@@ -310,10 +328,6 @@ const OFFICIAL_TO_MESH_RPC_METHOD = Object.fromEntries(
   Object.entries(MESH_TO_OFFICIAL_RPC_METHOD).map(([mesh, official]) => [official, mesh]),
 ) as Record<string, string>;
 
-export function isOfficialV1RpcMethod(method: string): boolean {
-  return method in OFFICIAL_TO_MESH_RPC_METHOD;
-}
-
 function toOfficialSendMessageRequest(params: unknown): JsonRecord {
   const normalized = normalizeOfficialMessageSendParamsInput(params);
   if (!isRecord(normalized) || !isRecord(normalized['message'])) {
@@ -409,8 +423,4 @@ export function toOfficialV1RpcResult(originalMethod: string, result: unknown): 
 
 export function toOfficialV1StreamResult(task: Task): JsonRecord {
   return { task: toOfficialTaskJson(task) };
-}
-
-export function normalizeOfficialSendParams(value: unknown): MessageSendParams {
-  return normalizeOfficialMessageSendParamsInput(value) as MessageSendParams;
 }
