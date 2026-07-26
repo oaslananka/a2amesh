@@ -13,7 +13,13 @@
     "scripts/report-coverage.d.mts",
     "scripts/run-pnpm.d.mts",
     "scripts/sync-security-policy.d.mts",
-    "tests/performance/k6/*.js"
+    "tests/performance/k6/*.js",
+    "scripts/live-interop/*.d.mts",
+    "tests/integration/fixtures/live-interop-child.mjs",
+    "tests/interop/live/javascript/client.mjs",
+    "tests/interop/live/javascript/server.mjs",
+    "tests/interop/live/mesh/client.mjs",
+    "tests/interop/live/mesh/server.mjs"
   ],
   "ignoreDependencies": [
     "search-insights",
@@ -28,7 +34,7 @@
   "ignoreBinaries": ["gh", "playwright", "view", "where.exe", "semgrep", "pre-commit"],
   "workspaces": {
     "packages/registry": {
-      "entry": ["src/index.ts", "src/bin/start.ts"]
+      "entry": ["src/bin/start.ts"]
     }
   }
 }

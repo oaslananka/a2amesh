@@ -6,6 +6,7 @@ import { type JsonRpcRequest, type JsonRpcResponse } from '../../types/jsonrpc.j
 import type { RequestContext } from '../../types/auth.js';
 import type { MessageSendParams, Task } from '../../types/task.js';
 import { logger } from '../../utils/logger.js';
+import { toOfficialV1StreamResult, type A2AJsonRpcDialect } from '../../utils/officialWire.js';
 import { validateMessageSendParams } from '../../utils/schema-validator.js';
 import type { IdempotencyStoredResult, IdempotencyStore } from '../IdempotencyStore.js';
 import type { SSEStreamer } from '../SSEStreamer.js';
@@ -165,11 +166,19 @@ export async function handleStreamingRpc(
   res: Response,
   idempotency: IdempotencyResolution | undefined,
   deps: StreamingRpcDependencies,
+  responseDialect: A2AJsonRpcDialect = 'mesh',
 ): Promise<void> {
   const responseId = rpcReq.id ?? null;
   const replay = idempotency?.replay;
   if (idempotency && replay) {
-    writeStreamingReplay(rpcReq, context, res, { ...idempotency, replay }, deps.runtimeMetrics);
+    writeStreamingReplay(
+      rpcReq,
+      context,
+      res,
+      { ...idempotency, replay },
+      deps.runtimeMetrics,
+      responseDialect,
+    );
     return;
   }
 
@@ -232,9 +241,9 @@ export async function handleStreamingRpc(
     if (closed) {
       return;
     }
-    const response: JsonRpcResponse<Task> = {
+    const response: JsonRpcResponse<unknown> = {
       jsonrpc: '2.0',
-      result: nextTask,
+      result: responseDialect === 'official-v1' ? toOfficialV1StreamResult(nextTask) : nextTask,
       id: responseId,
     };
     try {
@@ -265,6 +274,7 @@ function writeStreamingReplay(
   res: Response,
   idempotency: IdempotencyResolution & { replay: IdempotencyStoredResult },
   runtimeMetrics: RuntimeMetrics,
+  responseDialect: A2AJsonRpcDialect,
 ): void {
   initSseResponse(context.req, res, runtimeMetrics);
 
@@ -277,7 +287,13 @@ function writeStreamingReplay(
         }
       : {
           jsonrpc: '2.0',
-          result: decorateIdempotentResult(idempotency.replay.value, idempotency, true),
+          result:
+            responseDialect === 'official-v1' &&
+            idempotency.replay.value &&
+            typeof idempotency.replay.value === 'object' &&
+            'status' in idempotency.replay.value
+              ? toOfficialV1StreamResult(idempotency.replay.value as Task)
+              : decorateIdempotentResult(idempotency.replay.value, idempotency, true),
           id: rpcReq.id ?? null,
         };
 

@@ -24,6 +24,11 @@ import type {
   Task,
 } from '../../types/task.js';
 import { normalizeMessage } from '../../utils/compat.js';
+import {
+  normalizeOfficialV1RpcRequest,
+  toOfficialV1RpcResult,
+  type A2AJsonRpcDialect,
+} from '../../utils/officialWire.js';
 import { logger } from '../../utils/logger.js';
 import {
   PushNotificationConfigSchema,
@@ -60,6 +65,7 @@ export type HandleStreamingRpc = (
   context: RpcContext,
   res: Response,
   idempotency?: IdempotencyResolution,
+  responseDialect?: A2AJsonRpcDialect,
 ) => Promise<void>;
 
 type NormalizePushNotificationConfig = (
@@ -126,7 +132,20 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
         throw new JsonRpcError(ErrorCodes.InvalidRequest, 'Batch requests are not supported');
       }
 
-      const rpcReq = validateJsonRpcRequest(req.body);
+      const receivedRpcReq = validateJsonRpcRequest(req.body);
+      const normalizedRpcReq = normalizeOfficialV1RpcRequest(
+        receivedRpcReq.method,
+        receivedRpcReq.params,
+      );
+      const normalizedParams = normalizedRpcReq.params as JsonRpcRequest['params'];
+      const rpcReq: JsonRpcRequest = {
+        ...receivedRpcReq,
+        method: normalizedRpcReq.method,
+        ...(normalizedParams !== undefined ? { params: normalizedParams } : {}),
+      };
+      const responseDialect: A2AJsonRpcDialect = normalizedRpcReq.officialV1
+        ? 'official-v1'
+        : 'mesh';
       let requestContext = getRequestContext(req);
       if (deps.authMiddleware) {
         try {
@@ -159,6 +178,7 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
           { req, requestContext },
           res,
           idempotency ?? undefined,
+          responseDialect,
         );
         return;
       }
@@ -185,7 +205,11 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
             deps.idempotencyTtlMs,
           );
         }
-        res.json(createJsonRpcSuccessResponse(responseResult, rpcReq.id ?? null));
+        const wireResult =
+          responseDialect === 'official-v1'
+            ? toOfficialV1RpcResult(receivedRpcReq.method, responseResult)
+            : responseResult;
+        res.json(createJsonRpcSuccessResponse(wireResult, rpcReq.id ?? null));
       } finally {
         lease?.stop();
       }

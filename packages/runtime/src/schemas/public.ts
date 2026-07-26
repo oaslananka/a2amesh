@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { normalizeMessageRole } from '../utils/compat.js';
+import {
+  normalizeOfficialMessageInput,
+  normalizeOfficialMessageSendParamsInput,
+  normalizeOfficialPartInput,
+} from '../utils/officialWire.js';
 
 const MetadataSchema = z.record(z.string(), z.unknown());
 const SecurityRequirementSchema = z.record(z.string(), z.array(z.string()));
@@ -141,11 +146,13 @@ export const DataPartSchema = z.object({
   data: MetadataSchema,
 });
 
-export const PartSchema = z.discriminatedUnion('type', [
+const InternalPartSchema = z.discriminatedUnion('type', [
   TextPartSchema,
   FilePartSchema,
   DataPartSchema,
 ]);
+
+export const PartSchema = z.preprocess(normalizeOfficialPartInput, InternalPartSchema);
 
 export const MessageRoleSchema = z.preprocess(
   (value) => {
@@ -161,7 +168,7 @@ export const MessageRoleSchema = z.preprocess(
   z.enum(['ROLE_USER', 'ROLE_AGENT']),
 );
 
-export const MessageSchema = z.object({
+const InternalMessageSchema = z.object({
   kind: z.literal('message').optional(),
   role: MessageRoleSchema,
   parts: z.array(PartSchema),
@@ -169,6 +176,8 @@ export const MessageSchema = z.object({
   timestamp: IsoDateTimeSchema,
   contextId: z.string().optional(),
 });
+
+export const MessageSchema = z.preprocess(normalizeOfficialMessageInput, InternalMessageSchema);
 
 export const PushNotificationConfigSchema = z.object({
   id: z.string().optional(),
@@ -196,13 +205,18 @@ export const MessageRequestConfigurationSchema = z.object({
   extensions: z.array(A2AExtensionSchema).optional(),
 });
 
-export const MessageSendParamsSchema = z.object({
+const InternalMessageSendParamsSchema = z.object({
   message: MessageSchema,
   taskId: z.string().optional(),
   sessionId: z.string().optional(),
   contextId: z.string().optional(),
   configuration: MessageRequestConfigurationSchema.optional(),
 });
+
+export const MessageSendParamsSchema = z.preprocess(
+  normalizeOfficialMessageSendParamsInput,
+  InternalMessageSendParamsSchema,
+);
 
 export const ArtifactSchema = z.object({
   artifactId: z.string(),

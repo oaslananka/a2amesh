@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "2026-07-23",
+  "protocolVersion": "1.0",
+  "nodeVersion": "24.16.0",
+  "pythonVersion": "3.13.14",
+  "javascript": {
+    "package": "@a2a-js/sdk",
+    "version": "1.0.0"
+  },
+  "python": {
+    "package": "a2a-sdk",
+    "version": "1.1.2"
+  }
+}

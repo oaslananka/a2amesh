@@ -4,7 +4,8 @@ import type { RuntimeMetrics } from '../../telemetry/index.js';
 import type { AgentCard } from '../../types/agent-card.js';
 import type { RequestContext } from '../../types/auth.js';
 import { ErrorCodes, JsonRpcError, type JsonRpcRequest } from '../../types/jsonrpc.js';
-import type { Task } from '../../types/task.js';
+import type { Message, Task } from '../../types/task.js';
+import { toOfficialSendMessageResponse, toOfficialTaskJson } from '../../utils/officialWire.js';
 import type { IdempotencyStore } from '../IdempotencyStore.js';
 import type { SSEStreamer } from '../SSEStreamer.js';
 import type { TaskManager } from '../TaskManager.js';
@@ -327,10 +328,43 @@ async function handleRestRpc(
   try {
     const rpcReq: JsonRpcRequest = { jsonrpc: '2.0', id: null, method, params };
     const result = await deps.handleRpc(rpcReq, { req, requestContext });
-    res.type(pv.A2A_REST_MEDIA_TYPE).json(result);
+    res.type(pv.A2A_REST_MEDIA_TYPE).json(serializeRestResult(req, method, result));
   } catch (error) {
     writeRestError(res, error);
   }
+}
+
+function wantsOfficialA2AJson(req: Request): boolean {
+  return (req.get('accept') ?? '')
+    .split(',')
+    .some((value) => value.trim().split(';', 1)[0] === pv.A2A_REST_MEDIA_TYPE);
+}
+
+function isTaskResult(value: unknown): value is Task {
+  return Boolean(
+    value && typeof value === 'object' && 'id' in value && 'status' in value && 'history' in value,
+  );
+}
+
+function isMessageResult(value: unknown): value is Message {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    'messageId' in value &&
+    'role' in value &&
+    'parts' in value,
+  );
+}
+
+function serializeRestResult(req: Request, method: string, result: unknown): unknown {
+  if (!wantsOfficialA2AJson(req)) return result;
+  if (method === 'message/send' && (isTaskResult(result) || isMessageResult(result))) {
+    return toOfficialSendMessageResponse(result);
+  }
+  if ((method === 'tasks/get' || method === 'tasks/cancel') && isTaskResult(result)) {
+    return toOfficialTaskJson(result);
+  }
+  return result;
 }
 
 async function handleRestStream(
