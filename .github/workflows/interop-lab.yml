@@ -103,7 +103,7 @@ jobs:
       - name: Install pinned official Python SDK harness
         run: |
           python -m venv .interop-python
-          .interop-python/bin/python -m pip install --disable-pip-version-check --requirement tests/interop/live/python/requirements.txt
+          .interop-python/bin/python -m pip install --disable-pip-version-check --require-hashes --requirement tests/interop/live/python/requirements.txt
       - name: Run live Python interoperability directions
         env:
           A2A_INTEROP_PYTHON: ${{ github.workspace }}/.interop-python/bin/python

@@ -28,7 +28,6 @@ export interface LiveInteropScenarioReport {
   scenarios: LiveInteropScenarioResult[];
 }
 
-export const LIVE_INTEROP_SCENARIOS: readonly LiveInteropScenarioDefinition[];
 export function parseLiveInteropArgs(argv: string[]): LiveInteropRunnerOptions;
 export function selectLiveInteropScenarios(
   ecosystem: LiveInteropEcosystem,

@@ -87,6 +87,13 @@ describe('live interop process supervisor', () => {
     await expect(participant.stop()).resolves.toBeUndefined();
   });
 
+  it('keeps redaction fixture data synthetic instead of environment-derived', async () => {
+    const source = await readFile(fixture, 'utf8');
+
+    expect(source).not.toContain('process.env');
+    expect(source).toContain('live-interop-secret-value');
+  });
+
   it('bounds captured output and redacts credentials', async () => {
     const secret = 'live-interop-secret-value';
     const participant = startParticipant({
@@ -94,7 +101,6 @@ describe('live interop process supervisor', () => {
       command: process.execPath,
       args: [fixture, 'secret-output'],
       cwd: root,
-      env: { LIVE_INTEROP_TEST_SECRET: secret },
       secrets: [secret],
       startupTimeoutMs: 2_000,
     });

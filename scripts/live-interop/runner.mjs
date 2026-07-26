@@ -1,6 +1,6 @@
 import { redactText } from './report.mjs';
 
-export const LIVE_INTEROP_SCENARIOS = Object.freeze([
+const LIVE_INTEROP_SCENARIOS = Object.freeze([
   {
     id: 'official-javascript-client-to-mesh',
     ecosystem: 'javascript',

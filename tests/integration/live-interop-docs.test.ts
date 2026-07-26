@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 const workflow = readFileSync('.github/workflows/interop-lab.yml', 'utf8');
 const officialDocs = readFileSync('docs/interop/official-sdks.md', 'utf8');
 const compatibility = readFileSync('docs/compatibility.md', 'utf8');
+const pythonRequirements = readFileSync('tests/interop/live/python/requirements.txt', 'utf8');
 const manifest = JSON.parse(readFileSync('tests/interop/live/versions.json', 'utf8')) as {
   nodeVersion: string;
   pythonVersion: string;
@@ -29,13 +30,14 @@ describe('live SDK interoperability workflow and documentation', () => {
     expect(workflow).toContain(`python-version: \${{ env.PYTHON_VERSION }}`);
     expect(workflow).toContain('npm ci --ignore-scripts');
     expect(workflow).toContain(
-      'pip install --disable-pip-version-check --requirement tests/interop/live/python/requirements.txt',
+      'pip install --disable-pip-version-check --require-hashes --requirement tests/interop/live/python/requirements.txt',
     );
     expect(officialDocs).toContain(
       `\`${manifest.javascript.package}@${manifest.javascript.version}\``,
     );
     expect(officialDocs).toContain(`\`${manifest.python.package}==${manifest.python.version}\``);
     expect(compatibility).toContain(`\`${manifest.protocolVersion}\``);
+    expect(pythonRequirements).toContain('--hash=sha256:');
   });
 
   it('uploads isolated reports and diagnostics even after failures', () => {

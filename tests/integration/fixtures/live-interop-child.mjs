@@ -3,7 +3,7 @@
 const mode = process.argv[2] ?? 'ready';
 
 if (mode === 'ready') {
-  console.log(JSON.stringify({ type: 'ready', url: 'http://127.0.0.1:43123' }));
+  process.stdout.write(`${JSON.stringify({ type: 'ready', url: 'http://127.0.0.1:43123' })}\n`);
   process.on('SIGTERM', () => process.exit(0));
   setInterval(() => undefined, 1000);
 } else if (mode === 'hang') {
@@ -13,7 +13,7 @@ if (mode === 'ready') {
   console.error('participant failed before readiness');
   process.exit(7);
 } else if (mode === 'secret-output') {
-  const sensitiveValue = process.env['LIVE_INTEROP_TEST_SECRET'] ?? 'missing-value';
+  const sensitiveValue = 'live-interop-secret-value';
   console.error('x'.repeat(20 * 1024));
   console.error(`Authorization: Bearer ${sensitiveValue}`);
   console.error(`x-api-key: ${sensitiveValue}`);

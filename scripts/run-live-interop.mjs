@@ -270,13 +270,14 @@ async function checkLiveInteropContract(manifest, scenarios) {
   ) {
     errors.push('JavaScript package-lock.json does not match the live manifest');
   }
+  const lockedPythonRequirements = requirements
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/\s*\\$/, ''));
   if (
-    !requirements
-      .split(/\r?\n/)
-      .includes(`${manifest.python.package}==${manifest.python.version}`) &&
-    !requirements
-      .split(/\r?\n/)
-      .includes(`${manifest.python.package}[http-server]==${manifest.python.version}`)
+    !lockedPythonRequirements.includes(`${manifest.python.package}==${manifest.python.version}`) &&
+    !lockedPythonRequirements.includes(
+      `${manifest.python.package}[http-server]==${manifest.python.version}`,
+    )
   ) {
     errors.push('Python requirements do not match the live manifest');
   }

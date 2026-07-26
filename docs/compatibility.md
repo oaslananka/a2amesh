@@ -70,7 +70,7 @@ local, version-pinned official SDK processes against A2A Mesh.
 
 The reviewed source of truth is `tests/interop/live/versions.json`. The live runner also verifies a
 deliberately incompatible version and emits bounded, redacted diagnostics. See
-[`docs/interop/official-sdks.md`](interop/official-sdks.md) for execution and reliability policy.
+[Official SDK interoperability](https://oaslananka.github.io/a2amesh/interop/official-sdks) for execution and reliability policy.
 
 ## A2A Compatibility Fixture Coverage
 

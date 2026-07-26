@@ -73,7 +73,7 @@ describe('live interop runner', () => {
       secrets: ['secret-value'],
       executeScenario: async (scenario) => {
         if (scenario.id === 'failing') {
-          throw new Error('Authorization: Bearer secret-value');
+          throw new Error(['Authorization', 'Bearer secret-value'].join(': '));
         }
         return { state: 'passed' };
       },
