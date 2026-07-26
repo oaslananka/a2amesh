@@ -26,7 +26,7 @@ registry:
   revisionHistoryLimit: 3
   image:
     repository: ghcr.io/oaslananka/a2amesh-registry
-    tag: '0.11.0-alpha.1'
+    tag: '0.13.0-alpha.1'
     digest: ''
     pullPolicy: IfNotPresent
   service:
@@ -146,7 +146,7 @@ runtime:
   revisionHistoryLimit: 3
   image:
     repository: ghcr.io/oaslananka/a2amesh-runtime
-    tag: '0.11.0-alpha.1'
+    tag: '0.13.0-alpha.1'
     digest: ''
     pullPolicy: IfNotPresent
   service:

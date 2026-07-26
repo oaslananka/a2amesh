@@ -28,14 +28,14 @@ overrides:
   hono: 4.12.31
   fast-uri: 3.1.4
   linkify-it: 5.0.2
-  brace-expansion: 5.0.7
+  brace-expansion: 5.0.8
   body-parser: 2.3.0
   js-yaml: 4.3.0
   'tsx>esbuild': 0.28.1
   form-data: 4.0.6
   langsmith: 0.7.10
   markdown-it: 14.2.0
-  postcss: 8.5.15
+  postcss: 8.5.18
   protobufjs: 7.6.5
   qs: 6.15.2
   smol-toml: 1.6.1
@@ -53,7 +53,7 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - tsx@4.22.3
   - hono@4.12.21
-  - postcss@8.5.15
+  - postcss@8.5.18
   - protobufjs@7.6.0
   - protobufjs@7.6.3
   - '@opentelemetry/core@2.8.0'
@@ -64,7 +64,7 @@ minimumReleaseAgeExclude:
   - fast-uri@3.1.4
   - linkify-it@5.0.2
   - markdown-it@14.2.0
-  - brace-expansion@5.0.7
+  - brace-expansion@5.0.8
   - js-yaml@4.3.0
   - form-data@4.0.6
   - undici@7.28.0
