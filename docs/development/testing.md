@@ -2,6 +2,7 @@
 
 Use the narrowest relevant command first, then run `pnpm run verify` before pushing. Unit,
 integration, conformance, package, documentation, security, and coverage checks form the local gate.
+Clean, warm, and changed-scope behavior is documented in [verification performance](./verification-performance.md).
 
 ## Coverage policy
 

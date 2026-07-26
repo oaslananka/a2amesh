@@ -75,6 +75,7 @@ jobs:
 
   typecheck:
     name: CI / typecheck
+    needs: [build]
     permissions:
       contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
@@ -87,11 +88,14 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: pnpm run build
-      - run: pnpm run typecheck
+      - uses: ./.github/actions/restore-workspace-build
+        with:
+          artifact-name: workspace-build-${{ github.sha }}-${{ github.run_attempt }}
+      - run: pnpm run typecheck:no-build
 
   unit:
     name: CI / unit
+    needs: [build]
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -113,7 +117,10 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: pnpm run test:coverage:ci
+      - uses: ./.github/actions/restore-workspace-build
+        with:
+          artifact-name: workspace-build-${{ github.sha }}-${{ github.run_attempt }}
+      - run: pnpm run test:coverage:ci:no-build
       - name: Publish package coverage summary
         if: ${{ !cancelled() }}
         run: cat coverage/package-summary.md >> "$GITHUB_STEP_SUMMARY"
@@ -158,6 +165,7 @@ jobs:
 
   integration:
     name: CI / integration
+    needs: [build]
     permissions:
       contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
@@ -182,10 +190,14 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: pnpm run test:integration
+      - uses: ./.github/actions/restore-workspace-build
+        with:
+          artifact-name: workspace-build-${{ github.sha }}-${{ github.run_attempt }}
+      - run: pnpm run test:integration:no-build
 
   performance-smoke:
     name: CI / performance-smoke
+    needs: [build]
     permissions:
       contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
@@ -198,13 +210,17 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ env.NODE_VERSION }}
+      - uses: ./.github/actions/restore-workspace-build
+        with:
+          artifact-name: workspace-build-${{ github.sha }}-${{ github.run_attempt }}
       - uses: grafana/setup-k6-action@db07bd9765aac508ef18982e52ab937fe633a065 # v1.2.1
         with:
           k6-version: '2.0.0'
-      - run: pnpm run perf:smoke
+      - run: pnpm run perf:smoke:no-build
 
   conformance:
     name: CI / conformance
+    needs: [build]
     permissions:
       contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
@@ -217,10 +233,14 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: pnpm run test:conformance
+      - uses: ./.github/actions/restore-workspace-build
+        with:
+          artifact-name: workspace-build-${{ github.sha }}-${{ github.run_attempt }}
+      - run: pnpm run test:conformance:no-build
 
   schemas:
     name: CI / schemas
+    needs: [build]
     permissions:
       contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
@@ -233,7 +253,10 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: pnpm run schemas:check
+      - uses: ./.github/actions/restore-workspace-build
+        with:
+          artifact-name: workspace-build-${{ github.sha }}-${{ github.run_attempt }}
+      - run: pnpm run schemas:check:no-build
 
   api-surfaces:
     name: CI / api-surfaces
@@ -256,7 +279,7 @@ jobs:
     permissions:
       contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
-    needs: [identity]
+    needs: [identity, build]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -286,7 +309,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - if: steps.changes.outputs.run == 'true'
-        run: pnpm run build
+        uses: ./.github/actions/restore-workspace-build
+        with:
+          artifact-name: workspace-build-${{ github.sha }}-${{ github.run_attempt }}
       - if: steps.changes.outputs.run == 'true'
         run: pnpm run test:mutation
 
@@ -295,7 +320,7 @@ jobs:
     permissions:
       contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
-    needs: [identity]
+    needs: [identity, build]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -305,7 +330,9 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: pnpm run build
+      - uses: ./.github/actions/restore-workspace-build
+        with:
+          artifact-name: workspace-build-${{ github.sha }}-${{ github.run_attempt }}
       - run: pnpm run ui:install:browsers
       - run: pnpm run ui:test:e2e
       - run: pnpm run ui:test:a11y
@@ -332,10 +359,27 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: pnpm run build
+      - run: pnpm run build:clean
+      - run: pnpm run build:manifest
 
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: workspace-build-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            .artifacts/build/manifest.json
+            packages/*/dist/
+            packages/*/tsconfig.tsbuildinfo
+            packages/*/node_modules/.cache/tsconfig.tsbuildinfo
+            apps/*/dist/
+            apps/*/node_modules/.cache/tsconfig.tsbuildinfo
+            examples/*/dist/
+            examples/*/node_modules/.cache/tsconfig.tsbuildinfo
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
   package-dry-run:
     name: CI / package-dry-run
+    needs: [build]
     permissions:
       contents: read
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
@@ -348,7 +392,9 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: pnpm run build
+      - uses: ./.github/actions/restore-workspace-build
+        with:
+          artifact-name: workspace-build-${{ github.sha }}-${{ github.run_attempt }}
       - run: pnpm run pack:dry-run
 
   workspace-graph:

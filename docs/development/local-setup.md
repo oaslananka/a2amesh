@@ -67,6 +67,7 @@ corepack pnpm run verify
 ```
 
 The full verification path is intentionally heavy. It can exceed short interactive tool timeouts because it runs build, typecheck, coverage, integration tests, package checks, docs, security, ops, structure, and garbage-collection checks.
+Use the [verification performance guide](./verification-performance.md) to choose clean, warm, or changed-scope verification and to inspect timing evidence.
 
 ## Troubleshooting
 

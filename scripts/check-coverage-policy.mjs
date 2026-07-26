@@ -87,10 +87,16 @@ function validatePackageScripts(packageJson, failures) {
     }
   }
   for (const script of ['test:coverage', 'test:coverage:ci']) {
-    if (!scripts[script]?.includes('coverage:inventory:check')) {
+    const noBuildScript = `${script}:no-build`;
+    const wrapper = scripts[script] ?? '';
+    const runner = wrapper.includes(`pnpm run ${noBuildScript}`)
+      ? (scripts[noBuildScript] ?? '')
+      : wrapper;
+
+    if (!runner.includes('coverage:inventory:check')) {
       failures.push(`${script} must validate the coverage inventory before execution`);
     }
-    if (!scripts[script]?.includes('run-unit-coverage.mjs')) {
+    if (!runner.includes('run-unit-coverage.mjs')) {
       failures.push(`${script} must use the coverage runner so reports survive threshold failures`);
     }
   }

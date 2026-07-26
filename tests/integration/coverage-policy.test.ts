@@ -28,7 +28,7 @@ function validInput() {
         'test:coverage': 'pnpm run coverage:inventory:check && node scripts/run-unit-coverage.mjs',
         'test:coverage:ci':
           'pnpm run coverage:inventory:check && node scripts/run-unit-coverage.mjs',
-      },
+      } as Record<string, string>,
     },
     ciWorkflow:
       'Publish package coverage summary GITHUB_STEP_SUMMARY Upload package coverage report coverage/package-summary.json coverage/package-summary.md if-no-files-found: error',
@@ -38,6 +38,21 @@ function validInput() {
 describe('coverage inventory policy', () => {
   it('accepts a complete package and artifact contract', () => {
     expect(validateCoveragePolicy(validInput())).toEqual([]);
+  });
+
+  it('accepts self-contained coverage wrappers backed by build-free runners', () => {
+    const input = validInput();
+    input.packageJson.scripts = {
+      ...input.packageJson.scripts,
+      'test:coverage': 'pnpm run build && pnpm run test:coverage:no-build',
+      'test:coverage:no-build':
+        'pnpm run coverage:inventory:check && node scripts/run-unit-coverage.mjs',
+      'test:coverage:ci': 'pnpm run build && pnpm run test:coverage:ci:no-build',
+      'test:coverage:ci:no-build':
+        'pnpm run coverage:inventory:check && node scripts/run-unit-coverage.mjs --reporter=junit',
+    };
+
+    expect(validateCoveragePolicy(input)).toEqual([]);
   });
 
   it('rejects missing, stale, and nonexistent package roots', () => {

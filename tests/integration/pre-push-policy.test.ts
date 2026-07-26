@@ -10,11 +10,12 @@ const scripts = packageJson.scripts;
 
 describe('pre-push policy', () => {
   it('keeps full build and full unit coverage in CI instead of the Git hook', () => {
-    expect(scripts['check:pre-push']).toBe(
+    expect(scripts['check:pre-push']).toBe('pnpm run verify:changed');
+    expect(scripts['verify:changed']).toBe(
       'git diff --check origin/main...HEAD && pnpm run lint && pnpm run typecheck:no-build && pnpm run test:unit:changed',
     );
-    expect(scripts['check:pre-push']).not.toContain('pnpm run typecheck &&');
-    expect(scripts['check:pre-push']).not.toMatch(/pnpm run test:unit(?:\s|$)/);
+    expect(scripts['verify:changed']).not.toContain('pnpm run typecheck &&');
+    expect(scripts['verify:changed']).not.toMatch(/pnpm run test:unit(?:\s|$)/);
   });
 
   it('provides a build-free typecheck command while preserving the full typecheck command', () => {
