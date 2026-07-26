@@ -71,6 +71,12 @@ jobs:
       - name: Install pinned official JavaScript SDK harness
         working-directory: tests/interop/live/javascript
         run: npm ci --ignore-scripts
+      - name: Run focused live JavaScript integration tests
+        env:
+          A2A_INTEROP_JAVASCRIPT: '1'
+        run: >-
+          pnpm exec vitest run --project integration
+          tests/integration/live-interop-javascript.test.ts
       - name: Run live JavaScript interoperability directions
         run: >-
           pnpm run interop:live -- --ecosystem javascript

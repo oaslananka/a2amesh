@@ -62,7 +62,9 @@ afterEach(async () => {
   await Promise.allSettled(participants.splice(0).map((participant) => participant.stop()));
 });
 
-describe('live official JavaScript SDK interoperability', () => {
+const liveDescribe = process.env['A2A_INTEROP_JAVASCRIPT'] === '1' ? describe : describe.skip;
+
+liveDescribe('live official JavaScript SDK interoperability', () => {
   it('runs the official JavaScript client against an authenticated A2A Mesh server', async () => {
     const ready = await startServer('mesh-authenticated', meshServer, ['authenticated'], {
       A2A_INTEROP_API_KEY: 'javascript-live-key',

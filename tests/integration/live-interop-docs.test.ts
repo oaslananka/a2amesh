@@ -5,6 +5,10 @@ const workflow = readFileSync('.github/workflows/interop-lab.yml', 'utf8');
 const officialDocs = readFileSync('docs/interop/official-sdks.md', 'utf8');
 const compatibility = readFileSync('docs/compatibility.md', 'utf8');
 const pythonRequirements = readFileSync('tests/interop/live/python/requirements.txt', 'utf8');
+const javascriptIntegration = readFileSync(
+  'tests/integration/live-interop-javascript.test.ts',
+  'utf8',
+);
 const manifest = JSON.parse(readFileSync('tests/interop/live/versions.json', 'utf8')) as {
   nodeVersion: string;
   pythonVersion: string;
@@ -29,6 +33,12 @@ describe('live SDK interoperability workflow and documentation', () => {
     expect(workflow).toContain(`node-version: \${{ env.NODE_VERSION }}`);
     expect(workflow).toContain(`python-version: \${{ env.PYTHON_VERSION }}`);
     expect(workflow).toContain('npm ci --ignore-scripts');
+    expect(workflow).toContain("A2A_INTEROP_JAVASCRIPT: '1'");
+    expect(workflow).toContain('pnpm exec vitest run --project integration');
+    expect(workflow).toContain('tests/integration/live-interop-javascript.test.ts');
+    expect(javascriptIntegration).toContain(
+      "process.env['A2A_INTEROP_JAVASCRIPT'] === '1' ? describe : describe.skip",
+    );
     expect(workflow).toContain(
       'pip install --disable-pip-version-check --require-hashes --requirement tests/interop/live/python/requirements.txt',
     );
