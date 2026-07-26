@@ -91,6 +91,13 @@ liveDescribe('live official JavaScript SDK interoperability', () => {
       A2A_INTEROP_PORT: '0',
     });
 
+    const cardResponse = await fetch(
+      new URL('/.well-known/agent-card.json', ready['url'] as string),
+    );
+    expect(cardResponse.status).toBe(200);
+    expect(cardResponse.headers.get('x-powered-by')).toBeNull();
+    await cardResponse.body?.cancel();
+
     const result = await runJson(meshClient, ['streaming', ready['url'] as string], root, {
       A2A_INTEROP_RPC_DIALECT: 'official-v1',
     });
@@ -98,7 +105,7 @@ liveDescribe('live official JavaScript SDK interoperability', () => {
       direction: 'a2amesh-client->a2amesh-server',
       protocolVersion: '1.0',
       terminalState: 'COMPLETED',
-      artifactText: 'javascript:hello live stream',
+      artifactText: 'official-js:hello live stream',
     });
     expect(result['states']).toEqual(expect.arrayContaining(['SUBMITTED', 'WORKING', 'COMPLETED']));
   });

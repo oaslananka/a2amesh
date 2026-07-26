@@ -70,7 +70,7 @@ class LiveJavaScriptExecutor {
           description: 'Produced by @a2a-js/sdk live interop server.',
           parts: [
             {
-              content: { $case: 'text', value: `javascript:${messageText(userMessage)}` },
+              content: { $case: 'text', value: `official-js:${messageText(userMessage)}` },
               metadata: undefined,
               filename: '',
               mediaType: 'text/plain',
@@ -147,6 +147,7 @@ const requestHandler = new DefaultRequestHandler(
   new LiveJavaScriptExecutor(),
 );
 const app = express();
+app.disable('x-powered-by');
 app.use(`/${AGENT_CARD_PATH}`, agentCardHandler({ agentCardProvider: requestHandler }));
 app.use(
   '/a2a/jsonrpc',
