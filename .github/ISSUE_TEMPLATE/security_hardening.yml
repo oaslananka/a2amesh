@@ -1,6 +1,6 @@
 name: Security Hardening
 description: Request a defensive improvement that is not a vulnerability report.
-labels: ['security', 'hardening', 'triage']
+labels: ['type:security', 'area:security', 'status:triaged']
 body:
   - type: markdown
     attributes:

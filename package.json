@@ -143,7 +143,11 @@
     "build:manifest:check": "node scripts/build-artifact-manifest.mjs --verify .artifacts/build/manifest.json",
     "verify:budget": "node scripts/run-verification.mjs --enforce-budget",
     "verify:clean:budget": "node scripts/run-verification.mjs --clean --enforce-budget",
-    "examples:smoke:no-build": "node scripts/run-examples-smoke.mjs"
+    "examples:smoke:no-build": "node scripts/run-examples-smoke.mjs",
+    "labels:check": "node scripts/check-labels.mjs",
+    "labels:check-live": "node scripts/sync-github-labels.mjs --check",
+    "labels:preview": "node scripts/sync-github-labels.mjs --dry-run",
+    "labels:apply": "node scripts/sync-github-labels.mjs --apply"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

@@ -34,7 +34,7 @@
   - changed-files:
       - any-glob-to-any-file: 'packages/protocol/**'
 
-'area:apps':
+'area:dx':
   - changed-files:
       - any-glob-to-any-file: 'apps/**'
 
@@ -50,7 +50,7 @@
       - any-glob-to-any-file:
           - '.github/workflows/**'
 
-'area:deployments':
+'area:deployment':
   - changed-files:
       - any-glob-to-any-file:
           - 'deploy/**'
@@ -71,7 +71,7 @@
           - 'package.json'
           - '**/package.json'
 
-'area:tests':
+'area:testing':
   - changed-files:
       - any-glob-to-any-file:
           - 'tests/**'

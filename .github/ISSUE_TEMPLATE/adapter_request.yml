@@ -1,6 +1,6 @@
 name: New Adapter Request
 description: Request support for a new AI framework or provider
-labels: ['adapter', 'enhancement', 'type:adapter']
+labels: ['type:adapter', 'area:dx', 'status:triaged']
 body:
   - type: input
     id: framework
