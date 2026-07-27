@@ -1,6 +1,6 @@
 name: Documentation
 description: Report unclear, stale, or missing documentation.
-labels: ['documentation', 'triage']
+labels: ['type:docs', 'area:docs', 'status:triaged']
 body:
   - type: input
     id: page

@@ -1,6 +1,6 @@
 name: Bug Report
 description: Found something broken? Let us know.
-labels: ['bug', 'triage']
+labels: ['type:bug', 'status:triaged']
 body:
   - type: dropdown
     id: package
