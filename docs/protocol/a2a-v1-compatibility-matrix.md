@@ -1,6 +1,6 @@
 # A2A v1 Compatibility Matrix
 
-Last reviewed: 2026-07-02.
+Last reviewed: 2026-07-27.
 
 This matrix records the repository-backed compatibility status for the Agent2Agent v1 line. A2A Mesh targets the official v1.0 method surface and keeps selected legacy aliases only where they are already covered by tests.
 
@@ -40,6 +40,22 @@ configuration results. SSE version rejection runs in the same suite. WebSocket a
 gRPC parity is limited to the operations each transport declares and is exercised by
 their package tests and the shared transport contract; HTTP-only routes remain
 explicitly `Planned` for those transports.
+
+## Fixture ownership
+
+| Fixture surface                   | Repository evidence                                                         | Profile/classification                                        | Owning area           | Required gate                              |
+| --------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------- | ------------------------------------------ |
+| Version negotiation               | `tests/conformance/fixtures/compatibility/version-negotiation.json`         | Official v1.0 default, legacy `0.3`, experimental v1.2 opt-in | Protocol and runtime  | Conformance plus shared transport contract |
+| Authenticated extended card       | `tests/conformance/fixtures/compatibility/authenticated-extended-card.json` | Canonical official method plus documented legacy alias        | Runtime and security  | Conformance                                |
+| Signed Agent Card trust           | `tests/conformance/fixtures/compatibility/signed-agent-card.json`           | Official v1.0                                                 | Security and interop  | Conformance and schema checks              |
+| Cross-transport version rejection | `tests/transport-contract/transportContract.ts`                             | Shared HTTP/SSE, WebSocket, and gRPC behavior                 | Transport maintainers | Transport contract and package unit tests  |
+
+The compatibility fixtures are offline and checked in. Signed-card evidence contains only public keys,
+compact JWS values, the canonical payload, and its SHA-256 digest. Private keys must never be committed.
+When rotating fixture keys, security reviewers own the trust-failure cases, protocol reviewers own the
+canonical payload and profile classification, and transport maintainers own their contract adapters.
+The detailed fixture maintenance rules live beside the fixtures in
+`tests/conformance/fixtures/compatibility/README.md`.
 
 ## Compatibility policy
 

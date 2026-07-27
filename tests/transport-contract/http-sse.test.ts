@@ -14,6 +14,7 @@ const HTTP_CAPABILITIES: TransportCapabilityMap = {
   health: { supported: true },
   authErrors: { supported: true },
   malformedRequests: { supported: true },
+  versionNegotiation: { supported: true },
 };
 
 class HttpSseContractServer extends A2AServer {
@@ -123,6 +124,23 @@ runTransportContract({
             'x-api-key': 'secret',
           },
           body: JSON.stringify({ jsonrpc: '1.0', id: 'bad', method: 'message/send' }),
+        });
+        return extractFailure((await response.json()) as JsonRpcFailureEnvelope);
+      },
+      async negotiateUnsupportedVersion() {
+        const response = await fetch(`${url}/a2a/jsonrpc`, {
+          method: 'POST',
+          headers: {
+            'A2A-Version': '9.9',
+            'Content-Type': 'application/json',
+            'x-api-key': 'secret',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 'unsupported-version',
+            method: 'tasks/list',
+            params: {},
+          }),
         });
         return extractFailure((await response.json()) as JsonRpcFailureEnvelope);
       },

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "profile": "official-a2a-v1.0",
+  "security": {
+    "header": "x-api-key",
+    "value": "fixture-valid-key"
+  },
+  "methods": [
+    {
+      "id": "canonical-authenticated-card",
+      "method": "agent/getAuthenticatedExtendedCard",
+      "classification": "official"
+    },
+    {
+      "id": "legacy-authenticated-card-alias",
+      "method": "agent/authenticatedExtendedCard",
+      "classification": "legacy-alias"
+    }
+  ],
+  "expectedUnauthorizedCode": -32040,
+  "expectedCard": {
+    "protocolVersion": "1.0",
+    "name": "Fixture Signed Agent",
+    "version": "1.0.0"
+  }
+}

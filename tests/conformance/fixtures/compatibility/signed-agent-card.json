@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "1.0",
+  "profile": "official-a2a-v1.0",
+  "unsignedCard": {
+    "protocolVersion": "1.0",
+    "name": "Fixture Signed Agent",
+    "description": "Deterministic offline Agent Card compatibility fixture",
+    "url": "https://fixture.agent.example/a2a",
+    "version": "1.0.0",
+    "capabilities": {
+      "streaming": true,
+      "pushNotifications": true,
+      "stateTransitionHistory": true,
+      "extendedAgentCard": true
+    },
+    "supportedInterfaces": [
+      {
+        "url": "https://fixture.agent.example/a2a",
+        "protocolBinding": "HTTP+JSON",
+        "protocolVersion": "1.0"
+      }
+    ],
+    "defaultInputModes": ["text/plain"],
+    "defaultOutputModes": ["text/plain"],
+    "signedAt": "2026-07-27T12:00:00.000Z"
+  },
+  "signedCard": {
+    "protocolVersion": "1.0",
+    "name": "Fixture Signed Agent",
+    "description": "Deterministic offline Agent Card compatibility fixture",
+    "url": "https://fixture.agent.example/a2a",
+    "version": "1.0.0",
+    "capabilities": {
+      "streaming": true,
+      "pushNotifications": true,
+      "stateTransitionHistory": true,
+      "extendedAgentCard": true
+    },
+    "supportedInterfaces": [
+      {
+        "url": "https://fixture.agent.example/a2a",
+        "protocolBinding": "HTTP+JSON",
+        "protocolVersion": "1.0"
+      }
+    ],
+    "defaultInputModes": ["text/plain"],
+    "defaultOutputModes": ["text/plain"],
+    "signedAt": "2026-07-27T12:00:00.000Z",
+    "signatures": [
+      {
+        "algorithm": "ES256",
+        "keyId": "fixture-key-2025",
+        "jws": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImZpeHR1cmUta2V5LTIwMjUiLCJ0eXAiOiJhMmEtYWdlbnQtY2FyZCtqd3MifQ.eyJjYXBhYmlsaXRpZXMiOnsiZXh0ZW5kZWRBZ2VudENhcmQiOnRydWUsInB1c2hOb3RpZmljYXRpb25zIjp0cnVlLCJzdGF0ZVRyYW5zaXRpb25IaXN0b3J5Ijp0cnVlLCJzdHJlYW1pbmciOnRydWV9LCJkZWZhdWx0SW5wdXRNb2RlcyI6WyJ0ZXh0L3BsYWluIl0sImRlZmF1bHRPdXRwdXRNb2RlcyI6WyJ0ZXh0L3BsYWluIl0sImRlc2NyaXB0aW9uIjoiRGV0ZXJtaW5pc3RpYyBvZmZsaW5lIEFnZW50IENhcmQgY29tcGF0aWJpbGl0eSBmaXh0dXJlIiwibmFtZSI6IkZpeHR1cmUgU2lnbmVkIEFnZW50IiwicHJvdG9jb2xWZXJzaW9uIjoiMS4wIiwic2lnbmVkQXQiOiIyMDI2LTA3LTI3VDEyOjAwOjAwLjAwMFoiLCJzdXBwb3J0ZWRJbnRlcmZhY2VzIjpbeyJwcm90b2NvbEJpbmRpbmciOiJIVFRQK0pTT04iLCJwcm90b2NvbFZlcnNpb24iOiIxLjAiLCJ1cmwiOiJodHRwczovL2ZpeHR1cmUuYWdlbnQuZXhhbXBsZS9hMmEifV0sInVybCI6Imh0dHBzOi8vZml4dHVyZS5hZ2VudC5leGFtcGxlL2EyYSIsInZlcnNpb24iOiIxLjAuMCJ9.8aKAv_dW2GpIDAGvm_ppZIhGksuKQ1CCSQ6ZjM7d-O58RNIGOpY4j8h5AtnXdCEcvwAUu8fuHcEcHtAbom8KqA"
+      },
+      {
+        "algorithm": "ES256",
+        "keyId": "fixture-key-2026",
+        "jws": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImZpeHR1cmUta2V5LTIwMjYiLCJ0eXAiOiJhMmEtYWdlbnQtY2FyZCtqd3MifQ.eyJjYXBhYmlsaXRpZXMiOnsiZXh0ZW5kZWRBZ2VudENhcmQiOnRydWUsInB1c2hOb3RpZmljYXRpb25zIjp0cnVlLCJzdGF0ZVRyYW5zaXRpb25IaXN0b3J5Ijp0cnVlLCJzdHJlYW1pbmciOnRydWV9LCJkZWZhdWx0SW5wdXRNb2RlcyI6WyJ0ZXh0L3BsYWluIl0sImRlZmF1bHRPdXRwdXRNb2RlcyI6WyJ0ZXh0L3BsYWluIl0sImRlc2NyaXB0aW9uIjoiRGV0ZXJtaW5pc3RpYyBvZmZsaW5lIEFnZW50IENhcmQgY29tcGF0aWJpbGl0eSBmaXh0dXJlIiwibmFtZSI6IkZpeHR1cmUgU2lnbmVkIEFnZW50IiwicHJvdG9jb2xWZXJzaW9uIjoiMS4wIiwic2lnbmVkQXQiOiIyMDI2LTA3LTI3VDEyOjAwOjAwLjAwMFoiLCJzdXBwb3J0ZWRJbnRlcmZhY2VzIjpbeyJwcm90b2NvbEJpbmRpbmciOiJIVFRQK0pTT04iLCJwcm90b2NvbFZlcnNpb24iOiIxLjAiLCJ1cmwiOiJodHRwczovL2ZpeHR1cmUuYWdlbnQuZXhhbXBsZS9hMmEifV0sInVybCI6Imh0dHBzOi8vZml4dHVyZS5hZ2VudC5leGFtcGxlL2EyYSIsInZlcnNpb24iOiIxLjAuMCJ9.fRb234zrb-okagU0f6nK-qlcapiykfHjJgAuLIVEwo9bnNPlE34leTisJsjb0m946X6bu8aBk3B8f11J1pzwBQ"
+      }
+    ]
+  },
+  "canonicalPayload": "{\"capabilities\":{\"extendedAgentCard\":true,\"pushNotifications\":true,\"stateTransitionHistory\":true,\"streaming\":true},\"defaultInputModes\":[\"text/plain\"],\"defaultOutputModes\":[\"text/plain\"],\"description\":\"Deterministic offline Agent Card compatibility fixture\",\"name\":\"Fixture Signed Agent\",\"protocolVersion\":\"1.0\",\"signedAt\":\"2026-07-27T12:00:00.000Z\",\"supportedInterfaces\":[{\"protocolBinding\":\"HTTP+JSON\",\"protocolVersion\":\"1.0\",\"url\":\"https://fixture.agent.example/a2a\"}],\"url\":\"https://fixture.agent.example/a2a\",\"version\":\"1.0.0\"}",
+  "sha256": "094e58a2c045d6216bbd7fe79a7ec7c1e702566a124ffba4dc46ef847c52d75b",
+  "trustedKeys": {
+    "previous": {
+      "keyId": "fixture-key-2025",
+      "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEg/L42YHHwB6wpcrHaBFZo+WOHpOs\nhJafE1BLDR/imuw8TmSPmUdwz3BYQ/8394rwZk3OCaQXrDZenH7YykCcdg==\n-----END PUBLIC KEY-----\n"
+    },
+    "current": {
+      "keyId": "fixture-key-2026",
+      "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEw3I5atEQsiW3tzsdgOWsAOQDBzkE\n1La0hNyXqNP4jCfRYJPVKUDajbwXoyTqznKkRKflaoPSTHmXbr6RnozISg==\n-----END PUBLIC KEY-----\n"
+    },
+    "unknown": {
+      "keyId": "fixture-key-unknown",
+      "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEw3I5atEQsiW3tzsdgOWsAOQDBzkE\n1La0hNyXqNP4jCfRYJPVKUDajbwXoyTqznKkRKflaoPSTHmXbr6RnozISg==\n-----END PUBLIC KEY-----\n"
+    }
+  }
+}
