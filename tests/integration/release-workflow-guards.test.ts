@@ -32,9 +32,19 @@ describe('release workflow guards', () => {
     );
     expect(workflow).toContain('ref: ${{ steps.tag.outputs.tag }}');
     expect(workflow).toContain(
-      'node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode publish --json --tag "${TAG}" --recovery-file "${RUNNER_TEMP}/release-state-guard/.release-recovery.json"',
+      'node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode "${MODE}" --json --tag "${TAG}" --recovery-file "${RUNNER_TEMP}/release-state-guard/.release-recovery.json"',
     );
     expect(workflow).not.toContain('node scripts/release-state.mjs --check');
+  });
+
+  it('requires an explicit asset-retention operation and skips npm publication', async () => {
+    const workflow = await readFile(new URL('.github/workflows/publish.yml', repoRoot), 'utf8');
+
+    expect(workflow).toContain('operation:');
+    expect(workflow).toContain('- retain-assets');
+    expect(workflow).toContain('RETAIN ${TAG}');
+    expect(workflow).toContain('--mode "${MODE}"');
+    expect(workflow).toContain("if: steps.tag.outputs.operation == 'publish'");
   });
 
   it('uploads verified release assets only after npm registry parity passes', async () => {
@@ -57,7 +67,9 @@ describe('release workflow guards', () => {
     const checker = await readFile(new URL('scripts/check-release-config.mjs', repoRoot), 'utf8');
 
     expect(checker).toContain('--mode release-please --json');
-    expect(checker).toContain('--mode publish --json --tag');
+    expect(checker).toContain('--mode "${MODE}" --json --tag');
+    expect(checker).toContain('- retain-assets');
+    expect(checker).toContain('RETAIN ${TAG}');
     expect(checker).toContain("github.ref == 'refs/heads/main'");
     expect(checker).toContain('Stage release-state guard scripts');
     expect(checker).toContain('ref: ${{ steps.tag.outputs.tag }}');

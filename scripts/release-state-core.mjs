@@ -121,6 +121,7 @@ export function evaluateReleaseState(observation) {
       warnings,
       packages,
       publishAllowed: false,
+      retainAssetsAllowed: tagValidation.matches,
     });
   }
 
@@ -427,10 +428,14 @@ function unavailableResult(context, blockers, warnings = []) {
   });
 }
 
-function releaseResult(context, { state, blockers, warnings, packages, publishAllowed }) {
+function releaseResult(
+  context,
+  { state, blockers, warnings, packages, publishAllowed, retainAssetsAllowed = false },
+) {
   const gates = {
     releasePlease: RELEASE_PLEASE_ALLOWED_STATES.has(state),
     publish: Boolean(publishAllowed),
+    retainAssets: Boolean(retainAssetsAllowed),
   };
   return {
     state,
@@ -456,6 +461,9 @@ function nextSafeAction(state, gates, expectedTag, version, supersession) {
     return `Advance Release Please to ${supersession.successorVersion}; do not tag or publish ${version}.`;
   }
   if (gates.publish) return `Dispatch the protected Publish workflow for ${expectedTag}.`;
+  if (gates.retainAssets) {
+    return `The protected workflow may retain verified assets for ${expectedTag}.`;
+  }
   if (gates.releasePlease) {
     return 'Release Please may create or update the next linked-version pull request.';
   }

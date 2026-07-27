@@ -12,6 +12,7 @@ else printHumanSummary(evaluation);
 
 if (options.mode === 'release-please' && !evaluation.gates.releasePlease) process.exitCode = 1;
 if (options.mode === 'publish' && !evaluation.gates.publish) process.exitCode = 1;
+if (options.mode === 'retain-assets' && !evaluation.gates.retainAssets) process.exitCode = 1;
 
 function collectObservation(options) {
   const errors = [];
@@ -349,7 +350,7 @@ function parseArgs(args) {
       options.recoveryFile = arg.slice('--recovery-file='.length);
     } else throw new Error(`Unknown argument: ${arg}`);
   }
-  if (!['report', 'release-please', 'publish'].includes(options.mode)) {
+  if (!['report', 'release-please', 'publish', 'retain-assets'].includes(options.mode)) {
     throw new Error(`Unsupported release-state mode: ${options.mode}`);
   }
   if (!options.recoveryFile) throw new Error('Recovery file path must not be empty.');
@@ -362,7 +363,7 @@ function printHumanSummary(evaluation) {
   console.log(`Canonical tag: ${evaluation.expectedTag ?? '<unknown>'}`);
   console.log(`Expected npm dist-tag: ${evaluation.expectedDistTag ?? '<unknown>'}`);
   console.log(
-    `Gates: release-please=${evaluation.gates.releasePlease ? 'allow' : 'block'}, publish=${evaluation.gates.publish ? 'allow' : 'block'}`,
+    `Gates: release-please=${evaluation.gates.releasePlease ? 'allow' : 'block'}, publish=${evaluation.gates.publish ? 'allow' : 'block'}, retain-assets=${evaluation.gates.retainAssets ? 'allow' : 'block'}`,
   );
   for (const warning of evaluation.warnings) console.log(`Warning: ${warning}`);
   for (const blocker of evaluation.blockers) console.log(`Blocker: ${blocker}`);

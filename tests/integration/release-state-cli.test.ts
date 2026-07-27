@@ -19,7 +19,7 @@ const packageNames = [
 ];
 
 type FixtureOptions = {
-  mode?: 'report' | 'release-please' | 'publish';
+  mode?: 'report' | 'release-please' | 'publish' | 'retain-assets';
   head?: string;
   tagCommit?: string | null;
   tagIsAncestor?: boolean;
@@ -59,7 +59,42 @@ describe.skipIf(process.platform === 'win32')('release-state CLI', () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.json.state).toBe('published');
-    expect(result.json.gates).toEqual({ releasePlease: true, publish: false });
+    expect(result.json.gates).toEqual({ releasePlease: true, publish: false, retainAssets: false });
+  });
+
+  it('permits retain-assets mode for a fully published exact canonical tag with a newer release PR', async () => {
+    const result = await runFixture({
+      mode: 'retain-assets',
+      openReleaseVersion: '0.12.0-alpha.1',
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.json.state).toBe('release-pr-open');
+    expect(result.json.gates.retainAssets).toBe(true);
+  });
+
+  it('blocks retain-assets mode while the prepared version is unpublished', async () => {
+    const result = await runFixture({
+      mode: 'retain-assets',
+      npmPublished: [],
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.json.state).toBe('prepared-unpublished');
+    expect(result.json.gates.retainAssets).toBe(false);
+  });
+
+  it('blocks retain-assets mode from a checkout after the canonical tag', async () => {
+    const result = await runFixture({
+      mode: 'retain-assets',
+      head: 'post-release-commit',
+      tagCommit: 'release-commit',
+      tagIsAncestor: true,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.json.state).toBe('published');
+    expect(result.json.gates.retainAssets).toBe(false);
   });
 
   it('blocks publish mode from a checkout after the canonical tag', async () => {
@@ -127,7 +162,7 @@ describe.skipIf(process.platform === 'win32')('release-state CLI', () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.json.state).toBe('superseded');
-    expect(result.json.gates).toEqual({ releasePlease: true, publish: false });
+    expect(result.json.gates).toEqual({ releasePlease: true, publish: false, retainAssets: false });
   });
 
   it('blocks publish mode when a superseded release is later tagged', async () => {
@@ -286,7 +321,7 @@ async function runFixture(options: FixtureOptions) {
   }
 
   const args = ['--mode', options.mode ?? 'report', '--json'];
-  if (options.mode === 'publish' && fixture.tagCommit) {
+  if ((options.mode === 'publish' || options.mode === 'retain-assets') && fixture.tagCommit) {
     args.push('--tag', '@a2amesh/runtime-v0.11.0-alpha.1');
   }
   try {
