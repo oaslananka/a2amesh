@@ -6,7 +6,7 @@
 
 | Installable release line                         | Status      | Maintenance policy                                                         |
 | ------------------------------------------------ | ----------- | -------------------------------------------------------------------------- |
-| `0.13.0-alpha.1` (`alpha` dist-tag)              | Supported   | Current linked alpha release. Security fixes ship in a new linked release. |
+| `0.14.0-alpha.1` (`alpha` dist-tag)              | Supported   | Current linked alpha release. Security fixes ship in a new linked release. |
 | Earlier prereleases                              | Unsupported | Upgrade to the current linked release; routine backports are not provided. |
 | Unreleased `main` revisions and source snapshots | Best effort | Development revisions are not installable supported releases.              |
 
