@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import fc from 'fast-check';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
@@ -22,6 +23,26 @@ const secretSentinels = [
   'fuzz-client-secret-value',
 ];
 const clientSecretKey = ['client', 'secret'].join('_');
+const JSON_RPC_FUZZ_SEED = 0x0a2a110;
+
+interface MalformedCorpusEntry {
+  name: string;
+  rawBody: string;
+  status: number;
+  code: number;
+  message: string;
+  id: string | number | null;
+  reason: string;
+  secret?: string;
+}
+
+async function loadMalformedCorpus(): Promise<MalformedCorpusEntry[]> {
+  const source = await readFile(
+    new URL('./fixtures/jsonrpc-malformed-corpus.json', import.meta.url),
+    'utf8',
+  );
+  return JSON.parse(source) as MalformedCorpusEntry[];
+}
 
 class JsonRpcFuzzServer extends A2AServer {
   constructor(options: A2AServerOptions = {}) {
@@ -85,6 +106,47 @@ const secretExamples: [unknown][] = secretSentinels.map((value) => [
   },
 ]);
 
+describe('JSON-RPC malformed seed corpus', () => {
+  it('replays committed malformed requests as deterministic bounded protocol errors', async () => {
+    const server = new JsonRpcFuzzServer({ bodyLimit: '64kb' });
+    const corpus = await loadMalformedCorpus();
+
+    expect(corpus.length).toBeGreaterThanOrEqual(8);
+    for (const entry of corpus) {
+      const response = await request(server.getExpressApp())
+        .post('/rpc')
+        .set('Content-Type', 'application/json')
+        .send(entry.rawBody);
+
+      expect(response.status, entry.name).toBe(entry.status);
+      expect(response.body, entry.name).toEqual({
+        jsonrpc: '2.0',
+        error: {
+          code: entry.code,
+          message: entry.message,
+          data: [
+            {
+              '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+              reason: entry.reason,
+              domain: 'a2a-protocol.org',
+              ...(entry.code === ErrorCodes.InvalidRequest &&
+              entry.message === 'Invalid JSON-RPC request'
+                ? { metadata: expect.any(Object) }
+                : {}),
+            },
+          ],
+        },
+        id: entry.id,
+      });
+
+      const serialized = stringifyPayload(response.body);
+      expect(serialized.length, entry.name).toBeLessThan(4096);
+      expect(serialized, entry.name).not.toMatch(/stack|node_modules|SyntaxError|\.ts:/i);
+      if (entry.secret) expect(serialized, entry.name).not.toContain(entry.secret);
+    }
+  });
+});
+
 describe('JSON-RPC fuzz validation', () => {
   it('maps malformed JSON-RPC bodies to bounded JSON-RPC errors without leaking secrets', async () => {
     const stdout = vi.spyOn(process.stdout, 'write').mockReturnValue(true);
@@ -119,6 +181,7 @@ describe('JSON-RPC fuzz validation', () => {
       }),
       {
         numRuns: 75,
+        seed: JSON_RPC_FUZZ_SEED,
         examples: secretExamples,
       },
     );

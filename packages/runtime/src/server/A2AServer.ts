@@ -23,6 +23,8 @@ import type {
   PushNotificationConfig,
   Task,
 } from '../types/task.js';
+import type { JsonRpcInputLimits } from '../utils/json-rpc-input-limits.js';
+import { resolveJsonRpcInputLimits } from '../utils/json-rpc-input-limits.js';
 import { logger } from '../utils/logger.js';
 import { InMemoryIdempotencyStore, type IdempotencyStore } from './IdempotencyStore.js';
 import { PushNotificationService } from './PushNotificationService.js';
@@ -60,6 +62,7 @@ export interface A2AServerOptions {
   allowedOrigins?: string[];
   requireOrigin?: boolean;
   bodyLimit?: string;
+  jsonRpcInputLimits?: Partial<JsonRpcInputLimits>;
   idempotencyStore?: IdempotencyStore;
   idempotencyTtlMs?: number;
   idempotencyLeaseMs?: number;
@@ -137,6 +140,7 @@ export abstract class A2AServer {
       idempotencyStore: this.idempotencyStore,
       idempotencyTtlMs: this.options.idempotencyTtlMs ?? 60 * 60 * 1000,
       idempotencyLeaseMs: this.options.idempotencyLeaseMs ?? 30_000,
+      jsonRpcInputLimits: resolveJsonRpcInputLimits(this.options.jsonRpcInputLimits),
       handleRpc: (rpcReq, context) => this.handleRpc(rpcReq, context),
       handleStreamingRpc: (rpcReq, context, res, idempotency, responseDialect) =>
         this.handleStreamingRpc(rpcReq, context, res, idempotency, responseDialect),

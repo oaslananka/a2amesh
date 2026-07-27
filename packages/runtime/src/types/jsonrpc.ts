@@ -70,27 +70,22 @@ export class JsonRpcError extends Error {
   }
 }
 
-function normalizeErrorData(
+const normalizeErrorData = (
   code: number,
   data: GoogleRpcErrorInfo[] | unknown,
-): GoogleRpcErrorInfo[] | undefined {
-  if (data === undefined) {
-    return undefined;
-  }
-  if (Array.isArray(data) && data.every(isGoogleRpcErrorInfo)) {
-    return data;
-  }
-
-  const metadata = metadataFromUnknown(data);
-  return [
-    {
-      '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
-      reason: reasonForCode(code),
-      domain: 'a2a-protocol.org',
-      metadata,
-    },
-  ];
-}
+): GoogleRpcErrorInfo[] | undefined =>
+  data === undefined
+    ? undefined
+    : Array.isArray(data) && data.every(isGoogleRpcErrorInfo)
+      ? data
+      : [
+          {
+            '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+            reason: reasonForCode(code),
+            domain: 'a2a-protocol.org',
+            metadata: metadataFromUnknown(data),
+          },
+        ];
 
 function isGoogleRpcErrorInfo(value: unknown): value is GoogleRpcErrorInfo {
   return (
@@ -109,10 +104,10 @@ function metadataFromUnknown(data: unknown): Record<string, string> {
   return { details: stringifyMetadata(data) };
 }
 
-function stringifyMetadata(value: unknown): string {
-  if (typeof value === 'string') {
-    return value;
-  }
+const stringifyMetadata = (value: unknown): string =>
+  typeof value === 'string' ? value : stringifyNonStringMetadata(value);
+
+function stringifyNonStringMetadata(value: unknown): string {
   try {
     return JSON.stringify(value);
   } catch {

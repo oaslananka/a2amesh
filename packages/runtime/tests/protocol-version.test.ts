@@ -51,6 +51,49 @@ describe('A2A protocol version negotiation', () => {
     );
   });
 
+  it('rejects ambiguous comma-separated JSON-RPC protocol versions deterministically', async () => {
+    const server = new VersionHarnessServer();
+    const listener = server.start(0);
+    handles.push(listener);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    const port = (listener.address() as { port: number }).port;
+    const response = await fetch(`http://localhost:${port}/a2a/jsonrpc?A2A-Version=1.2`, {
+      method: 'POST',
+      headers: {
+        'A2A-Version': '1.0, 1.2',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'ambiguous-version',
+        method: 'tasks/list',
+        params: {},
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      jsonrpc: '2.0',
+      error: {
+        code: ErrorCodes.VersionNotSupported,
+        message: 'The requested A2A protocol version 1.0, 1.2 is not supported by this agent',
+        data: [
+          {
+            '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+            reason: 'VERSION_NOT_SUPPORTED',
+            domain: 'a2a-protocol.org',
+            metadata: {
+              requestedVersion: '1.0, 1.2',
+              supportedVersions: '1.0,1.2,0.3',
+            },
+          },
+        ],
+      },
+      id: 'ambiguous-version',
+    });
+  });
+
   it('returns an A2A problem response for unsupported REST versions', async () => {
     const server = new VersionHarnessServer();
     const listener = server.start(0);

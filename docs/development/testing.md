@@ -32,6 +32,58 @@ regression in a smaller package. Critical protocol and security files have separ
 Packages touched by the current Git diff are marked in the report and must satisfy the same
 repository-owned floor as the full inventory.
 
+## JSON-RPC parser robustness
+
+The HTTP JSON parser remains bounded by `A2AServerOptions.bodyLimit` (`1mb` by default). After JSON
+parsing and before schema validation or method dispatch, JSON-RPC requests are also checked with an
+iterative object-graph budget:
+
+- maximum nesting depth: `32`;
+- maximum entries in any single object or array: `1000`.
+
+Override these defaults only when an agent has a documented protocol need:
+
+```ts
+new A2AServer(agentCard, {
+  bodyLimit: '512kb',
+  jsonRpcInputLimits: {
+    maxDepth: 24,
+    maxCollectionEntries: 500,
+  },
+});
+```
+
+Limit failures return a deterministic `InvalidRequest` ErrorInfo payload with numeric metadata; they
+do not serialize the rejected request. Zod validation failures retain at most eight sanitized issues
+and 1024 characters of detail. Raw invalid input values, stack traces, and internal paths are not
+included.
+
+The committed malformed-input corpus lives at
+`packages/runtime/tests/fixtures/jsonrpc-malformed-corpus.json`. The property-based JSON-RPC test uses
+the fixed FastCheck seed `0x0a2a110`, so failures can be reproduced before expanding the corpus with a
+minimal regression case.
+
+Run the focused checks with:
+
+```bash
+pnpm exec vitest run --project unit \
+  packages/runtime/tests/jsonrpc-fuzz.test.ts \
+  packages/runtime/tests/jsonrpc-input-limits.test.ts \
+  packages/runtime/tests/schema-validator.test.ts
+pnpm run test:mutation
+```
+
+```powershell
+pnpm exec vitest run --project unit `
+  packages/runtime/tests/jsonrpc-fuzz.test.ts `
+  packages/runtime/tests/jsonrpc-input-limits.test.ts `
+  packages/runtime/tests/schema-validator.test.ts
+pnpm run test:mutation
+```
+
+The required `CI / unit` and `CI / mutation` jobs enforce the corpus, parser budgets, validation
+branches, and mutation coverage on pull requests that change the runtime or mutation configuration.
+
 ## Commands
 
 Linux, macOS, and PowerShell use the same package scripts:

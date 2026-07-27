@@ -15,7 +15,8 @@
     "packages/runtime/tests/jsonrpc-errors.test.ts",
     "packages/adapters/tests/contract.test.ts",
     "packages/registry/tests/SkillMatcher.test.ts",
-    "packages/runtime/tests/schema-validator.test.ts"
+    "packages/runtime/tests/schema-validator.test.ts",
+    "packages/runtime/tests/jsonrpc-input-limits-mutation.test.ts"
   ],
   "mutate": [
     "packages/runtime/src/server/TaskManager.ts",
@@ -24,7 +25,8 @@
     "packages/runtime/src/utils/errors.ts",
     "packages/runtime/src/utils/schema-validator.ts",
     "packages/adapters/src/custom/contract.ts",
-    "packages/registry/src/SkillMatcher.ts"
+    "packages/registry/src/SkillMatcher.ts",
+    "packages/runtime/src/utils/json-rpc-input-limits.ts"
   ],
   "thresholds": {
     "high": 95,

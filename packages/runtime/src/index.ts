@@ -2,6 +2,7 @@ export * from '@a2amesh/protocol';
 export * from './schemas/public.js';
 export * from './utils/logger.js';
 export * from './utils/schema-validator.js';
+export * from './utils/json-rpc-input-limits.js';
 export * from './utils/compat.js';
 export * from './utils/errors.js';
 export * from './server/A2AServer.js';
