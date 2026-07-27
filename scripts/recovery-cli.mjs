@@ -118,12 +118,11 @@ export async function runRecoveryCli(argv = process.argv.slice(2)) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  runRecoveryCli()
-    .then((result) => process.stdout.write(`${JSON.stringify(safeResult(result), null, 2)}\n`))
-    .catch((error) => {
-      process.stderr.write(
-        `${error instanceof Error ? error.message : String(error)}\n${usage()}\n`,
-      );
-      process.exitCode = 1;
-    });
+  try {
+    const result = await runRecoveryCli();
+    process.stdout.write(`${JSON.stringify(safeResult(result), null, 2)}\n`);
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n${usage()}\n`);
+    process.exitCode = 1;
+  }
 }

@@ -16,10 +16,13 @@ import { DatabaseSync, backup } from 'node:sqlite';
 
 const MANIFEST_SCHEMA_VERSION = 1;
 const DATASET_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const SQLITE_SIDECAR_SUFFIXES = ['-wal', '-shm'];
+const DEFAULT_SIDECAR_FILE_OPERATIONS = Object.freeze({ rm });
+const DEFAULT_RESTORE_FILE_OPERATIONS = Object.freeze({ chmod, copyFile, rename, rm });
 
 function timestampSlug(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-    throw new Error('Recovery timestamp must be a valid Date.');
+    throw new TypeError('Recovery timestamp must be a valid Date.');
   }
   return date.toISOString().replaceAll(':', '-').replace('.', '-');
 }
@@ -48,13 +51,16 @@ async function exists(path) {
   }
 }
 
-async function removeSqliteSidecars(path, fileOperations = { rm }) {
+async function removeSqliteSidecars(path, fileOperations = DEFAULT_SIDECAR_FILE_OPERATIONS) {
   await Promise.all(
-    ['-wal', '-shm'].map((suffix) => fileOperations.rm(`${path}${suffix}`, { force: true })),
+    SQLITE_SIDECAR_SUFFIXES.map((suffix) => fileOperations.rm(`${path}${suffix}`, { force: true })),
   );
 }
 
-async function inspectTransientSqliteDatabase(path, fileOperations = { rm }) {
+async function inspectTransientSqliteDatabase(
+  path,
+  fileOperations = DEFAULT_SIDECAR_FILE_OPERATIONS,
+) {
   try {
     return inspectSqliteDatabase(path);
   } finally {
@@ -117,7 +123,10 @@ function parseManifestDocument(document, manifestPath) {
   if (!Number.isSafeInteger(document.sizeBytes) || document.sizeBytes <= 0) {
     throw new Error('Backup manifest sizeBytes must be a positive integer.');
   }
-  if (typeof document.createdAt !== 'string' || Number.isNaN(Date.parse(document.createdAt))) {
+  if (typeof document.createdAt !== 'string') {
+    throw new TypeError('Backup manifest createdAt must be a string.');
+  }
+  if (Number.isNaN(Date.parse(document.createdAt))) {
     throw new Error('Backup manifest createdAt must be an ISO timestamp.');
   }
   return document;
@@ -235,60 +244,115 @@ export async function verifySqliteBackup(manifestPath) {
   };
 }
 
+async function prepareRestoreTarget(targetPath, replace) {
+  await mkdir(dirname(targetPath), { recursive: true, mode: 0o700 });
+  const targetExists = await exists(targetPath);
+  if (!targetExists) return false;
+
+  await assertRegularFile(targetPath, 'Restore target');
+  if (!replace) {
+    throw new Error(
+      'Restore target already exists; pass replace: true after stopping the service.',
+    );
+  }
+  return true;
+}
+
+function temporaryRestorePath(targetPath) {
+  return join(
+    dirname(targetPath),
+    `.${basename(targetPath)}.${process.pid}.${randomUUID()}.restore-partial`,
+  );
+}
+
+async function prepareTemporaryRestore(backupPath, targetPath, fileOperations) {
+  const temporaryTarget = temporaryRestorePath(targetPath);
+  try {
+    await fileOperations.copyFile(backupPath, temporaryTarget);
+    await fileOperations.chmod(temporaryTarget, 0o600);
+    await inspectTransientSqliteDatabase(temporaryTarget, fileOperations);
+    return temporaryTarget;
+  } catch (error) {
+    await fileOperations.rm(temporaryTarget, { force: true });
+    await removeSqliteSidecars(temporaryTarget, fileOperations);
+    throw error;
+  }
+}
+
+async function moveToRollback(original, stamp, rollbackState, fileOperations) {
+  if (!(await exists(original))) return;
+  const rollback = `${original}.pre-restore-${stamp}`;
+  await fileOperations.rename(original, rollback);
+  rollbackState.moves.push({ original, rollback });
+  rollbackState.files.push(rollback);
+}
+
+async function stageRollbackFiles(targetPath, targetExists, stamp, rollbackState, fileOperations) {
+  if (targetExists) {
+    await moveToRollback(targetPath, stamp, rollbackState, fileOperations);
+  }
+  for (const suffix of SQLITE_SIDECAR_SUFFIXES) {
+    await moveToRollback(`${targetPath}${suffix}`, stamp, rollbackState, fileOperations);
+  }
+}
+
+async function recoverOriginalFiles({
+  temporaryTarget,
+  targetPath,
+  targetInstalled,
+  rollbackMoves,
+  fileOperations,
+}) {
+  await fileOperations.rm(temporaryTarget, { force: true });
+  await removeSqliteSidecars(temporaryTarget, fileOperations);
+  if (targetInstalled) {
+    await fileOperations.rm(targetPath, { force: true });
+    await removeSqliteSidecars(targetPath, fileOperations);
+  }
+  for (const move of [...rollbackMoves].reverse()) {
+    if (await exists(move.original)) {
+      await fileOperations.rm(move.original, { force: true });
+    }
+    if (await exists(move.rollback)) {
+      await fileOperations.rename(move.rollback, move.original);
+    }
+  }
+}
+
 export async function restoreSqliteBackup(options) {
   const {
     manifestPath,
     targetPath,
     replace = false,
     now = () => new Date(),
-    fileOperations = { chmod, copyFile, rename, rm },
+    fileOperations = DEFAULT_RESTORE_FILE_OPERATIONS,
   } = options ?? {};
   if (typeof targetPath !== 'string' || targetPath.length === 0) {
     throw new Error('targetPath is required.');
   }
+
   const verified = await verifySqliteBackup(manifestPath);
   if (resolve(targetPath) === resolve(verified.backupPath)) {
     throw new Error('Refusing to restore a backup over itself.');
   }
-  await mkdir(dirname(targetPath), { recursive: true, mode: 0o700 });
-  const targetExists = await exists(targetPath);
-  if (targetExists) {
-    await assertRegularFile(targetPath, 'Restore target');
-    if (!replace) {
-      throw new Error(
-        'Restore target already exists; pass replace: true after stopping the service.',
-      );
-    }
-  }
 
-  const stamp = timestampSlug(now());
-  const rollbackFiles = [];
-  const temporaryTarget = join(
-    dirname(targetPath),
-    `.${basename(targetPath)}.${process.pid}.${randomUUID()}.restore-partial`,
+  const targetExists = await prepareRestoreTarget(targetPath, replace);
+  const temporaryTarget = await prepareTemporaryRestore(
+    verified.backupPath,
+    targetPath,
+    fileOperations,
   );
-  await fileOperations.copyFile(verified.backupPath, temporaryTarget);
-  await fileOperations.chmod(temporaryTarget, 0o600);
-  await inspectTransientSqliteDatabase(temporaryTarget, fileOperations);
-
-  const rollbackMoves = [];
+  const rollbackState = { files: [], moves: [] };
   let targetInstalled = false;
+
   try {
-    if (targetExists) {
-      const rollbackPath = `${targetPath}.pre-restore-${stamp}`;
-      await fileOperations.rename(targetPath, rollbackPath);
-      rollbackMoves.push({ original: targetPath, rollback: rollbackPath });
-      rollbackFiles.push(rollbackPath);
-    }
-    for (const suffix of ['-wal', '-shm']) {
-      const sidecar = `${targetPath}${suffix}`;
-      if (await exists(sidecar)) {
-        const rollbackPath = `${sidecar}.pre-restore-${stamp}`;
-        await fileOperations.rename(sidecar, rollbackPath);
-        rollbackMoves.push({ original: sidecar, rollback: rollbackPath });
-        rollbackFiles.push(rollbackPath);
-      }
-    }
+    await stageRollbackFiles(
+      targetPath,
+      targetExists,
+      timestampSlug(now()),
+      rollbackState,
+      fileOperations,
+    );
     await fileOperations.rename(temporaryTarget, targetPath);
     targetInstalled = true;
     await fileOperations.chmod(targetPath, 0o600);
@@ -296,25 +360,18 @@ export async function restoreSqliteBackup(options) {
     return {
       dataset: verified.dataset,
       targetPath,
-      rollbackFiles,
+      rollbackFiles: rollbackState.files,
       quickCheck: inspection.quickCheck,
       inspection,
     };
   } catch (error) {
-    await fileOperations.rm(temporaryTarget, { force: true });
-    await removeSqliteSidecars(temporaryTarget, fileOperations);
-    if (targetInstalled) {
-      await fileOperations.rm(targetPath, { force: true });
-      await removeSqliteSidecars(targetPath, fileOperations);
-    }
-    for (const move of [...rollbackMoves].reverse()) {
-      if (await exists(move.original)) {
-        await fileOperations.rm(move.original, { force: true });
-      }
-      if (await exists(move.rollback)) {
-        await fileOperations.rename(move.rollback, move.original);
-      }
-    }
+    await recoverOriginalFiles({
+      temporaryTarget,
+      targetPath,
+      targetInstalled,
+      rollbackMoves: rollbackState.moves,
+      fileOperations,
+    });
     throw error;
   }
 }

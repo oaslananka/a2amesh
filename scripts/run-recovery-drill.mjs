@@ -10,6 +10,8 @@ import { SqliteTaskStorage } from '../packages/runtime/dist/storage/SqliteTaskSt
 import { createDiagnosticBundle, validateDiagnosticBundle } from './recovery/diagnostic-bundle.mjs';
 import { backupSqliteDatabase, restoreSqliteBackup } from './recovery/sqlite-backup.mjs';
 
+const GIT_BINARY = '/usr/bin/git';
+
 function argumentValue(argv, name, fallback) {
   const index = argv.indexOf(name);
   if (index === -1) return fallback;
@@ -110,7 +112,7 @@ function prometheusMetrics(report) {
 function gitCommit() {
   if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA;
   try {
-    return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    return execFileSync(GIT_BINARY, ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
   } catch {
     return 'unknown';
   }
@@ -341,8 +343,10 @@ export async function runRecoveryDrill(argv = process.argv.slice(2)) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  runRecoveryDrill().catch((error) => {
+  try {
+    await runRecoveryDrill();
+  } catch (error) {
     process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`);
     process.exitCode = 1;
-  });
+  }
 }

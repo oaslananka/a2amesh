@@ -347,8 +347,16 @@ describe('diagnostic recovery bundle', () => {
       'version.txt': 'commit=db3ad9a\n',
       'environment-redacted.txt':
         'AUTHORIZATION=Bearer production-token\nCOOKIE=session=private\nREGISTRY_TOKEN=super-secret\n',
-      'recovery-report.json':
-        '{"status":"passed","source":"http://10.0.0.8/private?token=abc","taskInput":"confidential prompt"}',
+      'recovery-report.json': JSON.stringify({
+        status: 'passed',
+        source: 'http://10.0.0.8/private?token=abc',
+        localhost: 'http://localhost:3099/private',
+        localDomain: 'https://registry.internal.local/private',
+        ipv6Loopback: 'http://[::1]:3000/private',
+        standalonePrivateIp: '192.168.1.5',
+        publicEndpoint: 'https://example.com/public',
+        taskInput: 'confidential prompt',
+      }),
       'recovery-metrics.prom': 'a2a_recovery_backup_integrity_ok{dataset="registry"} 1\n',
     };
     for (const [name, content] of Object.entries(fixtures)) {
@@ -375,7 +383,12 @@ describe('diagnostic recovery bundle', () => {
     expect(combined).not.toContain('super-secret');
     expect(combined).not.toContain('session=private');
     expect(combined).not.toContain('10.0.0.8');
+    expect(combined).not.toContain('localhost:3099');
+    expect(combined).not.toContain('registry.internal.local');
+    expect(combined).not.toContain('[::1]');
+    expect(combined).not.toContain('192.168.1.5');
     expect(combined).not.toContain('confidential prompt');
+    expect(combined).toContain('https://example.com/public');
     expect(combined).toContain('[REDACTED]');
     expect(readFileSync(join(output, 'bundle-index.json'), 'utf8')).not.toContain(root);
   });

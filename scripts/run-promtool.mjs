@@ -9,6 +9,7 @@ const VERSION = '3.13.1';
 const ARCHIVE = `prometheus-${VERSION}.linux-amd64.tar.gz`;
 const DOWNLOAD_URL = `https://github.com/prometheus/prometheus/releases/download/v${VERSION}/${ARCHIVE}`;
 const EXPECTED_SHA256 = '962b812371aff838d152b6ff2d56fdb7a6396f5542f48ebf73421b9721f0d103';
+const TAR_BINARY = '/usr/bin/tar';
 
 async function sha256(path) {
   return createHash('sha256')
@@ -48,7 +49,7 @@ async function downloadVerifiedPromtool() {
   await rename(partialPath, archivePath);
 
   const extracted = spawnSync(
-    'tar',
+    TAR_BINARY,
     [
       '-xzf',
       archivePath,
@@ -87,8 +88,10 @@ export async function runPromtool(root = process.cwd()) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  runPromtool().catch((error) => {
+  try {
+    await runPromtool();
+  } catch (error) {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
-  });
+  }
 }
