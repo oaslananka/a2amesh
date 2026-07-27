@@ -101,12 +101,27 @@ Then dispatch the protected workflow from `main`:
 ```bash
 gh workflow run Publish \
   --ref main \
+  -f operation=publish \
   -f tag="${release_tag}" \
   -f confirmation="PUBLISH ${release_tag}"
 ```
 
 Tag creation and workflow dispatch are maintainer actions. The state collector
 never creates tags, publishes packages, or changes npm dist-tags.
+
+## Release asset retention recovery
+
+If npm publication and registry parity succeeded but verified GitHub Release assets are missing, use the explicit asset-retention operation:
+
+```bash
+gh workflow run Publish \
+  --ref main \
+  -f operation=retain-assets \
+  -f tag="${release_tag}" \
+  -f confirmation="RETAIN ${release_tag}"
+```
+
+This mode is allowed only when the canonical tag matches the exact checked-out release commit and every linked package is already published under the expected npm dist-tag. It rebuilds, tests, validates, attests, checks registry parity, and uploads the six npm tarballs, `SHA256SUMS`, and CycloneDX SBOM. The npm publication step is skipped.
 
 ## Partial-publication recovery
 

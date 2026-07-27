@@ -97,7 +97,7 @@ describe('release-state core', () => {
 
     expect(result.state).toBe('published');
     expect(result.expectedDistTag).toBe('alpha');
-    expect(result.gates).toEqual({ releasePlease: true, publish: false });
+    expect(result.gates).toEqual({ releasePlease: true, publish: false, retainAssets: true });
     expect(result.blockers).toEqual([]);
   });
 
@@ -112,7 +112,7 @@ describe('release-state core', () => {
     );
 
     expect(result.state).toBe('published');
-    expect(result.gates).toEqual({ releasePlease: true, publish: false });
+    expect(result.gates).toEqual({ releasePlease: true, publish: false, retainAssets: false });
     expect(result.blockers).toEqual([]);
   });
 
@@ -129,7 +129,7 @@ describe('release-state core', () => {
     );
 
     expect(result.state).toBe('prepared-unpublished');
-    expect(result.gates).toEqual({ releasePlease: false, publish: false });
+    expect(result.gates).toEqual({ releasePlease: false, publish: false, retainAssets: false });
   });
 
   it('classifies one newer linked release PR as release-pr-open', () => {
@@ -139,6 +139,7 @@ describe('release-state core', () => {
 
     expect(result.state).toBe('release-pr-open');
     expect(result.gates.releasePlease).toBe(true);
+    expect(result.gates.retainAssets).toBe(true);
     expect(result.warnings).toContainEqual(expect.stringContaining('#156'));
   });
 
@@ -152,7 +153,7 @@ describe('release-state core', () => {
     );
 
     expect(result.state).toBe('prepared-unpublished');
-    expect(result.gates).toEqual({ releasePlease: false, publish: true });
+    expect(result.gates).toEqual({ releasePlease: false, publish: true, retainAssets: false });
   });
 
   it('blocks publish when the canonical tag is missing', () => {
@@ -174,7 +175,7 @@ describe('release-state core', () => {
     );
 
     expect(result.state).toBe('partial-publication');
-    expect(result.gates).toEqual({ releasePlease: false, publish: true });
+    expect(result.gates).toEqual({ releasePlease: false, publish: true, retainAssets: false });
   });
 
   it('classifies all package versions with missing expected tags as partial-publication', () => {
@@ -188,7 +189,7 @@ describe('release-state core', () => {
     const result = evaluateReleaseState(observation({ latest: '0.11.0-alpha.1' }));
 
     expect(result.state).toBe('drifted');
-    expect(result.gates).toEqual({ releasePlease: false, publish: false });
+    expect(result.gates).toEqual({ releasePlease: false, publish: false, retainAssets: false });
     expect(result.blockers).toContainEqual(expect.stringContaining('latest'));
   });
 
@@ -301,7 +302,7 @@ describe('release-state core', () => {
     );
 
     expect(result.state).toBe('superseded');
-    expect(result.gates).toEqual({ releasePlease: true, publish: false });
+    expect(result.gates).toEqual({ releasePlease: true, publish: false, retainAssets: false });
     expect(result.blockers).toEqual([]);
     expect(result.nextSafeAction).toContain('0.12.0-alpha.1');
   });
@@ -344,7 +345,7 @@ describe('release-state core', () => {
     );
 
     expect(result.state).toBe('drifted');
-    expect(result.gates).toEqual({ releasePlease: false, publish: false });
+    expect(result.gates).toEqual({ releasePlease: false, publish: false, retainAssets: false });
     expect(result.blockers).toContainEqual(
       expect.stringContaining('must not have a canonical tag'),
     );
@@ -368,7 +369,7 @@ describe('release-state core', () => {
     );
 
     expect(result.state).toBe('drifted');
-    expect(result.gates).toEqual({ releasePlease: false, publish: false });
+    expect(result.gates).toEqual({ releasePlease: false, publish: false, retainAssets: false });
     expect(result.blockers).toContainEqual(
       expect.stringContaining('must not have npm publication'),
     );
@@ -378,7 +379,7 @@ describe('release-state core', () => {
     const result = evaluateReleaseState(observation({ errors: ['npm registry timed out'] }));
 
     expect(result.state).toBe('unavailable');
-    expect(result.gates).toEqual({ releasePlease: false, publish: false });
+    expect(result.gates).toEqual({ releasePlease: false, publish: false, retainAssets: false });
     expect(result.blockers).toContain('npm registry timed out');
   });
 });

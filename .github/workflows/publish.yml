@@ -3,18 +3,26 @@ name: Publish
 'on':
   workflow_dispatch:
     inputs:
+      operation:
+        description: 'Operation to perform'
+        required: true
+        type: choice
+        default: publish
+        options:
+          - publish
+          - retain-assets
       tag:
         description: 'Release tag to publish (e.g., @a2amesh/runtime-v0.1.0-alpha.0)'
         required: true
       confirmation:
-        description: 'Type PUBLISH <tag> to confirm npm publication'
+        description: 'Type PUBLISH <tag> to publish or RETAIN <tag> to retain verified assets'
         required: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ inputs.tag }}
+  group: ${{ github.workflow }}-${{ inputs.tag }}-${{ inputs.operation }}
   cancel-in-progress: false
 
 defaults:
@@ -39,21 +47,32 @@ jobs:
       - name: Resolve and confirm release tag
         id: tag
         env:
+          INPUT_OPERATION: ${{ inputs.operation }}
           INPUT_TAG: ${{ inputs.tag }}
           INPUT_CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           set -euo pipefail
+          OPERATION="${INPUT_OPERATION}"
           TAG="${INPUT_TAG}"
           if [[ -z "${TAG}" ]]; then
             echo "No tag was provided"
             exit 1
           fi
-          if [[ "${INPUT_CONFIRMATION}" != "PUBLISH ${TAG}" ]]; then
-            echo "Confirmation must exactly match: PUBLISH ${TAG}"
+          case "${OPERATION}" in
+            publish) EXPECTED_CONFIRMATION="PUBLISH ${TAG}" ;;
+            retain-assets) EXPECTED_CONFIRMATION="RETAIN ${TAG}" ;;
+            *)
+              echo "Unsupported operation: ${OPERATION}"
+              exit 1
+              ;;
+          esac
+          if [[ "${INPUT_CONFIRMATION}" != "${EXPECTED_CONFIRMATION}" ]]; then
+            echo "Confirmation must exactly match: ${EXPECTED_CONFIRMATION}"
             exit 1
           fi
+          echo "operation=${OPERATION}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "Resolved tag: ${TAG}"
+          echo "Resolved operation: ${OPERATION}; tag: ${TAG}"
 
       - name: Validate tag format and extract version
         id: version
@@ -92,8 +111,9 @@ jobs:
       - name: Release state guardrail
         env:
           GH_TOKEN: ${{ github.token }}
+          MODE: ${{ steps.tag.outputs.operation }}
           TAG: ${{ steps.tag.outputs.tag }}
-        run: node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode publish --json --tag "${TAG}" --recovery-file "${RUNNER_TEMP}/release-state-guard/.release-recovery.json"
+        run: node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode "${MODE}" --json --tag "${TAG}" --recovery-file "${RUNNER_TEMP}/release-state-guard/.release-recovery.json"
 
       - name: Publish preflight
         env:
@@ -171,6 +191,7 @@ jobs:
             .artifacts/sbom/a2amesh.cdx.json
 
       - name: Publish packages to npm
+        if: steps.tag.outputs.operation == 'publish'
         env:
           EXPECTED_VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -216,6 +237,7 @@ jobs:
           done
 
       - name: Wait for npm registry propagation
+        if: steps.tag.outputs.operation == 'publish'
         run: sleep 20
 
       - name: Verify package registry parity

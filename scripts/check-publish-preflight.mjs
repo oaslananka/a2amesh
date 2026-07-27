@@ -149,6 +149,17 @@ for (const component of linkedVersionComponents) {
 if (!publishWorkflow.includes('workflow_dispatch:')) {
   failures.push('publish.yml must be manually dispatched with workflow_dispatch');
 }
+for (const requiredFragment of [
+  'operation:',
+  '- retain-assets',
+  'RETAIN ${TAG}',
+  '--mode "${MODE}"',
+  "if: steps.tag.outputs.operation == 'publish'",
+]) {
+  if (!publishWorkflow.includes(requiredFragment)) {
+    failures.push(`publish.yml asset-retention operation is missing: ${requiredFragment}`);
+  }
+}
 if (!publishWorkflow.includes(`environment: ${PUBLISH_ENVIRONMENT}`)) {
   failures.push(`publish.yml must use the ${PUBLISH_ENVIRONMENT} environment`);
 }

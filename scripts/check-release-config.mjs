@@ -163,12 +163,22 @@ if (!publishWorkflow.includes('ref: ${{ steps.tag.outputs.tag }}')) {
 }
 if (
   !publishWorkflow.includes(
-    'node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode publish --json --tag "${TAG}" --recovery-file "${RUNNER_TEMP}/release-state-guard/.release-recovery.json"',
+    'node "${RUNNER_TEMP}/release-state-guard/release-state.mjs" --mode "${MODE}" --json --tag "${TAG}" --recovery-file "${RUNNER_TEMP}/release-state-guard/.release-recovery.json"',
   )
 ) {
   failures.push(
-    'Publish workflow must run the staged release-state publish gate with the requested tag and current recovery ledger',
+    'Publish workflow must run the staged operation-specific release-state gate with the requested tag and current recovery ledger',
   );
+}
+for (const requiredFragment of [
+  'operation:',
+  '- retain-assets',
+  'RETAIN ${TAG}',
+  "if: steps.tag.outputs.operation == 'publish'",
+]) {
+  if (!publishWorkflow.includes(requiredFragment)) {
+    failures.push(`Publish workflow asset-retention contract is missing: ${requiredFragment}`);
+  }
 }
 if (publishWorkflow.includes('node scripts/release-state.mjs --check')) {
   failures.push('Publish workflow must not use the ambiguous legacy release-state --check mode');

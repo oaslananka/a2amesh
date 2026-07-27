@@ -76,6 +76,7 @@ export interface ReleaseEvaluation {
   gates: {
     releasePlease: boolean;
     publish: boolean;
+    retainAssets: boolean;
   };
   packages: EvaluatedPackage[];
   nextSafeAction: string;
