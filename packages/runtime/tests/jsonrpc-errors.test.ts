@@ -22,6 +22,7 @@ describe('JSON-RPC error helpers', () => {
     expect(reasonForErrorCode(ErrorCodes.InvalidParams)).toBe('INVALID_PARAMETERS');
     expect(reasonForErrorCode(ErrorCodes.InternalError)).toBe('INTERNAL_ERROR');
     expect(reasonForErrorCode(ErrorCodes.TaskNotFound)).toBe('TASK_NOT_FOUND');
+    expect(reasonForErrorCode(ErrorCodes.VersionNotSupported)).toBe('VERSION_NOT_SUPPORTED');
     expect(reasonForErrorCode(ErrorCodes.PushNotificationNotSupported)).toBe(
       'PUSH_NOTIFICATION_NOT_SUPPORTED',
     );
@@ -31,6 +32,7 @@ describe('JSON-RPC error helpers', () => {
     expect(reasonForErrorCode(ErrorCodes.ExtensionRequired)).toBe('EXTENSION_REQUIRED');
     expect(reasonForErrorCode(ErrorCodes.InvalidTaskTransition)).toBe('INVALID_TASK_TRANSITION');
     expect(reasonForErrorCode(ErrorCodes.IdempotencyConflict)).toBe('IDEMPOTENCY_CONFLICT');
+    expect(reasonForErrorCode(ErrorCodes.IdempotencyInProgress)).toBe('IDEMPOTENCY_IN_PROGRESS');
     expect(reasonForErrorCode(-32099)).toBe('A2A_ERROR');
   });
 
@@ -54,6 +56,16 @@ describe('JSON-RPC error helpers', () => {
       fatal: 'false',
     });
     expect(metadataFromUnknown(['bad'])).toEqual({ details: 'bad' });
+    expect(metadataFromUnknown(null)).toEqual({ details: 'null' });
+    expect(metadataFromUnknown(false)).toEqual({ details: 'false' });
+    expect(metadataFromUnknown('text')).toEqual({ details: 'text' });
+    expect(makeErrorInfo('EMPTY_METADATA', {})).toEqual([
+      {
+        '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+        reason: 'EMPTY_METADATA',
+        domain: 'a2a-protocol.org',
+      },
+    ]);
 
     const error = makeA2AError(ErrorCodes.TaskNotFound, 'missing', 'TASK_NOT_FOUND', {
       taskId: 'task-1',
@@ -70,6 +82,38 @@ describe('JSON-RPC error helpers', () => {
     });
   });
 
+  it('maps every JsonRpcError code to exact generated ErrorInfo identity', () => {
+    const mappings = [
+      [ErrorCodes.ParseError, 'PARSE_ERROR'],
+      [ErrorCodes.InvalidRequest, 'INVALID_REQUEST'],
+      [ErrorCodes.MethodNotFound, 'METHOD_NOT_FOUND'],
+      [ErrorCodes.InvalidParams, 'INVALID_PARAMETERS'],
+      [ErrorCodes.InternalError, 'INTERNAL_ERROR'],
+      [ErrorCodes.TaskNotFound, 'TASK_NOT_FOUND'],
+      [ErrorCodes.VersionNotSupported, 'VERSION_NOT_SUPPORTED'],
+      [ErrorCodes.PushNotificationNotSupported, 'PUSH_NOTIFICATION_NOT_SUPPORTED'],
+      [ErrorCodes.UnsupportedOperation, 'UNSUPPORTED_OPERATION'],
+      [ErrorCodes.RateLimitExceeded, 'RATE_LIMIT_EXCEEDED'],
+      [ErrorCodes.Unauthorized, 'UNAUTHORIZED'],
+      [ErrorCodes.ExtensionRequired, 'EXTENSION_REQUIRED'],
+      [ErrorCodes.InvalidTaskTransition, 'INVALID_TASK_TRANSITION'],
+      [ErrorCodes.IdempotencyConflict, 'IDEMPOTENCY_CONFLICT'],
+      [ErrorCodes.IdempotencyInProgress, 'IDEMPOTENCY_IN_PROGRESS'],
+      [-32099, 'A2A_ERROR'],
+    ] as const;
+
+    for (const [code, reason] of mappings) {
+      expect(new JsonRpcError(code, 'mapped', 'details').data).toEqual([
+        {
+          '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+          reason,
+          domain: 'a2a-protocol.org',
+          metadata: { details: 'details' },
+        },
+      ]);
+    }
+  });
+
   it('keeps valid ErrorInfo arrays and wraps unknown data in stable metadata', () => {
     const validInfo: GoogleRpcErrorInfo[] = [
       {
@@ -79,12 +123,38 @@ describe('JSON-RPC error helpers', () => {
       },
     ];
     expect(new JsonRpcError(ErrorCodes.InternalError, 'upstream', validInfo).data).toBe(validInfo);
-    expect(new JsonRpcError(ErrorCodes.InvalidParams, 'bad').data).toBeUndefined();
+    const noDataError = new JsonRpcError(ErrorCodes.InvalidParams, 'bad');
+    expect(noDataError.data).toBeUndefined();
     expect(new JsonRpcError(ErrorCodes.RateLimitExceeded, 'slow down', 'later').data).toEqual([
       expect.objectContaining({
         reason: 'RATE_LIMIT_EXCEEDED',
         metadata: { details: 'later' },
       }),
+    ]);
+    expect(new JsonRpcError(ErrorCodes.InternalError, 'null-info', [null]).data).toEqual([
+      {
+        '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+        reason: 'INTERNAL_ERROR',
+        domain: 'a2a-protocol.org',
+        metadata: { details: '[null]' },
+      },
+    ]);
+    const mixedInfo = [validInfo[0]!, { bad: true }];
+    expect(new JsonRpcError(ErrorCodes.InternalError, 'mixed', mixedInfo).data).toEqual([
+      {
+        '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+        reason: 'INTERNAL_ERROR',
+        domain: 'a2a-protocol.org',
+        metadata: { details: JSON.stringify(mixedInfo) },
+      },
+    ]);
+    expect(new JsonRpcError(ErrorCodes.InternalError, 'null', null).data).toEqual([
+      {
+        '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+        reason: 'INTERNAL_ERROR',
+        domain: 'a2a-protocol.org',
+        metadata: { details: 'null' },
+      },
     ]);
     expect(new JsonRpcError(-32099, 'custom', [{ bad: true }]).data).toEqual([
       expect.objectContaining({

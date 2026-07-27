@@ -86,4 +86,57 @@ describe('SkillMatcher', () => {
     expect(SkillMatcher.match(agents, { tag: 'content', name: 'plain' })).toHaveLength(0);
     expect(SkillMatcher.match(agents, { name: 'plain' })).toHaveLength(1);
   });
+
+  it('excludes MCP agents when explicitly requesting non-MCP capability', () => {
+    expect(SkillMatcher.match(agents, { mcpCompatible: false }).map((agent) => agent.id)).toEqual([
+      'writer',
+      'plain',
+    ]);
+  });
+
+  it('matches any skill entry rather than requiring every skill to match', () => {
+    const multiSkillAgent: RegisteredAgent = {
+      ...agents[1]!,
+      id: 'multi-skill',
+      card: {
+        ...agents[1]!.card,
+        skills: [
+          { id: 'unrelated', name: 'Translation', description: 'Translates content' },
+          {
+            id: 'target',
+            name: 'Case Sensitive Writing',
+            description: 'Long-form editing',
+            tags: ['Editorial'],
+          },
+        ],
+      },
+    };
+
+    expect(SkillMatcher.match([multiSkillAgent], { skill: 'WRITING' })).toHaveLength(1);
+    expect(SkillMatcher.match([multiSkillAgent], { skill: 'editing' })).toHaveLength(1);
+    expect(SkillMatcher.match([multiSkillAgent], { tag: 'editorial' })).toHaveLength(1);
+    expect(SkillMatcher.match([multiSkillAgent], { tag: 'missing' })).toHaveLength(0);
+  });
+
+  it('treats explicit empty skill arrays as skill-less', () => {
+    const emptySkillsAgent: RegisteredAgent = {
+      ...agents[2]!,
+      id: 'empty-skills',
+      card: { ...agents[2]!.card, skills: [] },
+    };
+
+    expect(SkillMatcher.match([emptySkillsAgent], { skill: 'anything' })).toEqual([]);
+    expect(SkillMatcher.match([emptySkillsAgent], { tag: 'anything' })).toEqual([]);
+    expect(SkillMatcher.match([emptySkillsAgent], {})).toEqual([emptySkillsAgent]);
+  });
+
+  it('returns skill-less agents only when no skill or tag filter is present', () => {
+    expect(SkillMatcher.match(agents, {}).map((agent) => agent.id)).toEqual([
+      'mcp-agent',
+      'writer',
+      'plain',
+    ]);
+    expect(SkillMatcher.match([agents[0]!], { skill: 'bridge' })).toEqual([]);
+    expect(SkillMatcher.match([agents[0]!], { tag: 'mcp' })).toEqual([]);
+  });
 });

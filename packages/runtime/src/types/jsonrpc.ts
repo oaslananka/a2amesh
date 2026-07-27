@@ -63,6 +63,7 @@ export class JsonRpcError extends Error {
     super(message);
     this.code = code;
     const normalizedData = normalizeErrorData(code, data);
+    // Stryker disable next-line ConditionalExpression: TypeScript defines the optional class field as an own property with value undefined, so assigning undefined explicitly is observationally equivalent.
     if (normalizedData !== undefined) {
       this.data = normalizedData;
     }
@@ -86,7 +87,7 @@ function normalizeErrorData(
       '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
       reason: reasonForCode(code),
       domain: 'a2a-protocol.org',
-      ...(metadata ? { metadata } : {}),
+      metadata,
     },
   ];
 }
@@ -94,15 +95,13 @@ function normalizeErrorData(
 function isGoogleRpcErrorInfo(value: unknown): value is GoogleRpcErrorInfo {
   return (
     Boolean(value) &&
+    // Stryker disable next-line ConditionalExpression: For every truthy primitive, property lookup is boxed and still fails the exact @type comparison; nullish values already short-circuit.
     typeof value === 'object' &&
     (value as { '@type'?: unknown })['@type'] === 'type.googleapis.com/google.rpc.ErrorInfo'
   );
 }
 
-function metadataFromUnknown(data: unknown): Record<string, string> | undefined {
-  if (data === undefined) {
-    return undefined;
-  }
+function metadataFromUnknown(data: unknown): Record<string, string> {
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     const entries = Object.entries(data).map(([key, value]) => [key, stringifyMetadata(value)]);
     return Object.fromEntries(entries);

@@ -20,6 +20,32 @@
   adapter or task-lifecycle changes against a previously recorded "golden" run instead of
   re-invoking a live adapter in the test suite.
 
+## Mutation testing policy
+
+Run the bounded mutation suite with:
+
+```bash
+pnpm run test:mutation
+```
+
+The canonical targets, test files, and thresholds live in `stryker.config.json`. Mutation-relevant
+pull requests run the `CI / mutation` lane after the shared workspace build has been restored. The
+quality bands are `high: 95`, `low: 90`, and `break: 85`; a score below 85 fails the command and CI.
+
+The 2026-07-27 hardening baseline is 100% across the configured mutation surface after excluding
+two verified equivalent mutants in `packages/runtime/src/types/jsonrpc.ts`. Both exclusions are
+source-local `Stryker disable next-line` directives with reasons:
+
+- assigning `undefined` to the emitted optional `JsonRpcError.data` class field is observationally
+  identical to leaving its initialized value unchanged;
+- bypassing the `typeof value === 'object'` check for a truthy primitive still fails the exact
+  `@type` comparison after JavaScript property-access boxing, while nullish values short-circuit.
+
+Equivalent-mutant exclusions must remain narrow, name the mutator, include a concrete semantic
+reason, and be reviewed with the same scrutiny as production changes. Broad file-level mutation
+disables are not permitted. New critical protocol validation or authorization branches must not be
+left as `NoCoverage`.
+
 ## Local commands
 
 ```bash
