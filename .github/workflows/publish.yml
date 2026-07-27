@@ -33,7 +33,7 @@ jobs:
     environment: npm-publish
     permissions:
       attestations: write
-      contents: read
+      contents: write
       id-token: write
     steps:
       - name: Resolve and confirm release tag
@@ -220,3 +220,16 @@ jobs:
 
       - name: Verify package registry parity
         run: pnpm run release:parity
+
+      - name: Upload verified release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release upload "${TAG}" \
+            .artifacts/npm/*.tgz \
+            .artifacts/npm/SHA256SUMS \
+            .artifacts/sbom/a2amesh.cdx.json \
+            --repo "${GITHUB_REPOSITORY}" \
+            --clobber
