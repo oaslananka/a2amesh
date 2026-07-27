@@ -20,6 +20,7 @@ registry:
   persistence:
     enabled: true
     size: 20Gi
+  # Blocks voluntary eviction for the single replica; disable explicitly for planned maintenance.
   pdb:
     enabled: true
     minAvailable: 1
@@ -44,6 +45,7 @@ runtime:
     principalId: runtime-production
   outboundPolicy:
     allowPrivateNetworks: true
+  # Blocks voluntary eviction for the single replica; disable explicitly for planned maintenance.
   pdb:
     enabled: true
     minAvailable: 1

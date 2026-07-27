@@ -63,6 +63,12 @@ pnpm run helm:check
 
 The check lints and renders all five profiles and verifies negative cases such as runtime deployment without credentials, insecure ingress, unacknowledged runtime scaling, and multi-replica SQLite.
 
+### Supported topology and availability boundary
+
+`values-production.yaml` is a hardened **single-node application baseline**, not a high-availability topology. It runs one SQLite-backed registry pod and one runtime pod. SQLite files are owned by one registry replica, and runtime task state remains process-local. A multi-replica or autoscaled deployment is not supported until registry state, runtime task state, and provider-side idempotency are backed by shared services with independently tested failover.
+
+The production profile keeps `minAvailable: 1` PDBs for both single-replica workloads. This intentionally blocks voluntary eviction and a normal node drain rather than silently accepting an outage. It does not prevent involuntary node loss, provide cross-node failover, or preserve process-local runtime tasks. Planned maintenance must use the documented PDB override below and explicitly accept the temporary outage.
+
 ### Production installation
 
 Create the namespace and external Secrets referenced by the production profile:
@@ -122,13 +128,38 @@ The demo runtime keeps task state inside each process. The chart rejects multipl
 
 ### Network boundaries and ingress
 
-The runtime NetworkPolicy allows DNS, registry access, and internet egress that excludes loopback, private, link-local, carrier-grade NAT, and metadata ranges. Registry internet egress is off by default. The chart automatically adds the runtime Service hostname to the registry application allowlist.
+The runtime NetworkPolicy allows DNS, registry access, and IPv4 internet egress that excludes loopback, private, link-local, carrier-grade NAT, and metadata ranges. Registry internet egress is off by default. The chart automatically adds the runtime Service hostname to the registry application allowlist.
+
+NetworkPolicy is effective only when the cluster CNI enforces it. The Helm lifecycle CI uses a Calico v3.32 CNI on Kubernetes 1.36 and proves chart-internal allow paths, unrelated-namespace ingress denial, private-service and metadata egress denial, and one explicit selector-based private-egress override.
+
+The public-egress contract is currently **IPv4-only**. The chart renders `0.0.0.0/0` with prohibited IPv4 ranges removed and deliberately does not render `::/0`. DNS and pod/namespace selector rules are IP-family neutral, but IPv6 public-provider egress and a complete dual-stack lifecycle are not certified. On a dual-stack cluster, selected workloads have no generic IPv6 public-egress allowance; add a narrowly scoped `extraEgress` rule only after validating the cluster CNI, destination CIDRs, and provider behavior.
 
 Ingress controller labels and observability collector locations vary between clusters. Add explicit selectors through the `networkPolicy.*.extraIngress` and `networkPolicy.*.extraEgress` values. Keep ingress disabled until those paths are understood.
 
 Registry ingress requires authentication and TLS unless insecure HTTP is explicitly acknowledged. Runtime ingress additionally requires `acknowledgeUnauthenticatedEndpoint=true`, because the demo runtime does not provide an inbound authentication boundary.
 
-### Upgrade and rollback
+### Upgrade, rollback, and planned node maintenance
+
+A normal upgrade and rollback keeps both PDBs enabled. With one replica and `minAvailable: 1`, voluntary eviction is blocked. Before a planned single-node drain, take and verify the storage backup required by the recovery procedure, announce the outage window, then apply the explicit maintenance override:
+
+```bash
+helm upgrade a2amesh deploy/helm/a2amesh \
+  --namespace a2amesh \
+  --reuse-values \
+  --set registry.pdb.enabled=false \
+  --set runtime.pdb.enabled=false \
+  --wait
+
+kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
+kubectl uncordon <node>
+
+helm upgrade a2amesh deploy/helm/a2amesh \
+  --namespace a2amesh \
+  --values deploy/helm/a2amesh/values-production.yaml \
+  --wait
+```
+
+The override permits a controlled outage; it does not create HA or preserve process-local tasks. Restore the production profile immediately after maintenance and verify both PDBs, workload readiness, health endpoints, and the registry data set.
 
 ```bash
 helm history a2amesh --namespace a2amesh
@@ -228,7 +259,11 @@ The `Helm` workflow:
 5. Builds local runtime and registry images.
 6. Installs them into a digest-pinned Kind cluster.
 7. Verifies health and Prometheus metrics and runs the Helm test hook.
-8. Performs an upgrade and rollback and repeats the smoke test.
+8. Proves enforced allow/deny NetworkPolicy behavior, private and metadata egress denial, and an explicit private-egress override.
+9. Proves that single-replica PDBs block voluntary drain, then exercises the explicit maintenance override.
+10. Performs an upgrade and rollback and repeats the smoke test.
+
+On failure, the lifecycle captures nodes, pods, Services, Endpoints, NetworkPolicies, PDBs, events, pod descriptions, bounded workload logs, Helm status, and bounded Calico logs. It does not dump Secret objects or rendered Secret payloads.
 
 Manual container publication requires an exact runtime release tag and confirmation string. The workflow pushes version and immutable revision tags, records registry digests, and publishes attestations against each image digest.
 
