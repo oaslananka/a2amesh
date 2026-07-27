@@ -91,6 +91,13 @@ function validateRelease(release, localState, failures) {
     failures.push('Repository evidence must include release metadata');
     return;
   }
+
+  validateLocalReleaseState(release, localState, failures);
+  validatePublishedReleaseState(release, failures);
+  validateReleasePullRequest(release.active_release_pr, release.source_version, failures);
+}
+
+function validateLocalReleaseState(release, localState, failures) {
   const manifest = localState?.manifest ?? {};
   const releaseConfig = localState?.releaseConfig ?? {};
   const packageVersions = localState?.packageVersions ?? {};
@@ -101,41 +108,65 @@ function validateRelease(release, localState, failures) {
     : [];
   const manifestVersions = uniqueValues(Object.values(manifest));
 
-  if (manifestVersions.length !== 1) {
-    failures.push(
-      `Linked release manifest versions must agree; found: ${manifestVersions.join(', ') || '<none>'}`,
-    );
-  }
+  validateReleasePaths(configuredPaths, manifestPaths, evidencePaths, failures);
+  const expected = resolveExpectedPackageVersion(release, manifestVersions, failures);
+  validatePackageVersions(configuredPaths, packageVersions, expected, failures);
+}
+
+function validateReleasePaths(configuredPaths, manifestPaths, evidencePaths, failures) {
   if (JSON.stringify(manifestPaths) !== JSON.stringify(configuredPaths)) {
     failures.push('Release manifest paths must match release configuration paths');
   }
   if (JSON.stringify(evidencePaths) !== JSON.stringify(configuredPaths)) {
     failures.push('Evidence package paths must match release configuration paths');
   }
-  const manifestVersion = manifestVersions.length === 1 ? manifestVersions[0] : null;
+}
+
+function resolveExpectedPackageVersion(release, manifestVersions, failures) {
+  if (manifestVersions.length !== 1) {
+    failures.push(
+      `Linked release manifest versions must agree; found: ${manifestVersions.join(', ') || '<none>'}`,
+    );
+    return {
+      version: release.source_version,
+      expectation: `evidence source version ${release.source_version ?? '<missing>'}`,
+    };
+  }
+
+  const manifestVersion = manifestVersions[0];
   const proposedVersion = release.active_release_pr?.proposed_version;
   const stagedRelease =
-    manifestVersion != null &&
     proposedVersion === manifestVersion &&
     compareSemanticVersions(proposedVersion, release.source_version) > 0;
 
-  if (manifestVersion != null && !stagedRelease && release.source_version !== manifestVersion) {
+  if (!stagedRelease && release.source_version !== manifestVersion) {
     failures.push(
       `Evidence source version ${release.source_version ?? '<missing>'} does not match release manifest ${manifestVersion}`,
     );
   }
-  const expectedPackageVersion = stagedRelease ? proposedVersion : release.source_version;
+  if (stagedRelease) {
+    return {
+      version: proposedVersion,
+      expectation: `staged release version ${proposedVersion}`,
+    };
+  }
+  return {
+    version: release.source_version,
+    expectation: `evidence source version ${release.source_version ?? '<missing>'}`,
+  };
+}
+
+function validatePackageVersions(configuredPaths, packageVersions, expected, failures) {
   for (const path of configuredPaths) {
-    if (packageVersions[path] !== expectedPackageVersion) {
-      const expectation = stagedRelease
-        ? `staged release version ${expectedPackageVersion}`
-        : `evidence source version ${release.source_version ?? '<missing>'}`;
+    if (packageVersions[path] !== expected.version) {
       failures.push(
-        `${path}: package version ${packageVersions[path] ?? '<missing>'} does not match ${expectation}`,
+        `${path}: package version ${packageVersions[path] ?? '<missing>'} does not match ${expected.expectation}`,
       );
     }
   }
+}
 
+function validatePublishedReleaseState(release, failures) {
   const expectedTag = release.source_version ? `@a2amesh/runtime-v${release.source_version}` : null;
   if (release.latest_canonical_tag?.name !== expectedTag) {
     failures.push(
@@ -147,7 +178,6 @@ function validateRelease(release, localState, failures) {
       `npm alpha version ${release.npm?.alpha ?? '<missing>'} must match source version ${release.source_version ?? '<missing>'}`,
     );
   }
-  validateReleasePullRequest(release.active_release_pr, release.source_version, failures);
 }
 
 function validateReleasePullRequest(releasePr, sourceVersion, failures) {
