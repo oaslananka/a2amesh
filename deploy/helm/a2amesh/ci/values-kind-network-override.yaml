@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 oaslananka
+# SPDX-License-Identifier: Apache-2.0
+# Layer this over values-kind.yaml only for the explicit private-egress override drill.
+networkPolicy:
+  runtime:
+    extraEgress:
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                a2amesh.dev/network-access: approved
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: approved-endpoint
+        ports:
+          - protocol: TCP
+            port: 8080

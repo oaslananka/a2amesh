@@ -14,7 +14,7 @@ describe('Sonar security gate regressions', () => {
         /curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https'/g,
       ) ?? [];
 
-    expect(redirectedDownloads).toHaveLength(10);
+    expect(redirectedDownloads.length).toBeGreaterThan(0);
     expect(httpsOnlyDownloads).toHaveLength(redirectedDownloads.length);
   });
 

@@ -10,6 +10,9 @@ registry:
     token: ci-registry-token
   outboundPolicy:
     allowPrivateNetworks: true
+  pdb:
+    enabled: true
+    minAvailable: 1
   resources:
     requests:
       cpu: 25m
@@ -29,6 +32,9 @@ runtime:
     openAIKey: container-smoke-placeholder
   outboundPolicy:
     allowPrivateNetworks: true
+  pdb:
+    enabled: true
+    minAvailable: 1
   startupProbe:
     failureThreshold: 90
   resources:
@@ -40,4 +46,4 @@ runtime:
       memory: 1Gi
 
 networkPolicy:
-  enabled: false
+  enabled: true

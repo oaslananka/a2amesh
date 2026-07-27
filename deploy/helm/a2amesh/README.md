@@ -82,9 +82,15 @@ A multi-replica registry requires a shared external storage backend. The current
 
 The demo runtime also keeps task state in-process. More than one runtime replica, including HPA, is rejected unless `runtime.autoscaling.allowEphemeralReplicas=true` explicitly acknowledges that requests can be routed to pods that do not share task state. The production profile therefore uses one runtime replica.
 
+The production profile is a hardened single-node baseline, not an HA claim: SQLite has one writer and runtime task state is process-local. Shared-state HA remains unsupported until an external registry store and shared runtime task store are implemented and tested.
+
+The production profile enables `minAvailable: 1` PDBs. With one replica, they intentionally block voluntary eviction and node drain. For planned maintenance, back up and verify persistent state, explicitly disable both PDBs for the outage window, drain and uncordon the node, then restore the production values and verify readiness and data integrity.
+
 ## Network boundaries
 
-NetworkPolicy is enabled by default. It allows DNS, runtime-to-registry traffic, registry health polling of chart runtime pods, and optional internet egress. Runtime internet egress excludes private, loopback, link-local, carrier-grade NAT, and metadata address ranges. Registry internet egress is disabled unless explicitly enabled.
+NetworkPolicy is enabled by default. It allows DNS, runtime-to-registry traffic, registry health polling of chart runtime pods, and optional IPv4 internet egress. Runtime internet egress excludes private, loopback, link-local, carrier-grade NAT, and metadata address ranges. Registry internet egress is disabled unless explicitly enabled.
+
+These policies require a NetworkPolicy-enforcing CNI. CI uses Calico v3.32 with Kubernetes 1.36 to prove internal allow paths, unrelated-namespace denial, prohibited private/metadata egress, and an explicit private-egress override. The generic public-egress rule is IPv4-only; the chart does not render `::/0`. Selector-based cluster traffic can work on dual-stack clusters, but IPv6 public egress is not certified and must be added only through a reviewed, narrow `extraEgress` rule.
 
 Ingress controllers and external observability collectors vary by cluster. Add their namespace and pod selectors through `networkPolicy.registry.extraIngress`, `networkPolicy.registry.extraEgress`, `networkPolicy.runtime.extraIngress`, or `networkPolicy.runtime.extraEgress`. Do not disable NetworkPolicy solely to make an ingress controller work.
 
@@ -126,4 +132,4 @@ Chart-managed static tokens are retained across upgrades through a Secret lookup
 
 ## CI contract
 
-The `Helm` workflow checks five profiles with Helm, validates rendered resources against Kubernetes schemas, scans the manifests with Trivy, packages the chart, builds local runtime and registry images, installs them into a digest-pinned Kind node, verifies health and metrics, runs `helm test`, performs an upgrade, and rolls back to the initial revision.
+The `Helm` workflow checks five profiles with Helm, validates rendered resources against Kubernetes schemas, scans the manifests with Trivy, packages the chart, builds local runtime and registry images, and installs them into a digest-pinned Calico-backed Kind cluster. It verifies health and metrics, enforced allow/deny paths, IPv4 private/metadata egress denial, an explicit private-egress override, single-replica drain blocking, the planned-maintenance PDB override, `helm test`, upgrade, and rollback. Failure diagnostics include policies, PDBs, endpoints, events, pods, and bounded logs without dumping Secrets.

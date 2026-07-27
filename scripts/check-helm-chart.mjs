@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { accessSync, constants, lstatSync, realpathSync } from 'node:fs';
+import { accessSync, constants, lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { basename, isAbsolute } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
@@ -63,6 +63,38 @@ function profileName(profile) {
   return profile?.split('/').at(-1) ?? 'values.yaml';
 }
 
+const boundaryScript = 'scripts/verify-helm-network-boundaries.sh';
+const boundarySyntax = spawnSync('/usr/bin/bash', ['-n', boundaryScript], {
+  cwd: process.cwd(),
+  encoding: 'utf8',
+  env: { PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' },
+  timeout: 30_000,
+});
+if (boundarySyntax.error) throw boundarySyntax.error;
+if (boundarySyntax.status !== 0) {
+  throw new Error(`Network-boundary verifier has invalid Bash syntax:
+${boundarySyntax.stderr}`);
+}
+
+const kindValues = readFileSync(`${chartPath}/ci/values-kind.yaml`, 'utf8');
+for (const required of [
+  `networkPolicy:
+  enabled: true`,
+  `pdb:
+    enabled: true
+    minAvailable: 1`,
+]) {
+  if (!kindValues.includes(required)) {
+    throw new Error(`Kind enforcement profile is missing: ${required}`);
+  }
+}
+const calicoConfig = readFileSync(`${chartPath}/ci/kind-calico.yaml`, 'utf8');
+for (const required of ['disableDefaultCNI: true', 'podSubnet: 192.168.0.0/16']) {
+  if (!calicoConfig.includes(required)) {
+    throw new Error(`Calico Kind config is missing: ${required}`);
+  }
+}
+
 const helm = resolveHelmBinary();
 for (const profile of profiles) {
   const valueArgs = profile ? ['--values', profile] : [];
@@ -115,11 +147,39 @@ for (const profile of profiles) {
       'serviceName: a2amesh-check-registry-headless',
       'clusterIP: None',
       'publishNotReadyAddresses: true',
+      'kind: PodDisruptionBudget',
+      'minAvailable: 1',
+      'cidr: 0.0.0.0/0',
+      '- 169.254.0.0/16',
     ]) {
       if (!rendered.includes(required)) {
         throw new Error(`Production profile is missing StatefulSet service contract: ${required}`);
       }
     }
+    if (rendered.includes('cidr: ::/0')) {
+      throw new Error('Production profile must not claim unverified IPv6 public egress.');
+    }
+  }
+}
+
+const overrideRendered = runHelm(helm, [
+  'template',
+  'a2amesh-override-check',
+  chartPath,
+  '--namespace',
+  'a2amesh-check',
+  '--values',
+  `${chartPath}/ci/values-kind.yaml`,
+  '--values',
+  `${chartPath}/ci/values-kind-network-override.yaml`,
+]);
+for (const required of [
+  'a2amesh.dev/network-access: approved',
+  'app.kubernetes.io/name: approved-endpoint',
+  'port: 8080',
+]) {
+  if (!overrideRendered.includes(required)) {
+    throw new Error(`Explicit network override did not render: ${required}`);
   }
 }
 

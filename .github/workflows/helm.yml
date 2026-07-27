@@ -11,6 +11,7 @@ name: Helm
       - 'packages/runtime/**'
       - 'scripts/check-helm-chart.mjs'
       - 'scripts/check-ops-pack.mjs'
+      - 'scripts/verify-helm-network-boundaries.sh'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -24,6 +25,7 @@ name: Helm
       - 'packages/runtime/**'
       - 'scripts/check-helm-chart.mjs'
       - 'scripts/check-ops-pack.mjs'
+      - 'scripts/verify-helm-network-boundaries.sh'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -47,6 +49,10 @@ env:
   KIND_VERSION: v0.32.0
   KUBECTL_VERSION: v1.36.1
   KIND_NODE_IMAGE: kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+  CALICO_VERSION: v3.32.0
+  CALICO_MANIFEST_SHA256: bccabc607685551db918f66da724893eca3e69a50c5a3e3077029b02dbab8d35
+  NETWORK_PROBE_IMAGE: curlimages/curl:8.14.1
+  NETWORK_SERVER_IMAGE: registry.k8s.io/e2e-test-images/agnhost:2.53
   TRIVY_IMAGE: aquasec/trivy@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f
 
 jobs:
@@ -207,17 +213,42 @@ jobs:
             --build-arg CREATED="${created}" \
             .
 
-      - name: Create Kind cluster and load images
+      - name: Create Calico-backed Kind cluster and load images
         run: |
           set -euo pipefail
+          docker pull "${NETWORK_PROBE_IMAGE}"
+          docker pull "${NETWORK_SERVER_IMAGE}"
+
           kind create cluster \
             --name a2amesh-helm \
+            --config deploy/helm/a2amesh/ci/kind-calico.yaml \
             --image "${KIND_NODE_IMAGE}" \
             --wait 180s
+
+          calico_manifest="${RUNNER_TEMP}/calico-${CALICO_VERSION}.yaml"
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --output "${calico_manifest}" \
+            "https://raw.githubusercontent.com/projectcalico/calico/${CALICO_VERSION}/manifests/calico.yaml"
+          printf '%s  %s\n' "${CALICO_MANIFEST_SHA256}" "${calico_manifest}" \
+            | sha256sum --check -
+          kubectl apply --filename "${calico_manifest}"
+          kubectl rollout status daemonset/calico-node \
+            --namespace kube-system \
+            --timeout 8m
+          kubectl rollout status deployment/calico-kube-controllers \
+            --namespace kube-system \
+            --timeout 8m
+          kubectl wait --for=condition=Ready nodes --all --timeout=5m
+          kubectl rollout status deployment/coredns \
+            --namespace kube-system \
+            --timeout 5m
+
           kind load docker-image \
             --name a2amesh-helm \
             local/a2amesh-runtime:ci \
-            local/a2amesh-registry:ci
+            local/a2amesh-registry:ci \
+            "${NETWORK_PROBE_IMAGE}" \
+            "${NETWORK_SERVER_IMAGE}"
 
       - name: Install chart
         run: |
@@ -269,18 +300,32 @@ jobs:
           curl --fail --silent http://127.0.0.1:18003/metrics \
             | grep --fixed-strings 'a2a_runtime_'
 
-      - name: Upgrade and rollback chart
+      - name: Verify enforced network and disruption boundaries
+        env:
+          A2AMESH_PROBE_IMAGE: ${{ env.NETWORK_PROBE_IMAGE }}
+          A2AMESH_SERVER_IMAGE: ${{ env.NETWORK_SERVER_IMAGE }}
+        run: |
+          set -euo pipefail
+          scripts/verify-helm-network-boundaries.sh baseline
+          scripts/verify-helm-network-boundaries.sh pdb-blocked
+
+      - name: Upgrade with an explicit private-egress override and rollback
+        env:
+          A2AMESH_PROBE_IMAGE: ${{ env.NETWORK_PROBE_IMAGE }}
+          A2AMESH_SERVER_IMAGE: ${{ env.NETWORK_SERVER_IMAGE }}
         run: |
           set -euo pipefail
           helm upgrade a2amesh deploy/helm/a2amesh \
             --namespace a2amesh \
             --reuse-values \
+            --values deploy/helm/a2amesh/ci/values-kind-network-override.yaml \
             --set-string deploymentEnvironment=ci-upgrade \
             --wait \
             --timeout 10m
           test "$(kubectl get configmap a2amesh-runtime \
             --namespace a2amesh \
             --output jsonpath='{.data.DEPLOYMENT_ENVIRONMENT}')" = 'ci-upgrade'
+          scripts/verify-helm-network-boundaries.sh override
           helm test a2amesh --namespace a2amesh --logs --timeout 5m
 
           helm rollback a2amesh 1 \
@@ -290,16 +335,34 @@ jobs:
           test "$(kubectl get configmap a2amesh-runtime \
             --namespace a2amesh \
             --output jsonpath='{.data.DEPLOYMENT_ENVIRONMENT}')" = 'ci'
+          scripts/verify-helm-network-boundaries.sh baseline
           helm test a2amesh --namespace a2amesh --logs --timeout 5m
 
-      - name: Collect cluster diagnostics
+      - name: Verify the explicit single-node maintenance override
+        run: |
+          set -euo pipefail
+          helm upgrade a2amesh deploy/helm/a2amesh \
+            --namespace a2amesh \
+            --reuse-values \
+            --set registry.pdb.enabled=false \
+            --set runtime.pdb.enabled=false \
+            --wait \
+            --timeout 10m
+          scripts/verify-helm-network-boundaries.sh maintenance-drain
+
+          helm rollback a2amesh 1 \
+            --namespace a2amesh \
+            --wait \
+            --timeout 10m
+          test "$(kubectl get poddisruptionbudgets --namespace a2amesh --no-headers | wc -l)" -eq 2
+          helm test a2amesh --namespace a2amesh --logs --timeout 5m
+
+      - name: Collect redacted cluster diagnostics
         if: ${{ failure() }}
         run: |
-          kubectl get all --all-namespaces --output wide || true
-          kubectl get events --all-namespaces --sort-by=.lastTimestamp || true
-          kubectl logs --namespace a2amesh deployment/a2amesh-registry --all-containers || true
-          kubectl logs --namespace a2amesh deployment/a2amesh-runtime --all-containers || true
-          helm status a2amesh --namespace a2amesh || true
+          scripts/verify-helm-network-boundaries.sh diagnostics
+          kubectl logs --namespace kube-system daemonset/calico-node \
+            --all-containers --tail=200 || true
 
       - name: Delete Kind cluster
         if: ${{ always() }}
