@@ -445,8 +445,9 @@ describe('recovery fail-closed regressions', () => {
       { mode: 0o700 },
     );
 
-    const sentinelUrl = 'https://example.com/a2amesh-recovery-sentinel';
-    const server = createServer((request, response) => {
+    const sentinelUrl = 'http://a2amesh-runtime.a2amesh.svc.cluster.local:3003/recovery-sentinel';
+    let observedRegistrationUrl: string | undefined;
+    const server = createServer(async (request, response) => {
       if (request.url === '/health') {
         response.writeHead(200).end('ok');
         return;
@@ -457,7 +458,18 @@ describe('recovery fail-closed regressions', () => {
       }
       response.setHeader('Content-Type', 'application/json');
       if (request.method === 'POST' && request.url === '/agents/register') {
-        response.writeHead(201).end(JSON.stringify({ url: sentinelUrl }));
+        const chunks: Buffer[] = [];
+        for await (const chunk of request) chunks.push(Buffer.from(chunk));
+        const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
+          agentUrl?: string;
+          agentCard?: { url?: string };
+        };
+        observedRegistrationUrl = body.agentUrl;
+        if (body.agentUrl !== sentinelUrl || body.agentCard?.url !== sentinelUrl) {
+          response.writeHead(400).end(JSON.stringify({ detail: 'unexpected sentinel URL' }));
+          return;
+        }
+        response.writeHead(201).end(JSON.stringify({ url: body.agentUrl }));
         return;
       }
       if (request.method === 'GET' && request.url === '/agents') {
@@ -491,6 +503,7 @@ describe('recovery fail-closed regressions', () => {
         expect(result.stdout).not.toContain('sentinel-test-token');
         expect(result.stderr).not.toContain('sentinel-test-token');
       }
+      expect(observedRegistrationUrl).toBe(sentinelUrl);
     } finally {
       server.close();
       await once(server, 'close');

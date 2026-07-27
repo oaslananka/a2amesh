@@ -8,17 +8,18 @@ RELEASE="${A2AMESH_RELEASE:-a2amesh}"
 NAMESPACE="${A2AMESH_NAMESPACE:-a2amesh}"
 TOKEN="${A2AMESH_REGISTRY_TOKEN:?A2AMESH_REGISTRY_TOKEN is required}"
 LOCAL_PORT="${A2AMESH_REGISTRY_PORT:-18199}"
-SENTINEL_URL="https://example.com/a2amesh-recovery-sentinel"
+SENTINEL_URL="${A2AMESH_REGISTRY_SENTINEL_URL:-http://${RELEASE}-runtime.${NAMESPACE}.svc.cluster.local:3003/recovery-sentinel}"
 MODE="${1:-}"
 
 response_file="$(mktemp)"
+request_file="$(mktemp)"
 port_forward_log="$(mktemp)"
 port_forward_pid=''
 cleanup() {
   if [[ -n "${port_forward_pid}" ]]; then
     kill "${port_forward_pid}" >/dev/null 2>&1 || true
   fi
-  rm -f "${response_file}" "${port_forward_log}"
+  rm -f "${response_file}" "${request_file}" "${port_forward_log}"
 }
 trap cleanup EXIT
 
@@ -38,15 +39,33 @@ done
 
 case "${MODE}" in
   seed)
-    curl --fail --silent --show-error \
+    /usr/bin/python3 - "${SENTINEL_URL}" "${request_file}" <<'PY'
+import json, sys
+sentinel_url, output_path = sys.argv[1:]
+payload = {
+    'agentUrl': sentinel_url,
+    'agentCard': {
+        'protocolVersion': '1.0',
+        'name': 'Recovery Sentinel',
+        'description': 'Synthetic chart persistence evidence',
+        'url': sentinel_url,
+        'version': '1.0.0',
+        'skills': [],
+    },
+}
+with open(output_path, 'w', encoding='utf-8') as handle:
+    json.dump(payload, handle, separators=(',', ':'))
+PY
+    chmod 0600 "${request_file}"
+    curl --fail-with-body --silent --show-error --max-time 30 \
       --request POST \
       --header "Authorization: Bearer ${TOKEN}" \
-      --header 'Content-Type: application/json' \
-      --data '{"agentUrl":"https://example.com/a2amesh-recovery-sentinel","agentCard":{"protocolVersion":"1.0","name":"Recovery Sentinel","description":"Synthetic Helm persistence evidence","url":"https://example.com/a2amesh-recovery-sentinel","version":"1.0.0","skills":[]}}' \
+      --header 'Content-Type: application/a2a+json' \
+      --data-binary "@${request_file}" \
       "http://127.0.0.1:${LOCAL_PORT}/agents/register" >"${response_file}"
     ;;
   verify)
-    curl --fail --silent --show-error \
+    curl --fail-with-body --silent --show-error --max-time 30 \
       --header "Authorization: Bearer ${TOKEN}" \
       "http://127.0.0.1:${LOCAL_PORT}/agents" >"${response_file}"
     ;;
