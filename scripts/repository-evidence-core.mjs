@@ -112,15 +112,26 @@ function validateRelease(release, localState, failures) {
   if (JSON.stringify(evidencePaths) !== JSON.stringify(configuredPaths)) {
     failures.push('Evidence package paths must match release configuration paths');
   }
-  if (manifestVersions.length === 1 && release.source_version !== manifestVersions[0]) {
+  const manifestVersion = manifestVersions.length === 1 ? manifestVersions[0] : null;
+  const proposedVersion = release.active_release_pr?.proposed_version;
+  const stagedRelease =
+    manifestVersion != null &&
+    proposedVersion === manifestVersion &&
+    compareSemanticVersions(proposedVersion, release.source_version) > 0;
+
+  if (manifestVersion != null && !stagedRelease && release.source_version !== manifestVersion) {
     failures.push(
-      `Evidence source version ${release.source_version ?? '<missing>'} does not match release manifest ${manifestVersions[0]}`,
+      `Evidence source version ${release.source_version ?? '<missing>'} does not match release manifest ${manifestVersion}`,
     );
   }
+  const expectedPackageVersion = stagedRelease ? proposedVersion : release.source_version;
   for (const path of configuredPaths) {
-    if (packageVersions[path] !== release.source_version) {
+    if (packageVersions[path] !== expectedPackageVersion) {
+      const expectation = stagedRelease
+        ? `staged release version ${expectedPackageVersion}`
+        : `evidence source version ${release.source_version ?? '<missing>'}`;
       failures.push(
-        `${path}: package version ${packageVersions[path] ?? '<missing>'} does not match evidence source version ${release.source_version ?? '<missing>'}`,
+        `${path}: package version ${packageVersions[path] ?? '<missing>'} does not match ${expectation}`,
       );
     }
   }
