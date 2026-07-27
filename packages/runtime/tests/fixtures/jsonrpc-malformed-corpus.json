@@ -1,0 +1,84 @@
+[
+  {
+    "name": "truncated-object",
+    "rawBody": "{\"jsonrpc\":\"2.0\",\"id\":\"truncated\"",
+    "status": 200,
+    "code": -32700,
+    "message": "Parse error",
+    "id": null,
+    "reason": "PARSE_ERROR"
+  },
+  {
+    "name": "trailing-comma",
+    "rawBody": "{\"jsonrpc\":\"2.0\",\"method\":\"tasks/get\",}",
+    "status": 200,
+    "code": -32700,
+    "message": "Parse error",
+    "id": null,
+    "reason": "PARSE_ERROR"
+  },
+  {
+    "name": "primitive-null",
+    "rawBody": "null",
+    "status": 200,
+    "code": -32700,
+    "message": "Parse error",
+    "id": null,
+    "reason": "PARSE_ERROR"
+  },
+  {
+    "name": "batch-request",
+    "rawBody": "[{\"jsonrpc\":\"2.0\",\"id\":\"batch\",\"method\":\"tasks/get\",\"params\":{\"taskId\":\"missing\"}}]",
+    "status": 200,
+    "code": -32600,
+    "message": "Batch requests are not supported",
+    "id": null,
+    "reason": "INVALID_REQUEST"
+  },
+  {
+    "name": "wrong-jsonrpc-version",
+    "rawBody": "{\"jsonrpc\":\"1.0\",\"id\":\"wrong-version\",\"method\":\"tasks/get\",\"params\":{\"taskId\":\"missing\"}}",
+    "status": 200,
+    "code": -32600,
+    "message": "Invalid JSON-RPC request",
+    "id": "wrong-version",
+    "reason": "INVALID_REQUEST"
+  },
+  {
+    "name": "non-string-method",
+    "rawBody": "{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":42,\"params\":{\"token\":\"corpus-secret-token\"}}",
+    "status": 200,
+    "code": -32600,
+    "message": "Invalid JSON-RPC request",
+    "id": 0,
+    "reason": "INVALID_REQUEST",
+    "secret": "corpus-secret-token"
+  },
+  {
+    "name": "primitive-params",
+    "rawBody": "{\"jsonrpc\":\"2.0\",\"id\":\"primitive-params\",\"method\":\"tasks/get\",\"params\":true}",
+    "status": 200,
+    "code": -32600,
+    "message": "Invalid JSON-RPC request",
+    "id": "primitive-params",
+    "reason": "INVALID_REQUEST"
+  },
+  {
+    "name": "object-id",
+    "rawBody": "{\"jsonrpc\":\"2.0\",\"id\":{\"nested\":true},\"method\":\"tasks/get\",\"params\":{\"taskId\":\"missing\"}}",
+    "status": 200,
+    "code": -32600,
+    "message": "Invalid JSON-RPC request",
+    "id": null,
+    "reason": "INVALID_REQUEST"
+  },
+  {
+    "name": "unsupported-method",
+    "rawBody": "{\"jsonrpc\":\"2.0\",\"id\":\"unknown-method\",\"method\":\"unknown/method\",\"params\":{}}",
+    "status": 200,
+    "code": -32601,
+    "message": "Method unknown/method not found",
+    "id": "unknown-method",
+    "reason": "METHOD_NOT_FOUND"
+  }
+]

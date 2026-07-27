@@ -24,12 +24,18 @@ import type {
   Task,
 } from '../../types/task.js';
 import { normalizeMessage } from '../../utils/compat.js';
+import { makeErrorInfo } from '../../utils/errors.js';
 import {
   normalizeOfficialV1RpcRequest,
   toOfficialV1RpcResult,
   type A2AJsonRpcDialect,
 } from '../../utils/officialWire.js';
 import { logger } from '../../utils/logger.js';
+import {
+  assertJsonRpcInputLimits,
+  DEFAULT_JSON_RPC_INPUT_LIMITS,
+  type JsonRpcInputLimits,
+} from '../../utils/json-rpc-input-limits.js';
 import {
   PushNotificationConfigSchema,
   validateJsonRpcRequest,
@@ -92,6 +98,7 @@ export interface JsonRpcHttpHandlerDependencies {
   idempotencyStore: IdempotencyStore;
   idempotencyTtlMs: number;
   idempotencyLeaseMs: number;
+  jsonRpcInputLimits?: JsonRpcInputLimits;
   handleRpc: HandleRpc;
   handleStreamingRpc: HandleStreamingRpc;
 }
@@ -129,8 +136,14 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
       assertSupportedA2AProtocolVersion(req);
 
       if (Array.isArray(req.body)) {
-        throw new JsonRpcError(ErrorCodes.InvalidRequest, 'Batch requests are not supported');
+        throw new JsonRpcError(
+          ErrorCodes.InvalidRequest,
+          'Batch requests are not supported',
+          makeErrorInfo('INVALID_REQUEST'),
+        );
       }
+
+      assertJsonRpcInputLimits(req.body, deps.jsonRpcInputLimits ?? DEFAULT_JSON_RPC_INPUT_LIMITS);
 
       const receivedRpcReq = validateJsonRpcRequest(req.body);
       const normalizedRpcReq = normalizeOfficialV1RpcRequest(
@@ -555,7 +568,11 @@ export async function handleRpcRequest(
       }
 
       default:
-        throw new JsonRpcError(ErrorCodes.MethodNotFound, `Method ${req.method} not found`);
+        throw new JsonRpcError(
+          ErrorCodes.MethodNotFound,
+          `Method ${req.method} not found`,
+          makeErrorInfo('METHOD_NOT_FOUND'),
+        );
     }
   } catch (error: unknown) {
     if (error instanceof TaskLifecycleError) {

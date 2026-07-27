@@ -3,6 +3,7 @@ import { attachRequestContext, type JwtAuthMiddleware } from '../../auth/index.j
 import type { RuntimeMetrics } from '../../telemetry/index.js';
 import type { AgentCard } from '../../types/agent-card.js';
 import type { RequestContext } from '../../types/auth.js';
+import type { JsonRpcInputLimits } from '../../utils/json-rpc-input-limits.js';
 import { ErrorCodes, JsonRpcError, type JsonRpcRequest } from '../../types/jsonrpc.js';
 import type { Message, Task } from '../../types/task.js';
 import { toOfficialSendMessageResponse, toOfficialTaskJson } from '../../utils/officialWire.js';
@@ -45,6 +46,7 @@ export interface A2AHttpRouteDependencies {
   idempotencyStore: IdempotencyStore;
   idempotencyTtlMs: number;
   idempotencyLeaseMs: number;
+  jsonRpcInputLimits: JsonRpcInputLimits;
   handleRpc: HandleRpc;
   handleStreamingRpc: HandleStreamingRpc;
   canAccessTask: CanAccessTask;
@@ -71,6 +73,7 @@ export function registerA2ARoutes(deps: A2AHttpRouteDependencies): void {
     idempotencyStore: deps.idempotencyStore,
     idempotencyTtlMs: deps.idempotencyTtlMs,
     idempotencyLeaseMs: deps.idempotencyLeaseMs,
+    jsonRpcInputLimits: deps.jsonRpcInputLimits,
     handleRpc: deps.handleRpc,
     handleStreamingRpc: deps.handleStreamingRpc,
   });
