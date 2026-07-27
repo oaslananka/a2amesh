@@ -104,6 +104,18 @@ describe('repository evidence', () => {
     ).toEqual([]);
   });
 
+  it('accepts a staged Release Please version while evidence still reflects the published release', () => {
+    const state = localState();
+    for (const path of packagePaths) {
+      state.manifest[path] = '0.14.0-alpha.1';
+      state.packageVersions[path] = '0.14.0-alpha.1';
+    }
+
+    expect(
+      validateRepositoryEvidence(snapshot(), state, new Date('2026-07-30T00:00:00.000Z')),
+    ).toEqual([]);
+  });
+
   it('rejects evidence older than its repository refresh cadence', () => {
     expect(
       validateRepositoryEvidence(snapshot(), localState(), new Date('2026-08-07T21:05:01.000Z')),
