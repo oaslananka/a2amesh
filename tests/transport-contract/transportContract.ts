@@ -12,6 +12,7 @@ const transportOperationNames = [
   'health',
   'authErrors',
   'malformedRequests',
+  'versionNegotiation',
 ] as const;
 
 type TransportOperationName = (typeof transportOperationNames)[number];
@@ -42,6 +43,7 @@ interface TransportContractSession {
   health?(): Promise<A2AHealthResponse | Record<string, unknown>>;
   sendWithoutAuth?(): Promise<TransportContractFailure>;
   sendMalformedRequest?(): Promise<TransportContractFailure>;
+  negotiateUnsupportedVersion?(): Promise<TransportContractFailure>;
   close(): Promise<void>;
 }
 
@@ -176,6 +178,20 @@ export function runTransportContract(spec: TransportContractSpec): void {
         expect(session.sendMalformedRequest).toBeDefined();
         const failure = await session.sendMalformedRequest!();
         expect(failure.message).toMatch(/invalid|malformed|json-rpc|envelope/i);
+      });
+    });
+
+    it(`${spec.name}: rejects unsupported protocol versions when supported`, async () => {
+      const capability = spec.capabilities.versionNegotiation;
+      if (!capability.supported) {
+        expect(capability.reason).toContain(spec.name);
+        return;
+      }
+
+      await withSession(spec, async (session) => {
+        expect(session.negotiateUnsupportedVersion).toBeDefined();
+        const failure = await session.negotiateUnsupportedVersion!();
+        expect(failure.message).toMatch(/protocol version|version.*not supported/i);
       });
     });
   });

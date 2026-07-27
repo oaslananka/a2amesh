@@ -27,6 +27,7 @@ const GRPC_CAPABILITIES: TransportCapabilityMap = {
     reason:
       'gRPC Contract Agent uses typed protobuf requests, so malformed JSON-RPC envelopes are not accepted by gRPC.',
   },
+  versionNegotiation: { supported: true },
 };
 
 class GrpcContractA2AServer extends A2AServer {
@@ -110,6 +111,17 @@ runTransportContract({
       },
       resolveCard() {
         return client.getAgentCard();
+      },
+      async negotiateUnsupportedVersion() {
+        const unsupportedClient = new GrpcClient(url, { protocolVersion: '9.9' });
+        try {
+          await unsupportedClient.getAgentCard();
+          return { message: 'Protocol version was unexpectedly accepted' };
+        } catch (error) {
+          return { message: error instanceof Error ? error.message : String(error) };
+        } finally {
+          unsupportedClient.close();
+        }
       },
       async close() {
         client.close();

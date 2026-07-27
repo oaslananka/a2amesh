@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0",
+  "profiles": [
+    {
+      "id": "official-a2a-v1.0",
+      "protocolVersion": "1.0",
+      "default": true,
+      "experimental": false
+    },
+    {
+      "id": "legacy-a2amesh",
+      "protocolVersion": "0.3",
+      "default": false,
+      "experimental": false
+    },
+    {
+      "id": "experimental-a2a-v1.2",
+      "protocolVersion": "1.2",
+      "default": false,
+      "experimental": true
+    }
+  ],
+  "cases": [
+    {
+      "id": "missing-version-defaults-to-legacy",
+      "profile": "legacy-a2amesh",
+      "expected": {
+        "kind": "success"
+      }
+    },
+    {
+      "id": "official-v1-header",
+      "profile": "official-a2a-v1.0",
+      "header": "1.0",
+      "expected": {
+        "kind": "success"
+      }
+    },
+    {
+      "id": "official-v1-query",
+      "profile": "official-a2a-v1.0",
+      "query": "A2A-Version=1.0",
+      "expected": {
+        "kind": "success"
+      }
+    },
+    {
+      "id": "legacy-v03-header",
+      "profile": "legacy-a2amesh",
+      "header": "0.3",
+      "expected": {
+        "kind": "success"
+      }
+    },
+    {
+      "id": "experimental-v12-header",
+      "profile": "experimental-a2a-v1.2",
+      "header": "1.2",
+      "expected": {
+        "kind": "success"
+      }
+    },
+    {
+      "id": "unsupported-version",
+      "profile": "official-a2a-v1.0",
+      "header": "9.9",
+      "expected": {
+        "kind": "error",
+        "code": -32009,
+        "reason": "VERSION_NOT_SUPPORTED",
+        "requestedVersion": "9.9"
+      }
+    },
+    {
+      "id": "conflicting-version-metadata",
+      "profile": "official-a2a-v1.0",
+      "header": "1.0, 1.2",
+      "expected": {
+        "kind": "error",
+        "code": -32009,
+        "reason": "VERSION_NOT_SUPPORTED",
+        "requestedVersion": "1.0, 1.2"
+      }
+    }
+  ]
+}

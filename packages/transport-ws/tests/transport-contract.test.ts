@@ -29,6 +29,7 @@ const WS_CAPABILITIES: TransportCapabilityMap = {
     reason: 'WebSocket Contract Agent has no authentication handshake in WsServerOptions.',
   },
   malformedRequests: { supported: true },
+  versionNegotiation: { supported: true },
 };
 
 class WsContractRuntime {
@@ -167,6 +168,9 @@ runTransportContract({
       sendMalformedRequest() {
         return sendMalformedWsRequest(url);
       },
+      negotiateUnsupportedVersion() {
+        return negotiateUnsupportedWsVersion(url);
+      },
       async close() {
         await client.close();
         await server.close();
@@ -229,4 +233,19 @@ async function sendMalformedWsRequest(
     ...(response.error?.code !== undefined ? { code: response.error.code } : {}),
     message: response.error?.message ?? 'missing error',
   };
+}
+
+async function negotiateUnsupportedWsVersion(
+  url: string,
+): Promise<{ code?: number | string; message: string }> {
+  const endpoint = new URL(url);
+  endpoint.searchParams.set('A2A-Version', '9.9');
+  const socket = new WebSocket(endpoint);
+
+  return new Promise((resolve, reject) => {
+    socket.once('error', reject);
+    socket.once('close', (code, reason) => {
+      resolve({ code, message: reason.toString() });
+    });
+  });
 }
