@@ -37,6 +37,22 @@ describe('release workflow guards', () => {
     expect(workflow).not.toContain('node scripts/release-state.mjs --check');
   });
 
+  it('uploads verified release assets only after npm registry parity passes', async () => {
+    const workflow = await readFile(new URL('.github/workflows/publish.yml', repoRoot), 'utf8');
+    const parityIndex = workflow.indexOf('name: Verify package registry parity');
+    const uploadIndex = workflow.indexOf('name: Upload verified release assets');
+
+    expect(workflow).toMatch(/publish:\n(?:.|\n)*?permissions:\n(?:.|\n)*?contents: write/);
+    expect(parityIndex).toBeGreaterThan(-1);
+    expect(uploadIndex).toBeGreaterThan(parityIndex);
+    expect(workflow).toContain('gh release upload "${TAG}"');
+    expect(workflow).toContain('.artifacts/npm/*.tgz');
+    expect(workflow).toContain('.artifacts/npm/SHA256SUMS');
+    expect(workflow).toContain('.artifacts/sbom/a2amesh.cdx.json');
+    expect(workflow).toContain('--repo "${GITHUB_REPOSITORY}"');
+    expect(workflow).toContain('--clobber');
+  });
+
   it('statically enforces both workflow gates in release config validation', async () => {
     const checker = await readFile(new URL('scripts/check-release-config.mjs', repoRoot), 'utf8');
 

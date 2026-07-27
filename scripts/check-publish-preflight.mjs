@@ -158,6 +158,9 @@ if (!/id-token:\s*write/.test(publishWorkflow)) {
 if (!/attestations:\s*write/.test(publishWorkflow)) {
   failures.push('publish.yml must grant attestations: write for provenance attestations');
 }
+if (!/contents:\s*write/.test(publishWorkflow)) {
+  failures.push('publish.yml must grant contents: write for GitHub Release asset uploads');
+}
 if (!publishWorkflow.includes('registry-url: https://registry.npmjs.org')) {
   failures.push('publish.yml setup-pnpm step must configure the npm registry URL');
 }
@@ -166,6 +169,25 @@ if (!publishWorkflow.includes('npm publish "$package_file" --access public --pro
 }
 if (!publishWorkflow.includes('@a2amesh/runtime-v<semver>')) {
   failures.push('publish.yml must document the expected release tag format');
+}
+const parityIndex = publishWorkflow.indexOf('name: Verify package registry parity');
+const uploadIndex = publishWorkflow.indexOf('name: Upload verified release assets');
+if (parityIndex < 0 || uploadIndex <= parityIndex) {
+  failures.push(
+    'publish.yml must upload verified release assets only after registry parity passes',
+  );
+}
+for (const requiredFragment of [
+  'gh release upload "${TAG}"',
+  '.artifacts/npm/*.tgz',
+  '.artifacts/npm/SHA256SUMS',
+  '.artifacts/sbom/a2amesh.cdx.json',
+  '--repo "${GITHUB_REPOSITORY}"',
+  '--clobber',
+]) {
+  if (!publishWorkflow.includes(requiredFragment)) {
+    failures.push(`publish.yml release upload is missing: ${requiredFragment}`);
+  }
 }
 if (/NODE_AUTH_TOKEN|NPM_TOKEN/.test(publishWorkflow)) {
   failures.push('publish.yml must not use long-lived npm token authentication');
