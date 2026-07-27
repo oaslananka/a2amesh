@@ -10,6 +10,14 @@ registry:
     token: ci-registry-token
   outboundPolicy:
     allowPrivateNetworks: true
+  storage:
+    backend: sqlite
+    trustLog:
+      enabled: true
+    distributedPollingLeases: true
+  persistence:
+    enabled: true
+    size: 1Gi
   pdb:
     enabled: true
     minAvailable: 1

@@ -1,0 +1,94 @@
+rule_files:
+  - a2amesh-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: backup integrity failure pages with a dataset-scoped runbook
+    interval: 1m
+    input_series:
+      - series: 'a2a_recovery_backup_integrity_ok{dataset="registry-agents"}'
+        values: '0x5'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: A2AMeshBackupIntegrityFailed
+        exp_alerts:
+          - exp_labels:
+              dataset: registry-agents
+              severity: critical
+              service: a2amesh-recovery
+            exp_annotations:
+              summary: A2A Mesh backup integrity verification failed
+              description: The latest backup for dataset registry-agents failed hash or SQLite integrity verification.
+              runbook_url: https://github.com/oaslananka/a2amesh/blob/main/docs/operations/recovery.md#backup-integrity-failure
+
+  - name: stale backup pages after the 25-hour window
+    interval: 1m
+    input_series:
+      - series: 'a2a_recovery_backup_last_success_timestamp_seconds{dataset="runtime-tasks"}'
+        values: '0x1600'
+    alert_rule_test:
+      - eval_time: 26h
+        alertname: A2AMeshBackupStale
+        exp_alerts:
+          - exp_labels:
+              dataset: runtime-tasks
+              severity: critical
+              service: a2amesh-recovery
+            exp_annotations:
+              summary: A2A Mesh verified backup is stale
+              description: Dataset runtime-tasks has no verified backup within the 25-hour alert window.
+              runbook_url: https://github.com/oaslananka/a2amesh/blob/main/docs/operations/recovery.md#stale-backup
+
+  - name: restore duration warns when the production RTO is exceeded
+    interval: 1m
+    input_series:
+      - series: 'a2a_recovery_restore_last_duration_seconds{dataset="fleet-state"}'
+        values: '1900x5'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: A2AMeshRecoveryRtoExceeded
+        exp_alerts:
+          - exp_labels:
+              dataset: fleet-state
+              severity: warning
+              service: a2amesh-recovery
+            exp_annotations:
+              summary: A2A Mesh restore exceeded the production RTO target
+              description: Dataset fleet-state took longer than 30 minutes to restore and verify.
+              runbook_url: https://github.com/oaslananka/a2amesh/blob/main/docs/operations/recovery.md#rto-exceeded
+
+  - name: failed recovery drill pages immediately after the hold period
+    interval: 1m
+    input_series:
+      - series: 'a2a_recovery_drill_success'
+        values: '0x5'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: A2AMeshRecoveryDrillFailed
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              service: a2amesh-recovery
+            exp_annotations:
+              summary: A2A Mesh recovery drill failed
+              description: The latest disposable backup, restore, or redaction drill did not complete successfully.
+              runbook_url: https://github.com/oaslananka/a2amesh/blob/main/docs/operations/recovery.md#recovery-drill-failure
+
+  - name: registry dependency outage triggers the existing critical alert
+    interval: 1m
+    input_series:
+      - series: 'a2a_registry_agents'
+        values: '1x10'
+      - series: 'a2a_registry_healthy_agents'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: A2AMeshRegistryNoHealthyAgents
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              service: a2amesh-registry
+            exp_annotations:
+              summary: A2A Mesh registry has no healthy agents
+              description: Registered agents exist but none are currently healthy.

@@ -60,6 +60,7 @@ const hypePhrases = [
 const exactAllowed = 'It is not an official Google, Linux Foundation, or a2aproject package.';
 const exactAllowedByFile = new Map([
   ['package.json', ['"helm:check": "node scripts/check-helm-chart.mjs"']],
+  ['tests/integration/recovery-operations.test.ts', ['verify-helm-registry-persistence.sh']],
 ]);
 const ignored = [
   /^AGENTS\.md$/,
@@ -70,6 +71,8 @@ const ignored = [
   /^deploy\/helm\//,
   /^docs\/operations\/deployment\.md$/,
   /^docs-site\/operations\/deployment\.md$/,
+  /^docs\/operations\/recovery\.md$/,
+  /^docs-site\/operations\/recovery\.md$/,
   /^\.github\/workflows\/helm\.yml$/,
   /(^|\/)LICENSE$/,
   /(^|\/)LICENSES\//,

@@ -19,7 +19,10 @@
     "tests/interop/live/javascript/client.mjs",
     "tests/interop/live/javascript/server.mjs",
     "tests/interop/live/mesh/client.mjs",
-    "tests/interop/live/mesh/server.mjs"
+    "tests/interop/live/mesh/server.mjs",
+    "scripts/recovery/diagnostic-bundle.d.mts",
+    "scripts/recovery/sqlite-backup.d.mts",
+    "scripts/recovery-cli.mjs"
   ],
   "ignoreDependencies": [
     "search-insights",

@@ -140,7 +140,7 @@ Registry ingress requires authentication and TLS unless insecure HTTP is explici
 
 ### Upgrade, rollback, and planned node maintenance
 
-A normal upgrade and rollback keeps both PDBs enabled. With one replica and `minAvailable: 1`, voluntary eviction is blocked. Before a planned single-node drain, take and verify the storage backup required by the recovery procedure, announce the outage window, then apply the explicit maintenance override:
+A normal upgrade and rollback keeps both PDBs enabled. With one replica and `minAvailable: 1`, voluntary eviction is blocked. Before a planned single-node drain, take and verify the storage backup required by the [backup and recovery runbook](./recovery.md), announce the outage window, then apply the explicit maintenance override:
 
 ```bash
 helm upgrade a2amesh deploy/helm/a2amesh \

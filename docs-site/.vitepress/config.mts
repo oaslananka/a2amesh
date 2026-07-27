@@ -143,6 +143,7 @@ export default defineConfig({
         {
           text: 'Operations',
           items: [
+            { text: 'Backup and Recovery', link: '/operations/recovery' },
             { text: 'Task Retries', link: '/operations/task-retries' },
             { text: 'Idempotency', link: '/operations/idempotency' },
           ],

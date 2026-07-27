@@ -1,7 +1,7 @@
 {
   "title": "A2A Mesh Operator Overview",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "30s",
   "tags": ["a2amesh", "operations"],
   "panels": [
@@ -9,13 +9,21 @@
       "id": 1,
       "type": "stat",
       "title": "Runtime active tasks",
-      "targets": [{ "expr": "sum(a2a_runtime_tasks_active)" }]
+      "targets": [
+        {
+          "expr": "sum(a2a_runtime_tasks_active)"
+        }
+      ]
     },
     {
       "id": 2,
       "type": "timeseries",
       "title": "Task throughput",
-      "targets": [{ "expr": "sum(rate(a2a_runtime_task_started_total[5m]))" }]
+      "targets": [
+        {
+          "expr": "sum(rate(a2a_runtime_task_started_total[5m]))"
+        }
+      ]
     },
     {
       "id": 3,
@@ -31,7 +39,51 @@
       "id": 4,
       "type": "stat",
       "title": "Registry healthy agents",
-      "targets": [{ "expr": "sum(a2a_registry_healthy_agents)" }]
+      "targets": [
+        {
+          "expr": "sum(a2a_registry_healthy_agents)"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Backup integrity",
+      "targets": [
+        {
+          "expr": "min(a2a_recovery_backup_integrity_ok)"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Verified backup age",
+      "targets": [
+        {
+          "expr": "time() - max by (dataset) (a2a_recovery_backup_last_success_timestamp_seconds)"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Restore duration",
+      "targets": [
+        {
+          "expr": "max by (dataset) (a2a_recovery_restore_last_duration_seconds)"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Recovery drill status",
+      "targets": [
+        {
+          "expr": "min(a2a_recovery_drill_success)"
+        }
+      ]
     }
   ]
 }

@@ -4,13 +4,14 @@ A2A Mesh publishes a small, stable observability pack for operators. The pack is
 
 ## Shipped assets
 
-| Asset                                  | Purpose                                                                                                                   |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `ops/grafana/a2amesh-dashboard.json`   | Starter Grafana dashboard for runtime task flow, task duration, and registry health.                                      |
-| `ops/prometheus/a2amesh-alerts.yml`    | Starter recording and alerting rules for runtime failure ratio, auth rejection spikes, SSE pressure, and registry health. |
-| `ops/otel/collector.yaml`              | Minimal OpenTelemetry collector pipeline for local trace and metric export testing.                                       |
-| `ops/diagnostics/bundle-manifest.json` | Required file list and redaction contract for diagnostic bundles.                                                         |
-| `ops/diagnostics/README.md`            | Bundle collection and sharing rules for operators.                                                                        |
+| Asset                                          | Purpose                                                                                     |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `ops/grafana/a2amesh-dashboard.json`           | Starter Grafana dashboard for runtime task flow, task duration, and registry health.        |
+| `ops/prometheus/a2amesh-alerts.yml`            | Runtime, registry, backup-integrity, stale-backup, restore-RTO, and recovery-drill alerts.  |
+| `ops/otel/collector.yaml`                      | Minimal OpenTelemetry collector pipeline for local trace and metric export testing.         |
+| `ops/diagnostics/bundle-manifest.json`         | Baseline runtime, registry, version, and redaction contract for general diagnostic bundles. |
+| `ops/recovery/diagnostic-bundle-manifest.json` | Recovery-specific report, metrics, and redaction contract used by the disposable drill.     |
+| `ops/diagnostics/README.md`                    | Bundle collection and sharing rules for operators.                                          |
 
 ## Scrape targets
 
@@ -38,6 +39,18 @@ Use these names and labels as the stable operational surface. Changes require te
 | `a2a_runtime_sse_connections_active` | Gauge     | `service_name`, `service_version`       | Streaming pressure.                   |
 | `a2a_runtime_sse_reconnect_total`    | Counter   | `service_name`, `service_version`       | Streaming instability.                |
 | `a2a_runtime_auth_rejected_total`    | Counter   | `service_name`, `service_version`       | Auth and policy rejection monitoring. |
+
+### Recovery metrics
+
+| Metric                                                | Type  | Required labels | SLO use                                      |
+| ----------------------------------------------------- | ----- | --------------- | -------------------------------------------- |
+| `a2a_recovery_backup_last_success_timestamp_seconds`  | Gauge | `dataset`       | Backup age and production RPO alerting.      |
+| `a2a_recovery_backup_integrity_ok`                    | Gauge | `dataset`       | Latest digest and SQLite integrity result.   |
+| `a2a_recovery_restore_last_duration_seconds`          | Gauge | `dataset`       | Production RTO alerting and capacity tuning. |
+| `a2a_recovery_restore_last_success_timestamp_seconds` | Gauge | `dataset`       | Last witnessed restore completion.           |
+| `a2a_recovery_drill_rpo_seconds`                      | Gauge | none            | Disposable drill RPO evidence.               |
+| `a2a_recovery_drill_rto_seconds`                      | Gauge | none            | Disposable drill RTO evidence.               |
+| `a2a_recovery_drill_success`                          | Gauge | none            | Recovery gate status.                        |
 
 ### Registry metrics
 
@@ -68,8 +81,9 @@ These starter SLOs are examples. Tune targets by deployment size, task complexit
 2. Capture registry `/metrics` and `/metrics/summary` when a registry is involved.
 3. Add package version, git commit, deployment environment name, and collector configuration.
 4. Redact credential-like values, cookies, webhook tokens, private URLs, and raw task input values.
-5. Validate the final bundle against `ops/diagnostics/bundle-manifest.json`.
-6. Store the bundle with a short retention window. The starter recommendation is 14 days.
+5. Add `recovery-report.json` and `recovery-metrics.prom` for backup, restore, or DR incidents.
+6. Validate a general bundle against `ops/diagnostics/bundle-manifest.json`, or a recovery incident bundle against `ops/recovery/diagnostic-bundle-manifest.json`.
+7. Store the bundle with a short retention window. The starter recommendation is 14 days.
 
 A diagnostic bundle is evidence, not a dump. Prefer summaries, hashes, counters, and redacted snippets over raw logs.
 
@@ -77,5 +91,8 @@ A diagnostic bundle is evidence, not a dump. Prefer summaries, hashes, counters,
 
 ```bash
 pnpm run ops:check
+pnpm run recovery:check
+pnpm run recovery:alerts
+pnpm run recovery:drill
 pnpm run lint:md
 ```

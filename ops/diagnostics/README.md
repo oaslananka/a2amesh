@@ -12,6 +12,6 @@ A bundle should contain redacted operational evidence only:
 - redacted runtime environment summary
 - relevant dashboard or alert screenshots when available
 
-Do not include raw task inputs, Authorization headers, cookies, API keys, private webhook tokens, or unredacted application logs.
+Do not include raw task inputs, Authorization headers, cookies, API keys, private webhook tokens, private keys, absolute source paths, private network endpoints, or unredacted application logs.
 
-Use `ops/diagnostics/bundle-manifest.json` as the manifest for support tooling and release evidence.
+Use `ops/diagnostics/bundle-manifest.json` for general support evidence. Recovery drills and recovery incidents use the stricter `ops/recovery/diagnostic-bundle-manifest.json`, which additionally requires the recovery report and Prometheus metrics. The recovery CLI generates an exact-file allowlisted bundle whose index contains only basenames, sizes, and SHA-256 digests.

@@ -63,17 +63,21 @@ function profileName(profile) {
   return profile?.split('/').at(-1) ?? 'values.yaml';
 }
 
-const boundaryScript = 'scripts/verify-helm-network-boundaries.sh';
-const boundarySyntax = spawnSync('/usr/bin/bash', ['-n', boundaryScript], {
-  cwd: process.cwd(),
-  encoding: 'utf8',
-  env: { PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' },
-  timeout: 30_000,
-});
-if (boundarySyntax.error) throw boundarySyntax.error;
-if (boundarySyntax.status !== 0) {
-  throw new Error(`Network-boundary verifier has invalid Bash syntax:
-${boundarySyntax.stderr}`);
+for (const lifecycleScript of [
+  'scripts/verify-helm-network-boundaries.sh',
+  'scripts/verify-helm-registry-persistence.sh',
+]) {
+  const syntax = spawnSync('/usr/bin/bash', ['-n', lifecycleScript], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    env: { PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' },
+    timeout: 30_000,
+  });
+  if (syntax.error) throw syntax.error;
+  if (syntax.status !== 0) {
+    throw new Error(`${lifecycleScript} has invalid Bash syntax:
+${syntax.stderr}`);
+  }
 }
 
 const kindValues = readFileSync(`${chartPath}/ci/values-kind.yaml`, 'utf8');
@@ -83,6 +87,10 @@ for (const required of [
   `pdb:
     enabled: true
     minAvailable: 1`,
+  `storage:
+    backend: sqlite`,
+  `persistence:
+    enabled: true`,
 ]) {
   if (!kindValues.includes(required)) {
     throw new Error(`Kind enforcement profile is missing: ${required}`);
@@ -138,6 +146,19 @@ for (const profile of profiles) {
     ]) {
       if (!rendered.includes(required)) {
         throw new Error(`${profileName(profile)} is missing cluster DNS contract: ${required}`);
+      }
+    }
+  }
+  if (profile?.endsWith('values-kind.yaml')) {
+    for (const required of [
+      'kind: StatefulSet',
+      'volumeClaimTemplates:',
+      'mountPath: /var/lib/a2amesh',
+    ]) {
+      if (!rendered.includes(required)) {
+        throw new Error(
+          `Kind recovery profile is missing persistent registry contract: ${required}`,
+        );
       }
     }
   }

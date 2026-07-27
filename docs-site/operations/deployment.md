@@ -130,6 +130,8 @@ Registry ingress requires authentication and TLS unless insecure HTTP is explici
 
 ### Upgrade and rollback
 
+Take and verify the storage backup described in the [backup and recovery runbook](./recovery.md) before a planned upgrade, rollback, or single-node maintenance window.
+
 ```bash
 helm history a2amesh --namespace a2amesh
 

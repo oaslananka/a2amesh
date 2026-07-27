@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "supportedTopology": "hardened-single-node",
+  "targets": {
+    "productionRpoSeconds": 86400,
+    "productionRtoSeconds": 1800,
+    "drillRpoSeconds": 5,
+    "drillRtoSeconds": 120,
+    "staleBackupAfterSeconds": 90000
+  },
+  "retention": {
+    "verifiedBackupSets": 14,
+    "diagnosticBundleDays": 14,
+    "minimumOffsiteCopies": 1
+  },
+  "datasets": [
+    {
+      "id": "registry-agents",
+      "owner": "registry",
+      "backend": "sqlite",
+      "pathSetting": "REGISTRY_SQLITE_PATH",
+      "required": true
+    },
+    {
+      "id": "registry-trust-log",
+      "owner": "registry",
+      "backend": "sqlite",
+      "pathSetting": "REGISTRY_TRUST_LOG_PATH",
+      "required": true
+    },
+    {
+      "id": "runtime-tasks",
+      "owner": "runtime-consumer",
+      "backend": "sqlite",
+      "pathSetting": "application-owned",
+      "required": false
+    },
+    {
+      "id": "fleet-state",
+      "owner": "fleet-consumer",
+      "backend": "sqlite",
+      "pathSetting": "application-owned",
+      "required": false
+    }
+  ],
+  "externalBackends": [
+    {
+      "id": "registry-redis",
+      "owner": "operator",
+      "backupMode": "provider-managed-pitr",
+      "requirement": "Document and verify the provider RPO/RTO before production use; the repository SQLite recovery CLI does not back up Redis."
+    }
+  ],
+  "storageProtection": {
+    "encryptionAtRestRequired": true,
+    "encryptionInTransitRequired": true,
+    "independentFailureDomainRequired": true,
+    "repositoryManagedEncryption": false,
+    "operatorRequirement": "Store verified backup sets in operator-managed encrypted storage outside the workload failure domain."
+  }
+}
