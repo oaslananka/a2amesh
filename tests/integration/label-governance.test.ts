@@ -95,6 +95,9 @@ describe('GitHub label governance', () => {
     expect(checker).toContain('.github/labeler.yml');
     expect(checker).toContain('functional labels');
     expect(syncScript).toContain("process.argv.includes('--apply')");
+    expect(syncScript).not.toContain("spawnSync('gh'");
+    expect(syncScript).toContain("'/usr/bin/gh'");
+    expect(syncScript).not.toContain('block.match');
     expect(packageJson.scripts['labels:check-live']).toContain('sync-github-labels.mjs');
     expect(packageJson.scripts['labels:apply']).toContain('--apply');
   });

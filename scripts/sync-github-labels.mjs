@@ -1,27 +1,69 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
 const apply = process.argv.includes('--apply');
 const dryRun = process.argv.includes('--dry-run');
 const check = process.argv.includes('--check') || (!apply && !dryRun);
 
+const ghCandidates =
+  process.platform === 'win32'
+    ? ['C:\\Program Files\\GitHub CLI\\gh.exe']
+    : ['/usr/bin/gh', '/opt/homebrew/bin/gh', '/usr/local/bin/gh'];
+const ghExecutable = ghCandidates.find((candidate) => existsSync(candidate));
+
+if (!ghExecutable) {
+  throw new Error(
+    `GitHub CLI was not found in an approved system location: ${ghCandidates.join(', ')}`,
+  );
+}
+
 function runGh(args) {
-  const result = spawnSync('gh', args, { encoding: 'utf8' });
+  const result = spawnSync(ghExecutable, args, { encoding: 'utf8' });
   if (result.status !== 0) throw new Error(result.stderr.trim() || `gh ${args.join(' ')} failed`);
   return result.stdout;
 }
 
+function parseSingleQuotedValue(line, prefix) {
+  const encoded = line.slice(prefix.length).trim();
+  if (!encoded.startsWith("'") || !encoded.endsWith("'")) {
+    throw new Error(`Expected a single-quoted value after ${prefix.trim()}: ${line}`);
+  }
+  return encoded.slice(1, -1);
+}
+
+function completeLabel(label) {
+  if (!label?.name || !label.color) {
+    throw new Error(`Incomplete label declaration: ${JSON.stringify(label)}`);
+  }
+  return {
+    name: label.name,
+    color: label.color.toLowerCase(),
+    description: label.description ?? '',
+  };
+}
+
 function parseLabels(source) {
-  return source
-    .split(/(?=^- name: )/m)
-    .filter((block) => block.startsWith('- name:'))
-    .map((block) => {
-      const name = block.match(/^- name: ['"]([^'"]+)['"]/m)?.[1];
-      const color = block.match(/^\s+color: ['"]([0-9a-fA-F]{6})['"]/m)?.[1];
-      const description = block.match(/^\s+description: ['"]([^'"]*)['"]/m)?.[1] ?? '';
-      if (!name || !color) throw new Error(`Invalid label block:\n${block}`);
-      return { name, color: color.toLowerCase(), description };
-    });
+  const labels = [];
+  let current;
+
+  for (const line of source.split('\n')) {
+    if (line.startsWith('- name: ')) {
+      if (current) labels.push(completeLabel(current));
+      current = { name: parseSingleQuotedValue(line, '- name: ') };
+      continue;
+    }
+    if (!current) continue;
+    if (line.startsWith('  color: ')) {
+      current.color = parseSingleQuotedValue(line, '  color: ');
+      continue;
+    }
+    if (line.startsWith('  description: ')) {
+      current.description = parseSingleQuotedValue(line, '  description: ');
+    }
+  }
+
+  if (current) labels.push(completeLabel(current));
+  return labels;
 }
 
 function resolveRepository() {
