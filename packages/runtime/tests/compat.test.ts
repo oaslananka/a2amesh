@@ -3,6 +3,7 @@ import {
   isTerminalTaskState,
   normalizeMessageRole,
   normalizeTaskState,
+  taskStateMetadataKey,
 } from '../src/utils/compat.js';
 import { validateMessageSendParams } from '../src/utils/schema-validator.js';
 
@@ -28,10 +29,29 @@ describe('compat normalizers', () => {
     expect(normalizeMessageRole('ROLE_AGENT')).toBe('ROLE_AGENT');
   });
 
-  it('treats rejected as an A2A v1 terminal state', () => {
-    expect(isTerminalTaskState('REJECTED')).toBe(true);
+  it('classifies every terminal and non-terminal A2A state explicitly', () => {
+    for (const state of ['COMPLETED', 'FAILED', 'CANCELED', 'REJECTED']) {
+      expect(isTerminalTaskState(state)).toBe(true);
+    }
     expect(isTerminalTaskState('rejected')).toBe(true);
-    expect(isTerminalTaskState('AUTH_REQUIRED')).toBe(false);
+    for (const state of [
+      'SUBMITTED',
+      'QUEUED',
+      'WORKING',
+      'INPUT_REQUIRED',
+      'AUTH_REQUIRED',
+      'WAITING_ON_EXTERNAL',
+    ]) {
+      expect(isTerminalTaskState(state)).toBe(false);
+    }
+  });
+
+  it('derives exact metadata keys for special and default task states', () => {
+    expect(taskStateMetadataKey('INPUT_REQUIRED')).toBe('inputRequiredAt');
+    expect(taskStateMetadataKey('AUTH_REQUIRED')).toBe('authRequiredAt');
+    expect(taskStateMetadataKey('WAITING_ON_EXTERNAL')).toBe('waitingOnExternalAt');
+    expect(taskStateMetadataKey('COMPLETED')).toBe('completedAt');
+    expect(taskStateMetadataKey('FAILED')).toBe('failedAt');
   });
 
   it('normalizes message roles during schema validation', () => {

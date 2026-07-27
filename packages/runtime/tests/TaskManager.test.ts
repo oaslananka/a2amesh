@@ -1,5 +1,53 @@
 import { describe, expect, it } from 'vitest';
-import { TaskLifecycleError, TaskManager } from '../src/server/TaskManager.js';
+import { InMemoryTaskStorage } from '../src/storage/InMemoryTaskStorage.js';
+import type { ITaskStorage } from '../src/storage/ITaskStorage.js';
+import {
+  TaskLifecycleError,
+  TaskManager,
+  type TaskUpdatedEvent,
+} from '../src/server/TaskManager.js';
+import type { PushNotificationConfig, Task } from '../src/types/task.js';
+
+class LegacyTaskStorage implements ITaskStorage {
+  private readonly inner = new InMemoryTaskStorage();
+
+  insertTask(task: Task): Task {
+    return this.inner.insertTask(task);
+  }
+  getTask(taskId: string): Task | undefined {
+    return this.inner.getTask(taskId);
+  }
+  saveTask(task: Task): void {
+    this.inner.saveTask(task);
+  }
+  getAllTasks(): Task[] {
+    return this.inner.getAllTasks();
+  }
+  getTasksByContextId(contextId: string): Task[] {
+    return this.inner.getTasksByContextId(contextId);
+  }
+  setPushNotification(
+    taskId: string,
+    config: PushNotificationConfig,
+  ): PushNotificationConfig | undefined {
+    return this.inner.setPushNotification(taskId, config);
+  }
+  getPushNotification(taskId: string): PushNotificationConfig | undefined {
+    return this.inner.getPushNotification(taskId);
+  }
+  removePushNotification(taskId: string): boolean {
+    return this.inner.removePushNotification(taskId);
+  }
+  deleteTask(taskId: string): boolean {
+    return this.inner.deleteTask(taskId);
+  }
+  clear(): void {
+    this.inner.clear();
+  }
+  count(): number {
+    return this.inner.count();
+  }
+}
 
 describe('TaskManager', () => {
   it('uses A2A v1.0 task state constants while accepting legacy transition inputs', () => {
@@ -266,5 +314,90 @@ describe('TaskManager', () => {
       { id: 'pager', url: 'https://example.com/pager' },
     ]);
     expect(events.filter((reason) => reason === 'push-config')).toHaveLength(3);
+  });
+
+  it('emits exact update reasons and previous task state snapshots', () => {
+    const manager = new TaskManager();
+    const events: TaskUpdatedEvent[] = [];
+    manager.on('taskUpdated', (event: TaskUpdatedEvent) => events.push(event));
+    const task = manager.createTask();
+
+    manager.addHistoryMessage(task.id, {
+      role: 'user',
+      messageId: 'event-message',
+      timestamp: '2026-07-27T00:00:00.000Z',
+      parts: [{ type: 'text', text: 'hello' }],
+    });
+    manager.addArtifact(task.id, {
+      artifactId: 'event-artifact',
+      parts: [{ type: 'text', text: 'result' }],
+      index: 0,
+    });
+    manager.updateTaskState(task.id, 'WORKING');
+
+    expect(events.map(({ reason }) => reason)).toEqual(['created', 'message', 'artifact', 'state']);
+    expect(events[0]).not.toHaveProperty('previousState');
+    expect(events[3]).toMatchObject({
+      reason: 'state',
+      previousState: 'SUBMITTED',
+      task: { id: task.id, status: { state: 'WORKING' } },
+    });
+    expect(events[3]?.task).not.toBe(manager.getTask(task.id));
+  });
+
+  it('normalizes push notification identifiers and defaults blank identifiers', () => {
+    const manager = new TaskManager();
+    const task = manager.createTask();
+
+    manager.setPushNotification(task.id, { id: '  pager  ', url: 'https://example.com/pager' });
+    expect(manager.getPushNotificationConfig(task.id, 'pager')).toEqual({
+      id: '  pager  ',
+      url: 'https://example.com/pager',
+    });
+
+    manager.setPushNotification(task.id, { id: '   ', url: 'https://example.com/default' });
+    expect(manager.getPushNotification(task.id)).toEqual({
+      id: '   ',
+      url: 'https://example.com/default',
+    });
+  });
+
+  it('supports legacy storage without optional multi-config methods', () => {
+    const manager = new TaskManager(new LegacyTaskStorage());
+    const task = manager.createTask();
+
+    expect(manager.listPushNotifications(task.id)).toEqual([]);
+    expect(
+      manager.setPushNotificationConfig('missing', 'default', { url: 'https://missing' }),
+    ).toBeUndefined();
+    expect(
+      manager.setPushNotificationConfig(task.id, 'default', { url: 'https://example.com/legacy' }),
+    ).toEqual({ id: 'default', url: 'https://example.com/legacy' });
+    expect(manager.getPushNotificationConfig(task.id, 'default')).toEqual({
+      id: 'default',
+      url: 'https://example.com/legacy',
+    });
+    expect(manager.getPushNotificationConfig(task.id, 'secondary')).toBeUndefined();
+    expect(manager.removePushNotificationConfig(task.id, 'secondary')).toBe(false);
+    expect(manager.removePushNotificationConfig(task.id, 'default')).toBe(true);
+  });
+
+  it('includes the attempted terminal mutation action in lifecycle errors', () => {
+    const manager = new TaskManager();
+    const task = manager.createTask();
+    manager.updateTaskState(task.id, 'COMPLETED');
+
+    expect(() => manager.setPushNotification(task.id, { url: 'https://example.com/hook' })).toThrow(
+      /Cannot set push notification for terminal task/,
+    );
+    expect(() =>
+      manager.setPushNotificationConfig(task.id, 'default', { url: 'https://example.com/hook' }),
+    ).toThrow(/Cannot set push notification for terminal task/);
+    expect(() => manager.removePushNotificationConfig(task.id, 'default')).toThrow(
+      /Cannot remove push notification for terminal task/,
+    );
+    expect(() => manager.setTaskExtensions(task.id, ['urn:test'])).toThrow(
+      /Cannot set extensions for terminal task/,
+    );
   });
 });

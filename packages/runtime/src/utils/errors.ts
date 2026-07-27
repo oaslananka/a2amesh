@@ -7,6 +7,7 @@ const ERROR_REASON_BY_CODE: Record<number, string> = {
   [ErrorCodes.InvalidParams]: 'INVALID_PARAMETERS',
   [ErrorCodes.InternalError]: 'INTERNAL_ERROR',
   [ErrorCodes.TaskNotFound]: 'TASK_NOT_FOUND',
+  [ErrorCodes.VersionNotSupported]: 'VERSION_NOT_SUPPORTED',
   [ErrorCodes.PushNotificationNotSupported]: 'PUSH_NOTIFICATION_NOT_SUPPORTED',
   [ErrorCodes.UnsupportedOperation]: 'UNSUPPORTED_OPERATION',
   [ErrorCodes.RateLimitExceeded]: 'RATE_LIMIT_EXCEEDED',

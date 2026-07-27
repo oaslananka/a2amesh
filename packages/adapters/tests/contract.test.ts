@@ -23,7 +23,12 @@ describe('adapter contract helpers', () => {
     expect(extractRequiredText(parts, 'Provider')).toBe('first\nsecond');
     expect(() =>
       extractRequiredText([{ type: 'data', data: { empty: true } }], 'Provider'),
-    ).toThrow(/Provider adapter requires text input/);
+    ).toThrow(
+      expect.objectContaining({
+        code: 'UNSUPPORTED_INPUT',
+        message: 'Provider adapter requires text input',
+      }),
+    );
   });
 
   it('creates protocol artifacts with stable provider contract metadata', () => {
@@ -64,6 +69,40 @@ describe('adapter contract helpers', () => {
         },
       },
       extensions: ['urn:extension'],
+    });
+  });
+
+  it('omits optional streamed, extension, model and context metadata when absent', () => {
+    const taskWithoutContext: Task = {
+      kind: 'task',
+      id: 'task-without-context',
+      status: baseTask.status,
+      history: [],
+      artifacts: [],
+    };
+    const artifact = createTextArtifact(taskWithoutContext, {
+      artifactId: 'artifact-minimal',
+      name: 'minimal',
+      text: 'hello',
+      provider: 'Provider',
+      compatibility: 'beta',
+      supportsStreaming: false,
+    });
+
+    expect(artifact).not.toHaveProperty('description');
+    expect(artifact).not.toHaveProperty('extensions');
+    const metadata = 'metadata' in artifact ? artifact.metadata : undefined;
+    expect(metadata).toBeDefined();
+    expect(metadata).not.toHaveProperty('model');
+    expect(metadata).not.toHaveProperty('contextId');
+    const contract = metadata?.['contract'];
+    expect(contract).not.toHaveProperty('streamed');
+    expect(contract).toEqual({
+      provider: 'Provider',
+      compatibility: 'beta',
+      supportsStreaming: false,
+      supportsCancellation: false,
+      outputType: 'text',
     });
   });
 });

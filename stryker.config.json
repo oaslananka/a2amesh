@@ -14,7 +14,8 @@
     "packages/runtime/tests/compat.test.ts",
     "packages/runtime/tests/jsonrpc-errors.test.ts",
     "packages/adapters/tests/contract.test.ts",
-    "packages/registry/tests/SkillMatcher.test.ts"
+    "packages/registry/tests/SkillMatcher.test.ts",
+    "packages/runtime/tests/schema-validator.test.ts"
   ],
   "mutate": [
     "packages/runtime/src/server/TaskManager.ts",
@@ -26,8 +27,8 @@
     "packages/registry/src/SkillMatcher.ts"
   ],
   "thresholds": {
-    "high": 80,
-    "low": 70,
-    "break": 60
+    "high": 95,
+    "low": 90,
+    "break": 85
   }
 }
