@@ -36,14 +36,22 @@ Use this table when filling out bestpractice.dev or similar repository-quality r
 
 ## OpenSSF Scorecard triage
 
-Scorecard is treated as a signal, not a marketing claim. When the Scorecard workflow reports a regression:
+The canonical dated Scorecard observation, all below-10 checks, their owner, disposition, and
+exit criteria are maintained in [OpenSSF Scorecard](scorecard.md). The 2026-07-28 observation is
+7.1. It includes detector limitations for `CI-Tests`, `Branch-Protection`, and `Signed-Releases`
+that conflict with separately verified workflow, GitHub API, npm provenance, and GitHub attestation
+evidence.
 
-1. Open or update a security/governance issue with the failing check name.
-2. Link the workflow run and relevant repository evidence.
-3. Fix the source control, release, dependency, or documentation gap.
-4. Keep the README badge pointing to the workflow or Scorecard project only while the signal is truthful.
+When the Scorecard workflow reports a regression:
 
-Do not manually edit score values into docs. Use badges and links that resolve to current workflow or Scorecard output.
+1. Compare the detector output with live repository and release evidence.
+2. Update the canonical Scorecard table with the check owner and disposition.
+3. Fix a real source-control, release, dependency, or documentation gap.
+4. Record external detector errors or time/governance limitations without weakening controls or
+   fabricating evidence.
+
+A dated score may be stored in `.bestpractices.json` and the canonical evidence page. README badges
+must continue to resolve to current public automation rather than a hand-maintained score.
 
 ## Release-trust evidence
 

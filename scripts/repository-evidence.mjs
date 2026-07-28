@@ -6,6 +6,7 @@ import { format } from 'prettier';
 import {
   injectRepositoryEvidence,
   renderRepositoryEvidence,
+  selectLatestPublishedRelease,
   validateMaturityReport,
   validateRepositoryEvidence,
 } from './repository-evidence-core.mjs';
@@ -182,7 +183,7 @@ function collectLiveSnapshot() {
       repository: `GitHub REST API: GET /repos/${repositoryName}`,
       issues: `GitHub CLI: issue list --repo ${repositoryName} --state open`,
       pull_requests: `GitHub CLI: pr list --repo ${repositoryName} --state open`,
-      releases: `GitHub REST API: releases/latest and tags for ${repositoryName}`,
+      releases: `GitHub REST API: releases and tags for ${repositoryName}`,
       npm: 'npm registry metadata for @a2amesh/runtime',
       source_versions: '.release-please-manifest.json and release-tracked package.json files',
     },
@@ -210,19 +211,8 @@ function collectReleasePullRequest(repositoryName, pullRequest) {
 }
 
 function collectLatestGithubRelease(repositoryName) {
-  try {
-    const release = ghJson(['api', `repos/${repositoryName}/releases/latest`]);
-    return {
-      tag: release.tag_name,
-      name: release.name,
-      url: release.html_url,
-      published_at: release.published_at,
-      prerelease: release.prerelease,
-    };
-  } catch (error) {
-    if (String(error).includes('HTTP 404')) return null;
-    throw error;
-  }
+  const releases = ghJson(['api', `repos/${repositoryName}/releases?per_page=100`]);
+  return selectLatestPublishedRelease(releases);
 }
 
 function collectSettings(repositoryName, defaultBranch, context) {

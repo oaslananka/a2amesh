@@ -74,6 +74,19 @@ export interface RepositoryEvidenceLocalState {
   packageVersions: Record<string, string>;
 }
 
+export interface GithubReleaseApiRecord {
+  tag_name: string;
+  name?: string | null;
+  html_url: string;
+  published_at: string;
+  prerelease?: boolean;
+  draft?: boolean;
+}
+
+export function selectLatestPublishedRelease(
+  releases: GithubReleaseApiRecord[],
+): GithubReleaseEvidence | null;
+
 export function validateRepositoryEvidence(
   snapshot: RepositoryEvidenceSnapshot,
   localState: RepositoryEvidenceLocalState,

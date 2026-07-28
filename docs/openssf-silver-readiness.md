@@ -1,10 +1,12 @@
 # OpenSSF Silver readiness
 
-This page summarizes the repository evidence used for OpenSSF Best Practices Silver self-certification. It does not replace the canonical project policies; it links to them.
+This page summarizes repository evidence relevant to a future OpenSSF Best Practices Silver
+self-certification. It does not claim Silver.
 
 ## Passing prerequisite
 
-The project has achieved the OpenSSF Best Practices Passing badge for project `13402`:
+The project achieved the OpenSSF Best Practices **Passing** badge for project `13402` on
+**2026-07-03**:
 
 - <https://www.bestpractices.dev/en/projects/13402>
 
@@ -13,40 +15,35 @@ The project has achieved the OpenSSF Best Practices Passing badge for project `1
 - Governance model: [GOVERNANCE.md](../GOVERNANCE.md)
 - Maintainer roles and responsibilities: [MAINTAINERS.md](../MAINTAINERS.md)
 - Code of conduct: [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md)
-- Contribution requirements and DCO sign-off policy: [CONTRIBUTING.md](../CONTRIBUTING.md)
+- Contribution requirements and DCO policy: [CONTRIBUTING.md](../CONTRIBUTING.md)
 - Coding standards: [docs/development/coding-standards.md](development/coding-standards.md)
 - Testing policy: [docs/development/testing-policy.md](development/testing-policy.md)
 - Roadmap: [ROADMAP.md](../ROADMAP.md) and [docs/fleet/roadmap.md](fleet/roadmap.md)
 
-## Documentation evidence
+## Build, analysis, and release evidence
 
-- Architecture: [docs/development/architecture.md](development/architecture.md)
-- Quickstart: [README.md](../README.md#quickstart), [docs/quickstart.md](quickstart.md), and [docs/fleet/quickstart.md](fleet/quickstart.md)
-- Security requirements and threat model: [docs/security/threat-model.md](security/threat-model.md)
-- Assurance case: [docs/security/assurance-case.md](security/assurance-case.md)
-- API and external interfaces: [docs/protocol/api-surfaces.md](protocol/api-surfaces.md), [docs/openapi/registry.openapi.json](openapi/registry.openapi.json), and [docs/cli/index.md](cli/index.md)
-
-## Build, test, and analysis evidence
-
-- Build/test scripts: [package.json](../package.json)
-- CI workflow: [.github/workflows/ci.yml](../.github/workflows/ci.yml)
-- CodeQL workflow: [.github/workflows/codeql.yml](../.github/workflows/codeql.yml)
-- Security workflow: [.github/workflows/security.yml](../.github/workflows/security.yml)
-- Dependency Review workflow: [.github/workflows/dependency-review.yml](../.github/workflows/dependency-review.yml)
-- Scorecard workflow: [.github/workflows/scorecard.yml](../.github/workflows/scorecard.yml)
-
-## Release and supply-chain evidence
-
+- CI: [.github/workflows/ci.yml](../.github/workflows/ci.yml)
+- CodeQL: [.github/workflows/codeql.yml](../.github/workflows/codeql.yml)
+- Security checks: [.github/workflows/security.yml](../.github/workflows/security.yml)
+- Dependency Review: [.github/workflows/dependency-review.yml](../.github/workflows/dependency-review.yml)
+- Scorecard: [.github/workflows/scorecard.yml](../.github/workflows/scorecard.yml)
 - Release process: [docs/release/process.md](release/process.md)
 - Package verification: [docs/release/package-verification.md](release/package-verification.md)
-- Release integrity: [docs/security/release-integrity.md](security/release-integrity.md)
-- Supply-chain security: [docs/security/supply-chain.md](security/supply-chain.md)
-- SBOM/provenance evidence: [docs/security/sbom-provenance-evidence-2026-07-03.md](security/sbom-provenance-evidence-2026-07-03.md)
+- Published evidence: [docs/security/sbom-provenance-evidence-2026-07-03.md](security/sbom-provenance-evidence-2026-07-03.md)
 
-## Known Silver blockers
+The `0.14.0-alpha.1` release has six npm packages with registry signatures and SLSA provenance,
+six checksum-verified release tarballs, `SHA256SUMS`, a CycloneDX 1.6 SBOM, and GitHub release
+asset attestations.
 
-The following items should not be overstated:
+## Remaining Silver blockers
 
-1. **Access continuity / bus factor**: currently tracked by [#125](https://github.com/oaslananka/a2amesh/issues/125). Silver continuity should be marked complete only after an independent maintainer or equivalent recovery mechanism is in place.
-2. **Signed releases / signed tags**: release documentation exists, but official release signing/provenance evidence should be attached after the Release Please and npm publish flow completes.
-3. **Private vulnerability reporting confirmation**: verified enabled and closed as [#70](https://github.com/oaslananka/a2amesh/issues/70), documented in [SECURITY.md](../SECURITY.md) and [governance policy](governance/vulnerability-reporting-and-review-policy.md).
+1. **Access continuity and independent review:** the repository remains solo-maintained. Silver
+   continuity or review criteria must remain incomplete until another active maintainer, or an
+   equivalently independent and exercised recovery authority, exists.
+2. **Recurring evidence:** one verified release does not prove sustained release discipline. Repeat
+   registry, checksum, SBOM, provenance, and attestation verification for future releases.
+3. **Criteria-specific human confirmation:** complete only those Silver BadgeApp answers that can be
+   supported by current public policy, repository settings, and independently reproducible output.
+
+Private vulnerability reporting was re-verified enabled through the GitHub API on 2026-07-28.
+Gold or foundation-grade maturity is not claimed.

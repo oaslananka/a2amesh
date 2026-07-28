@@ -242,6 +242,21 @@ function validateProvenance(provenance, failures) {
   }
 }
 
+export function selectLatestPublishedRelease(releases) {
+  if (!Array.isArray(releases)) return null;
+  const release = releases
+    .filter((candidate) => !candidate?.draft && nonEmpty(candidate?.published_at))
+    .sort((left, right) => Date.parse(right.published_at) - Date.parse(left.published_at))[0];
+  if (!release) return null;
+  return {
+    tag: release.tag_name,
+    name: release.name ?? null,
+    url: release.html_url,
+    published_at: release.published_at,
+    prerelease: Boolean(release.prerelease),
+  };
+}
+
 export function renderRepositoryEvidence(snapshot) {
   const releasePr = snapshot.release.active_release_pr;
   const githubRelease = snapshot.release.latest_github_release;
