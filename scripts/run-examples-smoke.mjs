@@ -10,6 +10,7 @@ const examples = [
   'grpc',
   'mcp-bridge',
   'adapter-template',
+  'openai-compatible-provider',
   'agent-mesh',
   'local-cli-fleet',
 ];
