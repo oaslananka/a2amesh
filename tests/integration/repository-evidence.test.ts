@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   injectRepositoryEvidence,
   renderRepositoryEvidence,
+  selectLatestPublishedRelease,
   validateMaturityReport,
   validateRepositoryEvidence,
 } from '../../scripts/repository-evidence-core.mjs';
@@ -98,6 +99,46 @@ function localState() {
 }
 
 describe('repository evidence', () => {
+  it('selects the newest published prerelease when no stable release is available', () => {
+    expect(
+      selectLatestPublishedRelease([
+        {
+          tag_name: '@a2amesh/runtime-v0.15.0-alpha.1',
+          name: 'A2A Mesh 0.15.0-alpha.1',
+          html_url:
+            'https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.15.0-alpha.1',
+          published_at: '2026-07-28T02:00:00Z',
+          prerelease: true,
+          draft: true,
+        },
+        {
+          tag_name: '@a2amesh/runtime-v0.13.0-alpha.1',
+          name: 'A2A Mesh 0.13.0-alpha.1',
+          html_url:
+            'https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.13.0-alpha.1',
+          published_at: '2026-07-23T15:20:00Z',
+          prerelease: true,
+          draft: false,
+        },
+        {
+          tag_name: '@a2amesh/runtime-v0.14.0-alpha.1',
+          name: 'A2A Mesh 0.14.0-alpha.1',
+          html_url:
+            'https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.14.0-alpha.1',
+          published_at: '2026-07-27T01:56:58Z',
+          prerelease: true,
+          draft: false,
+        },
+      ]),
+    ).toEqual({
+      tag: '@a2amesh/runtime-v0.14.0-alpha.1',
+      name: 'A2A Mesh 0.14.0-alpha.1',
+      url: 'https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.14.0-alpha.1',
+      published_at: '2026-07-27T01:56:58Z',
+      prerelease: true,
+    });
+  });
+
   it('accepts fresh evidence aligned with linked package configuration', () => {
     expect(
       validateRepositoryEvidence(snapshot(), localState(), new Date('2026-07-30T00:00:00.000Z')),

@@ -22,4 +22,4 @@ Maintainers are responsible for:
 
 ## Continuity status
 
-The project currently has one repository admin listed above. The project is actively tracking the need for an independent maintainer in [#125](https://github.com/oaslananka/a2amesh/issues/125). Once a second trusted maintainer is available, this file should list their role and minimum permissions so that issue triage, PR review, release dispatch, and vulnerability response can continue if any one maintainer becomes unavailable.
+The project currently has one repository admin listed above. Independent-maintainer recruitment remains an explicit governance gap and is reviewed with the quarterly access and ruleset review. Once a second trusted maintainer is available, this file must list their role and minimum permissions so that issue triage, pull-request review, release dispatch, and vulnerability response can continue if any one maintainer becomes unavailable.

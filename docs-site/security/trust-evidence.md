@@ -6,16 +6,16 @@ This page maps A2A Mesh repository practices to public evidence that reviewers c
 
 The README exposes only signals backed by repository automation or published package metadata:
 
-| Signal            | Evidence                                                                                                                                                       | Owner check                                                        |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| CI                | `.github/workflows/ci.yml` runs install, lint, typecheck, unit, integration, conformance, packaging, public-surface, schema, consumer, and compatibility jobs. | PR checks must be green before merge.                              |
-| Docs              | `.github/workflows/docs.yml` runs markdown lint, docs build, command parity, and public-link checks where applicable.                                          | Docs changes must pass `Docs / build` and `Docs / command-parity`. |
-| Security          | `.github/workflows/security.yml` runs REUSE, actionlint, audit, gitleaks, zizmor, OSV, and dependency-license checks.                                          | Security checks must be green before release.                      |
-| CodeQL            | `.github/workflows/codeql.yml` runs GitHub code scanning for the TypeScript workspace.                                                                         | CodeQL must finish successfully on pull requests.                  |
-| Dependency Review | `.github/workflows/dependency-review.yml` blocks unsafe dependency changes.                                                                                    | Dependency changes require a clean review job.                     |
-| OpenSSF Scorecard | `.github/workflows/scorecard.yml` runs OpenSSF Scorecard and uploads SARIF when allowed.                                                                       | Scorecard findings are triaged as security or governance work.     |
-| npm package       | Public npm package metadata is linked from the README for `@a2amesh/runtime`.                                                                                  | Release verification checks every public package.                  |
-| License           | Apache-2.0 license and REUSE metadata are checked in CI.                                                                                                       | `Security / REUSE` must pass.                                      |
+| Signal            | Evidence                                                                                                                                                                                                                          | Owner check                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| CI                | `.github/workflows/ci.yml` runs install, lint, typecheck, unit, integration, recovery, conformance, packaging, public-surface, schema, consumer, and compatibility jobs; `CI / tests-required` summarizes required test evidence. | PR checks must be green before merge.                              |
+| Docs              | `.github/workflows/docs.yml` runs markdown lint, docs build, command parity, and public-link checks where applicable.                                                                                                             | Docs changes must pass `Docs / build` and `Docs / command-parity`. |
+| Security          | `.github/workflows/security.yml` runs REUSE, actionlint, audit, gitleaks, zizmor, OSV, and dependency-license checks.                                                                                                             | Security checks must be green before release.                      |
+| CodeQL            | `.github/workflows/codeql.yml` runs GitHub code scanning for the TypeScript workspace.                                                                                                                                            | CodeQL must finish successfully on pull requests.                  |
+| Dependency Review | `.github/workflows/dependency-review.yml` blocks unsafe dependency changes.                                                                                                                                                       | Dependency changes require a clean review job.                     |
+| OpenSSF Scorecard | `.github/workflows/scorecard.yml` runs OpenSSF Scorecard and uploads SARIF when allowed.                                                                                                                                          | Scorecard findings are triaged as security or governance work.     |
+| npm package       | Public npm package metadata is linked from the README for `@a2amesh/runtime`.                                                                                                                                                     | Release verification checks every public package.                  |
+| License           | Apache-2.0 license and REUSE metadata are checked in CI.                                                                                                                                                                          | `Security / REUSE` must pass.                                      |
 
 ## bestpractice.dev evidence map
 
@@ -36,14 +36,22 @@ Use this table when filling out bestpractice.dev or similar repository-quality r
 
 ## OpenSSF Scorecard triage
 
-Scorecard is treated as a signal, not a marketing claim. When the Scorecard workflow reports a regression:
+The canonical dated Scorecard observation, all below-10 checks, their owner, disposition, and
+exit criteria are maintained in [OpenSSF Scorecard](https://github.com/oaslananka/a2amesh/blob/main/docs/security/scorecard.md). The 2026-07-28 observation is
+7.1. It includes detector limitations for `CI-Tests`, `Branch-Protection`, and `Signed-Releases`
+that conflict with separately verified workflow, GitHub API, npm provenance, and GitHub attestation
+evidence.
 
-1. Open or update a security/governance issue with the failing check name.
-2. Link the workflow run and relevant repository evidence.
-3. Fix the source control, release, dependency, or documentation gap.
-4. Keep the README badge pointing to the workflow or Scorecard project only while the signal is truthful.
+When the Scorecard workflow reports a regression:
 
-Do not manually edit score values into docs. Use badges and links that resolve to current workflow or Scorecard output.
+1. Compare the detector output with live repository and release evidence.
+2. Update the canonical Scorecard table with the check owner and disposition.
+3. Fix a real source-control, release, dependency, or documentation gap.
+4. Record external detector errors or time/governance limitations without weakening controls or
+   fabricating evidence.
+
+A dated score may be stored in `.bestpractices.json` and the canonical evidence page. README badges
+must continue to resolve to current public automation rather than a hand-maintained score.
 
 ## Release-trust evidence
 

@@ -1,19 +1,38 @@
 {
   "project_name": "a2amesh",
   "repo_url": "https://github.com/oaslananka/a2amesh",
-  "badge_target": "passing-first",
+  "badge_target": "maintain-passing",
   "desired_target": "silver-ready-after-human-confirmation",
   "gold_claim": false,
   "gold_reason": "Gold/foundation-grade is not claimed because the project is currently solo-maintained and lacks independent recurring human review and multi-maintainer governance.",
   "evidence": "docs/openssf-evidence.md",
   "gap_analysis": "docs/openssf-gap-analysis.md",
   "proposal_links": "docs/openssf-proposal-links.md",
-  "last_reviewed": "2026-07-02",
+  "last_reviewed": "2026-07-28",
   "status_vocabulary": [
     "Passed",
     "Partial",
     "Missing",
     "Not applicable",
     "Needs human confirmation"
-  ]
+  ],
+  "project_id": 13402,
+  "current_badge": "passing",
+  "passing_achieved_at": "2026-07-03",
+  "scorecard": {
+    "observed_at": "2026-07-28T00:27:40Z",
+    "score": 7.1,
+    "version": "v5.3.0",
+    "commit": "c22063e786c11f9dd714d777a687ff7c4599b600"
+  },
+  "latest_verified_release": {
+    "tag": "@a2amesh/runtime-v0.14.0-alpha.1",
+    "version": "0.14.0-alpha.1",
+    "published_at": "2026-07-27T01:56:58Z",
+    "source_commit": "08ca84a16b87306b6f51ada9b6ea61bf35d20c7c",
+    "publish_run_id": 30231021914,
+    "package_count": 6,
+    "asset_count": 8,
+    "asset_attestation_run_id": 30234144129
+  }
 }

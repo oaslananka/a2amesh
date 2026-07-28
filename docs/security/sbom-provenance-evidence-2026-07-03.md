@@ -1,10 +1,8 @@
-# SBOM and Provenance Verification Evidence — 2026-07-03 (#72)
+# SBOM and Provenance Verification Evidence — 2026-07-03 to 2026-07-28
 
-This records real, locally-reproduced evidence for the SBOM and provenance path documented in
-[Package Verification](../release/package-verification.md), run against this branch's tree before
-any publish. Nothing here was published to npm and no provenance was fabricated — provenance
-attestation itself can only be produced during an actual `npm publish --provenance` run in
-`.github/workflows/publish.yml` under GitHub OIDC (see "Blocked on publish" below).
+This page preserves the original 2026-07-03 local pre-publish verification and adds the
+published-release verification completed on 2026-07-28. Evidence is recorded only from public
+GitHub release, npm registry, Sigstore, and workflow output; no provenance is fabricated.
 
 ## What was run
 
@@ -46,7 +44,56 @@ All six tarballs verify against their recorded SHA-256 digests.
 `release:validate` reported: `release-please manifest configuration validated locally.` — the
 manifest, linked-versions group, and per-package configuration are internally consistent.
 
-## Blocked on publish (cannot be produced or faked locally)
+## Published release verification — 2026-07-28
+
+The prerelease `@a2amesh/runtime-v0.14.0-alpha.1` was verified as an external consumer against
+public release and registry data.
+
+| Evidence                      | Verified result                                                                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source release                | `A2A Mesh 0.14.0-alpha.1`, published 2026-07-27; canonical tag points to `08ca84a16b87306b6f51ada9b6ea61bf35d20c7c`.                                                      |
+| npm publish run               | GitHub Actions run `30231021914`; SLSA statements resolve to `.github/workflows/publish.yml`, `refs/heads/main`, GitHub-hosted builder, and source commit `08ca84a16b87`. |
+| Release asset attestation run | GitHub Actions run `30234144129`; GitHub's attestation API binds all release asset SHA-256 subjects to `.github/workflows/publish.yml`.                                   |
+| npm packages                  | All six published npm packages resolve at `0.14.0-alpha.1` on the `alpha` dist-tag and point to the correct repository subdirectory.                                      |
+| Registry signatures           | Every package exposes an npm registry signature and two Sigstore attestations, including SLSA provenance v1.                                                              |
+| GitHub Release assets         | Eight assets: six npm tarballs, `SHA256SUMS`, and `a2amesh.cdx.json`.                                                                                                     |
+| Checksums                     | `sha256sum -c SHA256SUMS` returned `OK` for all six tarballs.                                                                                                             |
+| SBOM                          | CycloneDX 1.6 with six public package components.                                                                                                                         |
+
+The checksum verification command was:
+
+```bash
+gh release download '@a2amesh/runtime-v0.14.0-alpha.1' \
+  --repo oaslananka/a2amesh \
+  --dir /tmp/a2amesh-release-verify
+(cd /tmp/a2amesh-release-verify && sha256sum -c SHA256SUMS)
+```
+
+Registry provenance was independently read from each package's public npm attestation endpoint.
+For example, the runtime statement identifies:
+
+- subject `pkg:npm/%40a2amesh/runtime@0.14.0-alpha.1`;
+- predicate type `https://slsa.dev/provenance/v1`;
+- builder `https://github.com/actions/runner/github-hosted`;
+- workflow `.github/workflows/publish.yml` in `oaslananka/a2amesh`;
+- ref `refs/heads/main`;
+- invocation run `30231021914`;
+- resolved source commit `08ca84a16b87306b6f51ada9b6ea61bf35d20c7c`.
+
+The same workflow/ref/repository relationship was verified for the other five published npm
+packages. The GitHub attestation API returned SLSA provenance covering the release asset digest
+set. A local `gh` client without the newer `gh attestation` subcommand can reproduce the check
+through the REST attestation endpoint; upgrading the CLI is optional and is not a release
+requirement.
+
+OpenSSF Scorecard still reported `Signed-Releases` as 0 on 2026-07-28. That detector result is kept
+as a documented coverage/lag discrepancy because the public npm and GitHub attestations above are
+independently verifiable. Existing provenance controls must not be weakened or duplicated merely to
+change the detector score.
+
+## Historical pre-publish limitation (superseded on 2026-07-28)
+
+The following records the original 2026-07-03 state and no longer describes the current release.
 
 npm provenance (`npm view "$PACKAGE@$VERSION" provenance --json`, per
 [Package Verification](../release/package-verification.md#verify-provenance)) is only produced by
@@ -63,7 +110,7 @@ Like npm provenance, this attestation only exists once `publish.yml` actually ru
 transparency-log entry tied to a real workflow run, not something that can be produced or predicted
 offline.
 
-**Manual/CI follow-up required for a real release:**
+**Historical follow-up recorded on 2026-07-03:**
 
 1. Merge to `main`, let `release-please` cut the `0.3.0-alpha.1` release PR, merge it (version bump
    only).
