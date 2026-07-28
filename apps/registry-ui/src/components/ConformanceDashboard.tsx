@@ -1,7 +1,7 @@
 import { CheckCircle2, CircleDashed, ShieldCheck, XCircle } from 'lucide-react';
 import { useMemo } from 'react';
 import type { RegisteredAgent, RegistryTaskEvent } from '../api/registry';
-import { describeAgentTrust } from '../agentPresentation';
+import { describeAgentTrust, type AgentTrustPresentationState } from '../agentPresentation';
 
 interface ConformanceDashboardProps {
   agents: RegisteredAgent[];
@@ -29,6 +29,16 @@ interface ConformanceSummary {
 
 function classNames(...values: Array<string | false | null | undefined>): string {
   return values.filter(Boolean).join(' ');
+}
+
+function trustRequirementStatus(state: AgentTrustPresentationState | undefined): RequirementStatus {
+  if (state === 'trusted') {
+    return 'pass';
+  }
+  if (state === 'rejected') {
+    return 'fail';
+  }
+  return 'partial';
 }
 
 function operationEvidence(tasks: RegistryTaskEvent[], terminalStates: string[]): string {
@@ -75,8 +85,7 @@ function evaluateAgent(
       label: 'Agent Card trust',
       description:
         'Registry verification metadata distinguishes trusted, unverified, and rejected cards.',
-      status:
-        trust?.state === 'trusted' ? 'pass' : trust?.state === 'rejected' ? 'fail' : 'partial',
+      status: trustRequirementStatus(trust?.state),
       evidence: trust?.detail ?? 'No agent is selected for trust inspection.',
     },
     {

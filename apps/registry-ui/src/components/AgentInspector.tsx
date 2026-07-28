@@ -43,6 +43,16 @@ function fallbackRemediationHints(agent: RegisteredAgent): string[] {
   return ['No operator action is required. Keep monitoring task latency and heartbeat drift.'];
 }
 
+function trustPanelClasses(state: string): string {
+  if (state === 'trusted') {
+    return 'border-emerald-300/20 bg-emerald-300/10';
+  }
+  if (state === 'rejected') {
+    return 'border-rose-300/25 bg-rose-300/10';
+  }
+  return 'border-amber-300/25 bg-amber-300/10';
+}
+
 function describeHealth(agent: RegisteredAgent): string {
   if (agent.health?.reason) {
     return agent.health.reason;
@@ -210,16 +220,7 @@ export function AgentInspector({
       </div>
 
       {trust ? (
-        <div
-          className={classNames(
-            'mt-5 rounded-lg border p-3',
-            trust.state === 'trusted'
-              ? 'border-emerald-300/20 bg-emerald-300/10'
-              : trust.state === 'rejected'
-                ? 'border-rose-300/25 bg-rose-300/10'
-                : 'border-amber-300/25 bg-amber-300/10',
-          )}
-        >
+        <div className={classNames('mt-5 rounded-lg border p-3', trustPanelClasses(trust.state))}>
           <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Agent Card trust</p>
           <p className="mt-2 text-sm font-semibold text-white">{trust.label}</p>
           <p className="mt-1 text-sm leading-6 text-slate-200">{trust.detail}</p>

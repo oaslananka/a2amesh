@@ -639,17 +639,29 @@ export default function App() {
   );
 }
 
-function AgentSignal({ label, state, detail }: { label: string; state: string; detail: string }) {
+interface AgentSignalProps {
+  label: string;
+  state: string;
+  detail: string;
+}
+
+function agentSignalClasses(state: string): string {
+  if (state === 'trusted') {
+    return 'border-emerald-300/25 bg-emerald-300/10 text-emerald-100';
+  }
+  if (state === 'rejected') {
+    return 'border-rose-300/25 bg-rose-300/10 text-rose-100';
+  }
+  return 'border-amber-300/25 bg-amber-300/10 text-amber-100';
+}
+
+function AgentSignal({ label, state, detail }: Readonly<AgentSignalProps>) {
   return (
     <div className="min-w-40">
       <span
         className={classNames(
           'inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]',
-          state === 'trusted'
-            ? 'border-emerald-300/25 bg-emerald-300/10 text-emerald-100'
-            : state === 'rejected'
-              ? 'border-rose-300/25 bg-rose-300/10 text-rose-100'
-              : 'border-amber-300/25 bg-amber-300/10 text-amber-100',
+          agentSignalClasses(state),
         )}
       >
         {label}

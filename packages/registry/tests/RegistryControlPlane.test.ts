@@ -107,14 +107,15 @@ describe('RegistryServer control plane endpoints', () => {
   });
 
   it('reports tenant-scoped bearer context and a public-only readonly context', async () => {
-    const server = new RegistryServer({ registrationToken: 'control-token' });
+    const registrationToken = 'control-token';
+    const server = new RegistryServer({ registrationToken });
     const app = server.getExpressApp();
 
     await request(app).get('/context').expect(401);
 
     const operator = await request(app)
       .get('/context')
-      .set('Authorization', 'Bearer control-token')
+      .set('Authorization', `Bearer ${registrationToken}`)
       .set('x-tenant-id', 'tenant-a');
 
     expect(operator.status).toBe(200);
@@ -123,6 +124,18 @@ describe('RegistryServer control plane endpoints', () => {
       authMethod: 'bearer',
       tenantId: 'tenant-a',
       visibilityScope: 'tenant-and-public',
+      healthStaleAfterMs: 240_000,
+    });
+
+    const unscopedOperator = await request(app)
+      .get('/context')
+      .set('Authorization', `Bearer ${registrationToken}`);
+    expect(unscopedOperator.status).toBe(200);
+    expect(unscopedOperator.body).toEqual({
+      accessMode: 'authenticated',
+      authMethod: 'bearer',
+      tenantId: null,
+      visibilityScope: 'public-and-unassigned',
       healthStaleAfterMs: 240_000,
     });
 

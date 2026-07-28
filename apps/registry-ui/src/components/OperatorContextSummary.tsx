@@ -35,7 +35,7 @@ function visibilityLabel(context: RegistryOperatorContext): string {
   }
 }
 
-export function OperatorContextSummary({ context }: OperatorContextSummaryProps) {
+export function OperatorContextSummary({ context }: Readonly<OperatorContextSummaryProps>) {
   const staleMinutes = Math.max(1, Math.round(context.healthStaleAfterMs / 60_000));
   const anonymousOperator =
     context.accessMode === 'authenticated' && context.authMethod === 'anonymous';
@@ -75,7 +75,12 @@ export function OperatorContextSummary({ context }: OperatorContextSummaryProps)
   );
 }
 
-function ContextPill({ icon, value }: { icon: ReactNode; value: string }) {
+interface ContextPillProps {
+  icon: ReactNode;
+  value: string;
+}
+
+function ContextPill({ icon, value }: Readonly<ContextPillProps>) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-slate-200">
       {icon}
