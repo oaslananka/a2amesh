@@ -82,6 +82,23 @@ for (const component of linkedComponents) {
   }
 }
 
+const chartPath = 'deploy/helm/a2amesh/Chart.yaml';
+const runtimeReleaseConfig = config.packages?.['packages/runtime'];
+const chartExtraFiles = runtimeReleaseConfig?.['extra-files'] ?? [];
+if (!chartExtraFiles.some((entry) => entry?.type === 'generic' && entry?.path === chartPath)) {
+  failures.push(
+    `${chartPath}: packages/runtime must update the Helm chart via generic extra-files`,
+  );
+}
+const chart = readText(chartPath);
+const runtimeVersion = manifest['packages/runtime'];
+for (const field of ['version', 'appVersion']) {
+  const expected = `${field}: ${runtimeVersion} # x-release-please-version`;
+  if (!chart.includes(expected)) {
+    failures.push(`${chartPath}: ${field} must match runtime and carry x-release-please-version`);
+  }
+}
+
 const configText = JSON.stringify(config);
 if (/npm_token/i.test(configText)) failures.push('release config must not reference npm tokens');
 

@@ -33,6 +33,8 @@ Both Dockerfiles perform a filtered frozen-lockfile install, build the required 
 
 The chart is located at `deploy/helm/a2amesh`. Its default profile installs an authenticated registry behind a `ClusterIP` Service. The runtime and all ingress resources are disabled until explicitly configured.
 
+The chart is release-coupled to the linked public package line. Both `version` and `appVersion` in `Chart.yaml` must match the `packages/runtime` value in `.release-please-manifest.json`. Release Please updates both annotated fields through the runtime package's generic extra-file configuration. Do not edit generated release-PR copies manually; change the policy or updater configuration on `main` and let the release workflow regenerate the PR. Roll back by reverting the chart/release-metadata commit.
+
 The chart applies these defaults:
 
 - UID/GID `10001:10001`, `runAsNonRoot`, and `RuntimeDefault` seccomp.

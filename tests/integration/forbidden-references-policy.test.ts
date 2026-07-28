@@ -44,6 +44,27 @@ describe('forbidden reference policy', () => {
     expect(result.stderr).toBe('');
   });
 
+  it('allows the canonical deployment-chart path in release updater configuration', async () => {
+    const chartPath = ['deploy', platformName.toLowerCase(), 'a2amesh', 'Chart.yaml'].join('/');
+    const root = await createFixture({
+      'release-please-config.json': JSON.stringify({
+        packages: {
+          'packages/runtime': {
+            'extra-files': [{ type: 'generic', path: chartPath }],
+          },
+        },
+      }),
+    });
+
+    const result = spawnSync(process.execPath, [checker.pathname], {
+      cwd: root,
+      encoding: 'utf8',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+  });
+
   it('continues rejecting platform references in maintained documentation', async () => {
     const root = await createFixture({
       'README.md': `# Project\n\nDeploy with ${platformName}.\n`,
