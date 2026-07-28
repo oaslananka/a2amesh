@@ -127,7 +127,7 @@ function parseManifestDocument(document, manifestPath) {
     throw new TypeError('Backup manifest createdAt must be a string.');
   }
   if (Number.isNaN(Date.parse(document.createdAt))) {
-    throw new Error('Backup manifest createdAt must be an ISO timestamp.');
+    throw new TypeError('Backup manifest createdAt must be an ISO timestamp.');
   }
   return document;
 }
