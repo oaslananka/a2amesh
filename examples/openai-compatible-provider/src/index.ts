@@ -288,7 +288,7 @@ function readRequired(env: Environment, name: string): string {
 
 function readOptional(env: Environment, name: string): string | undefined {
   const value = env[name]?.trim();
-  return value ? value : undefined;
+  return value || undefined;
 }
 
 function readPositiveInteger(env: Environment, name: string): number | undefined {
@@ -381,12 +381,11 @@ function readErrorNumber(error: unknown, key: string): number | undefined {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  runExample({ env: process.env })
-    .then((result) => {
-      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-    })
-    .catch((error: unknown) => {
-      console.error(error instanceof Error ? error.message : 'Provider example failed.');
-      process.exit(1);
-    });
+  try {
+    const result = await runExample({ env: process.env });
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } catch (error: unknown) {
+    console.error(error instanceof Error ? error.message : 'Provider example failed.');
+    process.exitCode = 1;
+  }
 }
