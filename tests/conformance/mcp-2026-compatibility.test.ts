@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   createMcpBridgeAuditEvent,
@@ -199,6 +201,28 @@ describe('MCP 2026-07-28 compatibility contract', () => {
     expect(JSON.stringify(audit)).not.toContain('private-modern-message');
     expect(JSON.stringify(audit)).not.toContain('private-modern-subject');
     expect(JSON.stringify(audit)).not.toContain('approval-modern-1');
+  });
+
+  it('pins the isolated SDK harness to the reviewed patched Hono adapter', () => {
+    const harnessDirectory = resolve('tests/compat/mcp-2026-07-28/sdk-v2');
+    const packageJson = JSON.parse(
+      readFileSync(resolve(harnessDirectory, 'package.json'), 'utf8'),
+    ) as {
+      dependencies: Record<string, string>;
+    };
+    const workspace = readFileSync(resolve(harnessDirectory, 'pnpm-workspace.yaml'), 'utf8');
+    const lockfile = readFileSync(resolve(harnessDirectory, 'pnpm-lock.yaml'), 'utf8');
+
+    expect(packageJson.dependencies).toMatchObject({
+      '@modelcontextprotocol/client': '2.0.0',
+      '@modelcontextprotocol/core': '2.0.0',
+      '@modelcontextprotocol/node': '2.0.0',
+      '@modelcontextprotocol/server': '2.0.0',
+    });
+    expect(workspace).toContain("overrides:\n  '@hono/node-server': 2.0.12");
+    expect(workspace).toContain("'@hono/node-server@2.0.12'");
+    expect(lockfile).toContain("'@hono/node-server@2.0.12':");
+    expect(lockfile).not.toMatch(/@hono\/node-server@1\./);
   });
 
   it('validates the exact SDK v2 golden probe and rejects a legacy fallback', () => {

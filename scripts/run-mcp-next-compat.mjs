@@ -10,6 +10,7 @@ const runPnpm = resolve(root, 'scripts/run-pnpm.mjs');
 const reportOnly = process.argv.includes('--report-only');
 const commands = [
   ['install', ['install', '--dir', harness, '--frozen-lockfile']],
+  ['audit', ['--dir', harness, 'audit', '--audit-level', 'low']],
   ['test', ['--dir', harness, 'test']],
   ['probe', ['--dir', harness, 'probe']],
 ];
