@@ -50,6 +50,22 @@ export function loadMcpNextContract(root = process.cwd()) {
 
 export function validateMcpNextContract(contract) {
   const failures = [];
+  validateContractIdentity(contract, failures);
+  validateContractSurfaces(contract.surfaces, failures);
+  validateContractFixtures(contract.fixtures, failures);
+  return failures;
+}
+
+export function validateMcpNextProbePayload(payload) {
+  const failures = [];
+  validateProbeIdentity(payload, failures);
+  validateProbeTools(payload, failures);
+  validateProbeRequests(payload?.requests, failures);
+  validateProbeRedaction(payload, failures);
+  return [...new Set(failures)];
+}
+
+function validateContractIdentity(contract, failures) {
   if (contract.protocolVersion !== PROTOCOL_VERSION) {
     failures.push(`protocolVersion must be ${PROTOCOL_VERSION}`);
   }
@@ -59,54 +75,47 @@ export function validateMcpNextContract(contract) {
   if (contract.stableSdkRange !== '^1.29.0') {
     failures.push('stableSdkRange must remain ^1.29.0 during the compatibility phase');
   }
-  const expectedCandidate = JSON.stringify({
-    client: '2.0.0',
-    core: '2.0.0',
-    node: '2.0.0',
-    server: '2.0.0',
-  });
-  if (JSON.stringify(contract.candidateSdk) !== expectedCandidate) {
+  if (!sameJson(contract.candidateSdk, expectedCandidateSdk())) {
     failures.push('candidateSdk must pin the exact split SDK 2.0.0 package set');
   }
+}
 
-  const surfaces = Array.isArray(contract.surfaces) ? contract.surfaces : [];
+function validateContractSurfaces(surfaceValue, failures) {
+  const surfaces = Array.isArray(surfaceValue) ? surfaceValue : [];
   const surfaceIds = surfaces.map((surface) => surface.id);
-  if (JSON.stringify(surfaceIds) !== JSON.stringify(REQUIRED_SURFACES)) {
+  if (!sameJson(surfaceIds, REQUIRED_SURFACES)) {
     failures.push('compatibility surfaces must match the reviewed order and inventory');
   }
   if (new Set(surfaceIds).size !== surfaceIds.length) {
     failures.push('compatibility surface identifiers must be unique');
   }
-  for (const surface of surfaces) {
-    for (const field of ['current', 'next', 'decision', 'evidence', 'rollback']) {
-      if (typeof surface[field] !== 'string' || surface[field].trim().length === 0) {
-        failures.push(`${String(surface.id)} must define ${field}`);
-      }
-    }
-    if (!ALLOWED_DECISIONS.has(surface.decision)) {
-      failures.push(`${String(surface.id)} uses unsupported decision ${String(surface.decision)}`);
+  for (const surface of surfaces) validateContractSurface(surface, failures);
+}
+
+function validateContractSurface(surface, failures) {
+  for (const field of ['current', 'next', 'decision', 'evidence', 'rollback']) {
+    const value = surface[field];
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      failures.push(`${String(surface.id)} must define ${field}`);
     }
   }
+  if (!ALLOWED_DECISIONS.has(surface.decision)) {
+    failures.push(`${String(surface.id)} uses unsupported decision ${String(surface.decision)}`);
+  }
+}
 
-  const fixtures = contract.fixtures ?? {};
+function validateContractFixtures(fixtureValue, failures) {
+  const fixtures = fixtureValue ?? {};
   for (const name of FIXTURE_NAMES) {
     if (!Object.hasOwn(fixtures, name)) failures.push(`missing fixture ${name}.json`);
   }
   validateNegotiationFixtures(fixtures, failures);
   validateToolFixtures(fixtures, failures);
   validateFailureFixtures(fixtures, failures);
-  return failures;
 }
 
-export function validateMcpNextProbePayload(payload) {
-  const failures = [];
-  const expectedSdk = JSON.stringify({
-    client: '2.0.0',
-    core: '2.0.0',
-    node: '2.0.0',
-    server: '2.0.0',
-  });
-  if (JSON.stringify(payload?.sdk) !== expectedSdk) {
+function validateProbeIdentity(payload, failures) {
+  if (!sameJson(payload?.sdk, expectedCandidateSdk())) {
     failures.push('candidate probe must use the exact split SDK 2.0.0 package set');
   }
   if (payload?.protocolVersion !== PROTOCOL_VERSION) {
@@ -115,18 +124,16 @@ export function validateMcpNextProbePayload(payload) {
   if (payload?.unauthorizedStatus !== 401) {
     failures.push('candidate probe must reject the unauthenticated request with HTTP 401');
   }
-  if (
-    JSON.stringify(payload?.methods) !==
-    JSON.stringify(['server/discover', 'tools/list', 'tools/call'])
-  ) {
+  if (!sameJson(payload?.methods, ['server/discover', 'tools/list', 'tools/call'])) {
     failures.push('candidate probe must run discover, list, and call in order');
   }
   if (payload?.sawInitialize !== false) {
     failures.push('candidate probe must not use initialize');
   }
-  if (
-    JSON.stringify(payload?.tools?.names) !== JSON.stringify(['research-agent', 'summary-agent'])
-  ) {
+}
+
+function validateProbeTools(payload, failures) {
+  if (!sameJson(payload?.tools?.names, ['research-agent', 'summary-agent'])) {
     failures.push('candidate probe must return deterministic tool ordering');
   }
   if (payload?.tools?.ttlMs !== 120_000 || payload?.tools?.cacheScope !== 'public') {
@@ -135,26 +142,41 @@ export function validateMcpNextProbePayload(payload) {
   if (payload?.call?.text !== 'fixture-ok') {
     failures.push('candidate probe must return the deterministic tool result');
   }
-  const requests = Array.isArray(payload?.requests) ? payload.requests : [];
-  for (const request of requests) {
-    if (request.protocolVersion !== PROTOCOL_VERSION) {
-      failures.push(`${String(request.method)} must carry the modern protocol header`);
-    }
-    if (request.methodHeader !== request.method) {
-      failures.push(`${String(request.method)} must bind Mcp-Method to the body method`);
-    }
-    if (request.method === 'tools/call' && request.nameHeader !== request.name) {
-      failures.push('tools/call must bind Mcp-Name to params.name');
-    }
-    if (request.hasCredential !== true) {
-      failures.push(`${String(request.method)} must pass the synthetic auth boundary`);
-    }
+}
+
+function validateProbeRequests(requestValue, failures) {
+  const requests = Array.isArray(requestValue) ? requestValue : [];
+  for (const request of requests) validateProbeRequest(request, failures);
+}
+
+function validateProbeRequest(request, failures) {
+  if (request.protocolVersion !== PROTOCOL_VERSION) {
+    failures.push(`${String(request.method)} must carry the modern protocol header`);
   }
+  if (request.methodHeader !== request.method) {
+    failures.push(`${String(request.method)} must bind Mcp-Method to the body method`);
+  }
+  if (request.method === 'tools/call' && request.nameHeader !== request.name) {
+    failures.push('tools/call must bind Mcp-Name to params.name');
+  }
+  if (request.hasCredential !== true) {
+    failures.push(`${String(request.method)} must pass the synthetic auth boundary`);
+  }
+}
+
+function validateProbeRedaction(payload, failures) {
   const serialized = JSON.stringify(payload ?? {});
   if (/fixture-credential|authorization\s*:/i.test(serialized)) {
     failures.push('candidate probe evidence must not retain credential material');
   }
-  return [...new Set(failures)];
+}
+
+function expectedCandidateSdk() {
+  return { client: '2.0.0', core: '2.0.0', node: '2.0.0', server: '2.0.0' };
+}
+
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 export function evaluateMcpNextProbeResult({ exitCode, stdout, stderr }) {
@@ -200,7 +222,10 @@ function validateToolFixtures(fixtures, failures) {
 
   const list = fixtures['tools-list-result'];
   const names = Array.isArray(list?.tools) ? list.tools.map((tool) => tool.name) : [];
-  if (JSON.stringify(names) !== JSON.stringify([...names].sort())) {
+  if (
+    JSON.stringify(names) !==
+    JSON.stringify([...names].sort((left, right) => left.localeCompare(right)))
+  ) {
     failures.push('tools/list fixture must be sorted by tool name');
   }
   if (new Set(names).size !== names.length) failures.push('tools/list names must be unique');

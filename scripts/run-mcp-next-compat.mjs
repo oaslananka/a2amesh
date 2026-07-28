@@ -6,17 +6,18 @@ import { evaluateMcpNextProbeResult, validateMcpNextProbePayload } from './mcp-c
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const harness = resolve(root, 'tests/compat/mcp-2026-07-28/sdk-v2');
+const runPnpm = resolve(root, 'scripts/run-pnpm.mjs');
 const reportOnly = process.argv.includes('--report-only');
 const commands = [
-  ['install', ['pnpm', 'install', '--dir', harness, '--frozen-lockfile']],
-  ['test', ['pnpm', '--dir', harness, 'test']],
-  ['probe', ['pnpm', '--dir', harness, 'probe']],
+  ['install', ['install', '--dir', harness, '--frozen-lockfile']],
+  ['test', ['--dir', harness, 'test']],
+  ['probe', ['--dir', harness, 'probe']],
 ];
 
 let report;
 try {
   for (const [name, args] of commands) {
-    const result = runCorepack(args);
+    const result = runPnpmCommand(args);
     if (result.status !== 0) {
       report = evaluateMcpNextProbeResult({
         exitCode: result.status ?? 1,
@@ -47,8 +48,8 @@ if (reportOnly && report.status !== 'compatible') {
 }
 process.exitCode = reportOnly ? 0 : report.exitCode;
 
-function runCorepack(args) {
-  return spawnSync('corepack', args, {
+function runPnpmCommand(args) {
+  return spawnSync(process.execPath, [runPnpm, ...args], {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, CI: 'true' },
