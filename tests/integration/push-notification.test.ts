@@ -4,9 +4,16 @@ import type { AddressInfo } from 'node:net';
 import { A2AServer } from '../../packages/runtime/src/server/A2AServer.js';
 import { A2AClient } from '../../packages/runtime/src/client/A2AClient.js';
 import type { Artifact, Message, Task } from '../../packages/runtime/src/types/task.js';
-import { createUserMessage, startTestServer, type StartedServer } from './helpers.js';
+import {
+  createUserMessage,
+  startTestServer,
+  waitForTaskState,
+  type StartedServer,
+} from './helpers.js';
 
 class SlowAgent extends A2AServer {
+  private nextTaskGate: Promise<void> | undefined;
+
   constructor() {
     super({
       protocolVersion: '1.0',
@@ -18,8 +25,32 @@ class SlowAgent extends A2AServer {
     });
   }
 
+  holdNextTask(): () => void {
+    if (this.nextTaskGate) {
+      throw new Error('A task gate is already active');
+    }
+
+    let releaseGate: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      releaseGate = resolve;
+    });
+    this.nextTaskGate = gate;
+
+    return () => {
+      if (this.nextTaskGate === gate) {
+        this.nextTaskGate = undefined;
+      }
+      releaseGate?.();
+    };
+  }
+
   async handleTask(_task: Task, _message: Message): Promise<Artifact[]> {
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    const gate = this.nextTaskGate;
+    if (gate) {
+      await gate;
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
     return [
       {
         artifactId: 'slow-result',
@@ -72,11 +103,13 @@ async function createWebhookReceiver(): Promise<{
 }
 
 describe('Push Notification Lifecycle', () => {
+  let agent: SlowAgent;
   let agentHandle: StartedServer;
   let webhookReceiver: Awaited<ReturnType<typeof createWebhookReceiver>>;
 
   beforeAll(async () => {
-    agentHandle = await startTestServer(new SlowAgent());
+    agent = new SlowAgent();
+    agentHandle = await startTestServer(agent);
     webhookReceiver = await createWebhookReceiver();
   });
 
@@ -127,17 +160,28 @@ describe('Push Notification Lifecycle', () => {
 
   it('tasks/pushNotification/set ve get roundtrip', async () => {
     const client = new A2AClient(agentHandle.url);
+    const releaseTask = agent.holdNextTask();
+    let taskId: string | undefined;
 
-    const task = await client.sendMessage({
-      message: createUserMessage('create task for push config test'),
-      configuration: { returnImmediately: true },
-    });
+    try {
+      const task = await client.sendMessage({
+        message: createUserMessage('create task for push config test'),
+        configuration: { returnImmediately: true },
+      });
+      taskId = task.id;
 
-    const pushConfig = { url: webhookReceiver.url, token: 'roundtrip-token' };
-    await client.setPushNotification(task.id, pushConfig);
-    const retrieved = await client.getPushNotification(task.id);
+      const pushConfig = { url: webhookReceiver.url, token: 'roundtrip-token' };
+      await client.setPushNotification(task.id, pushConfig);
+      const retrieved = await client.getPushNotification(task.id);
 
-    expect(retrieved?.url).toBe(pushConfig.url);
-    expect(retrieved?.token).toBe(pushConfig.token);
+      expect(retrieved?.url).toBe(pushConfig.url);
+      expect(retrieved?.token).toBe(pushConfig.token);
+    } finally {
+      releaseTask();
+    }
+
+    if (taskId) {
+      await waitForTaskState(client, taskId);
+    }
   }, 10000);
 });
