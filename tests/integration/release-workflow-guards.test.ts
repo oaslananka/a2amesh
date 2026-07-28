@@ -78,4 +78,28 @@ describe('release workflow guards', () => {
     expect(checker).toContain('sync-security-policy.mjs');
     expect(checker).toContain('SECURITY.md .github/SECURITY.md');
   });
+
+  it('keeps deployment chart metadata coupled to the linked runtime release', async () => {
+    const [configText, manifestText, chart] = await Promise.all([
+      readFile(new URL('release-please-config.json', repoRoot), 'utf8'),
+      readFile(new URL('.release-please-manifest.json', repoRoot), 'utf8'),
+      readFile(new URL('deploy/helm/a2amesh/Chart.yaml', repoRoot), 'utf8'),
+    ]);
+    const config = JSON.parse(configText) as {
+      packages: Record<string, { 'extra-files'?: Array<{ type: string; path: string }> }>;
+    };
+    const manifest = JSON.parse(manifestText) as Record<string, string>;
+    const runtimeVersion = manifest['packages/runtime'];
+
+    expect(config.packages['packages/runtime']?.['extra-files']).toEqual(
+      expect.arrayContaining([
+        {
+          type: 'generic',
+          path: 'deploy/helm/a2amesh/Chart.yaml',
+        },
+      ]),
+    );
+    expect(chart).toContain(`version: ${runtimeVersion} # x-release-please-version`);
+    expect(chart).toContain(`appVersion: ${runtimeVersion} # x-release-please-version`);
+  });
 });

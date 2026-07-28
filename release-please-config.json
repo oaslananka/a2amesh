@@ -28,7 +28,13 @@
     "packages/runtime": {
       "package-name": "@a2amesh/runtime",
       "component": "@a2amesh/runtime",
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "deploy/helm/a2amesh/Chart.yaml"
+        }
+      ]
     },
     "packages/registry": {
       "package-name": "@a2amesh/registry",
