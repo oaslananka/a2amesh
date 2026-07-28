@@ -9,10 +9,11 @@ describe('OpenSSF Scorecard evidence', () => {
 
     expect(workflow).toContain('test-evidence:');
     expect(workflow).toContain('name: CI / tests-required');
-    expect(workflow).toContain('needs: [unit, integration, conformance]');
+    expect(workflow).toContain('needs: [unit, integration, recovery, conformance]');
     expect(workflow).toContain('if: ${{ always() }}');
     expect(workflow).toContain('UNIT_RESULT: ${{ needs.unit.result }}');
     expect(workflow).toContain('INTEGRATION_RESULT: ${{ needs.integration.result }}');
+    expect(workflow).toContain('RECOVERY_RESULT: ${{ needs.recovery.result }}');
     expect(workflow).toContain('CONFORMANCE_RESULT: ${{ needs.conformance.result }}');
     expect(workflow).toContain('Required test job failed or was cancelled');
     expect(workflow).not.toContain('permissions:\n  contents: read');

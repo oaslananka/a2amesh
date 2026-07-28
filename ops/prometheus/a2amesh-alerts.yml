@@ -73,3 +73,45 @@ groups:
         annotations:
           summary: A2A Mesh registry healthy agent ratio is low
           description: Less than 80% of registered agents are healthy.
+  - name: a2amesh.recovery.rules
+    rules:
+      - alert: A2AMeshBackupIntegrityFailed
+        expr: min by (dataset) (a2a_recovery_backup_integrity_ok) == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: a2amesh-recovery
+        annotations:
+          summary: A2A Mesh backup integrity verification failed
+          description: The latest backup for dataset {{ $labels.dataset }} failed hash or SQLite integrity verification.
+          runbook_url: https://github.com/oaslananka/a2amesh/blob/main/docs/operations/recovery.md#backup-integrity-failure
+      - alert: A2AMeshBackupStale
+        expr: time() - max by (dataset) (a2a_recovery_backup_last_success_timestamp_seconds) > 90000
+        for: 10m
+        labels:
+          severity: critical
+          service: a2amesh-recovery
+        annotations:
+          summary: A2A Mesh verified backup is stale
+          description: Dataset {{ $labels.dataset }} has no verified backup within the 25-hour alert window.
+          runbook_url: https://github.com/oaslananka/a2amesh/blob/main/docs/operations/recovery.md#stale-backup
+      - alert: A2AMeshRecoveryRtoExceeded
+        expr: max by (dataset) (a2a_recovery_restore_last_duration_seconds) > 1800
+        for: 1m
+        labels:
+          severity: warning
+          service: a2amesh-recovery
+        annotations:
+          summary: A2A Mesh restore exceeded the production RTO target
+          description: Dataset {{ $labels.dataset }} took longer than 30 minutes to restore and verify.
+          runbook_url: https://github.com/oaslananka/a2amesh/blob/main/docs/operations/recovery.md#rto-exceeded
+      - alert: A2AMeshRecoveryDrillFailed
+        expr: a2a_recovery_drill_success == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: a2amesh-recovery
+        annotations:
+          summary: A2A Mesh recovery drill failed
+          description: The latest disposable backup, restore, or redaction drill did not complete successfully.
+          runbook_url: https://github.com/oaslananka/a2amesh/blob/main/docs/operations/recovery.md#recovery-drill-failure

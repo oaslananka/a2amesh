@@ -11,6 +11,7 @@ name: Helm
       - 'packages/runtime/**'
       - 'scripts/check-helm-chart.mjs'
       - 'scripts/check-ops-pack.mjs'
+      - 'scripts/verify-helm-registry-persistence.sh'
       - 'scripts/verify-helm-network-boundaries.sh'
       - 'package.json'
       - 'pnpm-lock.yaml'
@@ -25,6 +26,7 @@ name: Helm
       - 'packages/runtime/**'
       - 'scripts/check-helm-chart.mjs'
       - 'scripts/check-ops-pack.mjs'
+      - 'scripts/verify-helm-registry-persistence.sh'
       - 'scripts/verify-helm-network-boundaries.sh'
       - 'package.json'
       - 'pnpm-lock.yaml'
@@ -259,7 +261,7 @@ jobs:
             --values deploy/helm/a2amesh/ci/values-kind.yaml \
             --wait \
             --timeout 10m
-          kubectl rollout status deployment/a2amesh-registry \
+          kubectl rollout status statefulset/a2amesh-registry \
             --namespace a2amesh \
             --timeout 5m
           kubectl rollout status deployment/a2amesh-runtime \
@@ -300,6 +302,9 @@ jobs:
           curl --fail --silent http://127.0.0.1:18003/metrics \
             | grep --fixed-strings 'a2a_runtime_'
 
+          A2AMESH_REGISTRY_TOKEN=ci-registry-token \
+            scripts/verify-helm-registry-persistence.sh seed
+
       - name: Verify enforced network and disruption boundaries
         env:
           A2AMESH_PROBE_IMAGE: ${{ env.NETWORK_PROBE_IMAGE }}
@@ -328,6 +333,9 @@ jobs:
           scripts/verify-helm-network-boundaries.sh override
           helm test a2amesh --namespace a2amesh --logs --timeout 5m
 
+          A2AMESH_REGISTRY_TOKEN=ci-registry-token \
+            scripts/verify-helm-registry-persistence.sh verify
+
           helm rollback a2amesh 1 \
             --namespace a2amesh \
             --wait \
@@ -337,6 +345,9 @@ jobs:
             --output jsonpath='{.data.DEPLOYMENT_ENVIRONMENT}')" = 'ci'
           scripts/verify-helm-network-boundaries.sh baseline
           helm test a2amesh --namespace a2amesh --logs --timeout 5m
+
+          A2AMESH_REGISTRY_TOKEN=ci-registry-token \
+            scripts/verify-helm-registry-persistence.sh verify
 
       - name: Verify the explicit single-node maintenance override
         run: |
@@ -356,6 +367,9 @@ jobs:
             --timeout 10m
           test "$(kubectl get poddisruptionbudgets --namespace a2amesh --no-headers | wc -l)" -eq 2
           helm test a2amesh --namespace a2amesh --logs --timeout 5m
+
+          A2AMESH_REGISTRY_TOKEN=ci-registry-token \
+            scripts/verify-helm-registry-persistence.sh verify
 
       - name: Collect redacted cluster diagnostics
         if: ${{ failure() }}

@@ -57,6 +57,7 @@ const requiredJobs = [
   'typecheck',
   'unit',
   'integration',
+  'recovery',
   'performance-smoke',
   'conformance',
   'schemas',

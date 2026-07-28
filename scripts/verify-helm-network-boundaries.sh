@@ -15,6 +15,14 @@ REGISTRY_URL="http://${RELEASE}-registry.${NAMESPACE}.svc.cluster.local:3099"
 RUNTIME_URL="http://${RELEASE}-runtime.${NAMESPACE}.svc.cluster.local:3003"
 APP_LABELS="app.kubernetes.io/name=a2amesh,app.kubernetes.io/instance=${RELEASE}"
 
+registry_workload() {
+  if "${KUBECTL_BIN}" get statefulset "${RELEASE}-registry" --namespace "${NAMESPACE}" >/dev/null 2>&1; then
+    printf 'statefulset/%s-registry\n' "${RELEASE}"
+  else
+    printf 'deployment/%s-registry\n' "${RELEASE}"
+  fi
+}
+
 run_probe() {
   local namespace="$1"
   local name="$2"
@@ -185,7 +193,7 @@ verify_maintenance_drain() {
     --pod-selector="app.kubernetes.io/instance=${RELEASE}" \
     --timeout=2m
   "${KUBECTL_BIN}" uncordon "${node}"
-  "${KUBECTL_BIN}" rollout status "deployment/${RELEASE}-registry" \
+  "${KUBECTL_BIN}" rollout status "$(registry_workload)" \
     --namespace "${NAMESPACE}" --timeout=5m
   "${KUBECTL_BIN}" rollout status "deployment/${RELEASE}-runtime" \
     --namespace "${NAMESPACE}" --timeout=5m
@@ -198,7 +206,7 @@ collect_diagnostics() {
   "${KUBECTL_BIN}" describe networkpolicy --all-namespaces || true
   "${KUBECTL_BIN}" describe poddisruptionbudget --all-namespaces || true
   "${KUBECTL_BIN}" describe pods --namespace "${NAMESPACE}" || true
-  "${KUBECTL_BIN}" logs --namespace "${NAMESPACE}" "deployment/${RELEASE}-registry" \
+  "${KUBECTL_BIN}" logs --namespace "${NAMESPACE}" "$(registry_workload)" \
     --all-containers --tail=200 || true
   "${KUBECTL_BIN}" logs --namespace "${NAMESPACE}" "deployment/${RELEASE}-runtime" \
     --all-containers --tail=200 || true

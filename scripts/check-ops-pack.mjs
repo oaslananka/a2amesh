@@ -34,6 +34,15 @@ const requiredFiles = [
   'ops/otel/collector.yaml',
   'ops/diagnostics/README.md',
   'ops/diagnostics/bundle-manifest.json',
+  'ops/recovery/recovery-policy.json',
+  'ops/recovery/diagnostic-bundle-manifest.json',
+  'ops/prometheus/a2amesh-alerts.test.yml',
+  'scripts/check-recovery-operations.mjs',
+  'scripts/recovery-cli.mjs',
+  'scripts/run-promtool.mjs',
+  'scripts/run-recovery-drill.mjs',
+  'scripts/verify-helm-registry-persistence.sh',
+  'tests/integration/recovery-operations.test.ts',
   'docs/operations/deployment.md',
   'docs-site/operations/deployment.md',
   'docs/operations/observability.md',
@@ -196,6 +205,8 @@ if (existingFiles.has(alertsPath)) {
     'a2a_runtime_task_failed_total',
     'a2a_runtime_task_duration_ms_bucket',
     'a2a_registry_healthy_agents',
+    'a2a_recovery_backup_integrity_ok',
+    'a2a_recovery_drill_success',
   ]) {
     if (!alerts.includes(metric)) {
       errors.push(`alert pack is missing metric: ${metric}`);

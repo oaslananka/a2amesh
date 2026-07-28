@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "1.0",
+  "name": "a2amesh-recovery-diagnostic-bundle",
+  "classification": "redacted-operational-evidence",
+  "requiredFiles": [
+    "README.md",
+    "runtime-health.json",
+    "runtime-metrics.prom",
+    "registry-metrics.prom",
+    "registry-summary.json",
+    "version.txt",
+    "environment-redacted.txt",
+    "recovery-report.json",
+    "recovery-metrics.prom"
+  ],
+  "redactionRules": [
+    "authorization-like headers and values",
+    "credential-like environment variables",
+    "session cookies",
+    "token query parameters",
+    "private task input values",
+    "private keys and private network endpoints"
+  ],
+  "retentionRecommendationDays": 14
+}

@@ -17,7 +17,7 @@ This file records evidence for OpenSSF Best Practices and Scorecard-oriented rev
 | Source repository   | Passed  | Public GitHub repository.                                                                                             |
 | License             | Partial | Canonical Apache-2.0 corpus, package metadata, and REUSE checks; GitHub refresh pending.                              |
 | Build system        | Passed  | `pnpm run build`.                                                                                                     |
-| Tests               | Passed  | Unit, integration, conformance, coverage, e2e, smoke, and mutation scripts exist.                                     |
+| Tests               | Passed  | Unit, integration, recovery, conformance, coverage, e2e, smoke, and mutation scripts exist.                           |
 | CI                  | Passed  | `.github/workflows/ci.yml`.                                                                                           |
 | Security policy     | Passed  | `SECURITY.md`.                                                                                                        |
 | Contribution policy | Passed  | `CONTRIBUTING.md`, PR template, issue templates.                                                                      |

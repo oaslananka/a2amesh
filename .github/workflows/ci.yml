@@ -195,6 +195,41 @@ jobs:
           artifact-name: workspace-build-${{ github.sha }}-${{ github.run_attempt }}
       - run: pnpm run test:integration:no-build
 
+  recovery:
+    name: CI / recovery
+    needs: [build]
+    permissions:
+      contents: read
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: ./.github/actions/restore-workspace-build
+        with:
+          artifact-name: workspace-build-${{ github.sha }}-${{ github.run_attempt }}
+      - run: pnpm run recovery:check
+      - run: pnpm run recovery:alerts
+      - run: pnpm run recovery:drill
+      - name: Upload redacted recovery evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: recovery-evidence-${{ github.run_attempt }}
+          path: |
+            .artifacts/recovery/recovery-report.json
+            .artifacts/recovery/recovery-metrics.prom
+            .artifacts/recovery/backups/*.manifest.json
+            .artifacts/recovery/diagnostic-bundle/**
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
   performance-smoke:
     name: CI / performance-smoke
     needs: [build]
@@ -553,24 +588,25 @@ jobs:
     permissions:
       contents: read
     if: ${{ always() }}
-    needs: [unit, integration, conformance]
+    needs: [unit, integration, recovery, conformance]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
       UNIT_RESULT: ${{ needs.unit.result }}
       INTEGRATION_RESULT: ${{ needs.integration.result }}
+      RECOVERY_RESULT: ${{ needs.recovery.result }}
       CONFORMANCE_RESULT: ${{ needs.conformance.result }}
     steps:
       - name: Verify required test jobs
         run: |
           set -euo pipefail
-          for result in "${UNIT_RESULT}" "${INTEGRATION_RESULT}" "${CONFORMANCE_RESULT}"; do
+          for result in "${UNIT_RESULT}" "${INTEGRATION_RESULT}" "${RECOVERY_RESULT}" "${CONFORMANCE_RESULT}"; do
             if [[ "${result}" != "success" ]]; then
               echo "Required test job failed or was cancelled: ${result}"
               exit 1
             fi
           done
-          echo "Required unit, integration, and conformance tests passed."
+          echo "Required unit, integration, recovery, and conformance tests passed."
 
   required-summary:
     name: CI / required-summary
@@ -584,6 +620,7 @@ jobs:
       - typecheck
       - unit
       - integration
+      - recovery
       - performance-smoke
       - conformance
       - schemas
