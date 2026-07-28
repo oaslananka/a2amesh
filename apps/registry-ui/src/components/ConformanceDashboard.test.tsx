@@ -42,6 +42,8 @@ describe('ConformanceDashboard', () => {
 
     expect(screen.getByText('release candidate')).toBeTruthy();
     expect(screen.getByText('Agent Card metadata')).toBeTruthy();
+    expect(screen.getByText('Agent Card trust')).toBeTruthy();
+    expect(screen.getByText(/tenant-a-key/)).toBeTruthy();
     expect(screen.getByText('message/stream capability')).toBeTruthy();
     expect(screen.getByText('Task read model')).toBeTruthy();
     expect(screen.getByText('Artifact surface')).toBeTruthy();
@@ -59,6 +61,10 @@ describe('ConformanceDashboard', () => {
 
     expect(screen.getByText('needs evidence')).toBeTruthy();
     expect(screen.getByText('Writer Agent · https://registry.example/agents/writer')).toBeTruthy();
+
+    const trustCard = screen.getByText('Agent Card trust').closest('article');
+    expect(trustCard).not.toBeNull();
+    expect(within(trustCard as HTMLElement).getByText('partial')).toBeTruthy();
 
     const terminalCard = screen.getByText('Terminal state coverage').closest('article');
     expect(terminalCard).not.toBeNull();

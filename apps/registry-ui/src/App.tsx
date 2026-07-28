@@ -16,10 +16,12 @@ import {
   type RegisteredAgent,
   type RegistryMetrics,
 } from './api/registry';
+import { describeAgentFreshness, describeAgentTrust } from './agentPresentation';
 import { AgentInspector } from './components/AgentInspector';
 import { ConformanceDashboard } from './components/ConformanceDashboard';
 import { EnterpriseControlsPanel } from './components/EnterpriseControlsPanel';
 import { HealthBadge } from './components/HealthBadge';
+import { OperatorContextSummary } from './components/OperatorContextSummary';
 import { PlaygroundPanel } from './components/PlaygroundPanel';
 import { RegisterAgentPanel } from './components/RegisterAgentPanel';
 import { TaskStream } from './components/TaskStream';
@@ -85,7 +87,7 @@ function classNames(...values: Array<string | false | null | undefined>): string
 }
 
 export default function App() {
-  const { agents, loading, error, accessMode, refresh } = useAgents();
+  const { agents, loading, error, accessMode, context, refresh } = useAgents();
   const {
     tasks,
     loading: tasksLoading,
@@ -100,6 +102,7 @@ export default function App() {
   const [capabilityFilter, setCapabilityFilter] = useState<CapabilityFilter>('all');
   const [tenantFilter, setTenantFilter] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [replayTaskId, setReplayTaskId] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
@@ -235,6 +238,8 @@ export default function App() {
             </button>
           </div>
         </header>
+
+        <OperatorContextSummary context={context} />
 
         {accessMode !== 'authenticated' ? (
           <section className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
@@ -413,6 +418,7 @@ export default function App() {
                         <tr>
                           <th className="px-4 py-3">Agent</th>
                           <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">Trust & freshness</th>
                           <th className="px-4 py-3">Tenant</th>
                           <th className="px-4 py-3">Transport</th>
                           <th className="px-4 py-3">Last success</th>
@@ -423,6 +429,11 @@ export default function App() {
                       <tbody className="divide-y divide-white/6">
                         {filteredAgents.map((agent) => {
                           const agentTasks = tasks.filter((task) => task.agentId === agent.id);
+                          const trust = describeAgentTrust(agent);
+                          const freshness = describeAgentFreshness(
+                            agent,
+                            context.healthStaleAfterMs,
+                          );
                           const activeTasks = agentTasks.filter((task) =>
                             [
                               'SUBMITTED',
@@ -465,6 +476,13 @@ export default function App() {
                               </td>
                               <td className="px-4 py-3">
                                 <HealthBadge status={agent.status} />
+                              </td>
+                              <td className="px-4 py-3">
+                                <AgentSignal
+                                  label={trust.label}
+                                  state={trust.state}
+                                  detail={freshness.label}
+                                />
                               </td>
                               <td className="px-4 py-3 text-slate-300">
                                 {agent.tenantId ?? 'unassigned'}
@@ -517,7 +535,11 @@ export default function App() {
                 tasks={tasks}
                 selectedAgent={selectedAgent}
                 accessMode={accessMode}
-                onSelectAgent={(agent) => setSelectedAgentId(agent.id)}
+                replayTaskId={replayTaskId}
+                onSelectAgent={(agent) => {
+                  setSelectedAgentId(agent.id);
+                  setReplayTaskId(null);
+                }}
               />
             ) : null}
 
@@ -548,7 +570,13 @@ export default function App() {
               selectedAgentTasks={selectedAgentTasks}
               accessMode={accessMode}
               formatRelativeTime={formatRelativeTime}
+              healthStaleAfterMs={context.healthStaleAfterMs}
               onDeleted={handleAgentDeleted}
+              onOpenReplay={(taskId) => {
+                setReplayTaskId(taskId);
+                setView('playground');
+              }}
+              onOpenConformance={() => setView('conformance')}
             />
 
             <section className="rounded-lg border border-white/10 bg-[#111820] p-4">
@@ -607,6 +635,38 @@ export default function App() {
           </aside>
         </div>
       </div>
+    </div>
+  );
+}
+
+interface AgentSignalProps {
+  label: string;
+  state: string;
+  detail: string;
+}
+
+function agentSignalClasses(state: string): string {
+  if (state === 'trusted') {
+    return 'border-emerald-300/25 bg-emerald-300/10 text-emerald-100';
+  }
+  if (state === 'rejected') {
+    return 'border-rose-300/25 bg-rose-300/10 text-rose-100';
+  }
+  return 'border-amber-300/25 bg-amber-300/10 text-amber-100';
+}
+
+function AgentSignal({ label, state, detail }: Readonly<AgentSignalProps>) {
+  return (
+    <div className="min-w-40">
+      <span
+        className={classNames(
+          'inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]',
+          agentSignalClasses(state),
+        )}
+      >
+        {label}
+      </span>
+      <span className="mt-1 block text-xs text-slate-400">{detail}</span>
     </div>
   );
 }

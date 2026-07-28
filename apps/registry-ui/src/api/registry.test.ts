@@ -1,6 +1,75 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { installFetchMock } from '../test/test-utils';
-import { deleteAgent, registerAgent, RegistryApiError } from './registry';
+import { deleteAgent, fetchAgents, registerAgent, RegistryApiError } from './registry';
+
+describe('fetchAgents', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns authenticated agents with the sanitized operator context', async () => {
+    const { calls } = installFetchMock([
+      { path: '/api/agents', body: [{ id: 'agent-1' }] },
+      {
+        path: '/api/context',
+        body: {
+          accessMode: 'authenticated',
+          authMethod: 'bearer',
+          tenantId: 'tenant-a',
+          visibilityScope: 'tenant-and-public',
+          healthStaleAfterMs: 240_000,
+        },
+      },
+    ]);
+
+    await expect(fetchAgents()).resolves.toEqual({
+      agents: [{ id: 'agent-1' }],
+      context: {
+        accessMode: 'authenticated',
+        authMethod: 'bearer',
+        tenantId: 'tenant-a',
+        visibilityScope: 'tenant-and-public',
+        healthStaleAfterMs: 240_000,
+      },
+    });
+    expect(calls).toEqual(['/api/agents', '/api/context']);
+  });
+
+  it('falls back to public agents with an explicit readonly context', async () => {
+    const { calls } = installFetchMock([
+      { path: '/api/agents', status: 401, body: { detail: 'Unauthorized' } },
+      { path: '/api/agents?public=true', body: [{ id: 'agent-public' }] },
+      {
+        path: '/api/context?public=true',
+        body: {
+          accessMode: 'readonly-public',
+          authMethod: 'anonymous',
+          tenantId: null,
+          visibilityScope: 'public-only',
+          healthStaleAfterMs: 240_000,
+        },
+      },
+    ]);
+
+    await expect(fetchAgents()).resolves.toMatchObject({
+      agents: [{ id: 'agent-public' }],
+      context: { accessMode: 'readonly-public', visibilityScope: 'public-only' },
+    });
+    expect(calls).toEqual(['/api/agents', '/api/agents?public=true', '/api/context?public=true']);
+  });
+
+  it('fails closed when the operator context cannot be loaded', async () => {
+    installFetchMock([
+      { path: '/api/agents', body: [{ id: 'agent-1' }] },
+      { path: '/api/context', status: 500, body: { detail: 'Context unavailable' } },
+    ]);
+
+    await expect(fetchAgents()).rejects.toMatchObject({
+      message: 'Registry context error: 500',
+      status: 500,
+    });
+  });
+});
 
 describe('registerAgent', () => {
   afterEach(() => {

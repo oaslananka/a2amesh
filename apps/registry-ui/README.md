@@ -4,9 +4,11 @@ A single-page operator console for the A2A Mesh registry.
 
 ## Features
 
-- **Three views:** Fleet table (agent list), Topology graph (visual), Task stream (live event feed)
-- **Two access modes:** Authenticated operator (full CRUD + task streaming) and readonly public discovery
-- **Live updates** via Server-Sent Events (agent registration changes, task events)
+- **Five views:** Fleet table, topology graph, task stream, dry-run playground, and conformance dashboard
+- **Explicit effective context:** authentication method, tenant claim, visibility scope, and health-staleness budget from the registry
+- **Two access modes:** authenticated/operator control plane and readonly public discovery, with anonymous operator access called out separately
+- **Trust and freshness signals:** verified, unverified, rejected, or missing Agent Card evidence plus current, stale, or never-observed health data
+- **Live updates** via Server-Sent Events for agent registration and task events
 - **Filtering** by status, capability, tenant, and search
 - **No external services required** — runs with any A2A Mesh registry instance
 
@@ -38,9 +40,10 @@ The dev server proxies `/api` to `http://localhost:3099` so it works out of the 
 
 Use the fleet table or topology graph to select an agent. The inspector panel shows:
 
-- Agent card metadata, transport, tenant, visibility, capabilities, and skills
-- Structured health reason and remediation hints for degraded or unknown agents
-- Quick actions to copy the agent card, export operator config, and prepare replay context for the latest task
+- Agent Card metadata, transport, tenant, visibility, capabilities, and skills
+- Registry signature-verification state and failure reason without exposing credentials or token claims
+- Structured health reason, freshness state, and remediation hints for degraded, unknown, or stale agents
+- Quick actions to copy the Agent Card, export operator config, open latest-task replay context, and review conformance
 
 For demos, seed at least one healthy public agent and one failing private agent so the health reason panel demonstrates both normal and remediation states.
 
@@ -56,12 +59,13 @@ When `VITE_REGISTRY_URL` is set, the dev server proxy is bypassed and API calls 
 
 ## Access modes
 
-| Mode                       | Condition                              | Features                                                 |
-| -------------------------- | -------------------------------------- | -------------------------------------------------------- |
-| **Authenticated operator** | Registry requires authentication       | Full agent CRUD, task streaming, live topology updates   |
-| **Public discovery**       | Registry permits unauthenticated reads | Agent list (public only), health metrics, no task stream |
+| Effective mode                | Condition                                                        | Visible scope and controls                                                  |
+| ----------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **Authenticated operator**    | Registry validates API key, bearer JWT, or OIDC identity         | Tenant-and-public or all-agent scope; CRUD, task stream, replay, SSE        |
+| **Anonymous operator access** | Control plane is intentionally configured without authentication | All visible records and operator actions, with an explicit security warning |
+| **Readonly public discovery** | Private listing returns 401/403 and public discovery is enabled  | Public agents only; no mutation, private task stream, or privileged SSE     |
 
-When the registry doesn't require auth or the UI detects a 401/403, it automatically falls back to public discovery mode.
+The UI obtains this information from the sanitized `/context` endpoint. It does not infer authentication from a successful agent-list response and does not render raw claims, roles, scopes, or credentials. A 401/403 from the private listing triggers the explicit public list and public context endpoints; other context failures are surfaced instead of silently assuming a mode.
 
 ## Technology
 

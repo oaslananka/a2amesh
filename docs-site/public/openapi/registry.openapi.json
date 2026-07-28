@@ -178,6 +178,20 @@
         "required": ["protocolVersion", "name", "description", "url", "version"],
         "type": "object"
       },
+      "AgentCardVerification": {
+        "additionalProperties": false,
+        "properties": {
+          "failureReason": { "type": "string" },
+          "keyId": { "type": "string" },
+          "required": { "type": "boolean" },
+          "state": { "enum": ["trusted", "unverified", "rejected"], "type": "string" },
+          "tenantId": { "type": "string" },
+          "valid": { "type": "boolean" },
+          "verifiedAt": { "format": "date-time", "type": "string" }
+        },
+        "required": ["required", "valid", "state", "verifiedAt"],
+        "type": "object"
+      },
       "AgentSkill": {
         "additionalProperties": true,
         "properties": {
@@ -258,7 +272,8 @@
           "status": { "$ref": "#/components/schemas/AgentStatus" },
           "tags": { "items": { "type": "string" }, "type": "array" },
           "tenantId": { "type": "string" },
-          "url": { "format": "uri", "type": "string" }
+          "url": { "format": "uri", "type": "string" },
+          "verification": { "$ref": "#/components/schemas/AgentCardVerification" }
         },
         "required": ["id", "url", "card", "status", "tags", "skills", "registeredAt"],
         "type": "object"
@@ -360,6 +375,27 @@
           "unknownAgents",
           "activeTenants",
           "publicAgents"
+        ],
+        "type": "object"
+      },
+      "RegistryOperatorContext": {
+        "additionalProperties": false,
+        "properties": {
+          "accessMode": { "enum": ["authenticated", "readonly-public"], "type": "string" },
+          "authMethod": { "enum": ["anonymous", "apiKey", "bearer", "oidc"], "type": "string" },
+          "healthStaleAfterMs": { "minimum": 1, "type": "integer" },
+          "tenantId": { "type": ["string", "null"] },
+          "visibilityScope": {
+            "enum": ["all", "tenant-and-public", "public-and-unassigned", "public-only"],
+            "type": "string"
+          }
+        },
+        "required": [
+          "accessMode",
+          "authMethod",
+          "tenantId",
+          "visibilityScope",
+          "healthStaleAfterMs"
         ],
         "type": "object"
       },
@@ -783,6 +819,29 @@
         "security": [{ "bearerAuth": [] }],
         "summary": "Stream authenticated normalized agent registry updates.",
         "tags": ["Events", "Agents"]
+      }
+    },
+    "/context": {
+      "get": {
+        "description": "Returns authentication method, tenant scope, visibility scope, and the configured health freshness budget without exposing credentials, token claims, roles, or scopes.",
+        "operationId": "getRegistryOperatorContext",
+        "parameters": [{ "$ref": "#/components/parameters/PublicQuery" }],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RegistryOperatorContext" }
+              }
+            },
+            "description": "Sanitized registry operator context."
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        },
+        "security": [{ "bearerAuth": [] }, {}],
+        "summary": "Return the sanitized effective operator or public discovery context.",
+        "tags": ["Admin"]
       }
     },
     "/events": {

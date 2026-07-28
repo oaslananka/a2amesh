@@ -33,7 +33,9 @@ import { InMemoryTrustLogStorage } from './storage/InMemoryTrustLogStorage.js';
 
 export type {
   RegistryMetricsSummary,
+  RegistryOperatorContext,
   RegistryServerOptions,
+  RegistryVisibilityScope,
   RegistryTaskEvent,
 } from './server/types.js';
 

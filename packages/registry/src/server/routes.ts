@@ -25,7 +25,9 @@ import type { RegistryTaskProjectionController } from './taskProjection.js';
 import {
   createRegisteredAgentSkills,
   createRegisteredAgentTags,
+  type RegistryOperatorContext,
   type RegistryServerContext,
+  type RegistryVisibilityScope,
 } from './types.js';
 
 export interface RegistryRouteControllers {
@@ -67,6 +69,35 @@ export function registerRegistryRoutes(
 
   app.get('/metrics/summary', async (_req, res) => {
     res.json(await metrics.getSummary());
+  });
+
+  app.get('/context', async (req, res) => {
+    const healthStaleAfterMs = resolveHealthStaleAfterMs(context);
+    if (req.query['public'] === 'true') {
+      const publicContext: RegistryOperatorContext = {
+        accessMode: 'readonly-public',
+        authMethod: 'anonymous',
+        tenantId: null,
+        visibilityScope: 'public-only',
+        healthStaleAfterMs,
+      };
+      res.json(publicContext);
+      return;
+    }
+
+    const requestContext = await auth.authenticateControlPlane(req, res);
+    if (!requestContext) {
+      return;
+    }
+
+    const operatorContext: RegistryOperatorContext = {
+      accessMode: 'authenticated',
+      authMethod: requestContext.authMethod,
+      tenantId: requestContext.tenantId ?? null,
+      visibilityScope: resolveVisibilityScope(requestContext, auth),
+      healthStaleAfterMs,
+    };
+    res.json(operatorContext);
   });
 
   app.get('/events', async (req: Request, res: Response) => {
@@ -391,6 +422,25 @@ function writeAgentList(res: Response, result: AgentListResult): void {
     res.setHeader('X-A2A-Registry-Page-Next-Cursor', result.nextCursor);
   }
   res.json(result.items);
+}
+
+function resolveVisibilityScope(
+  requestContext: RequestContext,
+  auth: RegistryAuthController,
+): RegistryVisibilityScope {
+  if (!auth.shouldEnforceTenantIsolation(requestContext)) {
+    return 'all';
+  }
+  return requestContext.tenantId ? 'tenant-and-public' : 'public-and-unassigned';
+}
+
+function resolveHealthStaleAfterMs(context: RegistryServerContext): number {
+  const longestRecheckIntervalMs = Math.max(
+    context.options.healthyRecheckIntervalMs ?? 30_000,
+    context.options.unhealthyRecheckIntervalMs ?? 60_000,
+    context.options.unknownRecheckIntervalMs ?? 120_000,
+  );
+  return longestRecheckIntervalMs * 2;
 }
 
 function routeParam(value: string | string[] | undefined): string | undefined {

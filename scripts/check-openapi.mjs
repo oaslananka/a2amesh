@@ -19,6 +19,7 @@ export const REQUIRED_OPERATIONS = [
   ['GET', '/health'],
   ['GET', '/metrics'],
   ['GET', '/metrics/summary'],
+  ['GET', '/context'],
   ['GET', '/events'],
   ['GET', '/agents/stream'],
   ['GET', '/agents'],
@@ -40,6 +41,7 @@ export const REQUIRED_OPERATIONS = [
 
 export const REQUIRED_SCHEMAS = [
   'AgentCard',
+  'AgentCardVerification',
   'AgentSkill',
   'AgentStatus',
   'AgentTransport',
@@ -53,6 +55,7 @@ export const REQUIRED_SCHEMAS = [
   'RegistryHealth',
   'RegistryImportResult',
   'RegistryMetricsSummary',
+  'RegistryOperatorContext',
   'RegistryTaskEvent',
   'TrustLogEntry',
   'ValidationErrorResponse',

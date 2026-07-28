@@ -37,10 +37,12 @@ describe('AgentInspector', () => {
     expect(screen.getByText('tenant: tenant-a')).toBeTruthy();
     expect(screen.getByText('operator actions enabled')).toBeTruthy();
     expect(screen.getByText(/Provider timeout while drafting reports/)).toBeTruthy();
+    expect(screen.getByText('Unverified Agent Card')).toBeTruthy();
+    expect(screen.getByText('Agent Card is unsigned')).toBeTruthy();
     expect(screen.getByText(/Check OpenAI\/Anthropic provider latency/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Copy card' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Export config' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Replay latest' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Open replay' })).toBeTruthy();
   });
 
   it('copies the agent card and exported config to the clipboard', async () => {
@@ -62,19 +64,40 @@ describe('AgentInspector', () => {
     expect(writeText).toHaveBeenLastCalledWith(expect.stringContaining('"visibility": "private"'));
   });
 
-  it('prepares replay context for the latest task event', () => {
+  it('opens replay and conformance from the selected agent context', () => {
+    const onOpenReplay = vi.fn();
+    const onOpenConformance = vi.fn();
     render(
       <AgentInspector
         selectedAgent={writerAgent}
         selectedAgentTasks={[failedTask]}
         accessMode="authenticated"
         formatRelativeTime={formatRelativeTime}
+        onOpenReplay={onOpenReplay}
+        onOpenConformance={onOpenConformance}
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Replay latest' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open replay' }));
+    expect(onOpenReplay).toHaveBeenCalledWith(failedTask.taskId);
 
-    expect(screen.getByText(`Replay prepared for ${failedTask.taskId}.`)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Review conformance' }));
+    expect(onOpenConformance).toHaveBeenCalledWith(writerAgent.id);
+  });
+
+  it('disables replay until a task context is available', () => {
+    render(
+      <AgentInspector
+        selectedAgent={writerAgent}
+        selectedAgentTasks={[]}
+        accessMode="authenticated"
+        formatRelativeTime={formatRelativeTime}
+      />,
+    );
+
+    expect(
+      (screen.getByRole('button', { name: 'Open replay' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
   });
 
   it('hides the delete action in readonly-public mode', () => {

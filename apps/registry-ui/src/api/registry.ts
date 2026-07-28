@@ -1,5 +1,30 @@
 export type AgentStatus = 'healthy' | 'unhealthy' | 'unknown';
+type AgentTrustState = 'trusted' | 'unverified' | 'rejected';
 export type RegistryAccessMode = 'authenticated' | 'readonly-public';
+type RegistryAuthMethod = 'anonymous' | 'apiKey' | 'bearer' | 'oidc';
+type RegistryVisibilityScope =
+  | 'all'
+  | 'tenant-and-public'
+  | 'public-and-unassigned'
+  | 'public-only';
+
+export interface RegistryOperatorContext {
+  accessMode: RegistryAccessMode;
+  authMethod: RegistryAuthMethod;
+  tenantId: string | null;
+  visibilityScope: RegistryVisibilityScope;
+  healthStaleAfterMs: number;
+}
+
+interface AgentCardVerificationMetadata {
+  required: boolean;
+  valid: boolean;
+  state: AgentTrustState;
+  verifiedAt: string;
+  keyId?: string;
+  tenantId?: string;
+  failureReason?: string;
+}
 
 interface AgentSkill {
   id: string;
@@ -25,6 +50,7 @@ export interface RegisteredAgent {
     checkedAt?: string;
     remediationHints?: string[];
   };
+  verification?: AgentCardVerificationMetadata;
   card: {
     name: string;
     description: string;
@@ -90,8 +116,16 @@ export type AgentStreamPayload = RegisteredAgent | { id: string; deleted: true }
 
 export interface AgentFetchResult {
   agents: RegisteredAgent[];
-  accessMode: RegistryAccessMode;
+  context: RegistryOperatorContext;
 }
+
+export const readonlyRegistryContext: RegistryOperatorContext = {
+  accessMode: 'readonly-public',
+  authMethod: 'anonymous',
+  tenantId: null,
+  visibilityScope: 'public-only',
+  healthStaleAfterMs: 240_000,
+};
 
 export class RegistryApiError extends Error {
   constructor(
@@ -129,12 +163,20 @@ async function requestJson(path: string): Promise<Response> {
   });
 }
 
+async function fetchRegistryContext(publicOnly: boolean): Promise<RegistryOperatorContext> {
+  const response = await requestJson(`/context${publicOnly ? '?public=true' : ''}`);
+  if (!response.ok) {
+    throw new RegistryApiError(`Registry context error: ${response.status}`, response.status);
+  }
+  return (await response.json()) as RegistryOperatorContext;
+}
+
 export async function fetchAgents(): Promise<AgentFetchResult> {
   const privateResponse = await requestJson('/agents');
   if (privateResponse.ok) {
     return {
       agents: (await privateResponse.json()) as RegisteredAgent[],
-      accessMode: 'authenticated',
+      context: await fetchRegistryContext(false),
     };
   }
 
@@ -143,7 +185,7 @@ export async function fetchAgents(): Promise<AgentFetchResult> {
     if (publicResponse.ok) {
       return {
         agents: (await publicResponse.json()) as RegisteredAgent[],
-        accessMode: 'readonly-public',
+        context: await fetchRegistryContext(true),
       };
     }
   }

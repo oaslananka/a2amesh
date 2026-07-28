@@ -6,6 +6,7 @@ import {
   type RegistryAccessMode,
   type RegistryTaskEvent,
 } from '../api/registry';
+import { describeAgentFreshness, describeAgentTrust } from '../agentPresentation';
 import { HealthBadge } from './HealthBadge';
 
 interface AgentInspectorProps {
@@ -13,7 +14,10 @@ interface AgentInspectorProps {
   selectedAgentTasks: RegistryTaskEvent[];
   accessMode: RegistryAccessMode;
   formatRelativeTime: (timestamp?: string) => string;
+  healthStaleAfterMs?: number;
   onDeleted?: (agentId: string) => void;
+  onOpenReplay?: (taskId: string) => void;
+  onOpenConformance?: (agentId: string) => void;
 }
 
 function fallbackRemediationHints(agent: RegisteredAgent): string[] {
@@ -37,6 +41,16 @@ function fallbackRemediationHints(agent: RegisteredAgent): string[] {
   }
 
   return ['No operator action is required. Keep monitoring task latency and heartbeat drift.'];
+}
+
+function trustPanelClasses(state: string): string {
+  if (state === 'trusted') {
+    return 'border-emerald-300/20 bg-emerald-300/10';
+  }
+  if (state === 'rejected') {
+    return 'border-rose-300/25 bg-rose-300/10';
+  }
+  return 'border-amber-300/25 bg-amber-300/10';
 }
 
 function describeHealth(agent: RegisteredAgent): string {
@@ -85,7 +99,10 @@ export function AgentInspector({
   selectedAgentTasks,
   accessMode,
   formatRelativeTime,
+  healthStaleAfterMs = 240_000,
   onDeleted,
+  onOpenReplay,
+  onOpenConformance,
 }: AgentInspectorProps) {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -95,6 +112,14 @@ export function AgentInspector({
   const remediationHints = useMemo(
     () => (selectedAgent ? fallbackRemediationHints(selectedAgent) : []),
     [selectedAgent],
+  );
+  const trust = useMemo(
+    () => (selectedAgent ? describeAgentTrust(selectedAgent) : null),
+    [selectedAgent],
+  );
+  const freshness = useMemo(
+    () => (selectedAgent ? describeAgentFreshness(selectedAgent, healthStaleAfterMs) : null),
+    [healthStaleAfterMs, selectedAgent],
   );
 
   useEffect(() => {
@@ -125,13 +150,25 @@ export function AgentInspector({
     );
   };
 
-  const prepareReplay = () => {
+  const openReplay = () => {
     if (!latestTask) {
       setActionMessage('No recent task is available to replay.');
       return;
     }
 
+    if (onOpenReplay) {
+      onOpenReplay(latestTask.taskId);
+      return;
+    }
     setActionMessage(`Replay prepared for ${latestTask.taskId}.`);
+  };
+
+  const openConformance = () => {
+    if (onOpenConformance) {
+      onOpenConformance(selectedAgent.id);
+      return;
+    }
+    setActionMessage(`Conformance context prepared for ${selectedAgent.card.name}.`);
   };
 
   const handleDeleteClick = async () => {
@@ -182,6 +219,19 @@ export function AgentInspector({
         />
       </div>
 
+      {trust ? (
+        <div className={classNames('mt-5 rounded-lg border p-3', trustPanelClasses(trust.state))}>
+          <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Agent Card trust</p>
+          <p className="mt-2 text-sm font-semibold text-white">{trust.label}</p>
+          <p className="mt-1 text-sm leading-6 text-slate-200">{trust.detail}</p>
+          {selectedAgent.verification?.verifiedAt ? (
+            <p className="mt-2 text-xs text-slate-400">
+              Evaluated {formatRelativeTime(selectedAgent.verification.verifiedAt)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       <dl className="mt-4 grid gap-3 text-sm">
         <InfoRow label="URL" value={selectedAgent.url} />
         <InfoRow label="Transport" value={selectedAgent.card.transport ?? 'http'} />
@@ -189,6 +239,7 @@ export function AgentInspector({
         <InfoRow label="Last heartbeat" value={formatRelativeTime(selectedAgent.lastHeartbeatAt)} />
         <InfoRow label="Last success" value={formatRelativeTime(selectedAgent.lastSuccessAt)} />
         <InfoRow label="Failures" value={String(selectedAgent.consecutiveFailures ?? 0)} />
+        <InfoRow label="Health freshness" value={freshness?.label ?? 'Unknown'} />
       </dl>
 
       <div className="mt-5 rounded-lg border border-white/8 bg-black/15 p-3">
@@ -253,10 +304,11 @@ export function AgentInspector({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-2 sm:grid-cols-3">
+      <div className="mt-5 grid gap-2 sm:grid-cols-2">
         <QuickActionButton label="Copy card" onClick={copyAgentCard} />
         <QuickActionButton label="Export config" onClick={exportConfig} />
-        <QuickActionButton label="Replay latest" onClick={prepareReplay} />
+        <QuickActionButton label="Open replay" disabled={!latestTask} onClick={openReplay} />
+        <QuickActionButton label="Review conformance" onClick={openConformance} />
       </div>
 
       {accessMode === 'authenticated' ? (
@@ -294,18 +346,25 @@ export function AgentInspector({
   );
 }
 
+function classNames(...values: Array<string | false | null | undefined>): string {
+  return values.filter(Boolean).join(' ');
+}
+
 function QuickActionButton({
   label,
+  disabled,
   onClick,
 }: {
   label: string;
+  disabled?: boolean;
   onClick: () => void | Promise<void>;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={() => void onClick()}
-      className="rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:border-cyan-200/40 hover:bg-cyan-300/15"
+      className="rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:border-cyan-200/40 hover:bg-cyan-300/15 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-cyan-300/20 disabled:hover:bg-cyan-300/10"
     >
       {label}
     </button>

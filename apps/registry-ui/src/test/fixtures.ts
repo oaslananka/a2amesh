@@ -10,6 +10,14 @@ export const researcherAgent: RegisteredAgent = {
   registeredAt: '2026-04-06T09:55:00.000Z',
   lastHeartbeatAt: '2026-04-06T10:04:00.000Z',
   lastSuccessAt: '2026-04-06T10:03:30.000Z',
+  verification: {
+    required: true,
+    valid: true,
+    state: 'trusted',
+    verifiedAt: '2026-04-06T10:03:40.000Z',
+    keyId: 'tenant-a-key',
+    tenantId: 'tenant-a',
+  },
   card: {
     name: 'Researcher Agent',
     description: 'Finds and synthesizes source material.',
@@ -38,6 +46,14 @@ export const writerAgent: RegisteredAgent = {
   tags: ['writing'],
   tenantId: 'tenant-a',
   consecutiveFailures: 2,
+  verification: {
+    required: false,
+    valid: false,
+    state: 'unverified',
+    verifiedAt: '2026-04-06T10:04:10.000Z',
+    tenantId: 'tenant-a',
+    failureReason: 'Agent Card is unsigned',
+  },
   health: {
     reason: 'Provider timeout while drafting reports. Last two heartbeat checks exceeded 10s.',
     checkedAt: '2026-04-06T10:04:20.000Z',
@@ -73,6 +89,13 @@ export const publicAgent: RegisteredAgent = {
   status: 'unknown',
   tags: ['public'],
   isPublic: true,
+  verification: {
+    required: false,
+    valid: false,
+    state: 'unverified',
+    verifiedAt: '2026-04-06T09:50:00.000Z',
+    failureReason: 'Agent Card is unsigned',
+  },
   card: {
     name: 'Public Discovery Agent',
     description: 'Read-only public discovery endpoint.',
