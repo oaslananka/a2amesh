@@ -7,6 +7,7 @@ import type {
   OutboundPolicyOptions,
   RateLimitConfig,
   RateLimitStore,
+  RequestContext,
   Task,
   VerificationKey,
 } from '@a2amesh/runtime';
@@ -51,6 +52,20 @@ export interface RegistryServerOptions {
   tenantTrustPolicies?: Record<string, RegistryTenantTrustPolicy>;
   rateLimit?: Partial<RateLimitConfig>;
   rateLimitStore?: RateLimitStore;
+}
+
+export type RegistryVisibilityScope =
+  | 'all'
+  | 'tenant-and-public'
+  | 'public-and-unassigned'
+  | 'public-only';
+
+export interface RegistryOperatorContext {
+  accessMode: 'authenticated' | 'readonly-public';
+  authMethod: RequestContext['authMethod'];
+  tenantId: string | null;
+  visibilityScope: RegistryVisibilityScope;
+  healthStaleAfterMs: number;
 }
 
 export interface RegistryMetricsSummary {

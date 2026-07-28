@@ -9,6 +9,7 @@ describe('registry OpenAPI document', () => {
       paths: expect.objectContaining({
         '/health': expect.any(Object),
         '/metrics': expect.any(Object),
+        '/context': expect.any(Object),
         '/agents/register': expect.any(Object),
         '/tasks/recent': expect.any(Object),
         '/tasks/stream': expect.any(Object),
@@ -27,5 +28,7 @@ describe('registry OpenAPI document', () => {
     expect(serialized).toContain('text/event-stream');
     expect(serialized).toContain('application/problem+json');
     expect(serialized).toContain('#/components/schemas/RegisteredAgent');
+    expect(serialized).toContain('#/components/schemas/RegistryOperatorContext');
+    expect(serialized).toContain('#/components/schemas/AgentCardVerification');
   });
 });

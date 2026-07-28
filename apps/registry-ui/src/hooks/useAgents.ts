@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   fetchAgents,
+  readonlyRegistryContext,
   subscribeToAgentUpdates,
   type AgentFetchResult,
   type AgentStreamPayload,
   type RegisteredAgent,
-  type RegistryAccessMode,
 } from '../api/registry';
 
 function applyAgentUpdate(
@@ -30,16 +30,18 @@ export function useAgents(pollIntervalMs = 5_000) {
   const [agents, setAgents] = useState<RegisteredAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [accessMode, setAccessMode] = useState<RegistryAccessMode>('readonly-public');
+  const [context, setContext] = useState(readonlyRegistryContext);
 
   const load = useCallback(async (): Promise<AgentFetchResult | null> => {
     try {
       const nextAgents = await fetchAgents();
       setAgents(nextAgents.agents);
-      setAccessMode(nextAgents.accessMode);
+      setContext(nextAgents.context);
       setError(null);
       return nextAgents;
     } catch (loadError) {
+      setAgents([]);
+      setContext(readonlyRegistryContext);
       setError(loadError instanceof Error ? loadError.message : 'Failed to load agents');
       return null;
     } finally {
@@ -52,7 +54,7 @@ export function useAgents(pollIntervalMs = 5_000) {
     let stopped = false;
 
     void load().then((result) => {
-      if (stopped || result?.accessMode !== 'authenticated') {
+      if (stopped || result?.context.accessMode !== 'authenticated') {
         return;
       }
 
@@ -81,7 +83,8 @@ export function useAgents(pollIntervalMs = 5_000) {
     agents,
     loading,
     error,
-    accessMode,
+    context,
+    accessMode: context.accessMode,
     refresh: load,
   };
 }

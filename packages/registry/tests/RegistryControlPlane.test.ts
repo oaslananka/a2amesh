@@ -87,6 +87,56 @@ describe('RegistryServer control plane endpoints', () => {
     vi.restoreAllMocks();
   });
 
+  it('reports a sanitized anonymous operator context with the configured freshness budget', async () => {
+    const server = new RegistryServer({
+      healthyRecheckIntervalMs: 15_000,
+      unhealthyRecheckIntervalMs: 20_000,
+      unknownRecheckIntervalMs: 30_000,
+    });
+
+    const response = await request(server.getExpressApp()).get('/context');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      accessMode: 'authenticated',
+      authMethod: 'anonymous',
+      tenantId: null,
+      visibilityScope: 'all',
+      healthStaleAfterMs: 60_000,
+    });
+  });
+
+  it('reports tenant-scoped bearer context and a public-only readonly context', async () => {
+    const server = new RegistryServer({ registrationToken: 'control-token' });
+    const app = server.getExpressApp();
+
+    await request(app).get('/context').expect(401);
+
+    const operator = await request(app)
+      .get('/context')
+      .set('Authorization', 'Bearer control-token')
+      .set('x-tenant-id', 'tenant-a');
+
+    expect(operator.status).toBe(200);
+    expect(operator.body).toEqual({
+      accessMode: 'authenticated',
+      authMethod: 'bearer',
+      tenantId: 'tenant-a',
+      visibilityScope: 'tenant-and-public',
+      healthStaleAfterMs: 240_000,
+    });
+
+    const readonly = await request(app).get('/context').query({ public: 'true' });
+    expect(readonly.status).toBe(200);
+    expect(readonly.body).toEqual({
+      accessMode: 'readonly-public',
+      authMethod: 'anonymous',
+      tenantId: null,
+      visibilityScope: 'public-only',
+      healthStaleAfterMs: 240_000,
+    });
+  });
+
   it('exports an empty registry as a versioned document that matches the public schema', async () => {
     const server = new RegistryServer({ registrationToken: 'control-token' });
 

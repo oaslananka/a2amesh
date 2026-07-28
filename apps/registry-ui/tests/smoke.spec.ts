@@ -38,6 +38,15 @@ function installMockEventSource(page: Page) {
                   url: 'http://localhost:3001',
                   status: 'healthy',
                   tenantId: 'tenant-a',
+                  lastHeartbeatAt: '2026-04-06T10:04:00.000Z',
+                  verification: {
+                    required: true,
+                    valid: true,
+                    state: 'trusted',
+                    verifiedAt: '2026-04-06T10:03:00.000Z',
+                    keyId: 'tenant-a-key',
+                    tenantId: 'tenant-a',
+                  },
                   card: {
                     name: 'Researcher Agent',
                     description: 'Finds and synthesizes information.',
@@ -67,7 +76,34 @@ function installMockEventSource(page: Page) {
   });
 }
 
+async function routeOperatorContext(page: Page) {
+  await page.route('**/api/context*', async (route) => {
+    const publicOnly = new URL(route.request().url()).searchParams.get('public') === 'true';
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(
+        publicOnly
+          ? {
+              accessMode: 'readonly-public',
+              authMethod: 'anonymous',
+              tenantId: null,
+              visibilityScope: 'public-only',
+              healthStaleAfterMs: 240_000,
+            }
+          : {
+              accessMode: 'authenticated',
+              authMethod: 'oidc',
+              tenantId: 'tenant-a',
+              visibilityScope: 'tenant-and-public',
+              healthStaleAfterMs: 240_000,
+            },
+      ),
+    });
+  });
+}
+
 test('renders readonly public discovery mode', async ({ page }) => {
+  await routeOperatorContext(page);
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({ status: 401, body: 'Unauthorized' });
   });
@@ -80,6 +116,13 @@ test('renders readonly public discovery mode', async ({ page }) => {
           url: 'https://public.example/agent',
           status: 'healthy',
           isPublic: true,
+          verification: {
+            required: false,
+            valid: false,
+            state: 'unverified',
+            verifiedAt: '2026-04-06T09:50:00.000Z',
+            failureReason: 'Agent Card is unsigned',
+          },
           card: {
             name: 'Public Research Agent',
             description: 'Publicly discoverable research endpoint.',
@@ -117,11 +160,14 @@ test('renders readonly public discovery mode', async ({ page }) => {
 
   await expect(page.getByText('a2amesh operator console')).toBeVisible();
   await expect(page.getByText('Public discovery mode')).toBeVisible();
+  await expect(page.getByText('Public discovery only')).toBeVisible();
+  await expect(page.getByText('Public agents only')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Public Research Agent' })).toBeVisible();
   await expect(page.getByText('Live task feeds and admin actions are hidden')).toBeVisible();
 });
 
 test('renders authenticated fleet, topology, and task stream', async ({ page }) => {
+  await routeOperatorContext(page);
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
@@ -133,6 +179,14 @@ test('renders authenticated fleet, topology, and task stream', async ({ page }) 
           tenantId: 'tenant-a',
           lastHeartbeatAt: '2026-04-06T10:04:00.000Z',
           lastSuccessAt: '2026-04-06T10:02:00.000Z',
+          verification: {
+            required: true,
+            valid: true,
+            state: 'trusted',
+            verifiedAt: '2026-04-06T10:03:00.000Z',
+            keyId: 'tenant-a-key',
+            tenantId: 'tenant-a',
+          },
           card: {
             name: 'Researcher Agent',
             description: 'Finds and synthesizes information.',
@@ -155,6 +209,19 @@ test('renders authenticated fleet, topology, and task stream', async ({ page }) 
           status: 'unhealthy',
           tenantId: 'tenant-a',
           consecutiveFailures: 2,
+          health: {
+            reason: 'Provider timeout while drafting reports.',
+            checkedAt: '2026-04-06T10:04:00.000Z',
+            remediationHints: ['Check provider latency before replaying tasks.'],
+          },
+          verification: {
+            required: false,
+            valid: false,
+            state: 'unverified',
+            verifiedAt: '2026-04-06T10:04:00.000Z',
+            tenantId: 'tenant-a',
+            failureReason: 'Agent Card is unsigned',
+          },
           card: {
             name: 'Writer Agent',
             description: 'Polishes output into a report.',
@@ -211,6 +278,21 @@ test('renders authenticated fleet, topology, and task stream', async ({ page }) 
             status: { state: 'COMPLETED', timestamp: '2026-04-06T10:00:00.000Z' },
           },
         },
+        {
+          taskId: 'task-2',
+          agentId: 'agent-2',
+          agentName: 'Writer Agent',
+          agentUrl: 'http://localhost:3002',
+          status: 'working',
+          updatedAt: '2026-04-06T10:00:03.000Z',
+          summary: 'Drafting final report from research output.',
+          historyCount: 4,
+          artifactCount: 0,
+          task: {
+            id: 'task-2',
+            status: { state: 'WORKING', timestamp: '2026-04-06T10:00:03.000Z' },
+          },
+        },
       ]),
     });
   });
@@ -220,15 +302,31 @@ test('renders authenticated fleet, topology, and task stream', async ({ page }) 
   await page.goto('/');
 
   await expect(page.getByText('Operator mode')).toBeVisible();
+  await expect(page.getByText('OIDC authenticated')).toBeVisible();
+  await expect(page.getByText('Tenant and public agents')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Researcher Agent' })).toBeVisible();
+  await expect(page.getByText('Trusted Agent Card').first()).toBeVisible();
   await expect(page.getByRole('cell', { name: /Writer Agent/ })).toBeVisible();
+
+  await page.getByRole('row', { name: /Writer Agent/ }).click();
+  await expect(page.getByText('Unverified Agent Card').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Review conformance' }).click();
+  await expect(page.getByRole('heading', { name: 'A2A compliance dashboard' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Fleet' }).click();
+  await page.getByRole('row', { name: /Writer Agent/ }).click();
+  const replayButton = page.getByRole('button', { name: 'Open replay' });
+  await expect(replayButton).toBeEnabled();
+  await replayButton.click();
+  await expect(page.getByText(/Replay context: task-2/)).toBeVisible();
 
   await page.getByRole('button', { name: 'Live Topology' }).click();
   await expect(page.getByText('Live agent mesh')).toBeVisible();
 
   await page.getByRole('button', { name: 'Task Stream' }).click();
   await expect(page.getByText('Recent task events')).toBeVisible();
-  await expect(page.getByText('Collected and summarized research findings.').first()).toBeVisible();
+  await expect(page.getByText('Drafting final report from research output.').first()).toBeVisible();
+  await expect(page.getByText('Collected and summarized research findings.')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Playground' }).click();
   await expect(page.getByRole('heading', { name: 'Dry-run A2A task console' })).toBeVisible();
@@ -238,6 +336,7 @@ test('renders authenticated fleet, topology, and task stream', async ({ page }) 
 });
 
 test('registers and deletes an agent through the operator console', async ({ page }) => {
+  await routeOperatorContext(page);
   let agents: unknown[] = [];
 
   await page.route('**/api/agents', async (route) => {
@@ -318,6 +417,7 @@ test('registers and deletes an agent through the operator console', async ({ pag
 });
 
 test('filters agents by search query', async ({ page }) => {
+  await routeOperatorContext(page);
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       contentType: 'application/json',

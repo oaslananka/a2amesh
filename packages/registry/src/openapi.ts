@@ -233,6 +233,24 @@ export const registryOpenApiDocument = {
         },
       },
     },
+    '/context': {
+      get: {
+        operationId: 'getRegistryOperatorContext',
+        tags: ['Admin'],
+        summary: 'Return the sanitized effective operator or public discovery context.',
+        description:
+          'Returns authentication method, tenant scope, visibility scope, and the configured health freshness budget without exposing credentials, token claims, roles, or scopes.',
+        security: [{ bearerAuth: [] }, {}],
+        parameters: [parameterRef('PublicQuery')],
+        responses: {
+          '200': jsonResponse(
+            'Sanitized registry operator context.',
+            schemaRef('RegistryOperatorContext'),
+          ),
+          ...authErrorResponses,
+        },
+      },
+    },
     '/events': {
       get: {
         operationId: 'streamRegistryEvents',
@@ -821,6 +839,49 @@ export const registryOpenApiDocument = {
           },
         },
       },
+      RegistryOperatorContext: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['accessMode', 'authMethod', 'tenantId', 'visibilityScope', 'healthStaleAfterMs'],
+        properties: {
+          accessMode: {
+            type: 'string',
+            enum: ['authenticated', 'readonly-public'],
+          },
+          authMethod: {
+            type: 'string',
+            enum: ['anonymous', 'apiKey', 'bearer', 'oidc'],
+          },
+          tenantId: {
+            type: ['string', 'null'],
+          },
+          visibilityScope: {
+            type: 'string',
+            enum: ['all', 'tenant-and-public', 'public-and-unassigned', 'public-only'],
+          },
+          healthStaleAfterMs: {
+            type: 'integer',
+            minimum: 1,
+          },
+        },
+      },
+      AgentCardVerification: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['required', 'valid', 'state', 'verifiedAt'],
+        properties: {
+          required: { type: 'boolean' },
+          valid: { type: 'boolean' },
+          state: {
+            type: 'string',
+            enum: ['trusted', 'unverified', 'rejected'],
+          },
+          verifiedAt: timestampSchema,
+          keyId: { type: 'string' },
+          tenantId: { type: 'string' },
+          failureReason: { type: 'string' },
+        },
+      },
       RegisterAgentRequest: {
         type: 'object',
         additionalProperties: false,
@@ -868,6 +929,7 @@ export const registryOpenApiDocument = {
           isPublic: {
             type: 'boolean',
           },
+          verification: schemaRef('AgentCardVerification'),
         },
       },
       RegistryEvent: {

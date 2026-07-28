@@ -1,6 +1,7 @@
 import { CheckCircle2, CircleDashed, ShieldCheck, XCircle } from 'lucide-react';
 import { useMemo } from 'react';
 import type { RegisteredAgent, RegistryTaskEvent } from '../api/registry';
+import { describeAgentTrust } from '../agentPresentation';
 
 interface ConformanceDashboardProps {
   agents: RegisteredAgent[];
@@ -52,6 +53,7 @@ function evaluateAgent(
   const hasTerminalFailure = agentTasks.some((task) =>
     ['FAILED', 'CANCELED'].includes(task.status),
   );
+  const trust = agent ? describeAgentTrust(agent) : null;
 
   return [
     {
@@ -67,6 +69,15 @@ function evaluateAgent(
             agent.card.transport ?? 'default transport'
           }.`
         : 'No agent is selected for inspection.',
+    },
+    {
+      id: 'agent-card-trust',
+      label: 'Agent Card trust',
+      description:
+        'Registry verification metadata distinguishes trusted, unverified, and rejected cards.',
+      status:
+        trust?.state === 'trusted' ? 'pass' : trust?.state === 'rejected' ? 'fail' : 'partial',
+      evidence: trust?.detail ?? 'No agent is selected for trust inspection.',
     },
     {
       id: 'message-send',

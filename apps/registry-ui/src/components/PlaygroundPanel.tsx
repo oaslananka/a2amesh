@@ -9,6 +9,7 @@ interface PlaygroundPanelProps {
   tasks: RegistryTaskEvent[];
   selectedAgent: RegisteredAgent | null;
   accessMode: RegistryAccessMode;
+  replayTaskId?: string | null;
   onSelectAgent: (agent: RegisteredAgent) => void;
 }
 
@@ -43,7 +44,11 @@ function scenarioForAgent(agent: RegisteredAgent | null): PlaygroundScenario {
   return 'direct-task';
 }
 
-function buildTimeline(agent: RegisteredAgent, scenario: PlaygroundScenario): TimelineStep[] {
+function buildTimeline(
+  agent: RegisteredAgent,
+  scenario: PlaygroundScenario,
+  replayTaskId?: string | null,
+): TimelineStep[] {
   const base: TimelineStep[] = [
     {
       label: 'Message composed',
@@ -56,6 +61,14 @@ function buildTimeline(agent: RegisteredAgent, scenario: PlaygroundScenario): Ti
       status: 'working',
     },
   ];
+
+  if (replayTaskId) {
+    base.push({
+      label: 'Replay context loaded',
+      detail: `Using task ${replayTaskId} as the operator investigation context.`,
+      status: 'working',
+    });
+  }
 
   if (scenario === 'streaming-task') {
     base.push({
@@ -82,7 +95,18 @@ function buildTimeline(agent: RegisteredAgent, scenario: PlaygroundScenario): Ti
   return base;
 }
 
-function buildPayload(agent: RegisteredAgent, scenario: PlaygroundScenario, message: string) {
+function buildPayload(
+  agent: RegisteredAgent,
+  scenario: PlaygroundScenario,
+  message: string,
+  replayTaskId?: string | null,
+) {
+  const metadata = {
+    tenant: agent.tenantId ?? 'unassigned',
+    ...(replayTaskId ? { replayTaskId } : {}),
+    ...(scenario === 'mcp-bridge' ? { bridge: 'mcp', toolPolicy: 'read-only demo' } : {}),
+  };
+
   return {
     jsonrpc: '2.0',
     method: scenario === 'streaming-task' ? 'message/stream' : 'message/send',
@@ -93,16 +117,7 @@ function buildPayload(agent: RegisteredAgent, scenario: PlaygroundScenario, mess
         role: 'user',
         parts: [{ kind: 'text', text: message }],
       },
-      metadata:
-        scenario === 'mcp-bridge'
-          ? {
-              bridge: 'mcp',
-              toolPolicy: 'read-only demo',
-              tenant: agent.tenantId ?? 'unassigned',
-            }
-          : {
-              tenant: agent.tenantId ?? 'unassigned',
-            },
+      metadata,
     },
     id: 'playground-preview-1',
   };
@@ -117,6 +132,7 @@ export function PlaygroundPanel({
   tasks,
   selectedAgent,
   accessMode,
+  replayTaskId,
   onSelectAgent,
 }: PlaygroundPanelProps) {
   const playableAgents = useMemo(
@@ -131,8 +147,8 @@ export function PlaygroundPanel({
   const [hasRunPreview, setHasRunPreview] = useState(false);
 
   const visibleTasks = activeAgent ? tasks.filter((task) => task.agentId === activeAgent.id) : [];
-  const payload = activeAgent ? buildPayload(activeAgent, scenario, message) : null;
-  const timeline = activeAgent ? buildTimeline(activeAgent, scenario) : [];
+  const payload = activeAgent ? buildPayload(activeAgent, scenario, message, replayTaskId) : null;
+  const timeline = activeAgent ? buildTimeline(activeAgent, scenario, replayTaskId) : [];
   const hasLiveAccess = accessMode === 'authenticated';
 
   if (!activeAgent) {
@@ -167,6 +183,13 @@ export function PlaygroundPanel({
           {hasLiveAccess ? 'operator dry run' : 'public preview'}
         </span>
       </div>
+
+      {replayTaskId ? (
+        <p className="mt-5 rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm text-cyan-100">
+          Replay context: {replayTaskId}. This remains a dry-run preview and does not resubmit the
+          task automatically.
+        </p>
+      ) : null}
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div className="space-y-4">

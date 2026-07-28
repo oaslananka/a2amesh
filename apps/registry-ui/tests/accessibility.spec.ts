@@ -53,6 +53,15 @@ function installMockEventSource(page: Page) {
                   url: 'http://localhost:3001',
                   status: 'healthy',
                   tenantId: 'tenant-a',
+                  lastHeartbeatAt: '2026-04-06T10:04:00.000Z',
+                  verification: {
+                    required: true,
+                    valid: true,
+                    state: 'trusted',
+                    verifiedAt: '2026-04-06T10:03:00.000Z',
+                    keyId: 'tenant-a-key',
+                    tenantId: 'tenant-a',
+                  },
                   card: {
                     name: 'Researcher Agent',
                     description: 'Finds and synthesizes information.',
@@ -82,7 +91,34 @@ function installMockEventSource(page: Page) {
   });
 }
 
+async function routeOperatorContext(page: Page) {
+  await page.route('**/api/context*', async (route) => {
+    const publicOnly = new URL(route.request().url()).searchParams.get('public') === 'true';
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(
+        publicOnly
+          ? {
+              accessMode: 'readonly-public',
+              authMethod: 'anonymous',
+              tenantId: null,
+              visibilityScope: 'public-only',
+              healthStaleAfterMs: 240_000,
+            }
+          : {
+              accessMode: 'authenticated',
+              authMethod: 'oidc',
+              tenantId: 'tenant-a',
+              visibilityScope: 'tenant-and-public',
+              healthStaleAfterMs: 240_000,
+            },
+      ),
+    });
+  });
+}
+
 async function routeAuthenticatedDashboard(page: Page) {
+  await routeOperatorContext(page);
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
@@ -94,6 +130,14 @@ async function routeAuthenticatedDashboard(page: Page) {
           tenantId: 'tenant-a',
           lastHeartbeatAt: '2026-04-06T10:04:00.000Z',
           lastSuccessAt: '2026-04-06T10:02:00.000Z',
+          verification: {
+            required: true,
+            valid: true,
+            state: 'trusted',
+            verifiedAt: '2026-04-06T10:03:00.000Z',
+            keyId: 'tenant-a-key',
+            tenantId: 'tenant-a',
+          },
           card: {
             name: 'Researcher Agent',
             description: 'Finds and synthesizes information.',
@@ -116,6 +160,13 @@ async function routeAuthenticatedDashboard(page: Page) {
           status: 'unhealthy',
           tenantId: 'tenant-a',
           consecutiveFailures: 2,
+          verification: {
+            required: false,
+            valid: false,
+            state: 'unverified',
+            verifiedAt: '2026-04-06T10:04:00.000Z',
+            failureReason: 'Agent Card is unsigned',
+          },
           card: {
             name: 'Writer Agent',
             description: 'Polishes output into a report.',
