@@ -363,6 +363,25 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  examples/openai-compatible-provider:
+    dependencies:
+      '@a2amesh/internal-adapter-openai':
+        specifier: workspace:*
+        version: link:../../packages/adapter-openai
+      '@a2amesh/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      openai:
+        specifier: 6.44.0
+        version: 6.44.0(ws@8.21.0)(zod@4.4.3)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.21
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   examples/push-notifications:
     dependencies:
       '@a2amesh/runtime':

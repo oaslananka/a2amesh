@@ -38,6 +38,9 @@
   "workspaces": {
     "packages/registry": {
       "entry": ["src/bin/start.ts"]
+    },
+    "examples/openai-compatible-provider": {
+      "entry": ["src/live-smoke.ts"]
     }
   }
 }
