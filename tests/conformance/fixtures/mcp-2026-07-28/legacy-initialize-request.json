@@ -1,0 +1,10 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-11-25",
+    "clientInfo": { "name": "a2amesh-stable-client", "version": "0.14.0-alpha.1" },
+    "capabilities": {}
+  }
+}

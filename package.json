@@ -132,6 +132,8 @@
     "test:unit:no-build": "vitest run --project unit",
     "test:integration:no-build": "vitest run --project integration --project transport-contract && pnpm run examples:smoke:no-build",
     "test:conformance:no-build": "vitest run --project conformance",
+    "test:mcp-next": "vitest run --project conformance tests/conformance/mcp-2026-compatibility.test.ts",
+    "mcp-next:probe": "node scripts/run-mcp-next-compat.mjs",
     "test:coverage:no-build": "pnpm run coverage:inventory:check && node scripts/run-unit-coverage.mjs",
     "test:coverage:ci:no-build": "pnpm run coverage:inventory:check && node scripts/run-unit-coverage.mjs --reporter=default --reporter=github-actions --reporter=junit --outputFile.junit=./test-results/unit.junit.xml",
     "perf:smoke:no-build": "node scripts/run-k6-performance.mjs --profile smoke",

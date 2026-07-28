@@ -1,0 +1,125 @@
+{
+  "protocolVersion": "2026-07-28",
+  "supportStatus": "pre-adoption",
+  "stableSdkRange": "^1.29.0",
+  "candidateSdk": {
+    "client": "2.0.0",
+    "core": "2.0.0",
+    "node": "2.0.0",
+    "server": "2.0.0"
+  },
+  "surfaces": [
+    {
+      "id": "connection.bootstrap",
+      "current": "The supported SDK path uses initialize and initialized on a 2025-era connection.",
+      "next": "The 2026-07-28 path uses server/discover and carries no initialize session state.",
+      "decision": "isolate",
+      "evidence": "legacy-initialize-request.json and discover-request.json",
+      "rollback": "Keep the published package on @modelcontextprotocol/sdk ^1.29.0 and remove the opt-in probe lane."
+    },
+    {
+      "id": "session.state",
+      "current": "The bridge accepts an optional MCP session identifier in local configuration.",
+      "next": "Core requests are stateless and identity is supplied per request.",
+      "decision": "defer",
+      "evidence": "discover-request.json and tool-call-request.json",
+      "rollback": "Retain the current optional session field without sending it on the modern probe path."
+    },
+    {
+      "id": "request.metadata",
+      "current": "Caller identity and capability assumptions are connection-scoped by the stable SDK.",
+      "next": "Protocol version, client identity, capabilities, and trace context are carried in params._meta on each request.",
+      "decision": "adopt-after-final-gate",
+      "evidence": "discover-request.json and tool-call-request.json",
+      "rollback": "Disable modern negotiation and continue using the stable connection-scoped SDK behavior."
+    },
+    {
+      "id": "http.headers",
+      "current": "The bridge does not depend on modern MCP method and name headers.",
+      "next": "HTTP requests bind MCP-Protocol-Version, Mcp-Method, and tool-specific Mcp-Name to the body.",
+      "decision": "adopt-after-final-gate",
+      "evidence": "tool-call-request.json",
+      "rollback": "Remove the modern HTTP adapter while preserving the existing A2A outbound policy."
+    },
+    {
+      "id": "tools.discovery",
+      "current": "Agent cards are mapped deterministically to MCP tool definitions.",
+      "next": "tools/list remains available and adds cache hints plus modern response metadata.",
+      "decision": "retain",
+      "evidence": "tools-list-result.json and packages/mcp/tests/mcp.test.ts",
+      "rollback": "Keep the stable deterministic mapping and omit modern cache metadata."
+    },
+    {
+      "id": "tools.call",
+      "current": "Tool calls pass the existing audience, tenant, scope, consent, policy, guardrail, and outbound checks.",
+      "next": "tools/call remains the invocation method and adds per-request metadata and header binding.",
+      "decision": "retain",
+      "evidence": "tool-call-request.json, tool-call-result.json, and packages/mcp/tests/mcp.test.ts",
+      "rollback": "Use the stable SDK call shape while retaining every existing security boundary."
+    },
+    {
+      "id": "cache.hints",
+      "current": "The bridge does not publish MCP cache lifetime or scope metadata.",
+      "next": "Cacheable results carry explicit ttlMs and cacheScope values.",
+      "decision": "evaluate",
+      "evidence": "discover-result.json and tools-list-result.json",
+      "rollback": "Return zero-lifetime private results or remain on the stable SDK path."
+    },
+    {
+      "id": "errors.unsupported-version",
+      "current": "Unsupported modern versions are outside the published support contract.",
+      "next": "Modern endpoints return a bounded error naming requested and supported versions.",
+      "decision": "adopt-after-final-gate",
+      "evidence": "unsupported-version-error.json",
+      "rollback": "Reject modern negotiation before any tool execution and retain the stable SDK range."
+    },
+    {
+      "id": "cancellation",
+      "current": "A2A request cancellation is covered by the runtime and transport contracts.",
+      "next": "MCP cancellation remains a notification and must not bypass A2A task authorization or audit policy.",
+      "decision": "evaluate",
+      "evidence": "cancelled-notification.json and existing A2A cancellation tests",
+      "rollback": "Do not expose MCP cancellation until the bridge has an explicit authorized mapping."
+    },
+    {
+      "id": "tracing",
+      "current": "A2A trace propagation is handled by runtime telemetry boundaries.",
+      "next": "traceparent and tracestate may be carried in request metadata and must remain opaque and bounded.",
+      "decision": "evaluate",
+      "evidence": "tool-call-request.json and telemetry propagation tests",
+      "rollback": "Ignore MCP trace metadata and preserve existing A2A propagation only."
+    },
+    {
+      "id": "authorization",
+      "current": "The bridge validates principal, audience, tenant, scopes, consent, tool policy, guardrails, and outbound destinations before network access.",
+      "next": "Transport authentication changes do not replace the bridge authorization boundary.",
+      "decision": "retain",
+      "evidence": "auth-denied.json and packages/mcp/tests/mcp.test.ts",
+      "rollback": "Disable the modern transport while keeping the current fail-closed authorization implementation."
+    },
+    {
+      "id": "tasks.extension",
+      "current": "MCP tasks are not part of the published bridge surface.",
+      "next": "Tasks are evaluated as a separate optional extension and are not inferred from A2A task support.",
+      "decision": "defer",
+      "evidence": "Compatibility matrix decision only; no production route is registered.",
+      "rollback": "Remove the experimental task probe without changing A2A task behavior."
+    },
+    {
+      "id": "apps.extension",
+      "current": "MCP Apps are not part of the published bridge surface.",
+      "next": "MCP Apps remain a separate optional integration concern.",
+      "decision": "defer",
+      "evidence": "Compatibility matrix decision only; no UI resource or app bridge is registered.",
+      "rollback": "Remove any future app experiment independently of the MCP tool bridge."
+    },
+    {
+      "id": "deprecated.server-requests",
+      "current": "The bridge does not invoke roots, sampling, or logging server-to-client request APIs.",
+      "next": "Deprecated server-request flows are not introduced; modern input-required flows require a separate design review.",
+      "decision": "reject",
+      "evidence": "packages/mcp source inventory and the absence of these request registrations",
+      "rollback": "No rollback action is needed because the deprecated surfaces remain unused."
+    }
+  ]
+}

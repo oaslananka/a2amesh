@@ -14,3 +14,4 @@
 - [ADR-0012: Fleet Control Plane Server](0012-fleet-control-plane-server.md)
 - [ADR-0013: Agent Card Trust Log](0013-agent-card-trust-log.md)
 - [ADR-0014: SQLite Persistence for Trust Log and Fleet Storage](0014-sqlite-persistence-for-trust-log-and-fleet-storage.md)
+- [ADR-0015: MCP 2026-07-28 Protocol Adoption Gate](0015-mcp-2026-protocol-adoption.md)

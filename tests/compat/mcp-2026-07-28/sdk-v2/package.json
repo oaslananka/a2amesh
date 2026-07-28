@@ -1,0 +1,17 @@
+{
+  "name": "@a2amesh-test/mcp-2026-07-28-sdk-v2",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.8.0",
+  "scripts": {
+    "probe": "node probe.mjs",
+    "test": "node --test probe.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
+    "@modelcontextprotocol/core": "2.0.0",
+    "@modelcontextprotocol/node": "2.0.0",
+    "@modelcontextprotocol/server": "2.0.0"
+  }
+}

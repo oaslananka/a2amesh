@@ -1,0 +1,26 @@
+{
+  "headers": {
+    "MCP-Protocol-Version": "2026-07-28",
+    "Mcp-Method": "tools/call",
+    "Mcp-Name": "research-agent"
+  },
+  "body": {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {
+      "name": "research-agent",
+      "arguments": { "message": "Summarize the fixture contract." },
+      "_meta": {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientInfo": {
+          "name": "a2amesh-compat-client",
+          "version": "0.0.0"
+        },
+        "io.modelcontextprotocol/clientCapabilities": {},
+        "traceparent": "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01",
+        "tracestate": "vendor=opaque"
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "_meta": {
+    "io.modelcontextprotocol/serverInfo": {
+      "name": "a2amesh-compat-server",
+      "version": "0.0.0"
+    }
+  },
+  "supportedVersions": ["2026-07-28"],
+  "capabilities": { "tools": {} },
+  "ttlMs": 120000,
+  "cacheScope": "public"
+}

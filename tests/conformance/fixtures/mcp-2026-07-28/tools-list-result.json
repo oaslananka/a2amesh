@@ -1,0 +1,32 @@
+{
+  "_meta": {
+    "io.modelcontextprotocol/serverInfo": {
+      "name": "a2amesh-compat-server",
+      "version": "0.0.0"
+    }
+  },
+  "ttlMs": 120000,
+  "cacheScope": "public",
+  "tools": [
+    {
+      "name": "research-agent",
+      "description": "Queries a bounded research agent through the existing bridge policy.",
+      "inputSchema": {
+        "type": "object",
+        "properties": { "message": { "type": "string" } },
+        "required": ["message"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "summary-agent",
+      "description": "Queries a bounded summary agent through the existing bridge policy.",
+      "inputSchema": {
+        "type": "object",
+        "properties": { "message": { "type": "string" } },
+        "required": ["message"],
+        "additionalProperties": false
+      }
+    }
+  ]
+}
