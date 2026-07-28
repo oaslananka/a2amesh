@@ -43,3 +43,23 @@ The MCP bridge follows redirects only through the same validating policy used fo
 initial target. DNS results are pinned to connection setup, response and SSE bodies are
 bounded, and the operation deadline remains active through body consumption. JSON-RPC POST
 requests are not retried without an explicit idempotency key.
+
+## MCP 2026-07-28 compatibility evidence
+
+The published package remains on `@modelcontextprotocol/sdk ^1.29.0` and does not
+claim support for MCP `2026-07-28`. A versioned matrix and golden fixtures run in
+the required conformance suite, while an isolated exact split-SDK `2.0.0` harness
+checks `server/discover`, stateless tool discovery and invocation, modern headers,
+cache hints, and a synthetic authentication boundary.
+
+Run the repository-owned contract and the isolated SDK probe with:
+
+```bash
+pnpm run test:mcp-next
+pnpm run mcp-next:probe
+```
+
+The SDK probe is pre-adoption evidence only. MCP tasks and MCP Apps remain separate
+optional evaluations, and the existing bridge authorization and outbound policy
+continue to be authoritative. See
+[ADR-0015](../../docs/architecture/adr/0015-mcp-2026-protocol-adoption.md).

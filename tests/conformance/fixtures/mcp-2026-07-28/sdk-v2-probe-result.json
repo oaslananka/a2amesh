@@ -1,0 +1,40 @@
+{
+  "sdk": {
+    "client": "2.0.0",
+    "core": "2.0.0",
+    "node": "2.0.0",
+    "server": "2.0.0"
+  },
+  "protocolVersion": "2026-07-28",
+  "unauthorizedStatus": 401,
+  "methods": ["server/discover", "tools/list", "tools/call"],
+  "sawInitialize": false,
+  "tools": {
+    "names": ["research-agent", "summary-agent"],
+    "ttlMs": 120000,
+    "cacheScope": "public"
+  },
+  "call": { "text": "fixture-ok" },
+  "requests": [
+    {
+      "protocolVersion": "2026-07-28",
+      "methodHeader": "server/discover",
+      "method": "server/discover",
+      "hasCredential": true
+    },
+    {
+      "protocolVersion": "2026-07-28",
+      "methodHeader": "tools/list",
+      "method": "tools/list",
+      "hasCredential": true
+    },
+    {
+      "protocolVersion": "2026-07-28",
+      "methodHeader": "tools/call",
+      "nameHeader": "research-agent",
+      "method": "tools/call",
+      "name": "research-agent",
+      "hasCredential": true
+    }
+  ]
+}

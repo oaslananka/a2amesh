@@ -1,0 +1,7 @@
+{
+  "status": 401,
+  "error": "unauthorized",
+  "reasonCode": "missing-principal",
+  "credentialEcho": false,
+  "networkAttempted": false
+}

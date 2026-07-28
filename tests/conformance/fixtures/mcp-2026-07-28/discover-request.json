@@ -1,0 +1,15 @@
+{
+  "jsonrpc": "2.0",
+  "id": "server-discover-probe-1",
+  "method": "server/discover",
+  "params": {
+    "_meta": {
+      "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+      "io.modelcontextprotocol/clientInfo": {
+        "name": "a2amesh-compat-client",
+        "version": "0.0.0"
+      },
+      "io.modelcontextprotocol/clientCapabilities": {}
+    }
+  }
+}

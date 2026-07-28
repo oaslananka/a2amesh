@@ -1,0 +1,9 @@
+{
+  "_meta": {
+    "io.modelcontextprotocol/serverInfo": {
+      "name": "a2amesh-compat-server",
+      "version": "0.0.0"
+    }
+  },
+  "content": [{ "type": "text", "text": "fixture-ok" }]
+}

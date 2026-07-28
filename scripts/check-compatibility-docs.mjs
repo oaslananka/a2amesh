@@ -128,6 +128,7 @@ const requiredHeadings = [
   '## Runtime Compatibility',
   '## Package Version Matrix',
   '## Protocol Version Matrix',
+  '## MCP Compatibility Matrix',
   '## Transport Feature Matrix',
   '## Adapter Optional Peer Ranges',
   '## Deprecation Policy',
@@ -162,6 +163,16 @@ requireIncludes(canonicalPath, canonicalDoc, [
   'pnpm run docs:check',
   'pnpm run docs:build',
   'pnpm run lint:md',
+]);
+
+requireIncludes(canonicalPath, canonicalDoc, [
+  '@modelcontextprotocol/sdk ^1.29.0',
+  'MCP `2026-07-28` is **pre-adoption evidence**',
+  'tests/conformance/fixtures/mcp-2026-07-28/',
+  'tests/compat/mcp-2026-07-28/sdk-v2/',
+  'pnpm run test:mcp-next',
+  'pnpm run mcp-next:probe',
+  'ADR-0015',
 ]);
 
 requireIncludes(canonicalPath, canonicalDoc, [

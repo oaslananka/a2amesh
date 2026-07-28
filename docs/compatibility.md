@@ -57,6 +57,37 @@ release.
 The executable fixture set lives under `tests/conformance/fixtures/` and is run
 with `pnpm run test:conformance`.
 
+## MCP Compatibility Matrix
+
+The published `@a2amesh/mcp` package remains on
+`@modelcontextprotocol/sdk ^1.29.0`. MCP `2026-07-28` is **pre-adoption evidence**,
+not a supported production profile. The required conformance suite validates the
+versioned contract, while a separate report-only CI lane runs an isolated exact
+split-SDK `2.0.0` harness.
+
+| Surface                 | Stable supported path                                                                       | `2026-07-28` evidence                                                                              | Adoption posture                             |
+| ----------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Connection bootstrap    | 2025-era `initialize` / `initialized`                                                       | Explicit `server/discover`; no legacy initialization in the SDK probe                              | Isolated until the final adoption gate       |
+| Request state           | Connection-scoped stable SDK behavior                                                       | Stateless requests with protocol, client, capability, and trace metadata per request               | Evaluate without changing public behavior    |
+| Tool discovery and call | Existing deterministic Agent Card mapping and fail-closed bridge policy                     | Exact SDK `2.0.0` list/call probe with method and tool-name header binding                         | Retain all authorization and outbound checks |
+| Cache behavior          | No MCP cache support claim                                                                  | Golden and live evidence for `ttlMs` and `cacheScope`                                              | Evaluate before adoption                     |
+| Authentication          | Existing audience, principal, tenant, scope, consent, guardrail, audit, and outbound policy | Synthetic unauthenticated request returns HTTP `401`; credential values are excluded from evidence | Stable bridge boundary remains authoritative |
+| Tasks extension         | Unsupported                                                                                 | Matrix-only evaluation                                                                             | Separate future decision                     |
+| MCP Apps                | Unsupported                                                                                 | Matrix-only evaluation                                                                             | Separate future decision                     |
+
+The executable contract lives under
+`tests/conformance/fixtures/mcp-2026-07-28/`. The split SDK harness and independent
+lockfile live under `tests/compat/mcp-2026-07-28/sdk-v2/`. Run them with:
+
+```bash
+pnpm run test:mcp-next
+pnpm run mcp-next:probe
+```
+
+Final adoption requires the gate recorded in
+[ADR-0015](https://github.com/oaslananka/a2amesh/blob/main/docs/architecture/adr/0015-mcp-2026-protocol-adoption.md), including reviewed
+dependency-range and release-note changes plus a named rollback path.
+
 ## Official SDK Interoperability Matrix
 
 Fixture replay and live SDK execution provide different evidence. `pnpm run interop:lab` validates

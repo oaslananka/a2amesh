@@ -52,7 +52,11 @@ export default tseslint.config(
     },
   },
   {
-    files: ['tests/integration/fixtures/**/*.mjs', 'tests/interop/live/**/*.mjs'],
+    files: [
+      'tests/integration/fixtures/**/*.mjs',
+      'tests/interop/live/**/*.mjs',
+      'tests/compat/mcp-2026-07-28/sdk-v2/*.mjs',
+    ],
     languageOptions: {
       parserOptions: {
         project: false,

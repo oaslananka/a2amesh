@@ -15,6 +15,7 @@
     "scripts/sync-security-policy.d.mts",
     "tests/performance/k6/*.js",
     "scripts/live-interop/*.d.mts",
+    "scripts/mcp-compatibility.d.mts",
     "tests/integration/fixtures/live-interop-child.mjs",
     "tests/interop/live/javascript/client.mjs",
     "tests/interop/live/javascript/server.mjs",
@@ -41,6 +42,7 @@
     },
     "examples/openai-compatible-provider": {
       "entry": ["src/live-smoke.ts"]
-    }
+    },
+    "tests/compat/mcp-2026-07-28/sdk-v2": {}
   }
 }
