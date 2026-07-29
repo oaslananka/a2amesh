@@ -11,16 +11,18 @@ import {
 } from './SqliteTaskStorageMigrations.js';
 import { clearSqliteTaskStorage, deleteTaskFromSqlite } from './SqliteTaskStorageLifecycle.js';
 import {
-  getSqliteChanges,
+  cleanupRetainedTasks,
+  explainRetentionQueryPlan,
+  setTaskTtl,
+  type SqliteRetentionOperationOptions,
+} from './SqliteTaskStorageRetention.js';
+import {
   mapArtifactRow,
   mapAuditRow,
-  parseTask,
   type ArtifactRow,
   type AuditRow,
-  type CountRow,
   type IndexRow,
   type PragmaValueRow,
-  type TaskRow,
 } from './SqliteTaskStorageRecords.js';
 import {
   getPushNotificationConfigFromSqlite,
@@ -183,75 +185,6 @@ function listArtifacts(
     .map(mapArtifactRow);
 }
 
-function setTaskTtl(
-  db: SqliteDatabase,
-  taskId: string,
-  tenantId: string,
-  ttlMs: number,
-  now: () => Date,
-): void {
-  if (!Number.isSafeInteger(ttlMs) || ttlMs < 0) {
-    throw new Error('ttlMs must be a non-negative integer');
-  }
-  db.prepare('UPDATE tasks SET expires_at = ? WHERE id = ? AND tenant_id = ?').run(
-    new Date(now().getTime() + ttlMs).toISOString(),
-    taskId,
-    tenantId,
-  );
-}
-
-function cleanupRetainedTasks(
-  db: SqliteDatabase,
-  policy: TaskRetentionPolicy,
-  now: () => Date,
-): TaskCleanupResult {
-  const evaluatedAt = (policy.now ?? now()).toISOString();
-  const evaluatedMs = Date.parse(evaluatedAt);
-  const rows = db
-    .prepare<TaskRow>(
-      'SELECT task_json, tenant_id, status, updated_at, expires_at FROM tasks WHERE tenant_id = ?',
-    )
-    .all(policy.tenantId);
-  const eligible = rows.filter((row) => isRetentionEligible(row, policy, evaluatedMs));
-  let deletedArtifacts = 0;
-  let deletedTasks = 0;
-  db.exec('BEGIN IMMEDIATE');
-  try {
-    for (const row of eligible) {
-      const task = parseTask(row);
-      if (!task) continue;
-      deletedArtifacts +=
-        db
-          .prepare<CountRow>(
-            'SELECT COUNT(*) AS count FROM task_artifacts WHERE tenant_id = ? AND task_id = ?',
-          )
-          .get(policy.tenantId, task.id)?.count ?? 0;
-      deletedTasks += getSqliteChanges(
-        db
-          .prepare('DELETE FROM tasks WHERE id = ? AND tenant_id = ?')
-          .run(task.id, policy.tenantId),
-      );
-    }
-    appendAuditEntry(
-      db,
-      {
-        taskId: '*',
-        tenantId: policy.tenantId,
-        action: 'retention.cleanup',
-        outcome: 'success',
-        correlationId: `deleted-tasks:${deletedTasks};deleted-artifacts:${deletedArtifacts}`,
-        timestamp: evaluatedAt,
-      },
-      now,
-    );
-    db.exec('COMMIT');
-  } catch (error) {
-    db.exec('ROLLBACK');
-    throw error;
-  }
-  return { tenantId: policy.tenantId, deletedTasks, deletedArtifacts, evaluatedAt };
-}
-
 function operationalState(db: SqliteDatabase): SqliteTaskStorageOperationalState {
   const journalMode = db.prepare<PragmaValueRow>('PRAGMA journal_mode').get()?.journal_mode ?? '';
   const busyTimeoutMs = db.prepare<PragmaValueRow>('PRAGMA busy_timeout').get()?.timeout ?? 0;
@@ -263,13 +196,16 @@ function operationalState(db: SqliteDatabase): SqliteTaskStorageOperationalState
   return { schemaVersion: getSqliteSchemaVersion(db), journalMode, busyTimeoutMs, indexes };
 }
 
-function explainRetentionQueryPlan(db: SqliteDatabase): string[] {
-  return db
-    .prepare<{ detail: string }>(
-      'EXPLAIN QUERY PLAN SELECT id FROM tasks WHERE tenant_id = ? AND status = ? AND updated_at < ?',
-    )
-    .all('tenant', 'COMPLETED', '2100-01-01T00:00:00.000Z')
-    .map((row) => row.detail);
+function createRetentionOperationOptions(
+  db: SqliteDatabase,
+  options: NormalizedSqliteTaskStorageOptions,
+): SqliteRetentionOperationOptions {
+  return {
+    now: options.now,
+    appendAuditEntry(input, now) {
+      appendAuditEntry(db, input, now);
+    },
+  };
 }
 
 function createTaskOperationOptions(
@@ -289,6 +225,7 @@ export class SqliteTaskStorage implements ITaskStorage {
   private readonly db: SqliteDatabase;
   private readonly options: NormalizedSqliteTaskStorageOptions;
   private readonly taskOptions: SqliteTaskOperationOptions;
+  private readonly retentionOptions: SqliteRetentionOperationOptions;
 
   constructor(
     path: string,
@@ -299,6 +236,7 @@ export class SqliteTaskStorage implements ITaskStorage {
     this.db = new Database(path);
     this.options = normalized;
     this.taskOptions = createTaskOperationOptions(this.db, normalized);
+    this.retentionOptions = createRetentionOperationOptions(this.db, normalized);
     initializeSqliteTaskStorage(this.db, normalized);
   }
 
@@ -374,7 +312,7 @@ export class SqliteTaskStorage implements ITaskStorage {
   }
 
   cleanupRetention(policy: TaskRetentionPolicy): TaskCleanupResult {
-    return cleanupRetainedTasks(this.db, policy, this.options.now);
+    return cleanupRetainedTasks(this.db, policy, this.retentionOptions);
   }
 
   appendAuditEntry(input: TaskAuditInput): TaskAuditEntry {
@@ -421,6 +359,7 @@ export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
   private readonly db: SqliteDatabase;
   private readonly options: NormalizedSqliteTaskStorageOptions;
   private readonly taskOptions: SqliteTaskOperationOptions;
+  private readonly retentionOptions: SqliteRetentionOperationOptions;
   private operationQueue: Promise<void> = Promise.resolve();
   private readonly transactionScope = new AsyncLocalStorage<boolean>();
 
@@ -433,6 +372,7 @@ export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
     this.db = new Database(path);
     this.options = normalized;
     this.taskOptions = createTaskOperationOptions(this.db, normalized);
+    this.retentionOptions = createRetentionOperationOptions(this.db, normalized);
     initializeSqliteTaskStorage(this.db, normalized);
   }
 
@@ -515,7 +455,7 @@ export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
   }
 
   cleanupRetention(policy: TaskRetentionPolicy): Promise<TaskCleanupResult> {
-    return this.runOperation(() => cleanupRetainedTasks(this.db, policy, this.options.now));
+    return this.runOperation(() => cleanupRetainedTasks(this.db, policy, this.retentionOptions));
   }
 
   appendAuditEntry(input: TaskAuditInput): Promise<TaskAuditEntry> {
@@ -617,29 +557,4 @@ function safeMetadataString(value: unknown): string | undefined {
   if (typeof value !== 'string' || !value.trim()) return undefined;
   const normalized = value.trim().slice(0, 256);
   return /(?:bearer|password|secret|token)[\s:=]/i.test(normalized) ? '[REDACTED]' : normalized;
-}
-
-function isRetentionEligible(
-  row: TaskRow,
-  policy: TaskRetentionPolicy,
-  evaluatedMs: number,
-): boolean {
-  const status = row.status ?? parseTask(row)?.status.state;
-  if (!status || ['SUBMITTED', 'QUEUED', 'WORKING'].includes(status)) return false;
-  if (row.expires_at && Date.parse(row.expires_at) <= evaluatedMs) return true;
-  const ttlMs =
-    status === 'COMPLETED'
-      ? policy.completedTtlMs
-      : status === 'FAILED'
-        ? policy.failedTtlMs
-        : status === 'CANCELED'
-          ? policy.canceledTtlMs
-          : status === 'REJECTED'
-            ? policy.rejectedTtlMs
-            : ['INPUT_REQUIRED', 'AUTH_REQUIRED', 'WAITING_ON_EXTERNAL'].includes(status)
-              ? policy.stalePausedTtlMs
-              : undefined;
-  if (ttlMs === undefined || !Number.isSafeInteger(ttlMs) || ttlMs < 0) return false;
-  const updatedMs = Date.parse(row.updated_at ?? parseTask(row)?.status.timestamp ?? '');
-  return Number.isFinite(updatedMs) && updatedMs + ttlMs <= evaluatedMs;
 }
