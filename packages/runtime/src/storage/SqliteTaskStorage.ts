@@ -27,6 +27,16 @@ import {
   type TaskRow,
 } from './SqliteTaskStorageRecords.js';
 import {
+  countSqliteTasks,
+  getAllTasksFromSqlite,
+  getTaskFromSqlite,
+  getTasksByContextIdFromSqlite,
+  insertTaskIntoSqlite,
+  saveTaskToSqlite,
+  taskTenantId,
+  type SqliteTaskOperationOptions,
+} from './SqliteTaskStorageTasks.js';
+import {
   validatePersistedTaskArtifact,
   type PersistedTaskArtifact,
   type SqliteTaskStorageOperationalState,
@@ -50,76 +60,6 @@ interface NormalizedSqliteTaskStorageOptions {
   busyTimeoutMs: number;
   defaultTenantId: string;
   now: () => Date;
-}
-
-function insertTaskIntoSqlite(
-  db: SqliteDatabase,
-  task: Task,
-  options: NormalizedSqliteTaskStorageOptions,
-): Task {
-  const tenantId = taskTenantId(task, options.defaultTenantId);
-  const updatedAt = task.status.timestamp ?? options.now().toISOString();
-  db.prepare(
-    'INSERT INTO tasks (id, context_id, task_json, tenant_id, status, updated_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(
-    task.id,
-    task.contextId ?? null,
-    JSON.stringify(task),
-    tenantId,
-    task.status.state,
-    updatedAt,
-    null,
-  );
-  appendTaskAuditFromTask(db, task, tenantId, 'task.created', 'success', options.now);
-  return structuredClone(task);
-}
-
-function getTaskFromSqlite(db: SqliteDatabase, taskId: string): Task | undefined {
-  return parseTask(db.prepare<TaskRow>('SELECT task_json FROM tasks WHERE id = ?').get(taskId));
-}
-
-function saveTaskToSqlite(
-  db: SqliteDatabase,
-  task: Task,
-  options: NormalizedSqliteTaskStorageOptions,
-): void {
-  const previous = db
-    .prepare<TaskRow>('SELECT task_json, status FROM tasks WHERE id = ?')
-    .get(task.id);
-  const tenantId = taskTenantId(task, options.defaultTenantId);
-  const updatedAt = task.status.timestamp ?? options.now().toISOString();
-  db.prepare(
-    'UPDATE tasks SET context_id = ?, task_json = ?, tenant_id = ?, status = ?, updated_at = ? WHERE id = ?',
-  ).run(
-    task.contextId ?? null,
-    JSON.stringify(task),
-    tenantId,
-    task.status.state,
-    updatedAt,
-    task.id,
-  );
-  if (previous) {
-    const previousTask = parseTask(previous);
-    const action =
-      previousTask?.status.state === task.status.state
-        ? 'task.saved'
-        : `task.transition.${previousTask?.status.state ?? 'UNKNOWN'}.${task.status.state}`;
-    appendTaskAuditFromTask(db, task, tenantId, action, 'success', options.now);
-  }
-}
-
-function getAllTasksFromSqlite(db: SqliteDatabase): Task[] {
-  return db
-    .prepare<TaskRow>('SELECT task_json FROM tasks ORDER BY id')
-    .all()
-    .map((row) => JSON.parse(row.task_json) as Task);
-}
-
-function getTasksByContextIdFromSqlite(db: SqliteDatabase, contextId: string): Task[] {
-  return db
-    .prepare<TaskRow>('SELECT task_json FROM tasks WHERE context_id = ? ORDER BY id')
-    .all(contextId)
-    .map((row) => JSON.parse(row.task_json) as Task);
 }
 
 function setPushNotificationInSqlite(
@@ -244,11 +184,6 @@ function deleteTaskFromSqlite(
 function clearSqliteTaskStorage(db: SqliteDatabase): void {
   db.prepare('DELETE FROM push_notifications').run();
   db.prepare('DELETE FROM tasks').run();
-}
-
-function countSqliteTasks(db: SqliteDatabase): number {
-  const row = db.prepare<CountRow>('SELECT COUNT(*) AS count FROM tasks').get();
-  return row?.count ?? 0;
 }
 
 function appendAuditEntry(
@@ -457,9 +392,23 @@ function explainRetentionQueryPlan(db: SqliteDatabase): string[] {
     .map((row) => row.detail);
 }
 
+function createTaskOperationOptions(
+  db: SqliteDatabase,
+  options: NormalizedSqliteTaskStorageOptions,
+): SqliteTaskOperationOptions {
+  return {
+    defaultTenantId: options.defaultTenantId,
+    now: options.now,
+    appendTaskAudit(task, tenantId, action, outcome, now) {
+      appendTaskAuditFromTask(db, task, tenantId, action, outcome, now);
+    },
+  };
+}
+
 export class SqliteTaskStorage implements ITaskStorage {
   private readonly db: SqliteDatabase;
   private readonly options: NormalizedSqliteTaskStorageOptions;
+  private readonly taskOptions: SqliteTaskOperationOptions;
 
   constructor(
     path: string,
@@ -469,11 +418,12 @@ export class SqliteTaskStorage implements ITaskStorage {
     const Database = normalized.databaseConstructor ?? loadSqliteDatabase();
     this.db = new Database(path);
     this.options = normalized;
+    this.taskOptions = createTaskOperationOptions(this.db, normalized);
     initializeSqliteTaskStorage(this.db, normalized);
   }
 
   insertTask(task: Task): Task {
-    return insertTaskIntoSqlite(this.db, task, this.options);
+    return insertTaskIntoSqlite(this.db, task, this.taskOptions);
   }
 
   getTask(taskId: string): Task | undefined {
@@ -481,7 +431,7 @@ export class SqliteTaskStorage implements ITaskStorage {
   }
 
   saveTask(task: Task): void {
-    saveTaskToSqlite(this.db, task, this.options);
+    saveTaskToSqlite(this.db, task, this.taskOptions);
   }
 
   getAllTasks(): Task[] {
@@ -590,6 +540,7 @@ export class SqliteTaskStorage implements ITaskStorage {
 export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
   private readonly db: SqliteDatabase;
   private readonly options: NormalizedSqliteTaskStorageOptions;
+  private readonly taskOptions: SqliteTaskOperationOptions;
   private operationQueue: Promise<void> = Promise.resolve();
   private readonly transactionScope = new AsyncLocalStorage<boolean>();
 
@@ -601,11 +552,12 @@ export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
     const Database = normalized.databaseConstructor ?? loadSqliteDatabase();
     this.db = new Database(path);
     this.options = normalized;
+    this.taskOptions = createTaskOperationOptions(this.db, normalized);
     initializeSqliteTaskStorage(this.db, normalized);
   }
 
   insertTask(task: Task): Promise<Task> {
-    return this.runOperation(() => insertTaskIntoSqlite(this.db, task, this.options));
+    return this.runOperation(() => insertTaskIntoSqlite(this.db, task, this.taskOptions));
   }
 
   getTask(taskId: string): Promise<Task | undefined> {
@@ -613,7 +565,7 @@ export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
   }
 
   saveTask(task: Task): Promise<void> {
-    return this.runOperation(() => saveTaskToSqlite(this.db, task, this.options));
+    return this.runOperation(() => saveTaskToSqlite(this.db, task, this.taskOptions));
   }
 
   getAllTasks(): Promise<Task[]> {
@@ -787,14 +739,6 @@ function normalizeSqliteOptions(
     defaultTenantId,
     now: options.now ?? (() => new Date()),
   };
-}
-
-function taskTenantId(task: Task, fallback: string): string {
-  const tenantId = task.metadata?.['tenantId'];
-  if (typeof tenantId !== 'string' || !tenantId.trim()) return fallback;
-  const normalized = tenantId.trim();
-  if (normalized.length > 128) throw new Error('Task tenantId exceeds 128 characters');
-  return normalized;
 }
 
 function safeMetadataString(value: unknown): string | undefined {
