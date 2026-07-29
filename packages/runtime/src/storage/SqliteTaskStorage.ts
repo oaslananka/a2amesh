@@ -4,12 +4,12 @@ import type { AsyncTaskStorage, AsyncTaskStorageTransaction } from './AsyncTaskS
 import type { ITaskStorage } from './ITaskStorage.js';
 import type { PushNotificationConfig, Task } from '../types/task.js';
 import {
-  getSqliteSchemaVersion,
   initializeSqliteTaskStorage,
   type SqliteDatabase,
   type SqliteDatabaseConstructor,
 } from './SqliteTaskStorageMigrations.js';
 import { clearSqliteTaskStorage, deleteTaskFromSqlite } from './SqliteTaskStorageLifecycle.js';
+import { getSqliteTaskStorageOperationalState } from './SqliteTaskStorageOperationalState.js';
 import {
   appendAuditEntryToSqlite,
   appendTaskAuditFromTaskToSqlite,
@@ -26,7 +26,6 @@ import {
   setTaskTtl,
   type SqliteRetentionOperationOptions,
 } from './SqliteTaskStorageRetention.js';
-import { type IndexRow, type PragmaValueRow } from './SqliteTaskStorageRecords.js';
 import {
   getPushNotificationConfigFromSqlite,
   getPushNotificationFromSqlite,
@@ -68,17 +67,6 @@ interface NormalizedSqliteTaskStorageOptions {
   busyTimeoutMs: number;
   defaultTenantId: string;
   now: () => Date;
-}
-
-function operationalState(db: SqliteDatabase): SqliteTaskStorageOperationalState {
-  const journalMode = db.prepare<PragmaValueRow>('PRAGMA journal_mode').get()?.journal_mode ?? '';
-  const busyTimeoutMs = db.prepare<PragmaValueRow>('PRAGMA busy_timeout').get()?.timeout ?? 0;
-  const indexes = db
-    .prepare<IndexRow>('PRAGMA index_list(tasks)')
-    .all()
-    .map((row) => row.name)
-    .sort();
-  return { schemaVersion: getSqliteSchemaVersion(db), journalMode, busyTimeoutMs, indexes };
 }
 
 function createAuditEntryAppender(
@@ -229,7 +217,7 @@ export class SqliteTaskStorage implements ITaskStorage {
   }
 
   getOperationalState(): SqliteTaskStorageOperationalState {
-    return operationalState(this.db);
+    return getSqliteTaskStorageOperationalState(this.db);
   }
 
   explainRetentionQueryPlan(): string[] {
@@ -363,7 +351,7 @@ export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
   }
 
   getOperationalState(): Promise<SqliteTaskStorageOperationalState> {
-    return this.runOperation(() => operationalState(this.db));
+    return this.runOperation(() => getSqliteTaskStorageOperationalState(this.db));
   }
 
   explainRetentionQueryPlan(): Promise<string[]> {
