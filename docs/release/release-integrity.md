@@ -96,6 +96,13 @@ git tag -a "$release_tag" "$release_commit" -m "Release ${release_version}"
 git push origin "$release_tag"
 ```
 
+Only the canonical runtime tag and GitHub Release are created manually. After npm
+registry parity succeeds, the protected workflow creates or verifies the linked
+component tags (`<component>-v<version>`) on the same release commit. A rerun in
+`retain-assets` mode also verifies or repairs those tags without republishing npm
+packages. Release Please verifies the companion tags before it may open the next
+release pull request.
+
 Then dispatch the protected workflow from `main`:
 
 ```bash

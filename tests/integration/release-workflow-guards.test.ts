@@ -12,10 +12,14 @@ describe('release workflow guards', () => {
     const gateIndex = workflow.indexOf(
       'node scripts/release-state.mjs --mode release-please --json',
     );
+    const componentTagsIndex = workflow.indexOf('name: Verify published component tags');
     const actionIndex = workflow.indexOf('googleapis/release-please-action');
 
     expect(gateIndex).toBeGreaterThan(-1);
-    expect(gateIndex).toBeLessThan(actionIndex);
+    expect(componentTagsIndex).toBeGreaterThan(gateIndex);
+    expect(componentTagsIndex).toBeLessThan(actionIndex);
+    expect(workflow).toContain('--verify-only');
+    expect(workflow).toContain('include-component-in-tag: true');
     expect(workflow).toContain('node scripts/sync-security-policy.mjs');
     expect(workflow).toContain('SECURITY.md .github/SECURITY.md');
   });
@@ -54,7 +58,11 @@ describe('release workflow guards', () => {
 
     expect(workflow).toMatch(/publish:\n(?:.|\n)*?permissions:\n(?:.|\n)*?contents: write/);
     expect(parityIndex).toBeGreaterThan(-1);
-    expect(uploadIndex).toBeGreaterThan(parityIndex);
+    const componentTagsIndex = workflow.indexOf('name: Synchronize Release Please component tags');
+
+    expect(componentTagsIndex).toBeGreaterThan(parityIndex);
+    expect(uploadIndex).toBeGreaterThan(componentTagsIndex);
+    expect(workflow).toContain('sync-release-component-tags.mjs');
     expect(workflow).toContain('gh release upload "${TAG}"');
     expect(workflow).toContain('.artifacts/npm/*.tgz');
     expect(workflow).toContain('.artifacts/npm/SHA256SUMS');
@@ -77,6 +85,11 @@ describe('release workflow guards', () => {
     expect(checker).toContain('--recovery-file');
     expect(checker).toContain('sync-security-policy.mjs');
     expect(checker).toContain('SECURITY.md .github/SECURITY.md');
+    expect(checker).toContain('sync-release-component-tags.mjs');
+    expect(checker).toContain('Synchronize Release Please component tags');
+    expect(checker).toContain('Verify published component tags');
+    expect(checker).toContain('--verify-only');
+    expect(checker).toContain('include-component-in-tag: true');
   });
 
   it('keeps the repository-root deployment chart coupled to the linked runtime release', async () => {

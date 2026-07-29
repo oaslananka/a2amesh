@@ -16,14 +16,21 @@ and npm publication. Ordinary CI never publishes packages.
 7. Publish workflow validates release state, runs publish preflight, checks that
    package sources match the tag, packs packages, smoke-installs tarballs,
    writes SHA-256 checksums, emits the CycloneDX SBOM, creates artifact
-   attestations, publishes to npm through Trusted Publishing/OIDC, and verifies
-   registry visibility.
+   attestations, publishes to npm through Trusted Publishing/OIDC, verifies
+   registry visibility, and synchronizes Release Please component tags.
 
 The canonical publish tag format is:
 
 ```text
 @a2amesh/runtime-v<semver>
 ```
+
+The canonical runtime tag is the only tag accepted by `publish.yml` and the only
+tag that carries the GitHub Release. After registry parity passes, the protected
+publish workflow creates or verifies companion tags for every linked component,
+for example `@a2amesh/cli-v<semver>`. All companion tags resolve to the same
+release commit and exist only so Release Please can calculate the next changelog
+boundary correctly.
 
 Do not create tags, GitHub Releases, npm publishes, or container pushes during
 rebuild work without owner instruction.
@@ -106,9 +113,9 @@ Please pull request is merged and before npm publication.
 
 The manual GitHub Release must point to the same commit that `publish.yml` will
 publish. Use the canonical tag format `@a2amesh/runtime-v<semver>` for the
-release that triggers npm publishing. If component-specific tags exist, do not
-use them to dispatch `publish.yml` unless the workflow has been explicitly
-updated to accept that component tag.
+release that triggers npm publishing. Component-specific tags are synchronized
+by the protected workflow after package registry parity succeeds. Never use a
+component-specific tag to dispatch `publish.yml`.
 
 ## Publish workflow verification
 
@@ -126,6 +133,8 @@ updated to accept that component tag.
    requested tag.
 6. Builds, typechecks, tests, packs, validates artifacts, attests checksums and
    SBOM, publishes with `--provenance`, and checks npm registry visibility.
+7. Creates or verifies all Release Please component tags on the canonical release
+   commit, then uploads the verified GitHub Release assets.
 
 ## Package verification
 

@@ -44,6 +44,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/release-state.mjs --mode release-please --json
+      - name: Verify published component tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -e "const m=require('./.release-please-manifest.json'); const versions=[...new Set(Object.values(m))]; if (versions.length !== 1) process.exit(1); process.stdout.write(versions[0]);")"
+          CANONICAL_TAG="@a2amesh/runtime-v${VERSION}"
+          if ! git rev-parse --verify --quiet "${CANONICAL_TAG}^{commit}" >/dev/null; then
+            echo "No canonical tag for ${VERSION}; component-tag verification is not applicable."
+            exit 0
+          fi
+          RELEASE_COMMIT="$(git rev-parse "${CANONICAL_TAG}^{commit}")"
+          node scripts/sync-release-component-tags.mjs \
+            --repo "${GITHUB_REPOSITORY}" \
+            --version "${VERSION}" \
+            --commit "${RELEASE_COMMIT}" \
+            --verify-only
       - name: Create or update release pull request
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
