@@ -11,6 +11,11 @@ import {
 } from './SqliteTaskStorageMigrations.js';
 import { clearSqliteTaskStorage, deleteTaskFromSqlite } from './SqliteTaskStorageLifecycle.js';
 import {
+  appendAuditEntryToSqlite,
+  appendTaskAuditFromTaskToSqlite,
+  listAuditEntriesFromSqlite,
+} from './SqliteTaskStorageAudit.js';
+import {
   cleanupRetainedTasks,
   explainRetentionQueryPlan,
   setTaskTtl,
@@ -18,9 +23,7 @@ import {
 } from './SqliteTaskStorageRetention.js';
 import {
   mapArtifactRow,
-  mapAuditRow,
   type ArtifactRow,
-  type AuditRow,
   type IndexRow,
   type PragmaValueRow,
 } from './SqliteTaskStorageRecords.js';
@@ -66,84 +69,6 @@ interface NormalizedSqliteTaskStorageOptions {
   busyTimeoutMs: number;
   defaultTenantId: string;
   now: () => Date;
-}
-
-function appendAuditEntry(
-  db: SqliteDatabase,
-  input: TaskAuditInput,
-  now: () => Date,
-): TaskAuditEntry {
-  const timestamp = input.timestamp ?? now().toISOString();
-  const result = db
-    .prepare(
-      'INSERT INTO task_audit_journal (task_id, tenant_id, principal_id, action, outcome, timestamp, correlation_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    )
-    .run(
-      input.taskId,
-      input.tenantId,
-      input.principalId ?? null,
-      input.action,
-      input.outcome,
-      timestamp,
-      input.correlationId ?? null,
-    );
-  return {
-    sequence: getSqliteLastInsertRowId(result),
-    taskId: input.taskId,
-    tenantId: input.tenantId,
-    action: input.action,
-    outcome: input.outcome,
-    timestamp,
-    ...(input.principalId ? { principalId: input.principalId } : {}),
-    ...(input.correlationId ? { correlationId: input.correlationId } : {}),
-  };
-}
-
-function appendTaskAuditFromTask(
-  db: SqliteDatabase,
-  task: Task,
-  tenantId: string,
-  action: string,
-  outcome: TaskAuditEntry['outcome'],
-  now: () => Date,
-): TaskAuditEntry {
-  const principalId = safeMetadataString(task.metadata?.['principalId']);
-  const correlationId = safeMetadataString(task.metadata?.['correlationId']);
-  return appendAuditEntry(
-    db,
-    {
-      taskId: task.id,
-      tenantId,
-      action,
-      outcome,
-      ...(principalId ? { principalId } : {}),
-      ...(correlationId ? { correlationId } : {}),
-    },
-    now,
-  );
-}
-
-function listAuditEntries(
-  db: SqliteDatabase,
-  tenantId: string,
-  taskId?: string,
-  limit = 100,
-): TaskAuditEntry[] {
-  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) {
-    throw new Error('Audit limit must be between 1 and 1000');
-  }
-  const rows = taskId
-    ? db
-        .prepare<AuditRow>(
-          'SELECT sequence, task_id, tenant_id, principal_id, action, outcome, timestamp, correlation_id FROM task_audit_journal WHERE tenant_id = ? AND task_id = ? ORDER BY sequence LIMIT ?',
-        )
-        .all(tenantId, taskId, limit)
-    : db
-        .prepare<AuditRow>(
-          'SELECT sequence, task_id, tenant_id, principal_id, action, outcome, timestamp, correlation_id FROM task_audit_journal WHERE tenant_id = ? ORDER BY sequence LIMIT ?',
-        )
-        .all(tenantId, limit);
-  return rows.map(mapAuditRow);
 }
 
 function saveArtifact(db: SqliteDatabase, value: PersistedTaskArtifact): PersistedTaskArtifact {
@@ -203,7 +128,7 @@ function createRetentionOperationOptions(
   return {
     now: options.now,
     appendAuditEntry(input, now) {
-      appendAuditEntry(db, input, now);
+      appendAuditEntryToSqlite(db, input, now);
     },
   };
 }
@@ -216,7 +141,7 @@ function createTaskOperationOptions(
     defaultTenantId: options.defaultTenantId,
     now: options.now,
     appendTaskAudit(task, tenantId, action, outcome, now) {
-      appendTaskAuditFromTask(db, task, tenantId, action, outcome, now);
+      appendTaskAuditFromTaskToSqlite(db, task, tenantId, action, outcome, now);
     },
   };
 }
@@ -316,16 +241,16 @@ export class SqliteTaskStorage implements ITaskStorage {
   }
 
   appendAuditEntry(input: TaskAuditInput): TaskAuditEntry {
-    return appendAuditEntry(this.db, input, this.options.now);
+    return appendAuditEntryToSqlite(this.db, input, this.options.now);
   }
 
   listAuditEntries(tenantId: string, taskId?: string, limit?: number): TaskAuditEntry[] {
-    return listAuditEntries(this.db, tenantId, taskId, limit);
+    return listAuditEntriesFromSqlite(this.db, tenantId, taskId, limit);
   }
 
   saveArtifact(artifact: PersistedTaskArtifact): PersistedTaskArtifact {
     const stored = saveArtifact(this.db, artifact);
-    appendAuditEntry(
+    appendAuditEntryToSqlite(
       this.db,
       {
         taskId: stored.taskId,
@@ -459,17 +384,17 @@ export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
   }
 
   appendAuditEntry(input: TaskAuditInput): Promise<TaskAuditEntry> {
-    return this.runOperation(() => appendAuditEntry(this.db, input, this.options.now));
+    return this.runOperation(() => appendAuditEntryToSqlite(this.db, input, this.options.now));
   }
 
   listAuditEntries(tenantId: string, taskId?: string, limit?: number): Promise<TaskAuditEntry[]> {
-    return this.runOperation(() => listAuditEntries(this.db, tenantId, taskId, limit));
+    return this.runOperation(() => listAuditEntriesFromSqlite(this.db, tenantId, taskId, limit));
   }
 
   saveArtifact(artifact: PersistedTaskArtifact): Promise<PersistedTaskArtifact> {
     return this.runOperation(() => {
       const stored = saveArtifact(this.db, artifact);
-      appendAuditEntry(
+      appendAuditEntryToSqlite(
         this.db,
         {
           taskId: stored.taskId,
@@ -531,15 +456,6 @@ function loadSqliteDatabase(): SqliteDatabaseConstructor {
   return DatabaseSync as unknown as SqliteDatabaseConstructor;
 }
 
-function getSqliteLastInsertRowId(result: unknown): number {
-  if (result && typeof result === 'object' && 'lastInsertRowid' in result) {
-    const value = (result as { lastInsertRowid: unknown }).lastInsertRowid;
-    if (typeof value === 'bigint') return Number(value);
-    if (typeof value === 'number') return value;
-  }
-  return 0;
-}
-
 function normalizeSqliteOptions(
   input?: SqliteDatabaseConstructor | SqliteTaskStorageOptions,
 ): NormalizedSqliteTaskStorageOptions {
@@ -551,10 +467,4 @@ function normalizeSqliteOptions(
     defaultTenantId,
     now: options.now ?? (() => new Date()),
   };
-}
-
-function safeMetadataString(value: unknown): string | undefined {
-  if (typeof value !== 'string' || !value.trim()) return undefined;
-  const normalized = value.trim().slice(0, 256);
-  return /(?:bearer|password|secret|token)[\s:=]/i.test(normalized) ? '[REDACTED]' : normalized;
 }
