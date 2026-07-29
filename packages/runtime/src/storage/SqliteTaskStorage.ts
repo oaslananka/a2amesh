@@ -10,6 +10,23 @@ import {
   type SqliteDatabaseConstructor,
 } from './SqliteTaskStorageMigrations.js';
 import {
+  DEFAULT_PUSH_NOTIFICATION_CONFIG_ID,
+  mapArtifactRow,
+  mapAuditRow,
+  parsePushNotification,
+  parsePushNotificationConfigs,
+  parseTask,
+  pushNotificationConfigId,
+  serializePushNotificationConfigs,
+  type ArtifactRow,
+  type AuditRow,
+  type CountRow,
+  type IndexRow,
+  type PragmaValueRow,
+  type PushNotificationRow,
+  type TaskRow,
+} from './SqliteTaskStorageRecords.js';
+import {
   validatePersistedTaskArtifact,
   type PersistedTaskArtifact,
   type SqliteTaskStorageOperationalState,
@@ -20,60 +37,6 @@ import {
 } from './TaskStorageContracts.js';
 
 export type { SqliteDatabase, SqliteDatabaseConstructor } from './SqliteTaskStorageMigrations.js';
-
-interface TaskRow {
-  task_json: string;
-  tenant_id?: string;
-  status?: string;
-  updated_at?: string;
-  expires_at?: string | null;
-}
-
-interface PushNotificationRow {
-  config_json: string;
-}
-
-interface PushNotificationCollection {
-  configs: Record<string, PushNotificationConfig>;
-}
-
-interface CountRow {
-  count: number;
-}
-
-interface PragmaValueRow {
-  journal_mode?: string;
-  timeout?: number;
-}
-
-interface IndexRow {
-  name: string;
-}
-
-interface AuditRow {
-  sequence: number;
-  task_id: string;
-  tenant_id: string;
-  principal_id: string | null;
-  action: string;
-  outcome: TaskAuditEntry['outcome'];
-  timestamp: string;
-  correlation_id: string | null;
-}
-
-interface ArtifactRow {
-  task_id: string;
-  artifact_id: string;
-  tenant_id: string;
-  content_type: string;
-  checksum_sha256: string;
-  payload_ref: string;
-  size_bytes: number | null;
-  sensitivity: PersistedTaskArtifact['sensitivity'];
-  redacted: number;
-  provenance_json: string;
-  created_at: string;
-}
 
 export interface SqliteTaskStorageOptions {
   databaseConstructor?: SqliteDatabaseConstructor | undefined;
@@ -87,54 +50,6 @@ interface NormalizedSqliteTaskStorageOptions {
   busyTimeoutMs: number;
   defaultTenantId: string;
   now: () => Date;
-}
-
-function parseTask(row: TaskRow | undefined): Task | undefined {
-  return row ? (JSON.parse(row.task_json) as Task) : undefined;
-}
-
-function parsePushNotification(
-  row: PushNotificationRow | undefined,
-): PushNotificationConfig | undefined {
-  if (!row) {
-    return undefined;
-  }
-  const configs = parsePushNotificationConfigs(row);
-  return configs.get(DEFAULT_PUSH_NOTIFICATION_CONFIG_ID) ?? configs.values().next().value;
-}
-
-function parsePushNotificationConfigs(
-  row: PushNotificationRow | undefined,
-): Map<string, PushNotificationConfig> {
-  if (!row) {
-    return new Map();
-  }
-
-  const parsed = JSON.parse(row.config_json) as PushNotificationConfig | PushNotificationCollection;
-  if (isPushNotificationCollection(parsed)) {
-    return new Map(
-      Object.entries(parsed.configs).map(([id, config]) => [id, structuredClone(config)]),
-    );
-  }
-
-  const id = pushNotificationConfigId(parsed);
-  return new Map([[id, { ...parsed, id }]]);
-}
-
-function isPushNotificationCollection(value: unknown): value is PushNotificationCollection {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    'configs' in value &&
-    (value as PushNotificationCollection).configs !== null &&
-    typeof (value as PushNotificationCollection).configs === 'object'
-  );
-}
-
-function serializePushNotificationConfigs(configs: Map<string, PushNotificationConfig>): string {
-  return JSON.stringify({
-    configs: Object.fromEntries(configs),
-  } satisfies PushNotificationCollection);
 }
 
 function insertTaskIntoSqlite(
@@ -888,35 +803,6 @@ function safeMetadataString(value: unknown): string | undefined {
   return /(?:bearer|password|secret|token)[\s:=]/i.test(normalized) ? '[REDACTED]' : normalized;
 }
 
-function mapAuditRow(row: AuditRow): TaskAuditEntry {
-  return {
-    sequence: row.sequence,
-    taskId: row.task_id,
-    tenantId: row.tenant_id,
-    action: row.action,
-    outcome: row.outcome,
-    timestamp: row.timestamp,
-    ...(row.principal_id ? { principalId: row.principal_id } : {}),
-    ...(row.correlation_id ? { correlationId: row.correlation_id } : {}),
-  };
-}
-
-function mapArtifactRow(row: ArtifactRow): PersistedTaskArtifact {
-  return {
-    taskId: row.task_id,
-    artifactId: row.artifact_id,
-    tenantId: row.tenant_id,
-    contentType: row.content_type,
-    checksumSha256: row.checksum_sha256,
-    payloadRef: row.payload_ref,
-    sensitivity: row.sensitivity,
-    redacted: row.redacted === 1,
-    provenance: JSON.parse(row.provenance_json) as PersistedTaskArtifact['provenance'],
-    createdAt: row.created_at,
-    ...(row.size_bytes === null ? {} : { sizeBytes: row.size_bytes }),
-  };
-}
-
 function isRetentionEligible(
   row: TaskRow,
   policy: TaskRetentionPolicy,
@@ -940,12 +826,4 @@ function isRetentionEligible(
   if (ttlMs === undefined || !Number.isSafeInteger(ttlMs) || ttlMs < 0) return false;
   const updatedMs = Date.parse(row.updated_at ?? parseTask(row)?.status.timestamp ?? '');
   return Number.isFinite(updatedMs) && updatedMs + ttlMs <= evaluatedMs;
-}
-
-const DEFAULT_PUSH_NOTIFICATION_CONFIG_ID = 'default';
-
-function pushNotificationConfigId(config: PushNotificationConfig): string {
-  return config.id && config.id.trim().length > 0
-    ? config.id.trim()
-    : DEFAULT_PUSH_NOTIFICATION_CONFIG_ID;
 }
