@@ -9,7 +9,9 @@ import {
   type SqliteDatabase,
   type SqliteDatabaseConstructor,
 } from './SqliteTaskStorageMigrations.js';
+import { clearSqliteTaskStorage, deleteTaskFromSqlite } from './SqliteTaskStorageLifecycle.js';
 import {
+  getSqliteChanges,
   mapArtifactRow,
   mapAuditRow,
   parseTask,
@@ -36,7 +38,6 @@ import {
   getTasksByContextIdFromSqlite,
   insertTaskIntoSqlite,
   saveTaskToSqlite,
-  taskTenantId,
   type SqliteTaskOperationOptions,
 } from './SqliteTaskStorageTasks.js';
 import {
@@ -63,33 +64,6 @@ interface NormalizedSqliteTaskStorageOptions {
   busyTimeoutMs: number;
   defaultTenantId: string;
   now: () => Date;
-}
-
-function deleteTaskFromSqlite(
-  db: SqliteDatabase,
-  taskId: string,
-  options: NormalizedSqliteTaskStorageOptions,
-): boolean {
-  const task = getTaskFromSqlite(db, taskId);
-  db.prepare('DELETE FROM push_notifications WHERE task_id = ?').run(taskId);
-  const result = db.prepare('DELETE FROM tasks WHERE id = ?').run(taskId);
-  const deleted = getSqliteChanges(result) > 0;
-  if (deleted && task) {
-    appendTaskAuditFromTask(
-      db,
-      task,
-      taskTenantId(task, options.defaultTenantId),
-      'task.deleted',
-      'success',
-      options.now,
-    );
-  }
-  return deleted;
-}
-
-function clearSqliteTaskStorage(db: SqliteDatabase): void {
-  db.prepare('DELETE FROM push_notifications').run();
-  db.prepare('DELETE FROM tasks').run();
 }
 
 function appendAuditEntry(
@@ -384,7 +358,7 @@ export class SqliteTaskStorage implements ITaskStorage {
   }
 
   deleteTask(taskId: string): boolean {
-    return deleteTaskFromSqlite(this.db, taskId, this.options);
+    return deleteTaskFromSqlite(this.db, taskId, this.taskOptions);
   }
 
   clear(): void {
@@ -525,7 +499,7 @@ export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
   }
 
   deleteTask(taskId: string): Promise<boolean> {
-    return this.runOperation(() => deleteTaskFromSqlite(this.db, taskId, this.options));
+    return this.runOperation(() => deleteTaskFromSqlite(this.db, taskId, this.taskOptions));
   }
 
   clear(): Promise<void> {
@@ -615,14 +589,6 @@ export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
 
 function loadSqliteDatabase(): SqliteDatabaseConstructor {
   return DatabaseSync as unknown as SqliteDatabaseConstructor;
-}
-
-function getSqliteChanges(result: unknown): number {
-  if (result && typeof result === 'object' && 'changes' in result) {
-    const changes = (result as { changes: unknown }).changes;
-    return typeof changes === 'number' ? changes : 0;
-  }
-  return 0;
 }
 
 function getSqliteLastInsertRowId(result: unknown): number {

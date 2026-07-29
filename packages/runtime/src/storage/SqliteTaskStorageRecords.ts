@@ -97,6 +97,14 @@ export function serializePushNotificationConfigs(
   } satisfies PushNotificationCollection);
 }
 
+export function getSqliteChanges(result: unknown): number {
+  if (result && typeof result === 'object' && 'changes' in result) {
+    const changes = (result as { changes: unknown }).changes;
+    return typeof changes === 'number' ? changes : 0;
+  }
+  return 0;
+}
+
 export function mapAuditRow(row: AuditRow): TaskAuditEntry {
   return {
     sequence: row.sequence,
