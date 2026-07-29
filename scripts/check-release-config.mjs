@@ -143,6 +143,9 @@ if (!publishWorkflow.includes('node scripts/check-publish-preflight.mjs')) {
 if (!releasePleaseWorkflow.includes('skip-github-release: true')) {
   failures.push('Release Please must not create GitHub Releases');
 }
+if (!releasePleaseWorkflow.includes('include-component-in-tag: true')) {
+  failures.push('Release Please must use component-prefixed tags for linked packages');
+}
 if (!releasePleaseWorkflow.includes('node scripts/sync-security-policy.mjs')) {
   failures.push('Release Please must synchronize the security support policy');
 }
@@ -150,6 +153,7 @@ if (!releasePleaseWorkflow.includes('SECURITY.md .github/SECURITY.md')) {
   failures.push('Release Please must commit both security policy copies with the release version');
 }
 const releasePleaseGate = 'node scripts/release-state.mjs --mode release-please --json';
+const releasePleaseComponentTags = 'name: Verify published component tags';
 const releasePleaseAction = 'googleapis/release-please-action';
 if (!releasePleaseWorkflow.includes(releasePleaseGate)) {
   failures.push('Release Please workflow must run the release-state release-please gate');
@@ -158,6 +162,24 @@ if (!releasePleaseWorkflow.includes(releasePleaseGate)) {
   releasePleaseWorkflow.indexOf(releasePleaseAction)
 ) {
   failures.push('Release Please release-state gate must run before release-please-action');
+}
+if (!releasePleaseWorkflow.includes(releasePleaseComponentTags)) {
+  failures.push('Release Please must verify published component tags before opening a PR');
+} else if (
+  releasePleaseWorkflow.indexOf(releasePleaseComponentTags) <
+    releasePleaseWorkflow.indexOf(releasePleaseGate) ||
+  releasePleaseWorkflow.indexOf(releasePleaseComponentTags) >
+    releasePleaseWorkflow.indexOf(releasePleaseAction)
+) {
+  failures.push(
+    'Release Please component-tag verification must run after state validation and before the action',
+  );
+}
+if (!releasePleaseWorkflow.includes('sync-release-component-tags.mjs')) {
+  failures.push('Release Please must use the component-tag synchronizer');
+}
+if (!releasePleaseWorkflow.includes('--verify-only')) {
+  failures.push('Release Please component-tag validation must be verify-only');
 }
 const publishMainRefGuard =
   "if: github.repository == 'oaslananka/a2amesh' && github.ref == 'refs/heads/main'";
@@ -177,6 +199,13 @@ if (
   failures.push(
     'Publish workflow must preserve both release-state guard modules and the recovery ledger before tag checkout',
   );
+}
+if (
+  !publishWorkflow.includes(
+    'cp scripts/sync-release-component-tags.mjs "${RUNNER_TEMP}/release-state-guard/"',
+  )
+) {
+  failures.push('Publish workflow must stage the current component-tag synchronizer');
 }
 if (!publishWorkflow.includes('ref: ${{ steps.tag.outputs.tag }}')) {
   failures.push('Publish workflow must check out the requested canonical tag');
@@ -200,6 +229,27 @@ for (const requiredFragment of [
     failures.push(`Publish workflow asset-retention contract is missing: ${requiredFragment}`);
   }
 }
+const registryParityStep = 'name: Verify package registry parity';
+const componentTagStep = 'name: Synchronize Release Please component tags';
+const releaseAssetStep = 'name: Upload verified release assets';
+if (!publishWorkflow.includes(componentTagStep)) {
+  failures.push('Publish workflow must synchronize Release Please component tags');
+} else if (
+  publishWorkflow.indexOf(componentTagStep) < publishWorkflow.indexOf(registryParityStep) ||
+  publishWorkflow.indexOf(componentTagStep) > publishWorkflow.indexOf(releaseAssetStep)
+) {
+  failures.push(
+    'Publish component-tag synchronization must run after registry parity and before asset upload',
+  );
+}
+if (
+  !publishWorkflow.includes(
+    'node "${RUNNER_TEMP}/release-state-guard/sync-release-component-tags.mjs"',
+  )
+) {
+  failures.push('Publish workflow must run the staged component-tag synchronizer');
+}
+
 if (publishWorkflow.includes('node scripts/release-state.mjs --check')) {
   failures.push('Publish workflow must not use the ambiguous legacy release-state --check mode');
 }

@@ -13,6 +13,7 @@
     "scripts/report-coverage.d.mts",
     "scripts/run-pnpm.d.mts",
     "scripts/sync-security-policy.d.mts",
+    "scripts/sync-release-component-tags.d.mts",
     "tests/performance/k6/*.js",
     "scripts/live-interop/*.d.mts",
     "scripts/mcp-compatibility.d.mts",
