@@ -44,8 +44,8 @@ describe('forbidden reference policy', () => {
     expect(result.stderr).toBe('');
   });
 
-  it('allows the canonical deployment-chart path in release updater configuration', async () => {
-    const chartPath = ['deploy', platformName.toLowerCase(), 'a2amesh', 'Chart.yaml'].join('/');
+  it('allows the canonical repository-root deployment-chart path in release updater configuration', async () => {
+    const chartPath = `/${['deploy', platformName.toLowerCase(), 'a2amesh', 'Chart.yaml'].join('/')}`;
     const root = await createFixture({
       'release-please-config.json': JSON.stringify({
         packages: {

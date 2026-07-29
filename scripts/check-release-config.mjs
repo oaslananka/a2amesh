@@ -83,11 +83,14 @@ for (const component of linkedComponents) {
 }
 
 const chartPath = 'deploy/helm/a2amesh/Chart.yaml';
+const chartReleasePath = `/${chartPath}`;
 const runtimeReleaseConfig = config.packages?.['packages/runtime'];
 const chartExtraFiles = runtimeReleaseConfig?.['extra-files'] ?? [];
-if (!chartExtraFiles.some((entry) => entry?.type === 'generic' && entry?.path === chartPath)) {
+if (
+  !chartExtraFiles.some((entry) => entry?.type === 'generic' && entry?.path === chartReleasePath)
+) {
   failures.push(
-    `${chartPath}: packages/runtime must update the Helm chart via generic extra-files`,
+    `${chartPath}: packages/runtime must use the repository-root generic extra-files path ${chartReleasePath}`,
   );
 }
 const chart = readText(chartPath);

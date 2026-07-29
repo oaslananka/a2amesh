@@ -79,7 +79,7 @@ describe('release workflow guards', () => {
     expect(checker).toContain('SECURITY.md .github/SECURITY.md');
   });
 
-  it('keeps deployment chart metadata coupled to the linked runtime release', async () => {
+  it('keeps the repository-root deployment chart coupled to the linked runtime release', async () => {
     const [configText, manifestText, chart] = await Promise.all([
       readFile(new URL('release-please-config.json', repoRoot), 'utf8'),
       readFile(new URL('.release-please-manifest.json', repoRoot), 'utf8'),
@@ -95,7 +95,7 @@ describe('release workflow guards', () => {
       expect.arrayContaining([
         {
           type: 'generic',
-          path: 'deploy/helm/a2amesh/Chart.yaml',
+          path: '/deploy/helm/a2amesh/Chart.yaml',
         },
       ]),
     );

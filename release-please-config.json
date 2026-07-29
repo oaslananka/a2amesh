@@ -32,7 +32,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "deploy/helm/a2amesh/Chart.yaml"
+          "path": "/deploy/helm/a2amesh/Chart.yaml"
         }
       ]
     },
