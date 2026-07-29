@@ -16,17 +16,17 @@ import {
   listAuditEntriesFromSqlite,
 } from './SqliteTaskStorageAudit.js';
 import {
+  listArtifactsFromSqlite,
+  saveArtifactToSqlite,
+  type SqliteArtifactOperationOptions,
+} from './SqliteTaskStorageArtifacts.js';
+import {
   cleanupRetainedTasks,
   explainRetentionQueryPlan,
   setTaskTtl,
   type SqliteRetentionOperationOptions,
 } from './SqliteTaskStorageRetention.js';
-import {
-  mapArtifactRow,
-  type ArtifactRow,
-  type IndexRow,
-  type PragmaValueRow,
-} from './SqliteTaskStorageRecords.js';
+import { type IndexRow, type PragmaValueRow } from './SqliteTaskStorageRecords.js';
 import {
   getPushNotificationConfigFromSqlite,
   getPushNotificationFromSqlite,
@@ -46,7 +46,6 @@ import {
   type SqliteTaskOperationOptions,
 } from './SqliteTaskStorageTasks.js';
 import {
-  validatePersistedTaskArtifact,
   type PersistedTaskArtifact,
   type SqliteTaskStorageOperationalState,
   type TaskAuditEntry,
@@ -71,45 +70,6 @@ interface NormalizedSqliteTaskStorageOptions {
   now: () => Date;
 }
 
-function saveArtifact(db: SqliteDatabase, value: PersistedTaskArtifact): PersistedTaskArtifact {
-  const artifact = validatePersistedTaskArtifact(value);
-  const task = db
-    .prepare<{ tenant_id: string }>('SELECT tenant_id FROM tasks WHERE id = ?')
-    .get(artifact.taskId);
-  if (!task || task.tenant_id !== artifact.tenantId) {
-    throw new Error('Artifact task does not exist in the requested tenant');
-  }
-  db.prepare(
-    'INSERT INTO task_artifacts (task_id, artifact_id, tenant_id, content_type, checksum_sha256, payload_ref, size_bytes, sensitivity, redacted, provenance_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(task_id, artifact_id) DO UPDATE SET content_type = excluded.content_type, checksum_sha256 = excluded.checksum_sha256, payload_ref = excluded.payload_ref, size_bytes = excluded.size_bytes, sensitivity = excluded.sensitivity, redacted = excluded.redacted, provenance_json = excluded.provenance_json, created_at = excluded.created_at WHERE task_artifacts.tenant_id = excluded.tenant_id',
-  ).run(
-    artifact.taskId,
-    artifact.artifactId,
-    artifact.tenantId,
-    artifact.contentType,
-    artifact.checksumSha256.toLowerCase(),
-    artifact.payloadRef,
-    artifact.sizeBytes ?? null,
-    artifact.sensitivity,
-    artifact.redacted ? 1 : 0,
-    JSON.stringify(artifact.provenance),
-    artifact.createdAt,
-  );
-  return artifact;
-}
-
-function listArtifacts(
-  db: SqliteDatabase,
-  tenantId: string,
-  taskId: string,
-): PersistedTaskArtifact[] {
-  return db
-    .prepare<ArtifactRow>(
-      'SELECT task_id, artifact_id, tenant_id, content_type, checksum_sha256, payload_ref, size_bytes, sensitivity, redacted, provenance_json, created_at FROM task_artifacts WHERE tenant_id = ? AND task_id = ? ORDER BY artifact_id',
-    )
-    .all(tenantId, taskId)
-    .map(mapArtifactRow);
-}
-
 function operationalState(db: SqliteDatabase): SqliteTaskStorageOperationalState {
   const journalMode = db.prepare<PragmaValueRow>('PRAGMA journal_mode').get()?.journal_mode ?? '';
   const busyTimeoutMs = db.prepare<PragmaValueRow>('PRAGMA busy_timeout').get()?.timeout ?? 0;
@@ -121,16 +81,26 @@ function operationalState(db: SqliteDatabase): SqliteTaskStorageOperationalState
   return { schemaVersion: getSqliteSchemaVersion(db), journalMode, busyTimeoutMs, indexes };
 }
 
+function createAuditEntryAppender(
+  db: SqliteDatabase,
+): SqliteArtifactOperationOptions['appendAuditEntry'] {
+  return (input, now) => {
+    appendAuditEntryToSqlite(db, input, now);
+  };
+}
+
+function createArtifactOperationOptions(
+  db: SqliteDatabase,
+  options: NormalizedSqliteTaskStorageOptions,
+): SqliteArtifactOperationOptions {
+  return { now: options.now, appendAuditEntry: createAuditEntryAppender(db) };
+}
+
 function createRetentionOperationOptions(
   db: SqliteDatabase,
   options: NormalizedSqliteTaskStorageOptions,
 ): SqliteRetentionOperationOptions {
-  return {
-    now: options.now,
-    appendAuditEntry(input, now) {
-      appendAuditEntryToSqlite(db, input, now);
-    },
-  };
+  return { now: options.now, appendAuditEntry: createAuditEntryAppender(db) };
 }
 
 function createTaskOperationOptions(
@@ -151,6 +121,7 @@ export class SqliteTaskStorage implements ITaskStorage {
   private readonly options: NormalizedSqliteTaskStorageOptions;
   private readonly taskOptions: SqliteTaskOperationOptions;
   private readonly retentionOptions: SqliteRetentionOperationOptions;
+  private readonly artifactOptions: SqliteArtifactOperationOptions;
 
   constructor(
     path: string,
@@ -162,6 +133,7 @@ export class SqliteTaskStorage implements ITaskStorage {
     this.options = normalized;
     this.taskOptions = createTaskOperationOptions(this.db, normalized);
     this.retentionOptions = createRetentionOperationOptions(this.db, normalized);
+    this.artifactOptions = createArtifactOperationOptions(this.db, normalized);
     initializeSqliteTaskStorage(this.db, normalized);
   }
 
@@ -249,22 +221,11 @@ export class SqliteTaskStorage implements ITaskStorage {
   }
 
   saveArtifact(artifact: PersistedTaskArtifact): PersistedTaskArtifact {
-    const stored = saveArtifact(this.db, artifact);
-    appendAuditEntryToSqlite(
-      this.db,
-      {
-        taskId: stored.taskId,
-        tenantId: stored.tenantId,
-        action: 'artifact.persisted',
-        outcome: 'success',
-      },
-      this.options.now,
-    );
-    return stored;
+    return saveArtifactToSqlite(this.db, artifact, this.artifactOptions);
   }
 
   listArtifacts(tenantId: string, taskId: string): PersistedTaskArtifact[] {
-    return listArtifacts(this.db, tenantId, taskId);
+    return listArtifactsFromSqlite(this.db, tenantId, taskId);
   }
 
   getOperationalState(): SqliteTaskStorageOperationalState {
@@ -285,6 +246,7 @@ export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
   private readonly options: NormalizedSqliteTaskStorageOptions;
   private readonly taskOptions: SqliteTaskOperationOptions;
   private readonly retentionOptions: SqliteRetentionOperationOptions;
+  private readonly artifactOptions: SqliteArtifactOperationOptions;
   private operationQueue: Promise<void> = Promise.resolve();
   private readonly transactionScope = new AsyncLocalStorage<boolean>();
 
@@ -298,6 +260,7 @@ export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
     this.options = normalized;
     this.taskOptions = createTaskOperationOptions(this.db, normalized);
     this.retentionOptions = createRetentionOperationOptions(this.db, normalized);
+    this.artifactOptions = createArtifactOperationOptions(this.db, normalized);
     initializeSqliteTaskStorage(this.db, normalized);
   }
 
@@ -392,24 +355,11 @@ export class AsyncSqliteTaskStorage implements AsyncTaskStorage {
   }
 
   saveArtifact(artifact: PersistedTaskArtifact): Promise<PersistedTaskArtifact> {
-    return this.runOperation(() => {
-      const stored = saveArtifact(this.db, artifact);
-      appendAuditEntryToSqlite(
-        this.db,
-        {
-          taskId: stored.taskId,
-          tenantId: stored.tenantId,
-          action: 'artifact.persisted',
-          outcome: 'success',
-        },
-        this.options.now,
-      );
-      return stored;
-    });
+    return this.runOperation(() => saveArtifactToSqlite(this.db, artifact, this.artifactOptions));
   }
 
   listArtifacts(tenantId: string, taskId: string): Promise<PersistedTaskArtifact[]> {
-    return this.runOperation(() => listArtifacts(this.db, tenantId, taskId));
+    return this.runOperation(() => listArtifactsFromSqlite(this.db, tenantId, taskId));
   }
 
   getOperationalState(): Promise<SqliteTaskStorageOperationalState> {
