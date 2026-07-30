@@ -17,16 +17,9 @@ import type {
   Task,
 } from '../../types/task.js';
 import { normalizeMessage } from '../../utils/compat.js';
-import { makeErrorInfo } from '../../utils/errors.js';
 import { toOfficialV1RpcResult, type A2AJsonRpcDialect } from '../../utils/officialWire.js';
 import { logger } from '../../utils/logger.js';
 import type { JsonRpcInputLimits } from '../../utils/json-rpc-input-limits.js';
-import {
-  PushNotificationConfigSchema,
-  validateMessageSendParams,
-  validateRequest,
-  validateTaskListParams,
-} from '../../utils/schema-validator.js';
 import type { IdempotencyStore } from '../IdempotencyStore.js';
 import { TaskLifecycleError, type TaskManager } from '../TaskManager.js';
 import type { IdempotencyResolution } from './idempotency.js';
@@ -34,6 +27,7 @@ import {
   executeJsonRpcIdempotentRequest,
   resolveJsonRpcExecutionIdempotency,
 } from './jsonRpcIdempotencyExecution.js';
+import { canAccessTask, dispatchJsonRpcMethod } from './jsonRpcMethodDispatch.js';
 import { toLifecycleJsonRpcError } from './lifecycleErrors.js';
 import type { RequestWithRequestId } from './middleware.js';
 import { isStreamingRpcMethod } from './streamRoutes.js';
@@ -41,6 +35,7 @@ import { prepareJsonRpcRequest } from './jsonRpcEnvelope.js';
 import { resolveJsonRpcRequestContext } from './jsonRpcRequestContext.js';
 import { createJsonRpcSuccessResponse, writeJsonRpcErrorResponse } from './jsonRpcResponses.js';
 export { createJsonRpcErrorResponse, createJsonRpcSuccessResponse } from './jsonRpcResponses.js';
+export { canAccessTask, filterTasksByContext, getTaskOrThrow } from './jsonRpcMethodDispatch.js';
 
 export interface RpcContext {
   req: Request;
@@ -156,42 +151,6 @@ function selectPushConfig(
   );
 }
 
-function selectRawPushConfig(params: Record<string, unknown>): unknown {
-  return (
-    params['taskPushNotificationConfig'] ??
-    params['task_push_notification_config'] ??
-    params['pushNotificationConfig']
-  );
-}
-
-const DEFAULT_PUSH_NOTIFICATION_CONFIG_ID = 'default';
-
-function selectPushTaskId(params: Record<string, unknown>): unknown {
-  const wrapped = params['taskPushNotificationConfig'];
-  if (wrapped && typeof wrapped === 'object' && 'taskId' in wrapped) {
-    return (wrapped as Record<string, unknown>)['taskId'];
-  }
-  return params['taskId'];
-}
-
-function selectPushConfigId(
-  params: Record<string, unknown>,
-  config?: Pick<PushNotificationConfig, 'id'>,
-): string {
-  const rawId = params['configId'] ?? params['id'] ?? config?.id;
-  return typeof rawId === 'string' && rawId.trim().length > 0
-    ? rawId.trim()
-    : DEFAULT_PUSH_NOTIFICATION_CONFIG_ID;
-}
-
-function selectRawTaskPushNotificationConfig(params: Record<string, unknown>): unknown {
-  const wrapped = params['taskPushNotificationConfig'];
-  if (wrapped && typeof wrapped === 'object' && 'pushNotificationConfig' in wrapped) {
-    return (wrapped as Record<string, unknown>)['pushNotificationConfig'];
-  }
-  return selectRawPushConfig(params);
-}
-
 function shouldReturnImmediately(configuration: MessageRequestConfiguration | undefined): boolean {
   if (typeof configuration?.returnImmediately === 'boolean') return configuration.returnImmediately;
   if (typeof configuration?.return_immediately === 'boolean')
@@ -250,25 +209,6 @@ async function waitForTaskProcessing(
   }
 }
 
-export function getTaskOrThrow(
-  taskId: unknown,
-  taskManager: TaskManager,
-  requestContext: RequestContext,
-  canAccessTaskFn: (task: Task, context: RequestContext) => boolean,
-): Task {
-  if (typeof taskId !== 'string') {
-    throw new JsonRpcError(ErrorCodes.InvalidParams, 'Missing taskId');
-  }
-  const task = taskManager.getTask(taskId);
-  if (!task) {
-    throw new JsonRpcError(ErrorCodes.TaskNotFound, 'Task not found');
-  }
-  if (!canAccessTaskFn(task, requestContext)) {
-    throw new JsonRpcError(ErrorCodes.Unauthorized, 'Unauthorized task access');
-  }
-  return task;
-}
-
 export async function handleRpcRequest(
   req: JsonRpcRequest,
   context: RpcContext,
@@ -285,150 +225,14 @@ export async function handleRpcRequest(
   let failed = false;
 
   try {
-    const params = (req.params ?? {}) as Record<string, unknown>;
-    switch (req.method) {
-      case 'message/send':
-        return await handleMessageRequest(
-          validateMessageSendParams(params),
-          req.method,
-          context.req,
-          undefined,
-          deps,
-        );
-
-      case 'message/stream':
-      case 'tasks/resubscribe':
-        throw new JsonRpcError(
-          ErrorCodes.UnsupportedOperation,
-          `${req.method} requires an SSE response transport`,
-        );
-
-      case 'tasks/get': {
-        return getTaskOrThrow(
-          params['taskId'],
-          deps.taskManager,
-          context.requestContext,
-          (t, ctx) => canAccessTask(t, ctx, deps.authMiddleware),
-        );
-      }
-
-      case 'tasks/cancel': {
-        const existingTask = getTaskOrThrow(
-          params['taskId'],
-          deps.taskManager,
-          context.requestContext,
-          (t, ctx) => canAccessTask(t, ctx, deps.authMiddleware),
-        );
-        const task = deps.taskManager.cancelTask(existingTask.id);
-        if (!task) {
-          throw new JsonRpcError(ErrorCodes.TaskNotFound, 'Task not found');
-        }
-        return task;
-      }
-
-      case 'tasks/pushNotification/set':
-      case 'tasks/pushNotificationConfig/create': {
-        const rawPushNotificationConfig =
-          req.method === 'tasks/pushNotificationConfig/create'
-            ? selectRawTaskPushNotificationConfig(params)
-            : selectRawPushConfig(params);
-        if (!rawPushNotificationConfig || typeof rawPushNotificationConfig !== 'object') {
-          throw new JsonRpcError(ErrorCodes.InvalidParams, 'Missing taskId or callback config');
-        }
-        const task = getTaskOrThrow(
-          selectPushTaskId(params),
-          deps.taskManager,
-          context.requestContext,
-          (t, ctx) => canAccessTask(t, ctx, deps.authMiddleware),
-        );
-        const pushNotificationConfig = validateRequest(
-          PushNotificationConfigSchema,
-          rawPushNotificationConfig,
-        ) as PushNotificationConfig;
-        const normalizedPushNotificationConfig =
-          await deps.normalizePushNotificationConfig(pushNotificationConfig);
-        const configId =
-          req.method === 'tasks/pushNotificationConfig/create'
-            ? selectPushConfigId(params, normalizedPushNotificationConfig)
-            : pushNotificationConfigId(normalizedPushNotificationConfig);
-        return deps.taskManager.setPushNotificationConfig(
-          task.id,
-          configId,
-          normalizedPushNotificationConfig,
-        );
-      }
-
-      case 'tasks/pushNotification/get':
-      case 'tasks/pushNotificationConfig/get': {
-        const task = getTaskOrThrow(
-          selectPushTaskId(params),
-          deps.taskManager,
-          context.requestContext,
-          (t, ctx) => canAccessTask(t, ctx, deps.authMiddleware),
-        );
-        const configId =
-          req.method === 'tasks/pushNotificationConfig/get'
-            ? selectPushConfigId(params)
-            : DEFAULT_PUSH_NOTIFICATION_CONFIG_ID;
-        return deps.taskManager.getPushNotificationConfig(task.id, configId) ?? null;
-      }
-
-      case 'tasks/pushNotificationConfig/list': {
-        const task = getTaskOrThrow(
-          selectPushTaskId(params),
-          deps.taskManager,
-          context.requestContext,
-          (t, ctx) => canAccessTask(t, ctx, deps.authMiddleware),
-        );
-        return { configs: deps.taskManager.listPushNotifications(task.id) };
-      }
-
-      case 'tasks/pushNotificationConfig/delete': {
-        const task = getTaskOrThrow(
-          selectPushTaskId(params),
-          deps.taskManager,
-          context.requestContext,
-          (t, ctx) => canAccessTask(t, ctx, deps.authMiddleware),
-        );
-        const configId = selectPushConfigId(params);
-        return { deleted: deps.taskManager.removePushNotificationConfig(task.id, configId) };
-      }
-
-      case 'tasks/list': {
-        const { contextId, limit = 50, offset = 0 } = validateTaskListParams(params);
-        let tasks = contextId
-          ? deps.taskManager.getTasksByContext(contextId)
-          : deps.taskManager.getAllTasks();
-
-        tasks = filterTasksByContext(tasks, context.requestContext, deps.authMiddleware);
-
-        return {
-          tasks: tasks.slice(offset, offset + limit),
-          total: tasks.length,
-        };
-      }
-
-      case 'agent/getAuthenticatedExtendedCard':
-      case 'agent/authenticatedExtendedCard': {
-        if (!deps.agentCard.capabilities?.extendedAgentCard) {
-          throw new JsonRpcError(ErrorCodes.UnsupportedOperation, 'Extended card not supported');
-        }
-        if (!deps.authMiddleware) {
-          throw new JsonRpcError(
-            ErrorCodes.Unauthorized,
-            'Authenticated extended card requires authentication',
-          );
-        }
-        return deps.agentCard;
-      }
-
-      default:
-        throw new JsonRpcError(
-          ErrorCodes.MethodNotFound,
-          `Method ${req.method} not found`,
-          makeErrorInfo('METHOD_NOT_FOUND'),
-        );
-    }
+    return await dispatchJsonRpcMethod(req, context, {
+      agentCard: deps.agentCard,
+      taskManager: deps.taskManager,
+      authMiddleware: deps.authMiddleware,
+      normalizePushNotificationConfig: deps.normalizePushNotificationConfig,
+      handleMessageRequest: (params, method, request) =>
+        handleMessageRequest(params, method, request, undefined, deps),
+    });
   } catch (error: unknown) {
     if (error instanceof TaskLifecycleError) {
       throw toLifecycleJsonRpcError(error);
@@ -583,47 +387,4 @@ export function normalizeArtifacts(task: Task, artifacts: Artifact[]): Extensibl
       appliedExtensions: task.extensions ?? [],
     },
   }));
-}
-
-export function filterTasksByContext(
-  tasks: Task[],
-  context: RequestContext,
-  authMiddleware: JwtAuthMiddleware | undefined,
-): Task[] {
-  if (!shouldEnforceTaskOwnership(context, authMiddleware)) {
-    return tasks;
-  }
-
-  return tasks.filter((task) => canAccessTask(task, context, authMiddleware));
-}
-
-export function canAccessTask(
-  task: Task,
-  context: RequestContext,
-  authMiddleware: JwtAuthMiddleware | undefined,
-): boolean {
-  if (!shouldEnforceTaskOwnership(context, authMiddleware)) {
-    return true;
-  }
-
-  if (!context.principalId || !task.principalId || task.principalId !== context.principalId) {
-    return false;
-  }
-  if (context.tenantId || task.tenantId) {
-    return Boolean(context.tenantId && task.tenantId && task.tenantId === context.tenantId);
-  }
-  return true;
-}
-
-function shouldEnforceTaskOwnership(
-  context: RequestContext,
-  authMiddleware: JwtAuthMiddleware | undefined,
-): boolean {
-  return Boolean(authMiddleware) || context.authMethod !== 'anonymous';
-}
-
-function pushNotificationConfigId(config: PushNotificationConfig): string {
-  return config.id && config.id.trim().length > 0
-    ? config.id.trim()
-    : DEFAULT_PUSH_NOTIFICATION_CONFIG_ID;
 }
