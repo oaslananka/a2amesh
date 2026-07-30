@@ -1,5 +1,5 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
 import type { ITaskStorage } from './ITaskStorage.js';
+import { SerializedAsyncOperationQueue } from './SerializedAsyncOperationQueue.js';
 import type { PushNotificationConfig, Task } from '../types/task.js';
 
 export interface AsyncTaskStorageOperations {
@@ -46,44 +46,43 @@ export interface AsyncTaskStorage extends AsyncTaskStorageOperations {
 }
 
 export class SyncTaskStorageAdapter implements AsyncTaskStorage {
-  private operationQueue: Promise<void> = Promise.resolve();
-  private readonly transactionScope = new AsyncLocalStorage<boolean>();
+  private readonly operations = new SerializedAsyncOperationQueue();
 
   constructor(private readonly storage: ITaskStorage) {}
 
   insertTask(task: Task): Promise<Task> {
-    return this.runOperation(() => this.storage.insertTask(task));
+    return this.operations.run(() => this.storage.insertTask(task));
   }
 
   getTask(taskId: string): Promise<Task | undefined> {
-    return this.runOperation(() => this.storage.getTask(taskId));
+    return this.operations.run(() => this.storage.getTask(taskId));
   }
 
   saveTask(task: Task): Promise<void> {
-    return this.runOperation(() => this.storage.saveTask(task));
+    return this.operations.run(() => this.storage.saveTask(task));
   }
 
   getAllTasks(): Promise<Task[]> {
-    return this.runOperation(() => this.storage.getAllTasks());
+    return this.operations.run(() => this.storage.getAllTasks());
   }
 
   getTasksByContextId(contextId: string): Promise<Task[]> {
-    return this.runOperation(() => this.storage.getTasksByContextId(contextId));
+    return this.operations.run(() => this.storage.getTasksByContextId(contextId));
   }
 
   setPushNotification(
     taskId: string,
     config: PushNotificationConfig,
   ): Promise<PushNotificationConfig | undefined> {
-    return this.runOperation(() => this.storage.setPushNotification(taskId, config));
+    return this.operations.run(() => this.storage.setPushNotification(taskId, config));
   }
 
   getPushNotification(taskId: string): Promise<PushNotificationConfig | undefined> {
-    return this.runOperation(() => this.storage.getPushNotification(taskId));
+    return this.operations.run(() => this.storage.getPushNotification(taskId));
   }
 
   listPushNotifications(taskId: string): Promise<PushNotificationConfig[]> {
-    return this.runOperation(() => this.storage.listPushNotifications?.(taskId) ?? []);
+    return this.operations.run(() => this.storage.listPushNotifications?.(taskId) ?? []);
   }
 
   setPushNotificationConfig(
@@ -91,7 +90,7 @@ export class SyncTaskStorageAdapter implements AsyncTaskStorage {
     configId: string,
     config: PushNotificationConfig,
   ): Promise<PushNotificationConfig | undefined> {
-    return this.runOperation(
+    return this.operations.run(
       () =>
         this.storage.setPushNotificationConfig?.(taskId, configId, config) ??
         this.storage.setPushNotification(taskId, { ...config, id: configId }),
@@ -102,7 +101,7 @@ export class SyncTaskStorageAdapter implements AsyncTaskStorage {
     taskId: string,
     configId: string,
   ): Promise<PushNotificationConfig | undefined> {
-    return this.runOperation(
+    return this.operations.run(
       () =>
         this.storage.getPushNotificationConfig?.(taskId, configId) ??
         (configId === 'default' ? this.storage.getPushNotification(taskId) : undefined),
@@ -110,7 +109,7 @@ export class SyncTaskStorageAdapter implements AsyncTaskStorage {
   }
 
   removePushNotificationConfig(taskId: string, configId: string): Promise<boolean> {
-    return this.runOperation(
+    return this.operations.run(
       () =>
         this.storage.removePushNotificationConfig?.(taskId, configId) ??
         (configId === 'default' ? this.storage.removePushNotification(taskId) : false),
@@ -118,40 +117,27 @@ export class SyncTaskStorageAdapter implements AsyncTaskStorage {
   }
 
   removePushNotification(taskId: string): Promise<boolean> {
-    return this.runOperation(() => this.storage.removePushNotification(taskId));
+    return this.operations.run(() => this.storage.removePushNotification(taskId));
   }
 
   deleteTask(taskId: string): Promise<boolean> {
-    return this.runOperation(() => this.storage.deleteTask(taskId));
+    return this.operations.run(() => this.storage.deleteTask(taskId));
   }
 
   clear(): Promise<void> {
-    return this.runOperation(() => this.storage.clear());
+    return this.operations.run(() => this.storage.clear());
   }
 
   setTtl(taskId: string, ttlMs: number): Promise<void> {
-    return this.runOperation(() => this.storage.setTtl?.(taskId, ttlMs));
+    return this.operations.run(() => this.storage.setTtl?.(taskId, ttlMs));
   }
 
   count(): Promise<number> {
-    return this.runOperation(() => this.storage.count());
+    return this.operations.run(() => this.storage.count());
   }
 
   transaction<T>(callback: AsyncTaskStorageTransaction<T>): Promise<T> {
-    return this.runOperation(() => this.transactionScope.run(true, () => callback(this)));
-  }
-
-  private runOperation<T>(operation: () => T | Promise<T>): Promise<T> {
-    if (this.transactionScope.getStore()) {
-      return Promise.resolve(operation());
-    }
-
-    const run = this.operationQueue.then(operation);
-    this.operationQueue = run.then(
-      () => undefined,
-      () => undefined,
-    );
-    return run;
+    return this.operations.runInScope(() => callback(this));
   }
 }
 
