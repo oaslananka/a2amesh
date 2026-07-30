@@ -1,17 +1,12 @@
-import { randomUUID } from 'node:crypto';
 import type { Express, Request, Response } from 'express';
 import {
-  hashAgentCard,
   logger,
   normalizeAgentCard,
-  verifyAgentCard,
   REGISTRY_EXPORT_SCHEMA_ID,
   RegistryExportDocumentSchema,
-  validateUrl,
   type AgentCard,
   type RegistryExportDocument,
   type RequestContext,
-  type VerificationKey,
 } from '@a2amesh/runtime';
 import type { AgentCardVerificationMetadata, RegisteredAgent } from '../storage/IAgentStorage.js';
 import type { RegistryAuthController } from './auth.js';
@@ -20,8 +15,13 @@ import {
   registerAgentDiscoveryRoutes,
   routeParam,
 } from './agentDiscoveryRoutes.js';
+import {
+  isPublicAgentAllowed,
+  registerAgentRegistrationRoutes,
+  validateAgentUrl,
+  verifyRegistryAgentCard,
+} from './agentRegistrationRoutes.js';
 import type { RegistryMetricsController } from './metrics.js';
-import { createRegistryOutboundPolicy } from './outboundPolicy.js';
 import type { RegistryPollingController } from './polling.js';
 import { writeRegistryProblem } from './problems.js';
 import type { RegistrySseController } from './sse.js';
@@ -119,92 +119,7 @@ export function registerRegistryRoutes(
     });
   });
 
-  const registerAgent = async (req: Request, res: Response) => {
-    const requestContext = await auth.authenticateControlPlane(req, res);
-    if (!requestContext) {
-      return;
-    }
-
-    const body = req.body as {
-      agentUrl?: string;
-      agentCard?: AgentCard;
-      tenantId?: string;
-      isPublic?: boolean;
-    };
-    const { agentUrl, agentCard, tenantId, isPublic } = body;
-    if (!agentUrl || !agentCard) {
-      writeRegistryProblem(res, 'bad-request', { detail: 'Missing agentUrl or agentCard' });
-      return;
-    }
-
-    if (!(await validateAgentUrl(agentUrl, 'registration', context, res))) {
-      return;
-    }
-
-    const authTenantId = requestContext.tenantId;
-    const finalTenantId = authTenantId ?? tenantId;
-    if (!isPublicAgentAllowed(finalTenantId, isPublic, context)) {
-      writeRegistryProblem(res, 'forbidden', {
-        detail: 'Public agent registration is disabled for this tenant',
-      });
-      return;
-    }
-
-    const normalizedCard = normalizeAgentCard(agentCard);
-    const verification = await verifyRegistryAgentCard(normalizedCard, finalTenantId, context);
-    if (verification.state === 'rejected') {
-      writeRegistryProblem(res, 'forbidden', {
-        detail: verification.failureReason ?? 'Signed Agent Card verification failed',
-      });
-      return;
-    }
-
-    const registered = await context.store.upsert(
-      toRegisteredAgent(agentUrl, normalizedCard, finalTenantId, isPublic, verification),
-    );
-    context.state.metrics.registrations += 1;
-    emitRegistryEvent(context, { type: 'registered', agent: registered });
-
-    if (verification.state === 'trusted' && verification.keyId) {
-      const signature = normalizedCard.signatures?.find(
-        (candidate) => candidate.keyId === verification.keyId,
-      );
-      await context.trustLog.append({
-        cardHash: hashAgentCard(normalizedCard),
-        keyId: verification.keyId,
-        algorithm: signature?.algorithm ?? 'unknown',
-        agentUrl,
-        ...(finalTenantId ? { tenantId: finalTenantId } : {}),
-        timestamp: verification.verifiedAt,
-      });
-    }
-
-    logger.audit('register_agent', finalTenantId, `agent:${registered.id}`, 'success', {
-      url: registered.url,
-    });
-    logger.info('Agent registered', {
-      id: registered.id,
-      url: registered.url,
-      ...(finalTenantId ? { tenantId: finalTenantId } : {}),
-    });
-    res.status(201).json(registered);
-  };
-  app.post('/agents/register', registerAgent);
-  app.post('/admin/agents/register', registerAgent);
-
-  app.get('/trust-log', async (req, res) => {
-    const limitRaw =
-      typeof req.query['limit'] === 'string' ? Number(req.query['limit']) : undefined;
-    const entries = await context.trustLog.list({
-      ...(limitRaw !== undefined && Number.isFinite(limitRaw) ? { limit: limitRaw } : {}),
-    });
-    res.json(entries);
-  });
-
-  app.get('/trust-log/:cardHash', async (req, res) => {
-    const entries = await context.trustLog.list({ cardHash: req.params['cardHash'] as string });
-    res.json(entries);
-  });
+  registerAgentRegistrationRoutes(app, context, auth);
 
   registerAgentDiscoveryRoutes(app, context, auth);
 
@@ -472,131 +387,6 @@ function sortJson(value: unknown): unknown {
 
 function uniqueSortedStrings(values: Array<string | undefined>): string[] {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value)))).sort();
-}
-
-function toRegisteredAgent(
-  agentUrl: string,
-  card: AgentCard,
-  tenantId?: string,
-  isPublic?: boolean,
-  verification?: AgentCardVerificationMetadata,
-): RegisteredAgent {
-  return {
-    id: randomUUID(),
-    url: agentUrl,
-    card,
-    status: 'unknown',
-    tags: createRegisteredAgentTags(card),
-    skills: createRegisteredAgentSkills(card),
-    registeredAt: new Date().toISOString(),
-    ...(tenantId ? { tenantId } : {}),
-    ...(typeof isPublic === 'boolean' ? { isPublic } : {}),
-    ...(verification ? { verification } : {}),
-  };
-}
-
-async function verifyRegistryAgentCard(
-  card: AgentCard,
-  tenantId: string | undefined,
-  context: RegistryServerContext,
-): Promise<AgentCardVerificationMetadata> {
-  const policy = tenantId ? context.options.tenantTrustPolicies?.[tenantId] : undefined;
-  const required =
-    policy?.requireSignedAgentCards ?? context.options.requireSignedAgentCards ?? false;
-  const trustedKeys = [
-    ...(context.options.trustedAgentCardKeys ?? []),
-    ...(policy?.trustedAgentCardKeys ?? []),
-  ];
-  const verifiedAt = new Date().toISOString();
-
-  if ((card.signatures?.length ?? 0) === 0) {
-    return {
-      required,
-      valid: false,
-      state: required ? 'rejected' : 'unverified',
-      verifiedAt,
-      ...(tenantId ? { tenantId } : {}),
-      failureReason: required ? 'Agent Card signature is required' : 'Agent Card is unsigned',
-    };
-  }
-
-  if (trustedKeys.length === 0) {
-    return {
-      required,
-      valid: false,
-      state: required ? 'rejected' : 'unverified',
-      verifiedAt,
-      ...(tenantId ? { tenantId } : {}),
-      failureReason: required
-        ? 'No trusted Agent Card verification keys configured'
-        : 'No trusted verification key matched',
-    };
-  }
-
-  const verification = await verifyAgentCard(card, dedupeVerificationKeys(trustedKeys));
-  if (!verification.valid) {
-    return {
-      required,
-      valid: false,
-      state: required ? 'rejected' : 'unverified',
-      verifiedAt,
-      ...(tenantId ? { tenantId } : {}),
-      failureReason: 'Agent Card signature could not be verified',
-    };
-  }
-
-  return {
-    required,
-    valid: true,
-    state: 'trusted',
-    verifiedAt,
-    ...(verification.verifiedKeyId ? { keyId: verification.verifiedKeyId } : {}),
-    ...(tenantId ? { tenantId } : {}),
-  };
-}
-
-function isPublicAgentAllowed(
-  tenantId: string | undefined,
-  isPublic: boolean | undefined,
-  context: RegistryServerContext,
-): boolean {
-  if (isPublic !== true || !tenantId) {
-    return true;
-  }
-
-  return context.options.tenantTrustPolicies?.[tenantId]?.allowPublicAgents !== false;
-}
-
-function dedupeVerificationKeys(keys: VerificationKey[]): VerificationKey[] {
-  const seen = new Set<string>();
-  return keys.filter((key) => {
-    if (seen.has(key.keyId)) {
-      return false;
-    }
-    seen.add(key.keyId);
-    return true;
-  });
-}
-
-async function validateAgentUrl(
-  url: string,
-  operation: 'registration' | 'import',
-  context: RegistryServerContext,
-  res: Response,
-): Promise<boolean> {
-  try {
-    await validateUrl(
-      url,
-      createRegistryOutboundPolicy(context, {
-        telemetryLabels: { 'a2a.registry.operation': operation },
-      }),
-    );
-    return true;
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    writeRegistryProblem(res, 'bad-request', { detail: `Invalid agentUrl: ${message}` });
-    return false;
-  }
 }
 
 async function handleAuthorizedAgentRequest(
