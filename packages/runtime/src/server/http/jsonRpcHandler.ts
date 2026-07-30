@@ -25,20 +25,11 @@ import type {
 } from '../../types/task.js';
 import { normalizeMessage } from '../../utils/compat.js';
 import { makeErrorInfo } from '../../utils/errors.js';
-import {
-  normalizeOfficialV1RpcRequest,
-  toOfficialV1RpcResult,
-  type A2AJsonRpcDialect,
-} from '../../utils/officialWire.js';
+import { toOfficialV1RpcResult, type A2AJsonRpcDialect } from '../../utils/officialWire.js';
 import { logger } from '../../utils/logger.js';
-import {
-  assertJsonRpcInputLimits,
-  DEFAULT_JSON_RPC_INPUT_LIMITS,
-  type JsonRpcInputLimits,
-} from '../../utils/json-rpc-input-limits.js';
+import type { JsonRpcInputLimits } from '../../utils/json-rpc-input-limits.js';
 import {
   PushNotificationConfigSchema,
-  validateJsonRpcRequest,
   validateMessageSendParams,
   validateRequest,
   validateTaskListParams,
@@ -57,7 +48,7 @@ import {
 import { toLifecycleJsonRpcError } from './lifecycleErrors.js';
 import type { RequestWithRequestId } from './middleware.js';
 import { isStreamingRpcMethod } from './streamRoutes.js';
-import { assertSupportedA2AProtocolVersion } from './protocolVersion.js';
+import { prepareJsonRpcRequest } from './jsonRpcEnvelope.js';
 
 export interface RpcContext {
   req: Request;
@@ -133,32 +124,10 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
   return async (req, res) => {
     let idempotency: IdempotencyResolution | null | undefined;
     try {
-      assertSupportedA2AProtocolVersion(req);
-
-      if (Array.isArray(req.body)) {
-        throw new JsonRpcError(
-          ErrorCodes.InvalidRequest,
-          'Batch requests are not supported',
-          makeErrorInfo('INVALID_REQUEST'),
-        );
-      }
-
-      assertJsonRpcInputLimits(req.body, deps.jsonRpcInputLimits ?? DEFAULT_JSON_RPC_INPUT_LIMITS);
-
-      const receivedRpcReq = validateJsonRpcRequest(req.body);
-      const normalizedRpcReq = normalizeOfficialV1RpcRequest(
-        receivedRpcReq.method,
-        receivedRpcReq.params,
+      const { receivedRpcReq, rpcReq, responseDialect } = prepareJsonRpcRequest(
+        req,
+        deps.jsonRpcInputLimits,
       );
-      const normalizedParams = normalizedRpcReq.params as JsonRpcRequest['params'];
-      const rpcReq: JsonRpcRequest = {
-        ...receivedRpcReq,
-        method: normalizedRpcReq.method,
-        ...(normalizedParams !== undefined ? { params: normalizedParams } : {}),
-      };
-      const responseDialect: A2AJsonRpcDialect = normalizedRpcReq.officialV1
-        ? 'official-v1'
-        : 'mesh';
       let requestContext = getRequestContext(req);
       if (deps.authMiddleware) {
         try {
