@@ -4,13 +4,7 @@
  */
 
 import { EventSource, type EventSourceInit } from 'eventsource';
-import { context, propagation } from '@opentelemetry/api';
 import type { AgentCard, SupportedInterface } from '../types/agent-card.js';
-import type {
-  JsonRpcFailureResponse,
-  JsonRpcResponse,
-  JsonRpcSuccessResponse,
-} from '../types/jsonrpc.js';
 import type {
   A2AHealthResponse,
   Message,
@@ -21,7 +15,7 @@ import type {
   TaskListParams,
   TaskListResult,
 } from '../types/task.js';
-import type { AfterArgs, CallInterceptor, ClientCallOptions } from './interceptors.js';
+import type { CallInterceptor } from './interceptors.js';
 import { verifyAgentCard, type VerificationKey } from '../security/AgentCardSigner.js';
 import { createEventSourceReader } from './eventSourceReader.js';
 import {
@@ -29,11 +23,11 @@ import {
   createOutboundPolicyFetch,
   type OutboundPolicyOptions,
 } from '../net/OutboundPolicy.js';
+import type { A2AJsonRpcDialect } from '../utils/officialWire.js';
 import {
-  normalizeOfficialRpcResult,
-  toOfficialV1RpcRequest,
-  type A2AJsonRpcDialect,
-} from '../utils/officialWire.js';
+  createA2AClientRpcTransport,
+  type A2AClientRpcTransport,
+} from './A2AClientRpcTransport.js';
 
 export interface A2AClientOptions {
   fetchImplementation?: typeof fetch;
@@ -100,6 +94,7 @@ export class A2AClient {
   private readonly requireVerifiedAgentCard: boolean;
   private readonly protocolVersion: A2AProtocolVersion;
   private readonly jsonRpcDialect: A2AJsonRpcDialect;
+  private readonly rpcTransport: A2AClientRpcTransport;
 
   constructor(
     public readonly baseUrl: string,
@@ -125,6 +120,15 @@ export class A2AClient {
     this.requireVerifiedAgentCard = options.requireVerifiedAgentCard ?? false;
     this.protocolVersion = A2AClient.getProtocolPreferences(options)[0] ?? '1.0';
     this.jsonRpcDialect = options.jsonRpcDialect ?? 'mesh';
+    this.rpcTransport = createA2AClientRpcTransport({
+      baseUrl: this.baseUrl,
+      rpcPath: this.rpcPath,
+      protocolVersion: this.protocolVersion,
+      jsonRpcDialect: this.jsonRpcDialect,
+      interceptors: this.interceptors,
+      headers: this.headers,
+      fetchWithRetry: (input, init) => this.fetchWithRetry(input, init),
+    });
   }
 
   static async connect(agentCardUrl: string, options: A2AClientOptions = {}): Promise<A2AClient> {
@@ -244,11 +248,17 @@ export class A2AClient {
   }
 
   async sendMessage(params: Message | MessageSendParams): Promise<Task> {
-    return this.rpc<Task, MessageSendParams>('message/send', this.normalizeParams(params));
+    return this.rpcTransport.rpc<Task, MessageSendParams>(
+      'message/send',
+      this.normalizeParams(params),
+    );
   }
 
   async sendMessageStream(params: Message | MessageSendParams): Promise<AsyncGenerator<unknown>> {
-    return this.streamRpc<Task, MessageSendParams>('message/stream', this.normalizeParams(params));
+    return this.rpcTransport.streamRpc<Task, MessageSendParams>(
+      'message/stream',
+      this.normalizeParams(params),
+    );
   }
 
   subscribeTask(taskId: string): AsyncGenerator<unknown> {
@@ -256,22 +266,22 @@ export class A2AClient {
   }
 
   async getTask(taskId: string): Promise<Task> {
-    return this.rpc<Task, { taskId: string }>('tasks/get', { taskId });
+    return this.rpcTransport.rpc<Task, { taskId: string }>('tasks/get', { taskId });
   }
 
   async listTasks(params: TaskListParams = {}): Promise<TaskListResult> {
-    return this.rpc<TaskListResult, TaskListParams>('tasks/list', params);
+    return this.rpcTransport.rpc<TaskListResult, TaskListParams>('tasks/list', params);
   }
 
   async cancelTask(taskId: string): Promise<Task> {
-    return this.rpc<Task, { taskId: string }>('tasks/cancel', { taskId });
+    return this.rpcTransport.rpc<Task, { taskId: string }>('tasks/cancel', { taskId });
   }
 
   async setPushNotification(
     taskId: string,
     pushNotificationConfig: PushNotificationConfig,
   ): Promise<PushNotificationConfig> {
-    return this.rpc<
+    return this.rpcTransport.rpc<
       PushNotificationConfig,
       { taskId: string; pushNotificationConfig: PushNotificationConfig }
     >('tasks/pushNotification/set', {
@@ -281,7 +291,7 @@ export class A2AClient {
   }
 
   async getPushNotification(taskId: string): Promise<PushNotificationConfig | null> {
-    return this.rpc<PushNotificationConfig | null, { taskId: string }>(
+    return this.rpcTransport.rpc<PushNotificationConfig | null, { taskId: string }>(
       'tasks/pushNotification/get',
       {
         taskId,
@@ -294,7 +304,7 @@ export class A2AClient {
     pushNotificationConfig: PushNotificationConfig,
     configId = pushNotificationConfig.id,
   ): Promise<PushNotificationConfig> {
-    return this.rpc<
+    return this.rpcTransport.rpc<
       PushNotificationConfig,
       TaskPushNotificationConfig & { configId?: string | undefined }
     >('tasks/pushNotificationConfig/create', {
@@ -308,16 +318,16 @@ export class A2AClient {
     taskId: string,
     configId = 'default',
   ): Promise<PushNotificationConfig | null> {
-    return this.rpc<PushNotificationConfig | null, { taskId: string; configId: string }>(
-      'tasks/pushNotificationConfig/get',
-      { taskId, configId },
-    );
+    return this.rpcTransport.rpc<
+      PushNotificationConfig | null,
+      { taskId: string; configId: string }
+    >('tasks/pushNotificationConfig/get', { taskId, configId });
   }
 
   async listPushNotificationConfigs(
     taskId: string,
   ): Promise<{ configs: PushNotificationConfig[] }> {
-    return this.rpc<{ configs: PushNotificationConfig[] }, { taskId: string }>(
+    return this.rpcTransport.rpc<{ configs: PushNotificationConfig[] }, { taskId: string }>(
       'tasks/pushNotificationConfig/list',
       { taskId },
     );
@@ -327,18 +337,24 @@ export class A2AClient {
     taskId: string,
     configId = 'default',
   ): Promise<{ deleted: boolean }> {
-    return this.rpc<{ deleted: boolean }, { taskId: string; configId: string }>(
+    return this.rpcTransport.rpc<{ deleted: boolean }, { taskId: string; configId: string }>(
       'tasks/pushNotificationConfig/delete',
       { taskId, configId },
     );
   }
 
   async getAuthenticatedExtendedCard(): Promise<AgentCard> {
-    return this.rpc<AgentCard, Record<string, never>>('agent/getAuthenticatedExtendedCard', {});
+    return this.rpcTransport.rpc<AgentCard, Record<string, never>>(
+      'agent/getAuthenticatedExtendedCard',
+      {},
+    );
   }
 
   async authenticatedExtendedCard(): Promise<AgentCard> {
-    return this.rpc<AgentCard, Record<string, never>>('agent/authenticatedExtendedCard', {});
+    return this.rpcTransport.rpc<AgentCard, Record<string, never>>(
+      'agent/authenticatedExtendedCard',
+      {},
+    );
   }
 
   async health(): Promise<A2AHealthResponse> {
@@ -350,147 +366,6 @@ export class A2AClient {
       throw new Error(`Health check failed with status ${response.status}`);
     }
     return (await response.json()) as A2AHealthResponse;
-  }
-
-  private async executeRpcRequest<TParams extends object>(
-    method: string,
-    params: TParams,
-    streamMode: boolean,
-  ): Promise<[Response, string]> {
-    const options: ClientCallOptions = { headers: { ...this.headers } };
-    const id = this.createRequestId();
-    const wireRequest =
-      this.jsonRpcDialect === 'official-v1'
-        ? toOfficialV1RpcRequest(method, params)
-        : { method, params };
-    const payload = {
-      jsonrpc: '2.0' as const,
-      id,
-      method: wireRequest.method,
-      params: wireRequest.params,
-    };
-
-    for (const interceptor of this.interceptors) {
-      await interceptor.before({ method, body: payload, options });
-    }
-
-    const headers = this.injectTraceHeaders({
-      ...(streamMode ? { Accept: 'text/event-stream' } : {}),
-      'Content-Type': 'application/json',
-      ...(options.headers ?? {}),
-      ...(options.serviceParameters ?? {}),
-      [A2A_VERSION_HEADER]: this.protocolVersion,
-    });
-
-    const response = await this.fetchWithRetry(new URL(this.rpcPath, this.baseUrl), {
-      method: 'POST',
-      headers,
-      ...(options.signal ? { signal: options.signal } : {}),
-      body: JSON.stringify(payload),
-    });
-
-    return [response, id];
-  }
-
-  private async handleRpcResponse<T>(json: JsonRpcResponse<T>, method: string): Promise<T> {
-    if ('error' in json) {
-      const failure = json as JsonRpcFailureResponse;
-      throw new Error(`${failure.error.message} (${failure.error.code})`);
-    }
-
-    const success = json as JsonRpcSuccessResponse<T>;
-    const normalizedResult = normalizeOfficialRpcResult(method, success.result) as T;
-    for (const interceptor of this.interceptors) {
-      await interceptor.after?.({ method, response: normalizedResult } satisfies AfterArgs<T>);
-    }
-    return normalizedResult;
-  }
-
-  private async rpc<T, TParams extends object>(method: string, params: TParams): Promise<T> {
-    const [response] = await this.executeRpcRequest(method, params, false);
-
-    if (!response.ok) {
-      await response.body?.cancel().catch(() => undefined);
-      throw new Error(`RPC request failed with status ${response.status}`);
-    }
-
-    const json = (await response.json()) as JsonRpcResponse<T>;
-    return this.handleRpcResponse(json, method);
-  }
-
-  private async *streamRpc<T, TParams extends object>(
-    method: string,
-    params: TParams,
-  ): AsyncGenerator<T> {
-    const [response] = await this.executeRpcRequest(method, params, true);
-
-    if (!response.ok) {
-      await response.body?.cancel().catch(() => undefined);
-      throw new Error(`RPC stream failed with status ${response.status}`);
-    }
-
-    if (!response.body) {
-      throw new Error('RPC stream response did not include a readable body');
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    try {
-      while (true) {
-        const { value, done } = await reader.read();
-        buffer += decoder.decode(value, { stream: !done });
-        buffer = buffer.replace(/\r\n/g, '\n');
-
-        let boundary = buffer.indexOf('\n\n');
-        while (boundary >= 0) {
-          const rawEvent = buffer.slice(0, boundary);
-          buffer = buffer.slice(boundary + 2);
-          const result = await this.parseJsonRpcSseEvent<T>(rawEvent, method);
-          if (result !== undefined) {
-            yield result;
-          }
-          boundary = buffer.indexOf('\n\n');
-        }
-
-        if (done) {
-          const result = await this.parseJsonRpcSseEvent<T>(buffer, method);
-          if (result !== undefined) {
-            yield result;
-          }
-          break;
-        }
-      }
-    } finally {
-      reader.releaseLock();
-    }
-  }
-
-  private parseSseData(rawEvent: string): string {
-    return rawEvent
-      .split(/\r?\n/)
-      .filter((line) => line.startsWith('data:'))
-      .map((line) => line.slice(5).trimStart())
-      .join('\n');
-  }
-
-  private async parseJsonRpcSseEvent<T>(rawEvent: string, method: string): Promise<T | undefined> {
-    const data = this.parseSseData(rawEvent);
-    if (!data) {
-      return undefined;
-    }
-
-    let json: JsonRpcResponse<T>;
-    try {
-      json = JSON.parse(data) as JsonRpcResponse<T>;
-    } catch (error) {
-      throw new Error(`RPC stream returned malformed JSON: ${String(error)}`, {
-        cause: error,
-      });
-    }
-
-    return this.handleRpcResponse(json, method);
   }
 
   private normalizeParams(params: Message | MessageSendParams): MessageSendParams {
@@ -526,10 +401,6 @@ export class A2AClient {
         break;
       }
     }
-  }
-
-  private createRequestId(): string {
-    return globalThis.crypto.randomUUID();
   }
 
   private createEventSourceInit():
@@ -599,15 +470,6 @@ export class A2AClient {
       ...(options.headers ?? {}),
       [A2A_VERSION_HEADER]: options.preferredProtocolVersion ?? '1.0',
     };
-  }
-
-  private injectTraceHeaders(headers: Record<string, string>): Record<string, string> {
-    propagation.inject(context.active(), headers, {
-      set(carrier, key, value) {
-        (carrier as Record<string, string>)[key] = value;
-      },
-    });
-    return headers;
   }
 
   private async fetchWithRetry(
