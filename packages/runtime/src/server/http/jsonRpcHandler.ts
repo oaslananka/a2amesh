@@ -49,6 +49,7 @@ import { toLifecycleJsonRpcError } from './lifecycleErrors.js';
 import type { RequestWithRequestId } from './middleware.js';
 import { isStreamingRpcMethod } from './streamRoutes.js';
 import { prepareJsonRpcRequest } from './jsonRpcEnvelope.js';
+import { resolveJsonRpcRequestContext } from './jsonRpcRequestContext.js';
 
 export interface RpcContext {
   req: Request;
@@ -128,15 +129,11 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
         req,
         deps.jsonRpcInputLimits,
       );
-      let requestContext = getRequestContext(req);
-      if (deps.authMiddleware) {
-        try {
-          requestContext = await deps.authMiddleware.authenticateRequestContext(req);
-        } catch {
-          deps.runtimeMetrics.recordAuthReject();
-          throw new JsonRpcError(ErrorCodes.Unauthorized, 'Unauthorized');
-        }
-      }
+      const requestContext = await resolveJsonRpcRequestContext(
+        req,
+        deps.authMiddleware,
+        deps.runtimeMetrics,
+      );
 
       idempotency = await resolveIdempotency(
         req,
