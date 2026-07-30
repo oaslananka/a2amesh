@@ -38,13 +38,14 @@ import type { IdempotencyStore } from '../IdempotencyStore.js';
 import { TaskLifecycleError, type TaskManager } from '../TaskManager.js';
 import {
   completeIdempotency,
-  decorateIdempotentResult,
   extractJsonRpcId,
   releaseIdempotency,
-  resolveIdempotency,
-  startIdempotencyLease,
   type IdempotencyResolution,
 } from './idempotency.js';
+import {
+  executeJsonRpcIdempotentRequest,
+  resolveJsonRpcExecutionIdempotency,
+} from './jsonRpcIdempotencyExecution.js';
 import { toLifecycleJsonRpcError } from './lifecycleErrors.js';
 import type { RequestWithRequestId } from './middleware.js';
 import { isStreamingRpcMethod } from './streamRoutes.js';
@@ -135,18 +136,11 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
         deps.runtimeMetrics,
       );
 
-      idempotency = await resolveIdempotency(
-        req,
-        rpcReq,
-        requestContext,
-        res,
-        deps.idempotencyStore,
-        {
-          deferReplay: isStreamingRpcMethod(rpcReq.method),
-          leaseMs: deps.idempotencyLeaseMs,
-          runtimeMetrics: deps.runtimeMetrics,
-        },
-      );
+      idempotency = await resolveJsonRpcExecutionIdempotency(req, rpcReq, requestContext, res, {
+        store: deps.idempotencyStore,
+        leaseMs: deps.idempotencyLeaseMs,
+        runtimeMetrics: deps.runtimeMetrics,
+      });
       if (idempotency === null) {
         return;
       }
@@ -162,36 +156,21 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
         return;
       }
 
-      const lease = startIdempotencyLease(
+      const responseResult = await executeJsonRpcIdempotentRequest(
+        rpcReq,
         idempotency,
-        deps.idempotencyStore,
-        deps.runtimeMetrics,
-        rpcReq.method,
+        () => deps.handleRpc(rpcReq, { req, requestContext }),
+        {
+          store: deps.idempotencyStore,
+          ttlMs: deps.idempotencyTtlMs,
+          runtimeMetrics: deps.runtimeMetrics,
+        },
       );
-      try {
-        const result = await deps.handleRpc(rpcReq, { req, requestContext });
-        const responseResult = idempotency
-          ? decorateIdempotentResult(result, idempotency, false)
-          : result;
-        if (idempotency) {
-          await completeIdempotency(
-            deps.idempotencyStore,
-            idempotency,
-            {
-              kind: 'success',
-              value: structuredClone(responseResult),
-            },
-            deps.idempotencyTtlMs,
-          );
-        }
-        const wireResult =
-          responseDialect === 'official-v1'
-            ? toOfficialV1RpcResult(receivedRpcReq.method, responseResult)
-            : responseResult;
-        res.json(createJsonRpcSuccessResponse(wireResult, rpcReq.id ?? null));
-      } finally {
-        lease?.stop();
-      }
+      const wireResult =
+        responseDialect === 'official-v1'
+          ? toOfficialV1RpcResult(receivedRpcReq.method, responseResult)
+          : responseResult;
+      res.json(createJsonRpcSuccessResponse(wireResult, rpcReq.id ?? null));
     } catch (err: unknown) {
       await writeJsonRpcErrorResponse(req, res, err, idempotency, deps);
     }
