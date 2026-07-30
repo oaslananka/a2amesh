@@ -13,9 +13,13 @@ import {
   type RequestContext,
   type VerificationKey,
 } from '@a2amesh/runtime';
-import type { AgentListQuery, AgentListResult } from '../storage/indexing.js';
 import type { AgentCardVerificationMetadata, RegisteredAgent } from '../storage/IAgentStorage.js';
 import type { RegistryAuthController } from './auth.js';
+import {
+  getAuthorizedAgents,
+  registerAgentDiscoveryRoutes,
+  routeParam,
+} from './agentDiscoveryRoutes.js';
 import type { RegistryMetricsController } from './metrics.js';
 import { createRegistryOutboundPolicy } from './outboundPolicy.js';
 import type { RegistryPollingController } from './polling.js';
@@ -202,22 +206,7 @@ export function registerRegistryRoutes(
     res.json(entries);
   });
 
-  app.get('/agents', async (req, res) => {
-    const pagination = resolveAgentPagination(req);
-    if (req.query['public'] === 'true') {
-      const result = await context.store.list({
-        isPublic: true,
-        ...pagination,
-      });
-      writeAgentList(res, result);
-      return;
-    }
-
-    const agents = await getAuthorizedAgents(req, res, context, auth, pagination);
-    if (agents) {
-      writeAgentList(res, agents);
-    }
-  });
+  registerAgentDiscoveryRoutes(app, context, auth);
 
   app.get('/admin/agents/export', async (req, res) => {
     const agents = await getAuthorizedAgents(req, res, context, auth);
@@ -291,74 +280,6 @@ export function registerRegistryRoutes(
     );
   });
 
-  app.get('/agents/search', async (req, res) => {
-    const skill = typeof req.query['skill'] === 'string' ? req.query['skill'] : '';
-    const tag = typeof req.query['tag'] === 'string' ? req.query['tag'] : '';
-    const name = typeof req.query['name'] === 'string' ? req.query['name'] : '';
-    const transport = req.query['transport'] as 'http' | 'sse' | 'ws' | 'grpc' | undefined;
-    const status = req.query['status'] as 'healthy' | 'unhealthy' | 'unknown' | undefined;
-    const mcpCompatible =
-      req.query['mcpCompatible'] === 'true'
-        ? true
-        : req.query['mcpCompatible'] === 'false'
-          ? false
-          : undefined;
-
-    if (!skill && !tag && !name && !transport && !status && mcpCompatible === undefined) {
-      writeRegistryProblem(res, 'bad-request', {
-        detail:
-          'At least one filter (skill, tag, name, transport, status, mcpCompatible) is required',
-      });
-      return;
-    }
-
-    context.state.metrics.searches += 1;
-    const query = {
-      ...(skill ? { skill } : {}),
-      ...(tag ? { tag } : {}),
-      ...(name ? { name } : {}),
-      ...(transport ? { transport } : {}),
-      ...(status ? { status } : {}),
-      ...(mcpCompatible !== undefined ? { mcpCompatible } : {}),
-      ...resolveAgentPagination(req),
-    } as const;
-
-    if (req.query['public'] === 'true') {
-      writeAgentList(res, await context.store.list({ ...query, isPublic: true }));
-      return;
-    }
-
-    const agents = await getAuthorizedAgents(req, res, context, auth, query);
-    if (agents) {
-      writeAgentList(res, agents);
-    }
-  });
-
-  app.get('/agents/:id', async (req, res) => {
-    const agentId = routeParam(req.params['id']);
-    if (!agentId) {
-      writeRegistryProblem(res, 'bad-request', { detail: 'Missing agent id' });
-      return;
-    }
-
-    const agent = await context.store.get(agentId);
-    if (!agent) {
-      writeRegistryProblem(res, 'not-found', { detail: 'Agent not found' });
-      return;
-    }
-    if (!agent.isPublic) {
-      const requestContext = await auth.authenticateControlPlane(req, res);
-      if (!requestContext) {
-        return;
-      }
-      if (!auth.canAccessAgent(agent, requestContext)) {
-        writeRegistryProblem(res, 'forbidden', { detail: 'Forbidden' });
-        return;
-      }
-    }
-    res.json(agent);
-  });
-
   const heartbeatAgent = async (req: Request, res: Response) => {
     await handleAuthorizedAgentRequest(req, res, context, auth, async (agent) => {
       const updated: RegisteredAgent = {
@@ -399,31 +320,6 @@ export function registerRegistryRoutes(
   app.delete('/admin/agents/:id', deleteAgent);
 }
 
-function resolveAgentPagination(req: Request): Pick<AgentListQuery, 'cursor' | 'limit'> {
-  const rawLimit = Array.isArray(req.query['limit']) ? req.query['limit'][0] : req.query['limit'];
-  const limit = typeof rawLimit === 'string' ? Number(rawLimit) : undefined;
-  const rawCursor = Array.isArray(req.query['cursor'])
-    ? req.query['cursor'][0]
-    : req.query['cursor'];
-  return {
-    ...(typeof rawCursor === 'string' && rawCursor.trim().length > 0
-      ? { cursor: rawCursor.trim() }
-      : {}),
-    ...(limit !== undefined && Number.isFinite(limit) && limit > 0
-      ? { limit: Math.floor(limit) }
-      : { limit: Number.MAX_SAFE_INTEGER }),
-  };
-}
-
-function writeAgentList(res: Response, result: AgentListResult): void {
-  res.setHeader('X-A2A-Registry-Page-Total', String(result.total));
-  res.setHeader('X-A2A-Registry-Page-Count', String(result.items.length));
-  if (result.nextCursor) {
-    res.setHeader('X-A2A-Registry-Page-Next-Cursor', result.nextCursor);
-  }
-  res.json(result.items);
-}
-
 function resolveVisibilityScope(
   requestContext: RequestContext,
   auth: RegistryAuthController,
@@ -441,10 +337,6 @@ function resolveHealthStaleAfterMs(context: RegistryServerContext): number {
     context.options.unknownRecheckIntervalMs ?? 120_000,
   );
   return longestRecheckIntervalMs * 2;
-}
-
-function routeParam(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
 }
 
 function emitRegistryEvent(context: RegistryServerContext, payload: unknown): void {
@@ -770,32 +662,4 @@ async function handleSseStream(
     onConfigure();
   }
   setupSseListener(res, emitter, event, listener);
-}
-
-async function getAuthorizedAgents(
-  req: Request,
-  res: Response,
-  context: RegistryServerContext,
-  auth: RegistryAuthController,
-  query: AgentListQuery = { limit: Number.MAX_SAFE_INTEGER },
-): Promise<AgentListResult | undefined> {
-  const requestContext = await auth.authenticateControlPlane(req, res);
-  if (!requestContext) {
-    return undefined;
-  }
-
-  const result = await context.store.list({
-    ...query,
-    ...(requestContext.tenantId ? { tenantId: requestContext.tenantId, includePublic: true } : {}),
-  });
-
-  if (!auth.shouldEnforceTenantIsolation(requestContext)) {
-    return result;
-  }
-
-  const items = auth.filterAgentsByContext(result.items, requestContext);
-  return {
-    ...result,
-    items,
-  };
 }
