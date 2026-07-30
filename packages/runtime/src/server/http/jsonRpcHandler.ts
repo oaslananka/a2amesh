@@ -7,14 +7,7 @@ import type { AgentCard } from '../../types/agent-card.js';
 import { getDocsUrl } from '../../config/docs.js';
 import type { RequestContext } from '../../types/auth.js';
 import type { A2AExtension } from '../../types/extensions.js';
-import {
-  ErrorCodes,
-  JsonRpcError,
-  type JsonRpcFailureResponse,
-  type JsonRpcId,
-  type JsonRpcRequest,
-  type JsonRpcSuccessResponse,
-} from '../../types/jsonrpc.js';
+import { ErrorCodes, JsonRpcError, type JsonRpcRequest } from '../../types/jsonrpc.js';
 import type {
   Artifact,
   ExtensibleArtifact,
@@ -36,12 +29,7 @@ import {
 } from '../../utils/schema-validator.js';
 import type { IdempotencyStore } from '../IdempotencyStore.js';
 import { TaskLifecycleError, type TaskManager } from '../TaskManager.js';
-import {
-  completeIdempotency,
-  extractJsonRpcId,
-  releaseIdempotency,
-  type IdempotencyResolution,
-} from './idempotency.js';
+import type { IdempotencyResolution } from './idempotency.js';
 import {
   executeJsonRpcIdempotentRequest,
   resolveJsonRpcExecutionIdempotency,
@@ -51,6 +39,8 @@ import type { RequestWithRequestId } from './middleware.js';
 import { isStreamingRpcMethod } from './streamRoutes.js';
 import { prepareJsonRpcRequest } from './jsonRpcEnvelope.js';
 import { resolveJsonRpcRequestContext } from './jsonRpcRequestContext.js';
+import { createJsonRpcSuccessResponse, writeJsonRpcErrorResponse } from './jsonRpcResponses.js';
+export { createJsonRpcErrorResponse, createJsonRpcSuccessResponse } from './jsonRpcResponses.js';
 
 export interface RpcContext {
   req: Request;
@@ -94,32 +84,6 @@ export interface JsonRpcHttpHandlerDependencies {
   jsonRpcInputLimits?: JsonRpcInputLimits;
   handleRpc: HandleRpc;
   handleStreamingRpc: HandleStreamingRpc;
-}
-
-export function createJsonRpcSuccessResponse<T>(
-  result: T,
-  id: JsonRpcId,
-): JsonRpcSuccessResponse<T> {
-  return {
-    jsonrpc: '2.0',
-    result,
-    id,
-  };
-}
-
-export function createJsonRpcErrorResponse(
-  error: Pick<JsonRpcError, 'code' | 'message' | 'data'>,
-  id: JsonRpcId,
-): JsonRpcFailureResponse {
-  return {
-    jsonrpc: '2.0',
-    error: {
-      code: error.code,
-      message: error.message,
-      ...(error.data ? { data: error.data } : {}),
-    },
-    id,
-  };
 }
 
 export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): RequestHandler {
@@ -172,66 +136,12 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
           : responseResult;
       res.json(createJsonRpcSuccessResponse(wireResult, rpcReq.id ?? null));
     } catch (err: unknown) {
-      await writeJsonRpcErrorResponse(req, res, err, idempotency, deps);
+      await writeJsonRpcErrorResponse(req, res, err, idempotency, {
+        store: deps.idempotencyStore,
+        ttlMs: deps.idempotencyTtlMs,
+      });
     }
   };
-}
-
-async function writeJsonRpcErrorResponse(
-  req: Request,
-  res: Response,
-  err: unknown,
-  idempotency: IdempotencyResolution | null | undefined,
-  deps: Pick<JsonRpcHttpHandlerDependencies, 'idempotencyStore' | 'idempotencyTtlMs'>,
-): Promise<void> {
-  const responseId = extractJsonRpcId(req.body);
-  if (err instanceof JsonRpcError) {
-    if (
-      idempotency?.ownerId &&
-      err.code !== ErrorCodes.IdempotencyConflict &&
-      err.code !== ErrorCodes.IdempotencyInProgress
-    ) {
-      const error = {
-        code: err.code,
-        message: err.message,
-        ...(err.data ? { data: err.data } : {}),
-      };
-      try {
-        await completeIdempotency(
-          deps.idempotencyStore,
-          idempotency,
-          { kind: 'error', error },
-          deps.idempotencyTtlMs,
-        );
-      } catch (completionError) {
-        logger.error('Failed to finalize idempotent error response', {
-          error: completionError,
-        });
-        res.json(
-          createJsonRpcErrorResponse(
-            new JsonRpcError(ErrorCodes.InternalError, 'Internal Error'),
-            responseId,
-          ),
-        );
-        return;
-      }
-    }
-    res.json(createJsonRpcErrorResponse(err, responseId));
-    return;
-  }
-
-  try {
-    await releaseIdempotency(deps.idempotencyStore, idempotency);
-  } catch (releaseError) {
-    logger.error('Failed to release retryable idempotency reservation', { error: releaseError });
-  }
-  logger.error('Unhandled internal error', { error: String(err) });
-  res.json(
-    createJsonRpcErrorResponse(
-      new JsonRpcError(ErrorCodes.InternalError, 'Internal Error'),
-      responseId,
-    ),
-  );
 }
 
 type MessageRequestConfiguration = NonNullable<MessageSendParams['configuration']>;
