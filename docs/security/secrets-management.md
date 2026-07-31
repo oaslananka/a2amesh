@@ -19,17 +19,18 @@ the inventory exceeds its 90-day refresh cadence.
 
 ## Current GitHub Actions credential model
 
-Observed through the GitHub API on **2026-07-23**. The repository owner, `@oaslananka`, owns the
+Observed through the GitHub API on **2026-07-31**. The repository owner, `@oaslananka`, owns the
 review and refresh process.
 
-### Repository secrets
+### Workflow-consumed secrets
 
-| Secret          | Purpose                                               | Consumer                   | Rotation path                                                                                        |
-| --------------- | ----------------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `CODECOV_TOKEN` | Upload unit coverage and test-result reports securely | `.github/workflows/ci.yml` | Create a replacement in Codecov, update GitHub, verify one CI upload, then revoke the previous token |
+| Secret                 | Scope             | Purpose                                                       | Consumer                                    | Rotation path                                                                                                                 |
+| ---------------------- | ----------------- | ------------------------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `CODECOV_TOKEN`        | Repository        | Upload unit coverage and test-result reports securely         | `.github/workflows/ci.yml`                  | Create a replacement in Codecov, update GitHub, verify one CI upload, then revoke the previous token                          |
+| `NVIDIA_API_KEY`       | `dev` environment | Run a manual NVIDIA NIM interoperability smoke                | `.github/workflows/provider-live-smoke.yml` | Rotate in NVIDIA, update the source secret manager, verify Config Sync and one live smoke, then revoke the previous key       |
+| `OPENCODE_ZEN_API_KEY` | `dev` environment | Run manual OpenCode Zen interoperability and skill evaluation | `.github/workflows/provider-live-smoke.yml` | Rotate in OpenCode Zen, update the source secret manager, verify Config Sync and one live smoke, then revoke the previous key |
 
-All other repository-level credentials present during the audit were removed because no workflow
-referenced them. The machine-readable inventory records the removal count and observation date
+The `dev` environment values are synchronized from the source secret manager. The workflow is manual-only and does not run for pull requests, pushes, or schedules. All other repository-level credentials present during the audit were removed because no workflow referenced them. The machine-readable inventory records the removal count and observation date
 without turning obsolete credential names into a supported interface or preserving any value.
 
 ### `npm-publish` environment

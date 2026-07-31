@@ -108,6 +108,18 @@ CLAUDE_BIN="$(command -v claude)" node scripts/check-agent-plugin.mjs --claude-l
 
 The checker verifies manifest identity/version parity, canonical skill structure, OpenCode mirror parity, documentation gates, and isolated filesystem install/upgrade/rollback behavior. The optional `--claude-lifecycle` path also creates an isolated temporary marketplace and home directory, installs the plugin, upgrades to a generated next version, and rolls back by reinstalling the recorded version. It does not contact an external A2A endpoint.
 
+### Optional OpenCode Zen skill evaluation
+
+The manual `Provider Live Smoke` workflow can evaluate the OpenCode mirrors with a
+selected OpenCode Zen chat-completions model. Each run uses an isolated OpenCode home
+and configuration, disables external plugins and automatic sharing, denies every tool
+by default, and permits only the `skill` tool. The evaluator requires exactly one
+completed load of each expected skill and rejects any other tool call.
+
+This evaluation is optional and non-gating because hosted model availability, quotas,
+and behavior can change independently of the repository. Bounded JSONL evidence and a
+secret-free summary are retained as workflow artifacts for 14 days.
+
 ## Safety and privacy
 
 - Validation and discovery start read-only.
