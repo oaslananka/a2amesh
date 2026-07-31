@@ -44,6 +44,9 @@
     "examples/openai-compatible-provider": {
       "entry": ["src/live-smoke.ts"]
     },
+    "examples/openclaw-mcp": {
+      "entry": ["src/live-openclaw.ts"]
+    },
     "tests/compat/mcp-2026-07-28/sdk-v2": {}
   }
 }

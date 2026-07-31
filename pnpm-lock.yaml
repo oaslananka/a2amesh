@@ -382,6 +382,28 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  examples/openclaw-mcp:
+    dependencies:
+      '@a2amesh/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
+      '@a2amesh/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.29.0
+        version: 1.29.0(zod@4.4.3)
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.21
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   examples/push-notifications:
     dependencies:
       '@a2amesh/runtime':
@@ -658,7 +680,7 @@ importers:
         version: link:../runtime
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
-        version: 1.29.0
+        version: 1.29.0(zod@4.4.3)
     devDependencies:
       typescript:
         specifier: 6.0.3
@@ -1885,6 +1907,7 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
+      zod: ^3.25 || ^4.0
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
@@ -6842,7 +6865,7 @@ snapshots:
     dependencies:
       '@braidai/lang': 1.1.2
 
-  '@modelcontextprotocol/sdk@1.29.0':
+  '@modelcontextprotocol/sdk@1.29.0(zod@4.4.3)':
     dependencies:
       '@hono/node-server': 2.0.11(hono@4.12.31)
       ajv: 8.20.0

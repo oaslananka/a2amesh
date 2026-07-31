@@ -1,0 +1,28 @@
+{
+  "name": "@a2amesh/runtime-example-openclaw-mcp",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "description": "Security-bounded OpenClaw MCP compatibility example for A2A Mesh.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false",
+    "start": "pnpm --dir ../.. run build && node dist/src/index.js",
+    "smoke": "pnpm --dir ../.. run build && node --test dist/tests/smoke.test.js",
+    "live:openclaw": "pnpm --dir ../.. run build && node dist/src/live-openclaw.js"
+  },
+  "dependencies": {
+    "@a2amesh/mcp": "workspace:*",
+    "@a2amesh/runtime": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=22.22.1 <25",
+    "pnpm": ">=11 <12"
+  }
+}

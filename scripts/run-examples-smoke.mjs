@@ -9,6 +9,7 @@ const examples = [
   'websocket',
   'grpc',
   'mcp-bridge',
+  'openclaw-mcp',
   'adapter-template',
   'openai-compatible-provider',
   'agent-mesh',

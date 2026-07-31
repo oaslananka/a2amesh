@@ -15,3 +15,4 @@
 - [ADR-0013: Agent Card Trust Log](0013-agent-card-trust-log.md)
 - [ADR-0014: SQLite Persistence for Trust Log and Fleet Storage](0014-sqlite-persistence-for-trust-log-and-fleet-storage.md)
 - [ADR-0015: MCP 2026-07-28 Protocol Adoption Gate](0015-mcp-2026-protocol-adoption.md)
+- [ADR-0016: OpenClaw consumes A2A Mesh through bounded native MCP](0016-openclaw-mcp-consumption.md)
