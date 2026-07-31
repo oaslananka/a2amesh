@@ -49,7 +49,14 @@
     "packages/cli": {
       "package-name": "@a2amesh/cli",
       "component": "@a2amesh/cli",
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "/.claude-plugin/plugin.json",
+          "jsonpath": "$.version"
+        }
+      ]
     },
     "packages/create-a2amesh": {
       "package-name": "@a2amesh/create-a2amesh",

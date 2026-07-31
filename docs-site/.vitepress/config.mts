@@ -63,6 +63,7 @@ export default defineConfig({
             { text: 'Quick Start', link: '/guide/quick-start' },
             { text: '5-Minute Demo', link: '/guide/demo' },
             { text: 'Examples', link: '/guide/examples' },
+            { text: 'Agent Plugin', link: '/guide/agent-plugin' },
             { text: 'Architecture', link: '/guide/architecture' },
             { text: 'Production Checklist', link: '/guide/production-checklist' },
             { text: 'Official SDKs vs A2A Mesh', link: '/guide/sdk-comparison' },

@@ -36,7 +36,7 @@
     "@arethetypeswrong/cli",
     "publint"
   ],
-  "ignoreBinaries": ["gh", "playwright", "view", "where.exe", "semgrep", "pre-commit"],
+  "ignoreBinaries": ["gh", "playwright", "view", "where.exe", "semgrep", "pre-commit", "claude"],
   "workspaces": {
     "packages/registry": {
       "entry": ["src/bin/start.ts"]

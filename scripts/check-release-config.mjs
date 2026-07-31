@@ -82,6 +82,29 @@ for (const component of linkedComponents) {
   }
 }
 
+const pluginManifestPath = '.claude-plugin/plugin.json';
+const pluginReleasePath = `/${pluginManifestPath}`;
+const cliReleaseConfig = config.packages?.['packages/cli'];
+const pluginExtraFiles = cliReleaseConfig?.['extra-files'] ?? [];
+if (
+  !pluginExtraFiles.some(
+    (entry) =>
+      entry?.type === 'json' &&
+      entry?.path === pluginReleasePath &&
+      entry?.jsonpath === '$.version',
+  )
+) {
+  failures.push(
+    `${pluginManifestPath}: packages/cli must update the product plugin version through the repository-root JSON extra-file`,
+  );
+}
+const pluginManifest = readJson(pluginManifestPath);
+if (pluginManifest.version !== manifest['packages/cli']) {
+  failures.push(
+    `${pluginManifestPath}: version must match the linked @a2amesh/cli release version`,
+  );
+}
+
 const chartPath = 'deploy/helm/a2amesh/Chart.yaml';
 const chartReleasePath = `/${chartPath}`;
 const runtimeReleaseConfig = config.packages?.['packages/runtime'];
