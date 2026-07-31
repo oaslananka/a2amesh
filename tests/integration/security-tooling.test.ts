@@ -45,9 +45,10 @@ jobs:
       observed_at: '2026-07-23',
       settings_owner: '@oaslananka',
       refresh_cadence_days: 90,
-      repository_secrets: [
+      workflow_secrets: [
         {
           name: 'CODECOV_TOKEN',
+          scope: 'repository',
           owner: '@oaslananka',
           purpose: 'Upload unit coverage and test-result reports to Codecov.',
           consumer: '.github/workflows/ci.yml',
@@ -138,7 +139,7 @@ describe('repository-owned Semgrep policy', () => {
 
   it('requires complete ownership and rotation metadata for remaining secrets', () => {
     const input = validInputs();
-    input.credentialInventory.repository_secrets[0]!.rotation = '';
+    input.credentialInventory.workflow_secrets[0]!.rotation = '';
 
     expect(validateSecurityTooling(input)).toContain(
       'CODECOV_TOKEN: credential inventory must include a non-empty rotation path',

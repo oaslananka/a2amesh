@@ -125,9 +125,9 @@ function validateCredentialInventory(workflows, inventory, failures) {
   }
 
   validateInventoryMetadata(inventory, failures);
-  const { repositorySecrets, secretNames } = validateRepositorySecretEntries(inventory, failures);
+  const { workflowSecrets, secretNames } = validateWorkflowSecretEntries(inventory, failures);
   const referencedSecrets = collectWorkflowSecretReferences(workflows, secretNames, failures);
-  validateDeclaredConsumers(repositorySecrets, referencedSecrets, failures);
+  validateDeclaredConsumers(workflowSecrets, referencedSecrets, failures);
   validatePublishWorkflow(workflows?.['.github/workflows/publish.yml'] ?? '', failures);
   validatePublishEnvironment(inventory, failures);
 }
@@ -159,22 +159,23 @@ function isValidRefreshCadence(value) {
   return Number.isInteger(value) && value >= 1 && value <= 90;
 }
 
-function validateRepositorySecretEntries(inventory, failures) {
-  const repositorySecrets = Array.isArray(inventory.repository_secrets)
-    ? inventory.repository_secrets
+function validateWorkflowSecretEntries(inventory, failures) {
+  const workflowSecrets = Array.isArray(inventory.workflow_secrets)
+    ? inventory.workflow_secrets
     : [];
   const secretNames = new Set();
-  for (const secret of repositorySecrets) {
-    validateRepositorySecretEntry(secret, secretNames, failures);
+  for (const secret of workflowSecrets) {
+    validateWorkflowSecretEntry(secret, secretNames, failures);
   }
-  return { repositorySecrets, secretNames };
+  return { workflowSecrets, secretNames };
 }
 
-function validateRepositorySecretEntry(secret, secretNames, failures) {
+function validateWorkflowSecretEntry(secret, secretNames, failures) {
   const name = typeof secret?.name === 'string' ? secret.name : '<unnamed>';
   if (secretNames.has(name)) failures.push(`${name}: credential inventory entry is duplicated`);
   secretNames.add(name);
   for (const [field, label] of [
+    ['scope', 'scope'],
     ['owner', 'owner'],
     ['purpose', 'purpose'],
     ['consumer', 'consumer'],
@@ -219,8 +220,8 @@ function validateWorkflowSecretReferences(
   }
 }
 
-function validateDeclaredConsumers(repositorySecrets, referencedSecrets, failures) {
-  for (const secret of repositorySecrets) {
+function validateDeclaredConsumers(workflowSecrets, referencedSecrets, failures) {
+  for (const secret of workflowSecrets) {
     const paths = referencedSecrets.get(secret.name) ?? [];
     if (!paths.includes(secret.consumer)) {
       failures.push(

@@ -1,17 +1,44 @@
 {
-  "observed_at": "2026-07-23",
+  "observed_at": "2026-07-31",
   "settings_owner": "@oaslananka",
   "refresh_cadence_days": 90,
-  "repository_secrets": [
+  "workflow_secrets": [
     {
       "name": "CODECOV_TOKEN",
+      "scope": "repository",
       "owner": "@oaslananka",
       "purpose": "Upload unit coverage and test-result reports to Codecov.",
       "consumer": ".github/workflows/ci.yml",
       "rotation": "Create a replacement upload token in Codecov, update the GitHub Actions secret, verify one CI upload, then revoke the previous token."
+    },
+    {
+      "name": "NVIDIA_API_KEY",
+      "scope": "environment:dev",
+      "owner": "@oaslananka",
+      "purpose": "Run an explicitly dispatched interoperability smoke against the hosted NVIDIA NIM OpenAI-compatible API.",
+      "consumer": ".github/workflows/provider-live-smoke.yml",
+      "rotation": "Rotate the key in NVIDIA, update the managed source configuration, verify Config Sync and one bounded live smoke, then revoke the previous key."
+    },
+    {
+      "name": "OPENCODE_ZEN_API_KEY",
+      "scope": "environment:dev",
+      "owner": "@oaslananka",
+      "purpose": "Run explicitly dispatched OpenCode Zen interoperability and repository-owned skill evaluations.",
+      "consumer": ".github/workflows/provider-live-smoke.yml",
+      "rotation": "Rotate the key in OpenCode Zen, update the managed source configuration, verify Config Sync and one bounded live smoke, then revoke the previous key."
     }
   ],
   "environments": [
+    {
+      "name": "dev",
+      "allowed_branches": ["all"],
+      "reviewers": [],
+      "prevent_self_review": false,
+      "admin_bypass": true,
+      "static_secrets": ["NVIDIA_API_KEY", "OPENCODE_ZEN_API_KEY"],
+      "auth_model": "GitHub Environment secrets synchronized from the managed source configuration; no secret value is committed to the repository.",
+      "rotation": "Rotate at the provider, update the source secret manager, verify Config Sync, and run the manual provider smoke before revoking the old credential."
+    },
     {
       "name": "npm-publish",
       "allowed_branches": ["main"],
