@@ -25,6 +25,7 @@ pnpm run examples:smoke
 | WebSocket                  | [`examples/websocket`](../examples/websocket/README.md)                                   | `pnpm --dir examples/websocket run smoke`                  |
 | gRPC                       | [`examples/grpc`](../examples/grpc/README.md)                                             | `pnpm --dir examples/grpc run smoke`                       |
 | MCP bridge                 | [`examples/mcp-bridge`](../examples/mcp-bridge/README.md)                                 | `pnpm --dir examples/mcp-bridge run smoke`                 |
+| OpenClaw MCP compatibility | [`examples/openclaw-mcp`](../examples/openclaw-mcp/README.md)                             | `pnpm --dir examples/openclaw-mcp run smoke`               |
 | Adapter template           | [`examples/adapter-template`](../examples/adapter-template/README.md)                     | `pnpm --dir examples/adapter-template run smoke`           |
 | OpenAI-compatible provider | [`examples/openai-compatible-provider`](../examples/openai-compatible-provider/README.md) | `pnpm --dir examples/openai-compatible-provider run smoke` |
 | Agent mesh                 | [`examples/agent-mesh`](../examples/agent-mesh/README.md)                                 | `pnpm --dir examples/agent-mesh run smoke`                 |
