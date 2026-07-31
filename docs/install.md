@@ -47,8 +47,22 @@ The following public packages are part of the A2A Mesh ecosystem:
 | ------------------------- | ------------------------------------------------- | ----------------------------------------------- |
 | `@a2amesh/protocol`       | Protocol types and validators (zero dependencies) | `npm install @a2amesh/protocol`                 |
 | `@a2amesh/registry`       | Registry server for agent capability discovery    | `npm install @a2amesh/registry`                 |
-| `@a2amesh/mcp`            | A2A ↔ MCP bridge and mapping helpers              | `npm install @a2amesh/mcp`                      |
+| `@a2amesh/mcp`            | Bridge helpers and `a2amesh-mcp` stdio server     | `npm install @a2amesh/mcp`                      |
 | `@a2amesh/create-a2amesh` | Scaffolding tool to bootstrap new projects        | `npm exec @a2amesh/create-a2amesh -- <project>` |
+
+## Run the standalone MCP server
+
+For local MCP clients, use the product-owned runtime examples and the published
+stdio command:
+
+```bash
+npx -y -p @a2amesh/mcp@alpha a2amesh-mcp --transport stdio
+```
+
+The checked-in `.mcp.json`, Codex, VS Code, and OpenCode examples are read-only by
+default and use a placeholder public endpoint. Replace the tenant and endpoint with
+an authorized target. Store real agent tokens outside Git and reference their
+variable names through `tokenEnv` in `A2AMESH_MCP_AGENTS_JSON`.
 
 ## Internal Packages
 

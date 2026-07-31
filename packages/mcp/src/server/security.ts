@@ -3,14 +3,14 @@ import {
   emitMcpBridgeAudit,
   evaluateMcpBridgeAuthorization,
   type McpBridgeSecurityPolicy,
-} from '@a2amesh/mcp';
+} from '../McpBridgeSecurity.js';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { OPENCLAW_MCP_REQUIRED_SCOPES, resolveAllowedTools } from './toolDefinitions.js';
-import type { OpenClawMcpBridgeOptions, OpenClawMcpToolName } from './types.js';
+import { A2A_MCP_REQUIRED_SCOPES, resolveAllowedTools } from './toolDefinitions.js';
+import type { A2AMcpBridgeOptions, A2AMcpToolName } from './types.js';
 
-export function createOpenClawBridgePolicy(
-  options: OpenClawMcpBridgeOptions,
-  name: OpenClawMcpToolName,
+export function createA2ABridgePolicy(
+  options: A2AMcpBridgeOptions,
+  name: A2AMcpToolName,
   input: Record<string, unknown>,
   requestId: string,
 ): McpBridgeSecurityPolicy {
@@ -37,7 +37,7 @@ export function createOpenClawBridgePolicy(
       humanApprovalRequiredRisk: 'high',
       blockOnMetadataRisk: true,
     },
-    requiredScopes: OPENCLAW_MCP_REQUIRED_SCOPES[name],
+    requiredScopes: A2A_MCP_REQUIRED_SCOPES[name],
     consent: approvalId ? { decision: 'approved', approvalId } : { decision: 'pending' },
     ...(options.outboundPolicy ? { outboundPolicy: options.outboundPolicy } : {}),
     maxMessageLength: 32_768,
@@ -45,7 +45,7 @@ export function createOpenClawBridgePolicy(
   };
 }
 
-export async function auditOpenClawInvalidInput(
+export async function auditA2AInvalidInput(
   tool: Tool,
   input: unknown,
   policy: McpBridgeSecurityPolicy,
@@ -65,7 +65,7 @@ export async function auditOpenClawInvalidInput(
   );
 }
 
-export async function auditOpenClawAuthorization(
+export async function auditA2AAuthorization(
   tool: Tool,
   input: unknown,
   policy: McpBridgeSecurityPolicy,
@@ -87,7 +87,7 @@ export async function auditOpenClawAuthorization(
   return authorization;
 }
 
-export async function auditOpenClawExecution(
+export async function auditA2AExecution(
   tool: Tool,
   input: unknown,
   policy: McpBridgeSecurityPolicy,

@@ -30,6 +30,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.js",
+      "default": "./dist/server/index.js"
     }
   },
   "scripts": {
@@ -39,7 +44,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@a2amesh/runtime": "workspace:^"
+    "@a2amesh/runtime": "workspace:^",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "6.0.3",
@@ -61,5 +67,8 @@
   "sideEffects": false,
   "engines": {
     "node": ">=22.22.1 <25"
+  },
+  "bin": {
+    "a2amesh-mcp": "./dist/server/cli.js"
   }
 }

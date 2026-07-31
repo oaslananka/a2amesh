@@ -14,6 +14,28 @@ The MCP package keeps endpoint targeting and tool approval as separate decisions
 
 A caller context accepted for an MCP resource does not automatically approve every tool on that resource. Multi-audience contexts require an explicit selected MCP resource.
 
+## Standalone server
+
+The package publishes a local MCP server command in addition to the library API:
+
+```bash
+npx -y -p @a2amesh/mcp@alpha a2amesh-mcp --transport stdio
+```
+
+The command reads only `A2AMESH_MCP_*` environment variables. The supported client
+examples are `.mcp.json`, `.codex/config.example.toml`,
+`.vscode/mcp.example.json`, and `opencode.example.jsonc` in the repository root.
+They expose `a2a_discover` and `a2a_get_task` by default. Enabling
+`a2a_send_message` also requires the send scope and a fresh, explicitly approved
+`A2AMESH_MCP_SEND_APPROVAL_ID` for the session.
+
+Agent credentials are referenced by `tokenEnv` inside `A2AMESH_MCP_AGENTS_JSON`;
+concrete values stay in the process secret source. Localhost and private-network
+destinations remain disabled unless the operator deliberately enables the matching
+outbound-policy variables.
+
+The reusable server APIs are exported from `@a2amesh/mcp/server`.
+
 ## Tool guardrails
 
 The MCP package also provides execution guardrail helpers:

@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createOpenClawProbeCommands, loadOpenClawMcpRuntimeConfig } from './config.js';
-import { redactOpenClawOutput } from './operations.js';
+import { redactA2AOutput as redactOpenClawOutput } from '@a2amesh/mcp/server';
 
 interface OpenClawCommandResult {
   exitCode: number;

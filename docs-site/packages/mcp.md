@@ -4,7 +4,8 @@
 
 ## Purpose
 
-- **A2A ↔ MCP Bridge**: Translates MCP tool calls and resources into A2A messages and task invocations.
+- **A2A ↔ MCP Bridge**: Translates bounded MCP tool calls into A2A discovery, message, and task operations.
+- **Standalone Distribution**: Publishes the `a2amesh-mcp` stdio command and `@a2amesh/mcp/server` API.
 - **Auditable Safety**: Implements audit logging hooks and telemetry propagation across MCP tool execution.
 - **Execution Guardrails**: Enforces audience, principal, scope, tenant, consent, tool, and outbound-network policy before bridge calls.
 
@@ -13,6 +14,22 @@
 ```bash
 npm install @a2amesh/mcp
 ```
+
+## Standalone MCP server
+
+Start the published alpha package without a global install:
+
+```bash
+npx -y -p @a2amesh/mcp@alpha a2amesh-mcp --transport stdio
+```
+
+Use one of the product-owned runtime examples in the repository root. The examples
+start read-only with `a2a_discover` and `a2a_get_task`, reject localhost and private
+networks, and contain no concrete credentials. Add `a2a_send_message` only after an
+explicit approval has produced a scoped `A2AMESH_MCP_SEND_APPROVAL_ID`.
+
+Repeatable automation should pin the exact released package version instead of the
+moving `alpha` tag.
 
 ## Usage Example
 

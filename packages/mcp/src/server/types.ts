@@ -1,17 +1,14 @@
 import type { OutboundPolicyOptions, Task } from '@a2amesh/runtime';
-import type { McpAuthContext, McpBridgeAuditEvent } from '@a2amesh/mcp';
+import type { McpAuthContext } from '../McpAuthBoundary.js';
+import type { McpBridgeAuditEvent } from '../McpBridgeSecurity.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
-export const OPENCLAW_MCP_TOOL_NAMES = [
-  'a2a_discover',
-  'a2a_send_message',
-  'a2a_get_task',
-] as const;
+export const A2A_MCP_TOOL_NAMES = ['a2a_discover', 'a2a_send_message', 'a2a_get_task'] as const;
 
-export type OpenClawMcpToolName = (typeof OPENCLAW_MCP_TOOL_NAMES)[number];
+export type A2AMcpToolName = (typeof A2A_MCP_TOOL_NAMES)[number];
 
-export interface OpenClawMcpAgentConfig {
+export interface A2AMcpAgentConfig {
   id: string;
   name: string;
   description: string;
@@ -20,45 +17,45 @@ export interface OpenClawMcpAgentConfig {
   token?: string | undefined;
 }
 
-export interface OpenClawMcpOperations {
+export interface A2AMcpOperations {
   sendMessage(input: {
-    agent: OpenClawMcpAgentConfig;
+    agent: A2AMcpAgentConfig;
     tenantId: string;
     message: string;
     contextId?: string | undefined;
     signal: AbortSignal;
   }): Promise<Task>;
   getTask(input: {
-    agent: OpenClawMcpAgentConfig;
+    agent: A2AMcpAgentConfig;
     tenantId: string;
     taskId: string;
     signal: AbortSignal;
   }): Promise<Task>;
 }
 
-export interface OpenClawMcpBridgeOptions {
-  agents: readonly OpenClawMcpAgentConfig[];
+export interface A2AMcpBridgeOptions {
+  agents: readonly A2AMcpAgentConfig[];
   expectedTenantId: string;
   expectedAudience: string;
   authContext: McpAuthContext;
   readApprovalId?: string | undefined;
   sendApprovalId?: string | undefined;
-  allowedTools?: readonly OpenClawMcpToolName[] | undefined;
+  allowedTools?: readonly A2AMcpToolName[] | undefined;
   operationTimeoutMs?: number | undefined;
   outboundPolicy?: OutboundPolicyOptions | undefined;
   audit?: ((event: McpBridgeAuditEvent) => void | Promise<void>) | undefined;
-  operations?: OpenClawMcpOperations | undefined;
+  operations?: A2AMcpOperations | undefined;
   serverName?: string | undefined;
   serverVersion?: string | undefined;
 }
 
-export interface OpenClawMcpHttpOptions extends OpenClawMcpBridgeOptions {
+export interface A2AMcpHttpOptions extends A2AMcpBridgeOptions {
   transportToken: string;
   host?: string | undefined;
   allowedHosts?: string[] | undefined;
 }
 
-export interface OpenClawMcpBridge {
+export interface A2AMcpBridge {
   server: McpServer;
-  invoke(name: OpenClawMcpToolName, input: unknown, signal?: AbortSignal): Promise<CallToolResult>;
+  invoke(name: A2AMcpToolName, input: unknown, signal?: AbortSignal): Promise<CallToolResult>;
 }

@@ -2,10 +2,10 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import * as z from 'zod/v4';
 import {
-  OPENCLAW_MCP_TOOL_NAMES,
-  type OpenClawMcpBridge,
-  type OpenClawMcpBridgeOptions,
-  type OpenClawMcpToolName,
+  A2A_MCP_TOOL_NAMES,
+  type A2AMcpBridge,
+  type A2AMcpBridgeOptions,
+  type A2AMcpToolName,
 } from './types.js';
 
 const discoverInput = z.strictObject({ tenantId: z.string().trim().min(1).max(128) });
@@ -33,7 +33,7 @@ const taskSummarySchema = z.strictObject({
   output: z.string(),
 });
 
-export const OPENCLAW_MCP_TOOL_DEFINITIONS: Record<OpenClawMcpToolName, Tool> = {
+export const A2A_MCP_TOOL_DEFINITIONS: Record<A2AMcpToolName, Tool> = {
   a2a_discover: {
     name: 'a2a_discover',
     description: 'List the configured A2A agents available to this bounded MCP bridge.',
@@ -75,25 +75,23 @@ export const OPENCLAW_MCP_TOOL_DEFINITIONS: Record<OpenClawMcpToolName, Tool> = 
   },
 };
 
-export const OPENCLAW_MCP_REQUIRED_SCOPES: Record<OpenClawMcpToolName, readonly string[]> = {
+export const A2A_MCP_REQUIRED_SCOPES: Record<A2AMcpToolName, readonly string[]> = {
   a2a_discover: ['a2a:agents:read'],
   a2a_send_message: ['a2a:messages:send'],
   a2a_get_task: ['a2a:tasks:read'],
 };
 
-function isOpenClawMcpToolName(value: string): value is OpenClawMcpToolName {
-  return (OPENCLAW_MCP_TOOL_NAMES as readonly string[]).includes(value);
+function isA2AMcpToolName(value: string): value is A2AMcpToolName {
+  return (A2A_MCP_TOOL_NAMES as readonly string[]).includes(value);
 }
 
-export function resolveAllowedTools(
-  options: OpenClawMcpBridgeOptions,
-): readonly OpenClawMcpToolName[] {
-  const configured = options.allowedTools ?? OPENCLAW_MCP_TOOL_NAMES;
-  return Array.from(new Set(configured.filter((name) => isOpenClawMcpToolName(name))));
+export function resolveAllowedTools(options: A2AMcpBridgeOptions): readonly A2AMcpToolName[] {
+  const configured = options.allowedTools ?? A2A_MCP_TOOL_NAMES;
+  return Array.from(new Set(configured.filter((name) => isA2AMcpToolName(name))));
 }
 
-export function parseOpenClawToolInput(
-  name: OpenClawMcpToolName,
+export function parseA2AToolInput(
+  name: A2AMcpToolName,
   input: unknown,
 ): Record<string, unknown> | undefined {
   const schemaByName = {
@@ -105,16 +103,16 @@ export function parseOpenClawToolInput(
   return parsed.success ? parsed.data : undefined;
 }
 
-export function registerOpenClawMcpTools(
+export function registerA2AMcpTools(
   server: McpServer,
-  invoke: OpenClawMcpBridge['invoke'],
-  tools: readonly OpenClawMcpToolName[],
+  invoke: A2AMcpBridge['invoke'],
+  tools: readonly A2AMcpToolName[],
 ): void {
   if (tools.includes('a2a_discover')) {
     server.registerTool(
       'a2a_discover',
       {
-        description: OPENCLAW_MCP_TOOL_DEFINITIONS.a2a_discover.description ?? '',
+        description: A2A_MCP_TOOL_DEFINITIONS.a2a_discover.description ?? '',
         inputSchema: discoverInput.shape,
         outputSchema: { agents: z.array(agentSummarySchema) },
         annotations: {
@@ -131,7 +129,7 @@ export function registerOpenClawMcpTools(
     server.registerTool(
       'a2a_send_message',
       {
-        description: OPENCLAW_MCP_TOOL_DEFINITIONS.a2a_send_message.description ?? '',
+        description: A2A_MCP_TOOL_DEFINITIONS.a2a_send_message.description ?? '',
         inputSchema: sendInput.shape,
         outputSchema: { task: taskSummarySchema },
         annotations: {
@@ -148,7 +146,7 @@ export function registerOpenClawMcpTools(
     server.registerTool(
       'a2a_get_task',
       {
-        description: OPENCLAW_MCP_TOOL_DEFINITIONS.a2a_get_task.description ?? '',
+        description: A2A_MCP_TOOL_DEFINITIONS.a2a_get_task.description ?? '',
         inputSchema: getTaskInput.shape,
         outputSchema: { task: taskSummarySchema },
         annotations: {

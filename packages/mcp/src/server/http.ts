@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import type { OpenClawMcpBridge, OpenClawMcpHttpOptions } from './types.js';
+import type { A2AMcpBridge, A2AMcpHttpOptions } from './types.js';
 
 function equalToken(actual: string | undefined, expected: string): boolean {
   if (!actual?.startsWith('Bearer ')) return false;
@@ -10,9 +10,9 @@ function equalToken(actual: string | undefined, expected: string): boolean {
   return supplied.length === configured.length && timingSafeEqual(supplied, configured);
 }
 
-export function createOpenClawMcpHttpAppWithFactory(
-  options: OpenClawMcpHttpOptions,
-  createBridge: (options: OpenClawMcpHttpOptions) => OpenClawMcpBridge,
+export function createA2AMcpHttpAppWithFactory(
+  options: A2AMcpHttpOptions,
+  createBridge: (options: A2AMcpHttpOptions) => A2AMcpBridge,
 ): ReturnType<typeof createMcpExpressApp> {
   if (!options.transportToken.trim()) {
     throw new Error('A non-empty Streamable HTTP transport token is required.');
