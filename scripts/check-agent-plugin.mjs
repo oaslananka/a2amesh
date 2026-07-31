@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { cp, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const expectedSkills = ['a2a-endpoint-validation', 'a2a-task-operations', 'a2a-mcp-consumption'];
@@ -59,7 +59,10 @@ async function listFiles(root) {
     }
   }
   await visit(root);
-  return files.sort();
+  return files.sort((left, right) => {
+    if (left === right) return 0;
+    return left < right ? -1 : 1;
+  });
 }
 
 async function digestTree(root) {
@@ -104,11 +107,26 @@ async function copySourceBundle(destination) {
 }
 
 function adjacentPrereleaseVersion(version, delta) {
-  const match = /^(.*?)(\d+)$/.exec(version);
-  if (!match) throw new Error(`cannot derive adjacent version from ${version}`);
-  const numeric = Number(match[2]) + delta;
+  let digitStart = version.length;
+  while (digitStart > 0) {
+    const code = version.charCodeAt(digitStart - 1);
+    if (code < 48 || code > 57) break;
+    digitStart -= 1;
+  }
+  if (digitStart === version.length) {
+    throw new Error(`cannot derive adjacent version from ${version}`);
+  }
+  const numeric = Number(version.slice(digitStart)) + delta;
   if (numeric < 0) throw new Error(`cannot derive a lower version from ${version}`);
-  return `${match[1]}${numeric}`;
+  return `${version.slice(0, digitStart)}${numeric}`;
+}
+
+function resolveClaudeExecutable() {
+  const configured = process.env.CLAUDE_BIN;
+  if (!configured || !isAbsolute(configured)) {
+    throw new Error('CLAUDE_BIN must name the absolute Claude Code executable path');
+  }
+  return configured;
 }
 
 async function validateLifecycle(currentVersion) {
@@ -182,7 +200,7 @@ async function setBundleVersion(bundleRoot, version, marker) {
   }
 }
 
-async function validateClaudeLifecycle(currentVersion) {
+async function validateClaudeLifecycle(currentVersion, claudeExecutable) {
   const temporaryRoot = await mkdtemp(join(tmpdir(), 'a2amesh-claude-plugin-'));
   const marketplaceRoot = join(temporaryRoot, 'marketplace');
   const pluginRoot = join(marketplaceRoot, 'plugins', 'a2amesh');
@@ -191,7 +209,7 @@ async function validateClaudeLifecycle(currentVersion) {
   const pluginId = 'a2amesh@a2amesh-lifecycle-test';
 
   const runClaude = (commandArgs, capture = false) =>
-    execFileSync('claude', commandArgs, {
+    execFileSync(claudeExecutable, commandArgs, {
       cwd: repoRoot,
       env: environment,
       encoding: capture ? 'utf8' : undefined,
@@ -338,10 +356,13 @@ try {
 
 if (runClaudeValidation && failures.length === 0) {
   try {
-    execFileSync('claude', ['plugin', 'validate', '--strict', repoRoot], {
+    const claudeExecutable = resolveClaudeExecutable();
+    execFileSync(claudeExecutable, ['plugin', 'validate', '--strict', repoRoot], {
       stdio: 'inherit',
     });
-    if (runClaudeLifecycle) await validateClaudeLifecycle(cliPackage.version);
+    if (runClaudeLifecycle) {
+      await validateClaudeLifecycle(cliPackage.version, claudeExecutable);
+    }
   } catch (error) {
     failures.push(`Claude Code validation failed: ${String(error)}`);
   }

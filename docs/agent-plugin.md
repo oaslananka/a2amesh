@@ -99,11 +99,11 @@ node scripts/check-agent-plugin.mjs
 pnpm exec vitest run --project integration tests/integration/agent-plugin.test.ts
 ```
 
-Optional real Claude Code validation when the CLI is installed:
+Optional real Claude Code validation when the CLI is installed. Set `CLAUDE_BIN` to the absolute executable path so validation does not inherit an untrusted command lookup path:
 
 ```bash
-node scripts/check-agent-plugin.mjs --claude
-node scripts/check-agent-plugin.mjs --claude-lifecycle
+CLAUDE_BIN="$(command -v claude)" node scripts/check-agent-plugin.mjs --claude
+CLAUDE_BIN="$(command -v claude)" node scripts/check-agent-plugin.mjs --claude-lifecycle
 ```
 
 The checker verifies manifest identity/version parity, canonical skill structure, OpenCode mirror parity, documentation gates, and isolated filesystem install/upgrade/rollback behavior. The optional `--claude-lifecycle` path also creates an isolated temporary marketplace and home directory, installs the plugin, upgrades to a generated next version, and rolls back by reinstalling the recorded version. It does not contact an external A2A endpoint.
