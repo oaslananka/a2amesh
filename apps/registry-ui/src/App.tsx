@@ -1,26 +1,16 @@
 import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react';
-import {
-  Activity,
-  AlertTriangle,
-  Bot,
-  Globe2,
-  Lock,
-  RefreshCw,
-  Search,
-  ShieldCheck,
-  Workflow,
-} from 'lucide-react';
+import { AlertTriangle, Globe2, Lock, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 import {
   emptyMetrics,
   fetchMetrics,
   type RegisteredAgent,
   type RegistryMetrics,
 } from './api/registry';
-import { describeAgentFreshness, describeAgentTrust } from './agentPresentation';
 import { AgentInspector } from './components/AgentInspector';
+import { RegistryActivitySummary } from './components/RegistryActivitySummary';
+import { RegistryFleetView } from './components/RegistryFleetView';
 import { ConformanceDashboard } from './components/ConformanceDashboard';
 import { EnterpriseControlsPanel } from './components/EnterpriseControlsPanel';
-import { HealthBadge } from './components/HealthBadge';
 import { OperatorContextSummary } from './components/OperatorContextSummary';
 import { PlaygroundPanel } from './components/PlaygroundPanel';
 import { RegisterAgentPanel } from './components/RegisterAgentPanel';
@@ -28,6 +18,14 @@ import { TaskStream } from './components/TaskStream';
 import { TopologyGraph } from './components/TopologyGraph';
 import { useAgents } from './hooks/useAgents';
 import { useTaskStream } from './hooks/useTaskStream';
+import {
+  countActiveRegistryTasks,
+  filterRegistryAgents,
+  formatRelativeTime,
+  listRegistryTenants,
+  type RegistryCapabilityFilter,
+  type RegistryStatusFilter,
+} from './registryDashboardModel';
 
 type ViewMode =
   | 'fleet'
@@ -37,50 +35,6 @@ type ViewMode =
   | 'conformance'
   | 'controls'
   | 'register';
-type StatusFilter = 'all' | 'healthy' | 'unhealthy' | 'unknown';
-type CapabilityFilter = 'all' | 'streaming' | 'mcp';
-
-function matchesQuery(agent: RegisteredAgent, query: string): boolean {
-  const haystack = [
-    agent.card.name,
-    agent.card.description,
-    agent.tenantId,
-    ...(agent.card.skills ?? []).map((skill) => `${skill.name} ${(skill.tags ?? []).join(' ')}`),
-    ...(agent.tags ?? []),
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
-  return haystack.includes(query.trim().toLowerCase());
-}
-
-function formatRelativeTime(timestamp?: string): string {
-  if (!timestamp) {
-    return 'Never';
-  }
-
-  const deltaMs = Date.now() - Date.parse(timestamp);
-  if (!Number.isFinite(deltaMs)) {
-    return 'Unknown';
-  }
-
-  const deltaMinutes = Math.floor(deltaMs / 60000);
-  if (deltaMinutes < 1) {
-    return 'Just now';
-  }
-  if (deltaMinutes < 60) {
-    return `${deltaMinutes}m ago`;
-  }
-
-  const deltaHours = Math.floor(deltaMinutes / 60);
-  if (deltaHours < 24) {
-    return `${deltaHours}h ago`;
-  }
-
-  const deltaDays = Math.floor(deltaHours / 24);
-  return `${deltaDays}d ago`;
-}
 
 function classNames(...values: Array<string | false | null | undefined>): string {
   return values.filter(Boolean).join(' ');
@@ -98,8 +52,8 @@ export default function App() {
   const [metrics, setMetrics] = useState<RegistryMetrics>(emptyMetrics());
   const [view, setView] = useState<ViewMode>('fleet');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [capabilityFilter, setCapabilityFilter] = useState<CapabilityFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<RegistryStatusFilter>('all');
+  const [capabilityFilter, setCapabilityFilter] = useState<RegistryCapabilityFilter>('all');
   const [tenantFilter, setTenantFilter] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [replayTaskId, setReplayTaskId] = useState<string | null>(null);
@@ -121,34 +75,15 @@ export default function App() {
     return () => window.clearInterval(interval);
   }, []);
 
-  const tenants = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          agents
-            .map((agent) => agent.tenantId)
-            .filter((tenant): tenant is string => Boolean(tenant)),
-        ),
-      ).sort(),
-    [agents],
-  );
+  const tenants = useMemo(() => listRegistryTenants(agents), [agents]);
 
   const filteredAgents = useMemo(
     () =>
-      agents.filter((agent) => {
-        const matchesStatus = statusFilter === 'all' ? true : agent.status === statusFilter;
-        const matchesCapability =
-          capabilityFilter === 'all'
-            ? true
-            : capabilityFilter === 'streaming'
-              ? agent.card.capabilities?.streaming === true
-              : agent.card.capabilities?.mcpCompatible === true;
-        const matchesTenant =
-          tenantFilter === 'all' ? true : (agent.tenantId ?? 'unassigned') === tenantFilter;
-
-        return (
-          matchesStatus && matchesCapability && matchesTenant && matchesQuery(agent, deferredSearch)
-        );
+      filterRegistryAgents(agents, {
+        query: deferredSearch,
+        status: statusFilter,
+        capability: capabilityFilter,
+        tenant: tenantFilter,
       }),
     [agents, capabilityFilter, deferredSearch, statusFilter, tenantFilter],
   );
@@ -171,11 +106,7 @@ export default function App() {
   const selectedAgentTasks = selectedAgent
     ? tasks.filter((task) => task.agentId === selectedAgent.id)
     : [];
-  const activeTaskCount = tasks.filter((task) =>
-    ['SUBMITTED', 'QUEUED', 'WORKING', 'INPUT_REQUIRED', 'WAITING_ON_EXTERNAL'].includes(
-      task.status,
-    ),
-  ).length;
+  const activeTaskCount = countActiveRegistryTasks(tasks);
 
   const handleRefresh = () => {
     void refresh();
@@ -319,7 +250,9 @@ export default function App() {
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={capabilityFilter}
-              onChange={(event) => setCapabilityFilter(event.target.value as CapabilityFilter)}
+              onChange={(event) =>
+                setCapabilityFilter(event.target.value as RegistryCapabilityFilter)
+              }
               aria-label="Filter by capability"
               className="rounded-lg border border-white/10 bg-slate-950/45 px-3 py-2 text-sm text-slate-100 outline-none"
             >
@@ -384,131 +317,16 @@ export default function App() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_420px]">
           <main className="min-w-0 space-y-6">
             {view === 'fleet' ? (
-              <section className="overflow-hidden rounded-lg border border-white/10 bg-[#111820]">
-                <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
-                  <div>
-                    <h2 className="text-sm font-semibold text-white">Fleet table</h2>
-                    <p className="mt-1 text-xs text-slate-400">
-                      {filteredAgents.length} visible agents, {tasks.length} recent task events
-                    </p>
-                  </div>
-                  <span className="inline-flex items-center gap-2 text-xs text-slate-400">
-                    <Workflow size={14} />
-                    {taskStreamConnected ? 'Live task feed connected' : 'Task feed polling'}
-                  </span>
-                </div>
-
-                {loading ? (
-                  <EmptyState title="Loading fleet" body="Fetching the latest registry state." />
-                ) : error && filteredAgents.length === 0 ? (
-                  <ErrorState title="Registry unavailable" body={error} />
-                ) : filteredAgents.length === 0 ? (
-                  <EmptyState
-                    title="No matching agents"
-                    body="Try clearing one of the filters or register a public agent."
-                  />
-                ) : (
-                  <div
-                    className="overflow-x-auto"
-                    tabIndex={0}
-                    aria-label="Fleet table scroll area"
-                  >
-                    <table className="min-w-full divide-y divide-white/8 text-sm">
-                      <thead className="bg-white/4 text-left text-xs uppercase tracking-[0.18em] text-slate-400">
-                        <tr>
-                          <th className="px-4 py-3">Agent</th>
-                          <th className="px-4 py-3">Status</th>
-                          <th className="px-4 py-3">Trust & freshness</th>
-                          <th className="px-4 py-3">Tenant</th>
-                          <th className="px-4 py-3">Transport</th>
-                          <th className="px-4 py-3">Last success</th>
-                          <th className="px-4 py-3">Heartbeat drift</th>
-                          <th className="px-4 py-3">Recent tasks</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/6">
-                        {filteredAgents.map((agent) => {
-                          const agentTasks = tasks.filter((task) => task.agentId === agent.id);
-                          const trust = describeAgentTrust(agent);
-                          const freshness = describeAgentFreshness(
-                            agent,
-                            context.healthStaleAfterMs,
-                          );
-                          const activeTasks = agentTasks.filter((task) =>
-                            [
-                              'SUBMITTED',
-                              'QUEUED',
-                              'WORKING',
-                              'INPUT_REQUIRED',
-                              'WAITING_ON_EXTERNAL',
-                            ].includes(task.status),
-                          ).length;
-                          return (
-                            <tr
-                              key={agent.id}
-                              className={classNames(
-                                'cursor-pointer transition hover:bg-white/4',
-                                selectedAgent?.id === agent.id && 'bg-cyan-300/8',
-                              )}
-                              onClick={() => setSelectedAgentId(agent.id)}
-                            >
-                              <td className="px-4 py-3">
-                                <div className="flex items-start gap-3">
-                                  <div className="mt-0.5 rounded-md border border-white/10 bg-white/5 p-2">
-                                    <Bot size={16} className="text-cyan-200" />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium text-white">
-                                        {agent.card.name}
-                                      </span>
-                                      {agent.isPublic ? (
-                                        <span className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-emerald-100">
-                                          public
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                    <p className="mt-1 line-clamp-2 text-xs text-slate-400">
-                                      {agent.card.description}
-                                    </p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3">
-                                <HealthBadge status={agent.status} />
-                              </td>
-                              <td className="px-4 py-3">
-                                <AgentSignal
-                                  label={trust.label}
-                                  state={trust.state}
-                                  detail={freshness.label}
-                                />
-                              </td>
-                              <td className="px-4 py-3 text-slate-300">
-                                {agent.tenantId ?? 'unassigned'}
-                              </td>
-                              <td className="px-4 py-3 text-slate-300">
-                                {agent.card.transport ?? 'http'}
-                              </td>
-                              <td className="px-4 py-3 text-slate-300">
-                                {formatRelativeTime(agent.lastSuccessAt)}
-                              </td>
-                              <td className="px-4 py-3 text-slate-300">
-                                {formatRelativeTime(agent.lastHeartbeatAt)}
-                              </td>
-                              <td className="px-4 py-3 text-slate-300">
-                                {activeTasks > 0
-                                  ? `${activeTasks} active`
-                                  : `${agentTasks.length} recent`}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
+              <RegistryFleetView
+                agents={filteredAgents}
+                tasks={tasks}
+                loading={loading}
+                error={error}
+                selectedAgentId={selectedAgent?.id ?? null}
+                healthStaleAfterMs={context.healthStaleAfterMs}
+                taskStreamConnected={taskStreamConnected}
+                onSelectAgent={(agent) => setSelectedAgentId(agent.id)}
+              />
             ) : null}
 
             {view === 'topology' ? (
@@ -579,55 +397,14 @@ export default function App() {
               onOpenConformance={() => setView('conformance')}
             />
 
-            <section className="rounded-lg border border-white/10 bg-[#111820] p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                    Recent activity
-                  </p>
-                  <h3 className="mt-2 text-base font-semibold text-white">Task summary</h3>
-                </div>
-                <span className="text-xs text-slate-400">
-                  {selectedAgent ? `${selectedAgentTasks.length} events` : `${tasks.length} events`}
-                </span>
-              </div>
-
-              {tasksLoading ? (
-                <p className="mt-4 text-sm text-slate-400">Loading task activity…</p>
-              ) : tasksError ? (
-                <p className="mt-4 text-sm text-amber-100">{tasksError}</p>
-              ) : (selectedAgent ? selectedAgentTasks : tasks).length === 0 ? (
-                <EmptyState
-                  title="No recent tasks"
-                  body="This agent has no task events in the current registry window."
-                  compact
-                />
-              ) : (
-                <div className="mt-4 space-y-3">
-                  {(selectedAgent ? selectedAgentTasks : tasks).slice(0, 6).map((task) => (
-                    <article
-                      key={`${task.agentId}-${task.taskId}`}
-                      className="rounded-lg border border-white/8 bg-black/15 px-3 py-3"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-medium text-white">{task.agentName}</span>
-                        <span className="text-xs text-slate-400">
-                          {formatRelativeTime(task.updatedAt)}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm text-slate-300">
-                        {task.summary ?? 'Task event captured without a text summary.'}
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-slate-400">
-                        <span>{task.status}</span>
-                        <span>{task.historyCount} messages</span>
-                        <span>{task.artifactCount} artifacts</span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
+            <RegistryActivitySummary
+              tasks={tasks}
+              selectedAgent={selectedAgent}
+              selectedAgentTasks={selectedAgentTasks}
+              loading={tasksLoading}
+              error={tasksError}
+              formatRelativeTime={formatRelativeTime}
+            />
 
             {error ? (
               <ErrorState title="Registry connectivity warning" body={error} compact />
@@ -635,38 +412,6 @@ export default function App() {
           </aside>
         </div>
       </div>
-    </div>
-  );
-}
-
-interface AgentSignalProps {
-  label: string;
-  state: string;
-  detail: string;
-}
-
-function agentSignalClasses(state: string): string {
-  if (state === 'trusted') {
-    return 'border-emerald-300/25 bg-emerald-300/10 text-emerald-100';
-  }
-  if (state === 'rejected') {
-    return 'border-rose-300/25 bg-rose-300/10 text-rose-100';
-  }
-  return 'border-amber-300/25 bg-amber-300/10 text-amber-100';
-}
-
-function AgentSignal({ label, state, detail }: Readonly<AgentSignalProps>) {
-  return (
-    <div className="min-w-40">
-      <span
-        className={classNames(
-          'inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]',
-          agentSignalClasses(state),
-        )}
-      >
-        {label}
-      </span>
-      <span className="mt-1 block text-xs text-slate-400">{detail}</span>
     </div>
   );
 }
@@ -721,29 +466,6 @@ function ViewButton({
     >
       {label}
     </button>
-  );
-}
-
-function EmptyState({
-  title,
-  body,
-  compact = false,
-}: {
-  title: string;
-  body: string;
-  compact?: boolean;
-}) {
-  return (
-    <div
-      className={classNames(
-        'flex flex-col items-center justify-center text-center text-slate-400',
-        compact ? 'px-2 py-4' : 'px-6 py-16',
-      )}
-    >
-      <Activity size={compact ? 18 : 24} className="mb-3 text-slate-500" />
-      <p className="text-sm font-medium text-slate-200">{title}</p>
-      <p className="mt-2 max-w-md text-sm leading-6">{body}</p>
-    </div>
   );
 }
 
