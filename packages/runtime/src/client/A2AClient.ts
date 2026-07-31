@@ -4,7 +4,7 @@
  */
 
 import { EventSource, type EventSourceInit } from 'eventsource';
-import type { AgentCard, SupportedInterface } from '../types/agent-card.js';
+import type { AgentCard } from '../types/agent-card.js';
 import type {
   A2AHealthResponse,
   Message,
@@ -16,7 +16,7 @@ import type {
   TaskListResult,
 } from '../types/task.js';
 import type { CallInterceptor } from './interceptors.js';
-import { verifyAgentCard, type VerificationKey } from '../security/AgentCardSigner.js';
+import type { VerificationKey } from '../security/AgentCardSigner.js';
 import { createEventSourceReader } from './eventSourceReader.js';
 import {
   createDefaultClientOutboundPolicy,
@@ -24,6 +24,15 @@ import {
   type OutboundPolicyOptions,
 } from '../net/OutboundPolicy.js';
 import type { A2AJsonRpcDialect } from '../utils/officialWire.js';
+import {
+  createA2AProtocolHeaders,
+  fetchA2AAgentCard,
+  getA2AProtocolPreferences,
+  resolveA2AAgentCard,
+  selectA2AAgentInterface,
+  verifyResolvedA2AAgentCard,
+  type A2AProtocolVersion,
+} from './A2AClientAgentCard.js';
 import {
   createA2AClientRpcTransport,
   type A2AClientRpcTransport,
@@ -58,11 +67,11 @@ interface RetryOptions {
   retryOn: number[];
 }
 
-export type A2AOfficialProtocolVersion = '1.0';
-export type A2AExperimentalProtocolVersion = '1.2';
-export type A2AProtocolVersion = A2AOfficialProtocolVersion | A2AExperimentalProtocolVersion;
-
-const A2A_VERSION_HEADER = 'A2A-Version';
+export type {
+  A2AOfficialProtocolVersion,
+  A2AExperimentalProtocolVersion,
+  A2AProtocolVersion,
+} from './A2AClientAgentCard.js';
 
 /**
  * HTTP and SSE client for interacting with A2A-compatible agents.
@@ -118,7 +127,7 @@ export class A2AClient {
     };
     this.trustedVerificationKeys = options.trustedVerificationKeys ?? [];
     this.requireVerifiedAgentCard = options.requireVerifiedAgentCard ?? false;
-    this.protocolVersion = A2AClient.getProtocolPreferences(options)[0] ?? '1.0';
+    this.protocolVersion = getA2AProtocolPreferences(options)[0] ?? '1.0';
     this.jsonRpcDialect = options.jsonRpcDialect ?? 'mesh';
     this.rpcTransport = createA2AClientRpcTransport({
       baseUrl: this.baseUrl,
@@ -137,17 +146,13 @@ export class A2AClient {
       createOutboundPolicyFetch(
         options.outboundPolicy ?? createDefaultClientOutboundPolicy(agentCardUrl),
       );
-    const response = await fetchImplementation(agentCardUrl, {
-      headers: A2AClient.createProtocolHeaders(options),
-    });
-    if (!response.ok) {
-      await response.body?.cancel().catch(() => undefined);
-      throw new Error(`Failed to resolve agent card from ${agentCardUrl}`);
-    }
-
-    const card = (await response.json()) as AgentCard;
-    await A2AClient.verifyResolvedCard(card, options);
-    const selectedInterface = A2AClient.selectInterface(card, options) ?? {
+    const card = await fetchA2AAgentCard(
+      agentCardUrl,
+      fetchImplementation,
+      createA2AProtocolHeaders(options.headers, options.preferredProtocolVersion),
+      (resolvedCard) => verifyResolvedA2AAgentCard(resolvedCard, options),
+    );
+    const selectedInterface = selectA2AAgentInterface(card, options) ?? {
       url: card.url,
       protocolBinding: 'HTTP+JSON' as const,
       protocolVersion: '0.3' as const,
@@ -165,86 +170,17 @@ export class A2AClient {
   }
 
   async resolveCard(): Promise<AgentCard> {
-    const canonicalUrl = new URL(this.cardPath, this.baseUrl).toString();
-    const legacyUrl = new URL('/.well-known/agent.json', this.baseUrl).toString();
-
-    const response = await this.fetchWithRetry(canonicalUrl, {
-      headers: this.createProtocolHeaders(),
+    return resolveA2AAgentCard({
+      baseUrl: this.baseUrl,
+      cardPath: this.cardPath,
+      headers: createA2AProtocolHeaders(this.headers, this.protocolVersion),
+      fetchWithRetry: (input, init) => this.fetchWithRetry(input, init),
+      verifyCard: (card) =>
+        verifyResolvedA2AAgentCard(card, {
+          trustedVerificationKeys: this.trustedVerificationKeys,
+          requireVerifiedAgentCard: this.requireVerifiedAgentCard,
+        }),
     });
-    if (response.ok) {
-      const card = (await response.json()) as AgentCard;
-      await this.verifyAgentCard(card);
-      return card;
-    }
-
-    await response.body?.cancel().catch(() => undefined);
-
-    const legacyResponse = await this.fetchWithRetry(legacyUrl, {
-      headers: this.createProtocolHeaders(),
-    });
-    if (!legacyResponse.ok) {
-      await legacyResponse.body?.cancel().catch(() => undefined);
-      throw new Error(`Failed to resolve agent card from ${canonicalUrl}`);
-    }
-
-    const card = (await legacyResponse.json()) as AgentCard;
-    await this.verifyAgentCard(card);
-    return card;
-  }
-
-  private static isExperimentalProtocolVersion(
-    version: A2AProtocolVersion,
-  ): version is A2AExperimentalProtocolVersion {
-    const experimentalVersions: readonly A2AProtocolVersion[] =
-      A2AClient.experimentalProtocolVersions;
-    return experimentalVersions.includes(version);
-  }
-
-  private static getProtocolPreferences(options: A2AClientOptions): readonly A2AProtocolVersion[] {
-    const officialVersions: readonly A2AProtocolVersion[] = A2AClient.supportedVersions;
-    const experimentalVersions: readonly A2AProtocolVersion[] =
-      options.allowExperimentalProtocolVersions ? A2AClient.experimentalProtocolVersions : [];
-    const preferences = [...officialVersions, ...experimentalVersions];
-
-    if (!options.preferredProtocolVersion) {
-      return preferences;
-    }
-
-    if (
-      A2AClient.isExperimentalProtocolVersion(options.preferredProtocolVersion) &&
-      !options.allowExperimentalProtocolVersions
-    ) {
-      throw new Error(
-        'Protocol version 1.2 is an a2amesh experimental profile. Set allowExperimentalProtocolVersions to true to opt in.',
-      );
-    }
-
-    if (!preferences.includes(options.preferredProtocolVersion)) {
-      throw new Error(
-        `Unsupported preferred protocol version: ${options.preferredProtocolVersion}`,
-      );
-    }
-
-    return [
-      options.preferredProtocolVersion,
-      ...preferences.filter((version) => version !== options.preferredProtocolVersion),
-    ];
-  }
-
-  private static selectInterface(
-    card: AgentCard,
-    options: A2AClientOptions,
-  ): SupportedInterface | undefined {
-    const interfaces = card.supportedInterfaces ?? [];
-
-    for (const protocolVersion of A2AClient.getProtocolPreferences(options)) {
-      const selectedInterface = interfaces.find((item) => item.protocolVersion === protocolVersion);
-      if (selectedInterface) {
-        return selectedInterface;
-      }
-    }
-
-    return undefined;
   }
 
   async sendMessage(params: Message | MessageSendParams): Promise<Task> {
@@ -359,7 +295,7 @@ export class A2AClient {
 
   async health(): Promise<A2AHealthResponse> {
     const response = await this.fetchWithRetry(new URL('/health', this.baseUrl), {
-      headers: this.createProtocolHeaders(),
+      headers: createA2AProtocolHeaders(this.headers, this.protocolVersion),
     });
     if (!response.ok) {
       await response.body?.cancel().catch(() => undefined);
@@ -415,7 +351,9 @@ export class A2AClient {
       const eventSourceInit: EventSourceInit = {
         fetch: (input, init) => {
           const headers = new Headers(init.headers);
-          for (const [key, value] of Object.entries(this.createProtocolHeaders())) {
+          for (const [key, value] of Object.entries(
+            createA2AProtocolHeaders(this.headers, this.protocolVersion),
+          )) {
             headers.set(key, value);
           }
 
@@ -426,50 +364,10 @@ export class A2AClient {
     }
 
     if (hasHeaders) {
-      return { headers: this.createProtocolHeaders() };
+      return { headers: createA2AProtocolHeaders(this.headers, this.protocolVersion) };
     }
 
     return undefined;
-  }
-
-  private async verifyAgentCard(card: AgentCard): Promise<void> {
-    await A2AClient.verifyResolvedCard(card, {
-      trustedVerificationKeys: this.trustedVerificationKeys,
-      requireVerifiedAgentCard: this.requireVerifiedAgentCard,
-    });
-  }
-
-  private static async verifyResolvedCard(
-    card: AgentCard,
-    options: Pick<A2AClientOptions, 'trustedVerificationKeys' | 'requireVerifiedAgentCard'>,
-  ): Promise<void> {
-    const trustedVerificationKeys = options.trustedVerificationKeys ?? [];
-    if (trustedVerificationKeys.length === 0 && !options.requireVerifiedAgentCard) {
-      return;
-    }
-
-    const verification = await verifyAgentCard(card, trustedVerificationKeys);
-    if (!verification.valid) {
-      throw new Error('Agent card signature verification failed');
-    }
-  }
-
-  private createProtocolHeaders(
-    headers: Record<string, string> = this.headers,
-  ): Record<string, string> {
-    return A2AClient.createProtocolHeaders({
-      headers,
-      preferredProtocolVersion: this.protocolVersion,
-    });
-  }
-
-  private static createProtocolHeaders(
-    options: Pick<A2AClientOptions, 'headers' | 'preferredProtocolVersion'> = {},
-  ): Record<string, string> {
-    return {
-      ...(options.headers ?? {}),
-      [A2A_VERSION_HEADER]: options.preferredProtocolVersion ?? '1.0',
-    };
   }
 
   private async fetchWithRetry(
