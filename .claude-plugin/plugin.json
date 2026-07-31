@@ -1,0 +1,15 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "a2amesh",
+  "version": "0.15.0-alpha.1",
+  "description": "A2A Mesh workflows for endpoint validation, approved task operations, and security-bounded MCP consumption.",
+  "skills": [
+    "./skills/a2a-endpoint-validation",
+    "./skills/a2a-task-operations",
+    "./skills/a2a-mcp-consumption"
+  ],
+  "author": {
+    "name": "oaslananka",
+    "url": "https://github.com/oaslananka"
+  }
+}

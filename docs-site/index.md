@@ -50,6 +50,7 @@ readiness checks.
 - [Quick Start](guide/quick-start.md)
 - [5-minute Demo](guide/demo.md)
 - [Examples](guide/examples.md)
+- [Agent Plugin](guide/agent-plugin.md)
 - [Architecture](guide/architecture.md)
 - [Compatibility](guide/compatibility.md)
 - [Protocol Compatibility](protocol/compliance.md)

@@ -127,6 +127,10 @@ a2amesh trust sign .\agent-card.json --key .\signing-key.pem --key-id my-key --o
 a2amesh trust verify .\agent-card.signed.json --trusted-key my-key:.\public-key.pem
 ```
 
+## Agent Plugin
+
+The repository owns a skills-only alpha plugin for safe endpoint validation, approved task operations, and bounded MCP consumption. It is not active in the public catalog yet. See [Agent plugin plan](docs/agent-plugin.md) for installation, upgrade, rollback, workflow support, and marketplace activation gates.
+
 ## Package List
 
 | Package                   | Purpose                                                                                           |

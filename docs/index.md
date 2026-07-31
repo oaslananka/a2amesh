@@ -32,6 +32,7 @@ instead of a collection of disconnected scripts.
 - [Quickstart](quickstart.md)
 - [5-minute demo](demo.md)
 - [Examples](examples.md)
+- [Agent plugin plan](agent-plugin.md)
 - [Compatibility](compatibility.md)
 - [Protocol compatibility](protocol/compatibility.md)
 - [JSON Schemas](protocol/schemas.md)
