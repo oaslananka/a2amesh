@@ -109,6 +109,23 @@ It fails before client creation unless `A2AMESH_OPENAI_COMPAT_LIVE=1` is present
 
 A successful single request is interoperability evidence, not a production certification. Validate the selected model's request limits, tool behavior, streaming behavior, license, lifecycle, and service-level expectations separately.
 
+## Manual GitHub Actions verification
+
+Maintainers can run the manual `Provider Live Smoke` workflow against credentials
+in the protected `dev` environment. The workflow accepts provider and model inputs,
+then maps the environment secret into this example without printing or persisting the
+credential.
+
+- `NVIDIA_API_KEY` exercises the hosted NVIDIA NIM profile.
+- `OPENCODE_ZEN_API_KEY` exercises the OpenCode Zen OpenAI-compatible profile.
+- OpenCode Zen runs also load the three repository-owned `.opencode/skills/` entries
+  with a default-deny permission policy that permits only the `skill` tool.
+
+The workflow is dispatch-only, non-gating, and intentionally absent from pull request,
+push, and scheduled triggers. Model availability and free-tier policy can change, so
+select a current model at dispatch time and treat each successful run as dated
+interoperability evidence rather than a permanent support promise.
+
 ## Current compatibility boundary
 
 NVIDIA NIM documents OpenAI-compatible `/v1/chat/completions`, streaming, model discovery, and—in supported releases/models—tool calling. This example records provider capability declarations but intentionally keeps the current `OpenAIAdapter` behavior unchanged:

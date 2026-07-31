@@ -1,0 +1,122 @@
+name: Provider Live Smoke
+
+'on':
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Live provider path to validate
+        type: choice
+        required: true
+        default: both
+        options:
+          - both
+          - nvidia
+          - opencode-zen
+      nvidia_model:
+        description: NVIDIA NIM model identifier
+        type: string
+        required: true
+        default: meta/llama-3.1-8b-instruct
+      opencode_model:
+        description: OpenCode Zen chat-completions model identifier
+        type: string
+        required: true
+        default: nemotron-3-ultra-free
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  NODE_VERSION: '24.16.0'
+  OPENCODE_VERSION: '1.18.10' # renovate: datasource=npm depName=opencode-ai
+
+jobs:
+  nvidia:
+    name: Provider Live Smoke / NVIDIA NIM
+    if: inputs.provider == 'both' || inputs.provider == 'nvidia'
+    environment: dev
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Run provider-neutral NVIDIA live smoke
+        env:
+          A2AMESH_OPENAI_COMPAT_LIVE: '1'
+          A2AMESH_OPENAI_COMPAT_PROFILE: nvidia-hosted
+          A2AMESH_OPENAI_COMPAT_BASE_URL: https://integrate.api.nvidia.com/v1
+          A2AMESH_OPENAI_COMPAT_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          A2AMESH_OPENAI_COMPAT_MODEL: ${{ inputs.nvidia_model }}
+          A2AMESH_OPENAI_COMPAT_TIMEOUT_MS: '60000'
+          A2AMESH_OPENAI_COMPAT_MAX_TOKENS: '128'
+          A2AMESH_OPENAI_COMPAT_TEMPERATURE: '0.2'
+          A2AMESH_OPENAI_COMPAT_SUPPORTS_STREAMING: 'true'
+          A2AMESH_OPENAI_COMPAT_SUPPORTS_TOOL_CALLING: unknown
+        run: |
+          test -n "$A2AMESH_OPENAI_COMPAT_API_KEY"
+          pnpm --dir examples/openai-compatible-provider run live:smoke
+
+  opencode-zen:
+    name: Provider Live Smoke / OpenCode Zen
+    if: inputs.provider == 'both' || inputs.provider == 'opencode-zen'
+    environment: dev
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Run provider-neutral OpenCode Zen live smoke
+        env:
+          A2AMESH_OPENAI_COMPAT_LIVE: '1'
+          A2AMESH_OPENAI_COMPAT_PROFILE: opencode-zen
+          A2AMESH_OPENAI_COMPAT_BASE_URL: https://opencode.ai/zen/v1
+          A2AMESH_OPENAI_COMPAT_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
+          A2AMESH_OPENAI_COMPAT_MODEL: ${{ inputs.opencode_model }}
+          A2AMESH_OPENAI_COMPAT_TIMEOUT_MS: '60000'
+          A2AMESH_OPENAI_COMPAT_MAX_TOKENS: '128'
+          A2AMESH_OPENAI_COMPAT_SUPPORTS_STREAMING: 'true'
+          A2AMESH_OPENAI_COMPAT_SUPPORTS_TOOL_CALLING: unknown
+        run: |
+          test -n "$A2AMESH_OPENAI_COMPAT_API_KEY"
+          pnpm --dir examples/openai-compatible-provider run live:smoke
+      - name: Install pinned OpenCode CLI
+        run: |
+          install_root="$RUNNER_TEMP/opencode"
+          npm install --global --prefix "$install_root" --no-audit --no-fund "opencode-ai@$OPENCODE_VERSION"
+          installed_version="$("$install_root/bin/opencode" --version)"
+          test "$installed_version" = "$OPENCODE_VERSION"
+          printf 'OPENCODE_BIN=%s\n' "$install_root/bin/opencode" >> "$GITHUB_ENV"
+      - name: Evaluate repository-owned OpenCode skills
+        env:
+          OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
+          OPENCODE_ZEN_MODEL: ${{ inputs.opencode_model }}
+          OPENCODE_EVALUATION_OUTPUT: artifacts/provider-live-smoke/opencode
+        run: node scripts/run-opencode-skill-evaluation.mjs
+      - name: Upload bounded OpenCode evaluation evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: opencode-skill-evaluation
+          path: artifacts/provider-live-smoke/opencode/
+          if-no-files-found: warn
+          retention-days: 14
