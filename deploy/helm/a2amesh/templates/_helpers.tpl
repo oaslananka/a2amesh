@@ -167,11 +167,23 @@ app.kubernetes.io/component: {{ .component }}
 {{- if and (eq .Values.registry.storage.backend "sqlite") (gt (int .Values.registry.replicaCount) 1) -}}
 {{- fail "sqlite registry storage supports exactly one replica" -}}
 {{- end -}}
-{{- if and .Values.registry.autoscaling.enabled (not .Values.registry.autoscaling.allowEphemeralReplicas) -}}
-{{- fail "registry autoscaling requires autoscaling.allowEphemeralReplicas=true because replicas do not share memory storage" -}}
+{{- if and (eq .Values.registry.storage.backend "redis") (not .Values.registry.storage.redis.existingSecret) -}}
+{{- fail "redis registry storage requires storage.redis.existingSecret" -}}
+{{- end -}}
+{{- if and (eq .Values.registry.storage.backend "redis") .Values.registry.storage.trustLog.enabled -}}
+{{- fail "redis registry storage includes the shared trust log; disable storage.trustLog.enabled" -}}
+{{- end -}}
+{{- if and (eq .Values.registry.storage.backend "memory") (gt (int .Values.registry.replicaCount) 1) (not .Values.registry.autoscaling.allowEphemeralReplicas) -}}
+{{- fail "memory registry replicas require autoscaling.allowEphemeralReplicas=true to acknowledge non-shared state" -}}
+{{- end -}}
+{{- if and .Values.registry.autoscaling.enabled (eq .Values.registry.storage.backend "memory") (not .Values.registry.autoscaling.allowEphemeralReplicas) -}}
+{{- fail "memory registry autoscaling requires autoscaling.allowEphemeralReplicas=true" -}}
 {{- end -}}
 {{- if and .Values.registry.autoscaling.enabled (eq .Values.registry.storage.backend "sqlite") -}}
 {{- fail "registry autoscaling is incompatible with sqlite storage" -}}
+{{- end -}}
+{{- if and (eq .Values.registry.storage.backend "redis") (or (gt (int .Values.registry.replicaCount) 1) .Values.registry.autoscaling.enabled) (not .Values.registry.storage.distributedPollingLeases) -}}
+{{- fail "multi-replica redis registry storage requires distributedPollingLeases=true" -}}
 {{- end -}}
 {{- if .Values.runtime.enabled -}}
   {{- if and .Values.runtime.providerSecrets.createSecret .Values.runtime.providerSecrets.existingSecret -}}

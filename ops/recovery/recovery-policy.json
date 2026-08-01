@@ -48,7 +48,8 @@
       "id": "registry-redis",
       "owner": "operator",
       "backupMode": "provider-managed-pitr",
-      "requirement": "Document and verify the provider RPO/RTO before production use; the repository SQLite recovery CLI does not back up Redis."
+      "requirement": "Document and verify provider RPO/RTO, encrypted transport and storage, and a witnessed restore that checks agent inventory and the trust-chain head; the repository SQLite recovery CLI does not back up Redis.",
+      "datasets": ["registry-agents", "registry-trust-log", "registry-polling-leases"]
     }
   ],
   "storageProtection": {

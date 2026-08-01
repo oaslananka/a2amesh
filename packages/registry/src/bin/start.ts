@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 import { bootstrapTelemetry, resolveTelemetryConfigFromEnv } from '@a2amesh/runtime';
 import { RegistryServer } from '../RegistryServer.js';
-import { SqliteAgentStorage } from '../storage/SqliteAgentStorage.js';
-import { SqliteTrustLogStorage } from '../storage/SqliteTrustLogStorage.js';
 import { resolveRegistryProcessConfig } from './config.js';
+import { createRegistryStorageResources } from './storage.js';
 
 const args = process.argv.slice(2);
 
@@ -24,9 +23,11 @@ Environment:
   REGISTRY_AUTH_AUDIENCE               Comma-separated JWT audiences
   REGISTRY_AUTH_ALGORITHMS             Comma-separated JWT algorithms
   REGISTRY_AUTH_ALLOWED_HOSTNAMES      Allowlist for discovery and JWKS requests
-  REGISTRY_STORAGE_BACKEND             memory or sqlite (default: memory)
+  REGISTRY_STORAGE_BACKEND             memory, sqlite, or redis (default: memory)
   REGISTRY_SQLITE_PATH                 SQLite agent directory database path
   REGISTRY_TRUST_LOG_PATH              SQLite trust-log database path
+  REGISTRY_REDIS_URL                   Redis connection URL (required for redis)
+  REGISTRY_REDIS_PREFIX                Redis key prefix (default: a2a:registry)
   REGISTRY_ALLOWED_HOSTNAMES           Outbound agent hostname allowlist
   REGISTRY_DISTRIBUTED_POLLING_LEASES  Coordinate polling through the configured storage
   REGISTRY_POLLING_LEASE_OWNER_ID      Stable polling lease owner identifier
@@ -42,11 +43,7 @@ Environment:
 
 async function main(): Promise<void> {
   const config = resolveRegistryProcessConfig();
-  const storage =
-    config.storageBackend === 'sqlite' && config.sqlitePath
-      ? new SqliteAgentStorage(config.sqlitePath)
-      : undefined;
-  const trustLog = config.trustLogPath ? new SqliteTrustLogStorage(config.trustLogPath) : undefined;
+  const resources = await createRegistryStorageResources(config);
   const telemetry = await bootstrapTelemetry(
     resolveTelemetryConfigFromEnv(process.env, {
       serviceName: process.env['OTEL_SERVICE_NAME'] ?? 'a2amesh-registry',
@@ -56,8 +53,8 @@ async function main(): Promise<void> {
 
   const registry = new RegistryServer({
     ...config.serverOptions,
-    ...(storage ? { storage } : {}),
-    ...(trustLog ? { trustLogStorage: trustLog } : {}),
+    ...(resources.storage ? { storage: resources.storage } : {}),
+    ...(resources.trustLog ? { trustLogStorage: resources.trustLog } : {}),
   });
   registry.start(config.port);
   process.stdout.write(`Registry running on :${config.port}\n`);
@@ -67,8 +64,7 @@ async function main(): Promise<void> {
     if (closing) return;
     closing = true;
     await registry.stop();
-    storage?.close();
-    trustLog?.close();
+    await resources.close();
     await telemetry.shutdown();
   };
 

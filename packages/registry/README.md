@@ -14,6 +14,17 @@ The registry control plane supports `GET /admin/agents/export` and `POST /admin/
 
 ## Redis Storage
 
+The packaged registry process supports shared Redis state without application glue:
+
+```bash
+REGISTRY_STORAGE_BACKEND=redis \
+REGISTRY_REDIS_URL='rediss://redis.example.com:6379/0' \
+REGISTRY_REDIS_PREFIX='a2a:registry:production' \
+a2amesh-registry
+```
+
+Keep `REGISTRY_REDIS_URL` in the deployment secret manager. Redis mode opens separate clients for the agent directory and the append-only trust log, enables distributed polling leases by default, and closes both clients during graceful shutdown. The trust log uses optimistic Redis transactions and the same SHA-256 hash-chain computation as the in-memory and SQLite implementations.
+
 `RedisStorage` accepts the original JSON key/value client shape:
 
 ```ts
@@ -39,3 +50,20 @@ new RedisStorage({
 ```
 
 The lowercase `sadd`, `srem`, and `smembers` methods are the canonical capability interface. Common node-redis aliases `sAdd`, `sRem`, `sMembers`, and raw uppercase command names are also detected. Existing JSON-array clients remain supported for tests and lightweight fakes, so this is a backward-compatible interface expansion.
+
+`RedisTrustLogStorage` requires a dedicated Redis client because Redis `WATCH` state is connection-scoped:
+
+```ts
+import { createClient } from 'redis';
+import { RegistryServer, RedisStorage, RedisTrustLogStorage } from '@a2amesh/registry';
+
+const directoryClient = createClient({ url });
+const trustLogClient = createClient({ url });
+await Promise.all([directoryClient.connect(), trustLogClient.connect()]);
+
+const registry = new RegistryServer({
+  storage: new RedisStorage(directoryClient, 'a2a:registry'),
+  trustLogStorage: new RedisTrustLogStorage(trustLogClient, 'a2a:registry'),
+  distributedPollingLeases: true,
+});
+```

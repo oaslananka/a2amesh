@@ -204,6 +204,69 @@ for (const required of [
   }
 }
 
+const redisRendered = runHelm(helm, [
+  'template',
+  'a2amesh-redis',
+  chartPath,
+  '--namespace',
+  'a2amesh-redis',
+  '--set',
+  'registry.storage.backend=redis',
+  '--set',
+  'registry.storage.redis.existingSecret=a2amesh-redis-connection',
+  '--set',
+  'registry.storage.redis.secretKey=url',
+  '--set',
+  'registry.storage.redis.prefix=a2a:registry:production',
+  '--set',
+  'registry.storage.distributedPollingLeases=true',
+  '--set',
+  'registry.replicaCount=2',
+]);
+for (const required of [
+  'kind: Deployment',
+  'replicas: 2',
+  'REGISTRY_STORAGE_BACKEND: "redis"',
+  'REGISTRY_REDIS_PREFIX: "a2a:registry:production"',
+  'name: REGISTRY_REDIS_URL',
+  'name: a2amesh-redis-connection',
+  'key: url',
+]) {
+  if (!redisRendered.includes(required)) {
+    throw new Error(`Redis shared-state profile did not render: ${required}`);
+  }
+}
+for (const forbidden of ['volumeClaimTemplates:', 'REGISTRY_SQLITE_PATH:']) {
+  if (redisRendered.includes(forbidden)) {
+    throw new Error(`Redis shared-state profile unexpectedly rendered: ${forbidden}`);
+  }
+}
+
+const redisAutoscalingRendered = runHelm(helm, [
+  'template',
+  'a2amesh-redis-hpa',
+  chartPath,
+  '--namespace',
+  'a2amesh-redis',
+  '--set',
+  'registry.storage.backend=redis',
+  '--set',
+  'registry.storage.redis.existingSecret=a2amesh-redis-connection',
+  '--set',
+  'registry.storage.distributedPollingLeases=true',
+  '--set',
+  'registry.autoscaling.enabled=true',
+  '--set',
+  'registry.autoscaling.minReplicas=2',
+  '--set',
+  'registry.autoscaling.maxReplicas=4',
+]);
+for (const required of ['kind: HorizontalPodAutoscaler', 'minReplicas: 2', 'maxReplicas: 4']) {
+  if (!redisAutoscalingRendered.includes(required)) {
+    throw new Error(`Redis autoscaling profile did not render: ${required}`);
+  }
+}
+
 const defaultRendered = runHelm(helm, [
   'template',
   'a2amesh-defaults',
@@ -324,6 +387,40 @@ const negativeCases = [
       'runtime.autoscaling.enabled=true',
     ],
     pattern: /runtime autoscaling requires runtime\.autoscaling\.allowEphemeralReplicas=true/i,
+  },
+  {
+    name: 'memory multi-replica deployment without state acknowledgement',
+    args: ['--set', 'registry.replicaCount=2'],
+    pattern: /memory registry replicas require autoscaling\.allowEphemeralReplicas=true/i,
+  },
+  {
+    name: 'redis storage without a connection Secret',
+    args: ['--set', 'registry.storage.backend=redis'],
+    pattern: /redis registry storage requires storage\.redis\.existingSecret/i,
+  },
+  {
+    name: 'redis multi-replica deployment without polling leases',
+    args: [
+      '--set',
+      'registry.storage.backend=redis',
+      '--set',
+      'registry.storage.redis.existingSecret=a2amesh-redis-connection',
+      '--set',
+      'registry.replicaCount=2',
+    ],
+    pattern: /multi-replica redis registry storage requires distributedPollingLeases=true/i,
+  },
+  {
+    name: 'redis storage with a per-pod SQLite trust log',
+    args: [
+      '--set',
+      'registry.storage.backend=redis',
+      '--set',
+      'registry.storage.redis.existingSecret=a2amesh-redis-connection',
+      '--set',
+      'registry.storage.trustLog.enabled=true',
+    ],
+    pattern: /redis registry storage includes the shared trust log/i,
   },
   {
     name: 'sqlite multi-replica deployment',

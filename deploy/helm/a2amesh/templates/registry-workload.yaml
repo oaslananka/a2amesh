@@ -93,6 +93,13 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            {{- if eq .Values.registry.storage.backend "redis" }}
+            - name: REGISTRY_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.registry.storage.redis.existingSecret }}
+                  key: {{ .Values.registry.storage.redis.secretKey }}
+            {{- end }}
             {{- if and (not .Values.registry.auth.oidc.enabled) (or .Values.registry.auth.createSecret .Values.registry.auth.existingSecret) }}
             - name: REGISTRY_TOKEN
               valueFrom:

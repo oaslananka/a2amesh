@@ -1,12 +1,14 @@
 import type { RegistryServerOptions } from '../RegistryServer.js';
 
-type RegistryStorageBackend = 'memory' | 'sqlite';
+type RegistryStorageBackend = 'memory' | 'sqlite' | 'redis';
 
 export interface RegistryProcessConfig {
   port: number;
   storageBackend: RegistryStorageBackend;
   sqlitePath?: string;
   trustLogPath?: string;
+  redisUrl?: string;
+  redisPrefix?: string;
   serverOptions: RegistryServerOptions;
 }
 
@@ -134,8 +136,8 @@ function createJwtAuthOptions(env: NodeJS.ProcessEnv): RegistryServerOptions['au
 
 function readStorageBackend(env: NodeJS.ProcessEnv): RegistryStorageBackend {
   const backend = (env['REGISTRY_STORAGE_BACKEND']?.trim().toLowerCase() || 'memory') as string;
-  if (backend !== 'memory' && backend !== 'sqlite') {
-    throw new Error('REGISTRY_STORAGE_BACKEND must be memory or sqlite.');
+  if (backend !== 'memory' && backend !== 'sqlite' && backend !== 'redis') {
+    throw new Error('REGISTRY_STORAGE_BACKEND must be memory, sqlite, or redis.');
   }
   return backend;
 }
@@ -163,6 +165,17 @@ export function resolveRegistryProcessConfig(
     throw new Error('REGISTRY_SQLITE_PATH is required for sqlite registry storage.');
   }
   const trustLogPath = readOptionalString(env, 'REGISTRY_TRUST_LOG_PATH');
+  const redisUrl = readOptionalString(env, 'REGISTRY_REDIS_URL');
+  const redisPrefix = readOptionalString(env, 'REGISTRY_REDIS_PREFIX') ?? 'a2a:registry';
+  if (storageBackend === 'redis' && !redisUrl) {
+    throw new Error('REGISTRY_REDIS_URL is required for redis registry storage.');
+  }
+  if (storageBackend === 'redis' && trustLogPath) {
+    throw new Error('REGISTRY_TRUST_LOG_PATH cannot be combined with redis registry storage.');
+  }
+  if (storageBackend === 'redis' && sqlitePath) {
+    throw new Error('REGISTRY_SQLITE_PATH cannot be combined with redis registry storage.');
+  }
 
   const requireAuth = readBoolean(
     env,
@@ -180,6 +193,8 @@ export function resolveRegistryProcessConfig(
     storageBackend,
     ...(sqlitePath ? { sqlitePath } : {}),
     ...(trustLogPath ? { trustLogPath } : {}),
+    ...(redisUrl ? { redisUrl } : {}),
+    ...(storageBackend === 'redis' ? { redisPrefix } : {}),
     serverOptions: {
       allowLocalhost,
       allowPrivateNetworks,
@@ -198,7 +213,7 @@ export function resolveRegistryProcessConfig(
       distributedPollingLeases: readBoolean(
         env,
         'REGISTRY_DISTRIBUTED_POLLING_LEASES',
-        storageBackend === 'sqlite',
+        storageBackend !== 'memory',
       ),
       pollingLeaseOwnerId:
         readOptionalString(env, 'REGISTRY_POLLING_LEASE_OWNER_ID') ??

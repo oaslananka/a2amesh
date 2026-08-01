@@ -1,6 +1,6 @@
 # Backup, Restore, and Disaster Recovery
 
-This runbook defines the recovery guarantees that A2A Mesh can verify in the repository. It deliberately separates the supported hardened single-node topology from future shared-state high availability.
+This runbook defines the recovery guarantees that A2A Mesh can verify in the repository. It separates the supported hardened single-node SQLite drill from shared Redis registry state and from full-platform high availability.
 
 ## Supported topology and non-goals
 
@@ -9,24 +9,25 @@ The supported production baseline is:
 - one SQLite-backed registry replica on persistent storage;
 - a separate registry trust-log SQLite file on the same protected volume;
 - one runtime replica unless the application provides a shared task store and idempotent provider execution;
+- optional external Redis registry state for the agent directory, trust log, and distributed polling leases;
 - optional application-owned SQLite task and Fleet databases;
 - `minAvailable: 1` PDBs that block voluntary eviction until an operator explicitly accepts a maintenance outage;
 - daily verified backups copied to at least one independent failure domain.
 
-This is not an HA topology. The repository does not currently provide multi-writer SQLite, automatic leader election, a shared runtime task store, cross-region failover, or transparent in-flight task migration. A deployment must not claim HA merely because Kubernetes restarts a pod.
+This is not an HA topology for the full platform. Redis-backed registry replicas share directory, trust-log, and lease state, but the repository does not provide multi-writer SQLite, a shared runtime task store, cross-region traffic failover, or transparent in-flight task migration. A deployment must not claim full-platform HA merely because Kubernetes or Redis restarts a component.
 
-Redis-backed registry state is an external dependency. The SQLite recovery CLI does not back up Redis. Production Redis use requires provider-managed persistence or point-in-time recovery, a documented provider RPO/RTO, and a separately witnessed restore drill.
+Redis-backed registry state is an external dependency containing registered agents, query indexes, the canonical trust-log chain, and polling leases. The SQLite recovery CLI does not back up Redis. Production Redis use requires provider-managed persistence or point-in-time recovery, encrypted transport and storage, a documented provider RPO/RTO, and a separately witnessed restore drill that verifies agent inventory and the trust-chain head after recovery.
 
 ## Data ownership
 
-| Dataset             | Typical path or setting     | Recovery owner      | Repository drill |
-| ------------------- | --------------------------- | ------------------- | ---------------- |
-| Registry agents     | `REGISTRY_SQLITE_PATH`      | Registry operator   | Yes              |
-| Registry trust log  | `REGISTRY_TRUST_LOG_PATH`   | Registry operator   | Yes              |
-| Runtime tasks       | Application-owned SQLite    | Runtime application | Yes              |
-| Fleet state/audit   | Application-owned SQLite    | Fleet application   | Yes              |
-| Registry Redis data | Provider-managed Redis/PITR | Platform operator   | No               |
-| Provider-side tasks | Provider-specific control   | Provider operator   | No               |
+| Dataset              | Typical path or setting              | Recovery owner      | Repository drill |
+| -------------------- | ------------------------------------ | ------------------- | ---------------- |
+| Registry agents      | `REGISTRY_SQLITE_PATH`               | Registry operator   | Yes              |
+| Registry trust log   | `REGISTRY_TRUST_LOG_PATH`            | Registry operator   | Yes              |
+| Runtime tasks        | Application-owned SQLite             | Runtime application | Yes              |
+| Fleet state/audit    | Application-owned SQLite             | Fleet application   | Yes              |
+| Registry Redis state | `REGISTRY_REDIS_URL` / provider PITR | Platform operator   | No               |
+| Provider-side tasks  | Provider-specific control            | Provider operator   | No               |
 
 Back up every SQLite file independently. Do not assume that backing up `registry.sqlite` also protects a separately configured trust-log file.
 
@@ -171,17 +172,17 @@ The required `CI / recovery` job runs the drill on pull requests, merge queues, 
 
 ## Upgrade, rollback, and failure matrix
 
-| Scenario                      | Verified behavior                                                                                                                              | Operator action                                                                                         |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Registry pod restart          | Persistent SQLite survives pod recreation when the PVC remains available.                                                                      | Verify sentinel data, health, trust-log head, and recovery metrics.                                     |
-| Rolling chart upgrade         | Helm waits for readiness; the persistent registry data set must remain present.                                                                | Verify sentinel data before and after upgrade.                                                          |
-| Chart rollback                | Helm restores the prior revision; the persistent data set remains on the PVC.                                                                  | Verify sentinel data and schema compatibility before declaring recovery.                                |
-| Voluntary node drain          | Single-replica PDBs block eviction.                                                                                                            | Back up, announce outage, explicitly disable both PDBs, drain, uncordon, and restore production values. |
-| Involuntary node or disk loss | Kubernetes restart alone cannot recover lost local/PVC data.                                                                                   | Provision replacement storage and restore the latest independently stored verified backup.              |
-| Registry dependency outage    | `A2AMeshRegistryNoHealthyAgents` fires in the controlled Prometheus rule test.                                                                 | Check registry reachability, CNI policy, DNS, agent heartbeat paths, and data integrity.                |
-| Partial network failure       | Calico lifecycle tests prove unrelated namespace denial and private/metadata egress denial while required chart-internal paths remain allowed. | Compare rendered policies and CNI events; do not weaken policy globally.                                |
-| Runtime process loss          | Process-local in-flight work may be lost unless the application uses durable task storage and provider-side idempotency.                       | Reconcile durable tasks and provider state before retrying.                                             |
-| Redis outage                  | Repository recovery tooling does not repair or restore Redis.                                                                                  | Follow the provider's failover/PITR runbook and verify registry consistency afterward.                  |
+| Scenario                      | Verified behavior                                                                                                                              | Operator action                                                                                                                               |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Registry pod restart          | Persistent SQLite survives pod recreation when the PVC remains available.                                                                      | Verify sentinel data, health, trust-log head, and recovery metrics.                                                                           |
+| Rolling chart upgrade         | Helm waits for readiness; the persistent registry data set must remain present.                                                                | Verify sentinel data before and after upgrade.                                                                                                |
+| Chart rollback                | Helm restores the prior revision; the persistent data set remains on the PVC.                                                                  | Verify sentinel data and schema compatibility before declaring recovery.                                                                      |
+| Voluntary node drain          | Single-replica PDBs block eviction.                                                                                                            | Back up, announce outage, explicitly disable both PDBs, drain, uncordon, and restore production values.                                       |
+| Involuntary node or disk loss | Kubernetes restart alone cannot recover lost local/PVC data.                                                                                   | Provision replacement storage and restore the latest independently stored verified backup.                                                    |
+| Registry dependency outage    | `A2AMeshRegistryNoHealthyAgents` fires in the controlled Prometheus rule test.                                                                 | Check registry reachability, CNI policy, DNS, agent heartbeat paths, and data integrity.                                                      |
+| Partial network failure       | Calico lifecycle tests prove unrelated namespace denial and private/metadata egress denial while required chart-internal paths remain allowed. | Compare rendered policies and CNI events; do not weaken policy globally.                                                                      |
+| Runtime process loss          | Process-local in-flight work may be lost unless the application uses durable task storage and provider-side idempotency.                       | Reconcile durable tasks and provider state before retrying.                                                                                   |
+| Redis outage                  | Registry replicas lose shared directory, trust-log, and lease access until Redis recovers.                                                     | Follow the provider failover/PITR runbook, then verify agent inventory, trust-chain order/head, and lease acquisition before resuming writes. |
 
 ## Graceful shutdown and in-flight tasks
 

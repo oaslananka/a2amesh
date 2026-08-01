@@ -38,18 +38,19 @@ See the [OpenAPI specification](/openapi/registry.openapi.json) for the complete
 
 ## Production Redis and Distributed Polling
 
-Production registry deployments should use Redis-backed storage when more than one registry instance is active.
+Production registry deployments should use Redis-backed storage when more than one registry instance is active. The packaged process accepts `REGISTRY_STORAGE_BACKEND=redis`, requires `REGISTRY_REDIS_URL`, and uses `REGISTRY_REDIS_PREFIX` (default `a2a:registry`) for every shared key. Keep the connection URL in the deployment secret manager; `rediss://` URLs enable transport encryption.
 
-Redis storage provides:
+Redis mode creates separate connections for the agent directory and trust log, enables distributed polling leases by default, and closes both connections during graceful shutdown. Redis storage provides:
 
 - set-based indexes for status, tenant, skill, tag, name, transport, MCP compatibility, and public discovery queries;
 - batched mutations with Redis transactions when the client exposes `multi()`;
 - fallback JSON-array indexes for simple Redis-like clients used in tests and local prototypes;
-- polling lease records under the registry prefix for distributed health and task polling coordination.
+- polling lease records under the registry prefix for distributed health and task polling coordination;
+- an append-only `RedisTrustLogStorage` whose optimistic transactions preserve the canonical SHA-256 trust chain across registry processes.
 
 ### Distributed polling leases
 
-Set `distributedPollingLeases: true` when multiple registry processes share the same Redis storage. The polling controller then attempts a Redis-backed lease before scheduled health checks or task snapshot polling.
+Set `distributedPollingLeases: true` when multiple registry processes share the same Redis storage. The packaged process selects this default automatically for Redis; explicit application construction should set it directly. The polling controller then attempts a Redis-backed lease before scheduled health checks or task snapshot polling.
 
 Recommended options:
 
@@ -132,7 +133,10 @@ Unsigned or untrusted registrations never append an entry. The `a2amesh trust` C
 `RegistryServerOptions.trustLogStorage` accepts any `ITrustLogStorage` implementation:
 
 - `InMemoryTrustLogStorage` (default) — does not survive a process restart.
-- `SqliteTrustLogStorage` — durable, file-backed via Node's built-in `node:sqlite`. Shares its hash-chain computation with `InMemoryTrustLogStorage`, so the `entryHash` a given sequence of registrations produces is identical regardless of which backend a registry uses.
+- `SqliteTrustLogStorage` — durable, file-backed via Node's built-in `node:sqlite`.
+- `RedisTrustLogStorage` — shared across registry processes and appended with a dedicated Redis client plus optimistic transactions.
+
+All three implementations share the same hash-chain computation, so the `entryHash` a given ordered sequence of registrations produces is identical regardless of backend.
 
 ```typescript
 import { RegistryServer, SqliteTrustLogStorage } from '@a2amesh/registry';
