@@ -1,4 +1,6 @@
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, symlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -188,13 +190,24 @@ describe('standalone MCP server CLI', () => {
     expect(setExitCode).toHaveBeenCalledTimes(2);
   });
 
-  it('runs only when the executable path matches the module URL', async () => {
+  it('runs for direct and symlinked executable paths only', async () => {
     const modulePath = fileURLToPath(new URL('../src/server/cli.ts', import.meta.url));
     const moduleUrl = new URL('../src/server/cli.ts', import.meta.url).href;
+    const root = await mkdtemp(join(tmpdir(), 'a2amesh-mcp-cli-entrypoint-'));
+    const linkedPath = join(root, 'a2amesh-mcp');
     const runCli = vi.fn().mockResolvedValue(undefined);
 
-    expect(startA2AMcpServerCliIfEntrypoint(['node'], moduleUrl, runCli)).toBe(false);
-    expect(startA2AMcpServerCliIfEntrypoint(['node', modulePath], moduleUrl, runCli)).toBe(true);
-    expect(runCli).toHaveBeenCalledOnce();
+    try {
+      await symlink(modulePath, linkedPath);
+      expect(startA2AMcpServerCliIfEntrypoint(['node'], moduleUrl, runCli)).toBe(false);
+      expect(startA2AMcpServerCliIfEntrypoint(['node', modulePath], moduleUrl, runCli)).toBe(true);
+      expect(startA2AMcpServerCliIfEntrypoint(['node', linkedPath], moduleUrl, runCli)).toBe(true);
+      expect(
+        startA2AMcpServerCliIfEntrypoint(['node', join(root, 'missing')], moduleUrl, runCli),
+      ).toBe(false);
+      expect(runCli).toHaveBeenCalledTimes(2);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

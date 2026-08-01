@@ -183,16 +183,41 @@ async function probeStdio(binary) {
   }
 }
 
+async function validateInstalledConsumer(consumer, expectedVersion) {
+  const packageLink = join(consumer, 'node_modules/@a2amesh/mcp');
+  const installedPackage = await realpath(packageLink);
+  await validatePackageDirectory(installedPackage, expectedVersion);
+  const binary = join(
+    consumer,
+    'node_modules/.bin',
+    process.platform === 'win32' ? 'a2amesh-mcp.cmd' : 'a2amesh-mcp',
+  );
+  const help = runCommand(binary, ['--help'], {
+    cwd: consumer,
+    env: minimalProcessEnvironment({ NO_COLOR: '1' }),
+  });
+  if (!help.includes('Usage: a2amesh-mcp')) throw new Error('installed binary help differs');
+  const reportedVersion = runCommand(binary, ['--version'], {
+    cwd: consumer,
+    env: minimalProcessEnvironment({ NO_COLOR: '1' }),
+  }).trim();
+  if (reportedVersion !== expectedVersion) throw new Error('installed binary version differs');
+  await probeStdio(binary);
+  return installedPackage;
+}
+
 export async function checkMcpDistribution() {
   const root = await mkdtemp(join(tmpdir(), 'a2amesh-mcp-distribution-'));
   try {
     const tarballs = join(root, 'tarballs');
     const consumer = join(root, 'consumer');
+    const npmConsumer = join(root, 'npm-consumer');
     const lifecycle = join(root, 'lifecycle', 'installed');
     const backup = join(root, 'lifecycle', 'backup');
     const syntheticNext = join(root, 'lifecycle', 'next');
     await mkdir(tarballs, { recursive: true });
     await mkdir(consumer, { recursive: true });
+    await mkdir(npmConsumer, { recursive: true });
 
     const protocolTarball = await packWorkspacePackage('packages/protocol', tarballs);
     const runtimeTarball = await packWorkspacePackage('packages/runtime', tarballs);
@@ -218,25 +243,31 @@ export async function checkMcpDistribution() {
     );
     runPnpm(['--dir', consumer, 'install', '--ignore-scripts']);
 
-    const packageLink = join(consumer, 'node_modules/@a2amesh/mcp');
-    const installedPackage = await realpath(packageLink);
-    await validatePackageDirectory(installedPackage, version);
-    const binary = join(
-      consumer,
-      'node_modules/.bin',
-      process.platform === 'win32' ? 'a2amesh-mcp.cmd' : 'a2amesh-mcp',
+    const installedPackage = await validateInstalledConsumer(consumer, version);
+
+    await writeFile(
+      join(npmConsumer, 'package.json'),
+      `${JSON.stringify(
+        {
+          private: true,
+          type: 'module',
+          dependencies: {
+            '@a2amesh/protocol': fileDependency(npmConsumer, protocolTarball),
+            '@a2amesh/runtime': fileDependency(npmConsumer, runtimeTarball),
+            '@a2amesh/mcp': fileDependency(npmConsumer, mcpTarball),
+          },
+        },
+        null,
+        2,
+      )}
+`,
     );
-    const help = runCommand(binary, ['--help'], {
-      cwd: consumer,
-      env: minimalProcessEnvironment({ NO_COLOR: '1' }),
-    });
-    if (!help.includes('Usage: a2amesh-mcp')) throw new Error('installed binary help differs');
-    const reportedVersion = runCommand(binary, ['--version'], {
-      cwd: consumer,
-      env: minimalProcessEnvironment({ NO_COLOR: '1' }),
-    }).trim();
-    if (reportedVersion !== version) throw new Error('installed binary version differs');
-    await probeStdio(binary);
+    runCommand(
+      process.platform === 'win32' ? 'npm.cmd' : 'npm',
+      ['install', '--ignore-scripts', '--no-audit', '--no-fund'],
+      { cwd: npmConsumer },
+    );
+    await validateInstalledConsumer(npmConsumer, version);
 
     await cp(installedPackage, lifecycle, { recursive: true });
     await cp(lifecycle, backup, { recursive: true });
