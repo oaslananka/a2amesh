@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/mcp-v0.15.0-alpha.1...@a2amesh/mcp-v0.16.0-alpha.1) (2026-08-01)
+
+
+### Features
+
+* **mcp:** publish standalone server distribution ([#266](https://github.com/oaslananka/a2amesh/issues/266)) ([cf72f58](https://github.com/oaslananka/a2amesh/commit/cf72f5872d31f3d788cfc1f0e3cfcd932e0eaebb))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/runtime bumped to 0.16.0-alpha.1
+
 ## [0.15.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/mcp-v0.14.0-alpha.1...@a2amesh/mcp-v0.15.0-alpha.1) (2026-07-29)
 
 
