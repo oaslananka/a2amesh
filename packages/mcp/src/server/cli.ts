@@ -11,6 +11,21 @@ export type A2AMcpServerCommand =
   | { action: 'version' }
   | { action: 'start'; transport?: 'stdio' | 'streamable-http' };
 
+export interface A2AMcpServerOutput {
+  write(value: string): unknown;
+}
+
+type A2AMcpPackageReader = (path: URL, encoding: 'utf8') => string;
+
+export interface A2AMcpServerCliOptions {
+  args?: string[];
+  env?: NodeJS.ProcessEnv;
+  output?: A2AMcpServerOutput;
+  errorOutput?: (message: string) => void;
+  setExitCode?: (code: number) => void;
+  runCommand?: typeof runA2AMcpServerCommand;
+}
+
 export function parseA2AMcpServerArgs(args: string[]): A2AMcpServerCommand {
   if (args.includes('--help') || args.includes('-h')) return { action: 'help' };
   if (args.includes('--version') || args.includes('-v')) return { action: 'version' };
@@ -35,9 +50,9 @@ export function renderA2AMcpServerHelp(): string {
   ].join('\n');
 }
 
-function packageVersion(): string {
+export function readA2AMcpPackageVersion(readPackage: A2AMcpPackageReader = readFileSync): string {
   const packageJson = JSON.parse(
-    readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+    readPackage(new URL('../../package.json', import.meta.url), 'utf8'),
   ) as { version?: string };
   if (!packageJson.version) throw new Error('Package version is unavailable.');
   return packageJson.version;
@@ -47,7 +62,7 @@ export async function startA2AMcpServer(
   env: NodeJS.ProcessEnv,
   command: Extract<A2AMcpServerCommand, { action: 'start' }>,
 ): Promise<void> {
-  const version = packageVersion();
+  const version = readA2AMcpPackageVersion();
   const config = loadA2AMcpRuntimeConfig(env, {
     ...(command.transport ? { transport: command.transport } : {}),
     serverVersion: version,
@@ -80,23 +95,52 @@ export async function startA2AMcpServer(
   process.once('SIGTERM', shutdown);
 }
 
-async function main(): Promise<void> {
-  const command = parseA2AMcpServerArgs(process.argv.slice(2));
+export async function runA2AMcpServerCommand(
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  output: A2AMcpServerOutput = process.stdout,
+): Promise<void> {
+  const command = parseA2AMcpServerArgs(args);
   if (command.action === 'help') {
-    process.stdout.write(`${renderA2AMcpServerHelp()}\n`);
+    output.write(`${renderA2AMcpServerHelp()}\n`);
     return;
   }
   if (command.action === 'version') {
-    process.stdout.write(`${packageVersion()}\n`);
+    output.write(`${readA2AMcpPackageVersion()}\n`);
     return;
   }
-  await startA2AMcpServer(process.env, command);
+  await startA2AMcpServer(env, command);
 }
 
-const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : undefined;
-if (invokedPath === import.meta.url) {
-  main().catch((error: unknown) => {
-    console.error(error instanceof Error ? error.message : 'A2A Mesh MCP server failed.');
-    process.exitCode = 1;
-  });
+export async function runA2AMcpServerCli(options: A2AMcpServerCliOptions = {}): Promise<void> {
+  const {
+    args = process.argv.slice(2),
+    env = process.env,
+    output = process.stdout,
+    errorOutput = console.error,
+    setExitCode = (code: number): void => {
+      process.exitCode = code;
+    },
+    runCommand = runA2AMcpServerCommand,
+  } = options;
+
+  try {
+    await runCommand(args, env, output);
+  } catch (error: unknown) {
+    errorOutput(error instanceof Error ? error.message : 'A2A Mesh MCP server failed.');
+    setExitCode(1);
+  }
 }
+
+export function startA2AMcpServerCliIfEntrypoint(
+  argv: string[] = process.argv,
+  moduleUrl: string = import.meta.url,
+  runCli: () => Promise<void> = runA2AMcpServerCli,
+): boolean {
+  const invokedPath = argv[1] ? pathToFileURL(resolve(argv[1])).href : undefined;
+  if (invokedPath !== moduleUrl) return false;
+  void runCli();
+  return true;
+}
+
+startA2AMcpServerCliIfEntrypoint();
