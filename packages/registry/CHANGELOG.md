@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.17.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/registry-v0.16.1-alpha.1...@a2amesh/registry-v0.17.0-alpha.1) (2026-08-01)
+
+
+### Features
+
+* **registry:** add shared Redis registry state ([#274](https://github.com/oaslananka/a2amesh/issues/274)) ([59cd666](https://github.com/oaslananka/a2amesh/commit/59cd66646990bdfca535bef1bbea80a32f67f31b))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/runtime bumped to 0.17.0-alpha.1
+
 ## [0.16.1-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/registry-v0.16.0-alpha.1...@a2amesh/registry-v0.16.1-alpha.1) (2026-08-01)
 
 
