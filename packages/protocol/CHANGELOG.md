@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.17.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/protocol-v0.16.1-alpha.1...@a2amesh/protocol-v0.17.0-alpha.1) (2026-08-01)
+
+
+### Miscellaneous Chores
+
+* **@a2amesh/protocol:** Synchronize A2A Mesh public packages versions
+
 ## [0.16.1-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/protocol-v0.16.0-alpha.1...@a2amesh/protocol-v0.16.1-alpha.1) (2026-08-01)
 
 
