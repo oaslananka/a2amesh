@@ -12,6 +12,7 @@ import type {
   A2AServer,
   AgentCard,
   Message,
+  PushNotificationConfig,
   Task,
   TaskManager,
   TaskUpdatedEvent,
@@ -24,23 +25,58 @@ type EmptyRequest = Record<string, never>;
 
 interface SendMessageRequest {
   message_text?: string;
+  context_id?: string;
+  return_immediately?: boolean;
 }
 
 interface TaskRequest {
   task_id: string;
 }
 
+interface TaskListRequest {
+  context_id?: string;
+  limit?: number;
+  offset?: number;
+}
+
+interface PushNotificationConfigRequest {
+  task_id: string;
+  config_id?: string;
+  config_json?: string;
+}
+
 interface AgentCardResponse {
   json_card: string;
+}
+
+interface HealthResponse {
+  health_json: string;
 }
 
 interface TaskResponse {
   task_json: string;
 }
 
-const TERMINAL_TASK_STATES = new Set(['COMPLETED', 'FAILED', 'CANCELED']);
+interface TaskListResponse {
+  task_list_json: string;
+}
+
+interface PushNotificationConfigResponse {
+  config_json: string;
+}
+
+interface PushNotificationConfigListResponse {
+  config_list_json: string;
+}
+
+interface DeletePushNotificationConfigResponse {
+  deleted: boolean;
+}
+
+const TERMINAL_TASK_STATES = new Set(['COMPLETED', 'FAILED', 'CANCELED', 'REJECTED']);
 const A2A_VERSION_METADATA_KEY = 'a2a-version';
 const SUPPORTED_A2A_PROTOCOL_VERSIONS = ['1.0', '1.2', '0.3'] as const;
+const DEFAULT_PUSH_NOTIFICATION_CONFIG_ID = 'default';
 
 interface ProtoDescriptor {
   a2a: {
@@ -63,6 +99,10 @@ function toGrpcMessage(text: string): Message {
 
 export interface GrpcServerOptions {
   supportedProtocolVersions?: readonly string[];
+  authenticate?: (metadata: grpc.Metadata) => boolean;
+  normalizePushNotificationConfig?: (
+    config: PushNotificationConfig,
+  ) => PushNotificationConfig | Promise<PushNotificationConfig>;
 }
 
 function readProtocolVersion(metadata: grpc.Metadata): string | undefined {
@@ -78,19 +118,37 @@ function readProtocolVersion(metadata: grpc.Metadata): string | undefined {
   return undefined;
 }
 
-function createUnsupportedProtocolVersionError(requestedVersion: string): grpc.ServiceError {
-  const message = `A2A protocol version ${requestedVersion} is not supported`;
-  return Object.assign(new Error(message), {
-    code: grpc.status.FAILED_PRECONDITION,
-    details: message,
+function serviceError(code: grpc.status, details: string): grpc.ServiceError {
+  return Object.assign(new Error(details), {
+    code,
+    details,
     metadata: new grpc.Metadata(),
   });
+}
+
+function toServiceError(error: unknown, fallback: string): grpc.ServiceError {
+  if (
+    error &&
+    typeof error === 'object' &&
+    typeof (error as { code?: unknown }).code === 'number' &&
+    typeof (error as { details?: unknown }).details === 'string'
+  ) {
+    return error as grpc.ServiceError;
+  }
+  if (error instanceof SyntaxError) {
+    return serviceError(grpc.status.INVALID_ARGUMENT, 'Invalid JSON payload');
+  }
+  if (error instanceof TaskLifecycleError) {
+    return serviceError(grpc.status.FAILED_PRECONDITION, error.message);
+  }
+  return serviceError(grpc.status.INTERNAL, error instanceof Error ? error.message : fallback);
 }
 
 export class GrpcServer {
   private readonly server: grpc.Server;
   private readonly agentCard: AgentCard;
   private readonly adapter: A2AServer;
+  private readonly startedAt = Date.now();
 
   constructor(
     adapter: A2AServer,
@@ -123,61 +181,197 @@ export class GrpcServer {
         call: grpc.ServerUnaryCall<EmptyRequest, AgentCardResponse>,
         callback: grpc.sendUnaryData<AgentCardResponse>,
       ) => {
-        if (!this.assertSupportedProtocolVersion(call.metadata, callback)) return;
-        callback(null, { json_card: JSON.stringify(this.agentCard) });
+        void this.handleUnary(call.metadata, callback, () => ({
+          json_card: JSON.stringify(this.agentCard),
+        }));
       },
-      SendMessage: async (
+      GetAuthenticatedExtendedCard: (
+        call: grpc.ServerUnaryCall<EmptyRequest, AgentCardResponse>,
+        callback: grpc.sendUnaryData<AgentCardResponse>,
+      ) => {
+        void this.handleUnary(call.metadata, callback, () => {
+          if (!this.options.authenticate) {
+            throw serviceError(
+              grpc.status.UNAUTHENTICATED,
+              'Authenticated extended card requires authentication',
+            );
+          }
+          if (!this.agentCard.capabilities?.extendedAgentCard) {
+            throw serviceError(grpc.status.UNIMPLEMENTED, 'Extended card not supported');
+          }
+          return { json_card: JSON.stringify(this.agentCard) };
+        });
+      },
+      Health: (
+        call: grpc.ServerUnaryCall<EmptyRequest, HealthResponse>,
+        callback: grpc.sendUnaryData<HealthResponse>,
+      ) => {
+        void this.handleUnary(call.metadata, callback, () => ({
+          health_json: JSON.stringify(this.healthResponse()),
+        }));
+      },
+      SendMessage: (
         call: grpc.ServerUnaryCall<SendMessageRequest, TaskResponse>,
         callback: grpc.sendUnaryData<TaskResponse>,
       ) => {
+        void this.handleUnary(call.metadata, callback, () => {
+          const task = this.createGrpcTask(
+            call.request.message_text ?? '',
+            call.request.context_id,
+          );
+          return { task_json: JSON.stringify(task) };
+        });
+      },
+      StreamMessage: (call: grpc.ServerWritableStream<SendMessageRequest, TaskResponse>) => {
+        const requestError = this.requestError(call.metadata);
+        if (requestError) {
+          call.destroy(requestError);
+          return;
+        }
         try {
-          if (!this.assertSupportedProtocolVersion(call.metadata, callback)) return;
-          const task = this.createGrpcTask(call.request.message_text ?? '');
-          callback(null, { task_json: JSON.stringify(task) });
+          const task = this.createGrpcTask(
+            call.request.message_text ?? '',
+            call.request.context_id,
+          );
+          this.streamTask(call, task);
         } catch (error) {
-          callback({
-            code: grpc.status.INTERNAL,
-            details: String(error),
-            name: 'GrpcSendMessageError',
-          });
+          call.destroy(toServiceError(error, 'Unable to stream message'));
         }
       },
-      StreamMessage: (call: grpc.ServerWritableStream<SendMessageRequest, TaskResponse>) =>
-        this.streamGrpcTask(call),
       GetTask: (
         call: grpc.ServerUnaryCall<TaskRequest, TaskResponse>,
         callback: grpc.sendUnaryData<TaskResponse>,
       ) => {
-        if (!this.assertSupportedProtocolVersion(call.metadata, callback)) return;
-        const task = this.getTaskManager().getTask(call.request.task_id);
-        callback(null, { task_json: JSON.stringify(task ?? null) });
+        void this.handleUnary(call.metadata, callback, () => ({
+          task_json: JSON.stringify(this.getTaskManager().getTask(call.request.task_id) ?? null),
+        }));
+      },
+      ListTasks: (
+        call: grpc.ServerUnaryCall<TaskListRequest, TaskListResponse>,
+        callback: grpc.sendUnaryData<TaskListResponse>,
+      ) => {
+        void this.handleUnary(call.metadata, callback, () => ({
+          task_list_json: JSON.stringify(this.listTasks(call.request)),
+        }));
       },
       CancelTask: (
         call: grpc.ServerUnaryCall<TaskRequest, TaskResponse>,
         callback: grpc.sendUnaryData<TaskResponse>,
       ) => {
-        if (!this.assertSupportedProtocolVersion(call.metadata, callback)) return;
-        const task = this.getTaskManager().cancelTask(call.request.task_id);
-        callback(null, { task_json: JSON.stringify(task ?? null) });
+        void this.handleUnary(call.metadata, callback, () => ({
+          task_json: JSON.stringify(this.getTaskManager().cancelTask(call.request.task_id) ?? null),
+        }));
+      },
+      SubscribeTask: (call: grpc.ServerWritableStream<TaskRequest, TaskResponse>) => {
+        const requestError = this.requestError(call.metadata);
+        if (requestError) {
+          call.destroy(requestError);
+          return;
+        }
+        const task = this.getTaskManager().getTask(call.request.task_id);
+        if (!task) {
+          call.destroy(serviceError(grpc.status.NOT_FOUND, 'Task not found'));
+          return;
+        }
+        this.streamTask(call, task);
+      },
+      CreatePushNotificationConfig: (
+        call: grpc.ServerUnaryCall<PushNotificationConfigRequest, PushNotificationConfigResponse>,
+        callback: grpc.sendUnaryData<PushNotificationConfigResponse>,
+      ) => {
+        void this.handleUnary(call.metadata, callback, async () => {
+          const task = this.requireTask(call.request.task_id);
+          const parsed = parsePushNotificationConfig(call.request.config_json);
+          const config = this.options.normalizePushNotificationConfig
+            ? await this.options.normalizePushNotificationConfig(parsed)
+            : parsed;
+          const configId = normalizeConfigId(call.request.config_id, config);
+          const stored = this.getTaskManager().setPushNotificationConfig(task.id, configId, config);
+          return { config_json: JSON.stringify(stored ?? null) };
+        });
+      },
+      GetPushNotificationConfig: (
+        call: grpc.ServerUnaryCall<PushNotificationConfigRequest, PushNotificationConfigResponse>,
+        callback: grpc.sendUnaryData<PushNotificationConfigResponse>,
+      ) => {
+        void this.handleUnary(call.metadata, callback, () => {
+          const task = this.requireTask(call.request.task_id);
+          const config = this.getTaskManager().getPushNotificationConfig(
+            task.id,
+            normalizeConfigId(call.request.config_id),
+          );
+          return { config_json: JSON.stringify(config ?? null) };
+        });
+      },
+      ListPushNotificationConfigs: (
+        call: grpc.ServerUnaryCall<TaskRequest, PushNotificationConfigListResponse>,
+        callback: grpc.sendUnaryData<PushNotificationConfigListResponse>,
+      ) => {
+        void this.handleUnary(call.metadata, callback, () => {
+          const task = this.requireTask(call.request.task_id);
+          return {
+            config_list_json: JSON.stringify({
+              configs: this.getTaskManager().listPushNotifications(task.id),
+            }),
+          };
+        });
+      },
+      DeletePushNotificationConfig: (
+        call: grpc.ServerUnaryCall<
+          PushNotificationConfigRequest,
+          DeletePushNotificationConfigResponse
+        >,
+        callback: grpc.sendUnaryData<DeletePushNotificationConfigResponse>,
+      ) => {
+        void this.handleUnary(call.metadata, callback, () => {
+          const task = this.requireTask(call.request.task_id);
+          return {
+            deleted: this.getTaskManager().removePushNotificationConfig(
+              task.id,
+              normalizeConfigId(call.request.config_id),
+            ),
+          };
+        });
       },
     });
   }
 
-  private assertSupportedProtocolVersion<TResponse>(
+  private async handleUnary<TResponse>(
     metadata: grpc.Metadata,
     callback: grpc.sendUnaryData<TResponse>,
-  ): boolean {
+    operation: () => TResponse | Promise<TResponse>,
+  ): Promise<void> {
+    const requestError = this.requestError(metadata);
+    if (requestError) {
+      callback(requestError);
+      return;
+    }
+    try {
+      callback(null, await operation());
+    } catch (error) {
+      callback(toServiceError(error, 'gRPC operation failed'));
+    }
+  }
+
+  private requestError(metadata: grpc.Metadata): grpc.ServiceError | undefined {
     const requestedVersion = readProtocolVersion(metadata);
-    if (!requestedVersion) {
-      return true;
+    if (requestedVersion && !this.supportedProtocolVersions().includes(requestedVersion)) {
+      return serviceError(
+        grpc.status.FAILED_PRECONDITION,
+        `A2A protocol version ${requestedVersion} is not supported`,
+      );
     }
 
-    if (this.supportedProtocolVersions().includes(requestedVersion)) {
-      return true;
+    if (this.options.authenticate) {
+      try {
+        if (!this.options.authenticate(metadata)) {
+          return serviceError(grpc.status.UNAUTHENTICATED, 'Authentication required');
+        }
+      } catch {
+        return serviceError(grpc.status.UNAUTHENTICATED, 'Authentication required');
+      }
     }
-
-    callback(createUnsupportedProtocolVersionError(requestedVersion));
-    return false;
+    return undefined;
   }
 
   private supportedProtocolVersions(): readonly string[] {
@@ -215,10 +409,13 @@ export class GrpcServer {
     });
   }
 
-  private createGrpcTask(messageText: string): Task {
+  private createGrpcTask(messageText: string, contextId?: string): Task {
     const taskManager = this.getTaskManager();
-    const task = taskManager.createTask();
+    const task = taskManager.createTask(undefined, contextId || undefined);
     const message = toGrpcMessage(messageText);
+    if (contextId) {
+      message.contextId = contextId;
+    }
     taskManager.addHistoryMessage(task.id, message);
     taskManager.updateTaskState(task.id, 'WORKING');
     void this.completeGrpcTask(task, message);
@@ -259,14 +456,10 @@ export class GrpcServer {
     }
   }
 
-  private streamGrpcTask(call: grpc.ServerWritableStream<SendMessageRequest, TaskResponse>): void {
-    const requestedVersion = readProtocolVersion(call.metadata);
-    if (requestedVersion && !this.supportedProtocolVersions().includes(requestedVersion)) {
-      call.destroy(createUnsupportedProtocolVersionError(requestedVersion));
-      return;
-    }
-
-    const task = this.createGrpcTask(call.request.message_text ?? '');
+  private streamTask(
+    call: grpc.ServerWritableStream<SendMessageRequest | TaskRequest, TaskResponse>,
+    task: Task,
+  ): void {
     const taskManager = this.getTaskManager();
     let closed = false;
 
@@ -301,11 +494,84 @@ export class GrpcServer {
 
     call.on('error', cleanup);
     call.on('close', cleanup);
+    call.on('cancelled', cleanup);
     taskManager.on('taskUpdated', onTaskUpdated);
     writeTask(taskManager.getTask(task.id) ?? task);
+  }
+
+  private listTasks(request: TaskListRequest): { tasks: Task[]; total: number } {
+    const contextId = request.context_id?.trim();
+    const limit = request.limit && request.limit > 0 ? request.limit : 50;
+    const offset = request.offset ?? 0;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+      throw serviceError(grpc.status.INVALID_ARGUMENT, 'limit must be between 1 and 1000');
+    }
+    if (!Number.isInteger(offset) || offset < 0) {
+      throw serviceError(grpc.status.INVALID_ARGUMENT, 'offset must be a non-negative integer');
+    }
+    const tasks = contextId
+      ? this.getTaskManager().getTasksByContext(contextId)
+      : this.getTaskManager().getAllTasks();
+    return { tasks: tasks.slice(offset, offset + limit), total: tasks.length };
+  }
+
+  private requireTask(taskId: string): Task {
+    if (!taskId.trim()) {
+      throw serviceError(grpc.status.INVALID_ARGUMENT, 'task_id is required');
+    }
+    const task = this.getTaskManager().getTask(taskId);
+    if (!task) {
+      throw serviceError(grpc.status.NOT_FOUND, 'Task not found');
+    }
+    return task;
+  }
+
+  private healthResponse() {
+    const counts = this.getTaskManager().getTaskCounts();
+    const memory = process.memoryUsage();
+    return {
+      status: 'healthy',
+      version: this.agentCard.version,
+      protocol: 'A2A/1.0',
+      uptime: Math.max(0, Math.floor((Date.now() - this.startedAt) / 1000)),
+      tasks: {
+        active: counts.active,
+        completed: counts.completed,
+        failed: counts.failed,
+        total: counts.total,
+      },
+      memory: {
+        heapUsedMb: Math.round(memory.heapUsed / 1024 / 1024),
+        heapTotalMb: Math.round(memory.heapTotal / 1024 / 1024),
+      },
+    } as const;
   }
 
   private getTaskManager(): TaskManager {
     return (this.adapter as A2AServer & { getTaskManager(): TaskManager }).getTaskManager();
   }
+}
+
+function normalizeConfigId(
+  value: string | undefined,
+  config?: Pick<PushNotificationConfig, 'id'>,
+): string {
+  const selected = value?.trim() || config?.id?.trim();
+  return selected || DEFAULT_PUSH_NOTIFICATION_CONFIG_ID;
+}
+
+function parsePushNotificationConfig(value: string | undefined): PushNotificationConfig {
+  if (!value) {
+    throw serviceError(grpc.status.INVALID_ARGUMENT, 'config_json is required');
+  }
+  const parsed = JSON.parse(value) as unknown;
+  if (
+    !parsed ||
+    typeof parsed !== 'object' ||
+    typeof (parsed as { url?: unknown }).url !== 'string' ||
+    !(parsed as { url: string }).url.trim()
+  ) {
+    throw serviceError(grpc.status.INVALID_ARGUMENT, 'Push notification config requires a URL');
+  }
+  return parsed as PushNotificationConfig;
 }

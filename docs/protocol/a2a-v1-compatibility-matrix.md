@@ -1,25 +1,25 @@
 # A2A v1 Compatibility Matrix
 
-Last reviewed: 2026-07-27.
+Last reviewed: 2026-08-01.
 
 This matrix records the repository-backed compatibility status for the Agent2Agent v1 line. A2A Mesh targets the official v1.0 method surface and keeps selected legacy aliases only where they are already covered by tests.
 
 ## Method surface
 
-| A2A operation                         | Runtime                                   | Client SDK                     | CLI                   | REST binding                                                | SSE            | WebSocket          | gRPC               | Verification                                   | Status       |
-| ------------------------------------- | ----------------------------------------- | ------------------------------ | --------------------- | ----------------------------------------------------------- | -------------- | ------------------ | ------------------ | ---------------------------------------------- | ------------ |
-| `message/send`                        | `handleRpcRequest`                        | `sendMessage`                  | `a2amesh send`        | `POST /message:send`                                        | Not required   | Contract transport | Contract transport | Unit, integration, conformance, examples       | Supported    |
-| `message/stream`                      | SSE handler                               | `sendMessageStream`            | Conformance command   | `POST /message:stream`                                      | Canonical path | N/A                | N/A                | Unit, integration, conformance stream fixtures | Supported    |
-| `tasks/get`                           | Task lookup with authz                    | `getTask`                      | `a2amesh task status` | `GET /tasks/{taskId}`                                       | N/A            | Contract transport | Contract transport | Unit, integration, transport contract          | Supported    |
-| `tasks/list`                          | Task listing with tenant/context filters  | `listTasks`                    | Registry/task flows   | `GET /tasks`                                                | N/A            | Contract transport | Planned            | Unit and performance smoke                     | Supported    |
-| `tasks/cancel`                        | Lifecycle transition guard                | `cancelTask`                   | Task command path     | `POST /tasks/{taskId}:cancel`                               | N/A            | Contract transport | Planned            | Unit, integration, transport contract          | Supported    |
-| `tasks/resubscribe`                   | Streaming reattach                        | `subscribeTask`                | Conformance command   | `GET /tasks/{taskId}:subscribe`                             | Canonical path | Planned            | Planned            | Unit and conformance stream fixtures           | Supported    |
-| `tasks/pushNotificationConfig/create` | Callback config normalization and storage | `createPushNotificationConfig` | N/A                   | `POST /tasks/{taskId}/pushNotificationConfigs`              | N/A            | Planned            | Planned            | Unit and push notification integration tests   | Supported    |
-| `tasks/pushNotificationConfig/get`    | Config lookup                             | `getPushNotificationConfig`    | N/A                   | `GET /tasks/{taskId}/pushNotificationConfigs/{configId}`    | N/A            | Planned            | Planned            | Unit tests                                     | Supported    |
-| `tasks/pushNotificationConfig/list`   | Config list result                        | `listPushNotificationConfigs`  | N/A                   | `GET /tasks/{taskId}/pushNotificationConfigs`               | N/A            | Planned            | Planned            | Unit tests                                     | Supported    |
-| `tasks/pushNotificationConfig/delete` | Config removal                            | `deletePushNotificationConfig` | N/A                   | `DELETE /tasks/{taskId}/pushNotificationConfigs/{configId}` | N/A            | Planned            | Planned            | Unit tests                                     | Supported    |
-| `agent/getAuthenticatedExtendedCard`  | Authenticated extended card lookup        | `getAuthenticatedExtendedCard` | N/A                   | JSON-RPC only                                               | N/A            | Planned            | Planned            | Unit and integration tests                     | Supported    |
-| `agent/authenticatedExtendedCard`     | Legacy alias retained                     | `authenticatedExtendedCard`    | N/A                   | JSON-RPC only                                               | N/A            | Planned            | Planned            | Unit and integration tests                     | Legacy alias |
+| A2A operation                         | Runtime                                   | Client SDK                     | CLI                   | REST binding                                                | SSE            | WebSocket          | gRPC               | Verification                                       | Status       |
+| ------------------------------------- | ----------------------------------------- | ------------------------------ | --------------------- | ----------------------------------------------------------- | -------------- | ------------------ | ------------------ | -------------------------------------------------- | ------------ |
+| `message/send`                        | `handleRpcRequest`                        | `sendMessage`                  | `a2amesh send`        | `POST /message:send`                                        | Not required   | Contract transport | Contract transport | Unit, integration, conformance, examples           | Supported    |
+| `message/stream`                      | SSE handler                               | `sendMessageStream`            | Conformance command   | `POST /message:stream`                                      | Canonical path | Contract transport | Contract transport | Unit, integration, conformance, transport contract | Supported    |
+| `tasks/get`                           | Task lookup with authz                    | `getTask`                      | `a2amesh task status` | `GET /tasks/{taskId}`                                       | N/A            | Contract transport | Contract transport | Unit, integration, transport contract              | Supported    |
+| `tasks/list`                          | Task listing with tenant/context filters  | `listTasks`                    | Registry/task flows   | `GET /tasks`                                                | N/A            | Contract transport | Contract transport | Unit, performance smoke, transport contract        | Supported    |
+| `tasks/cancel`                        | Lifecycle transition guard                | `cancelTask`                   | Task command path     | `POST /tasks/{taskId}:cancel`                               | N/A            | Contract transport | Contract transport | Unit, integration, transport contract              | Supported    |
+| `tasks/resubscribe`                   | Streaming reattach                        | `subscribeTask`                | Conformance command   | `GET /tasks/{taskId}:subscribe`                             | Canonical path | Contract transport | Contract transport | Unit, conformance, transport contract              | Supported    |
+| `tasks/pushNotificationConfig/create` | Callback config normalization and storage | `createPushNotificationConfig` | N/A                   | `POST /tasks/{taskId}/pushNotificationConfigs`              | N/A            | Contract transport | Contract transport | Unit, integration, transport contract              | Supported    |
+| `tasks/pushNotificationConfig/get`    | Config lookup                             | `getPushNotificationConfig`    | N/A                   | `GET /tasks/{taskId}/pushNotificationConfigs/{configId}`    | N/A            | Contract transport | Contract transport | Unit and transport contract                        | Supported    |
+| `tasks/pushNotificationConfig/list`   | Config list result                        | `listPushNotificationConfigs`  | N/A                   | `GET /tasks/{taskId}/pushNotificationConfigs`               | N/A            | Contract transport | Contract transport | Unit and transport contract                        | Supported    |
+| `tasks/pushNotificationConfig/delete` | Config removal                            | `deletePushNotificationConfig` | N/A                   | `DELETE /tasks/{taskId}/pushNotificationConfigs/{configId}` | N/A            | Contract transport | Contract transport | Unit and transport contract                        | Supported    |
+| `agent/getAuthenticatedExtendedCard`  | Authenticated extended card lookup        | `getAuthenticatedExtendedCard` | N/A                   | JSON-RPC only                                               | N/A            | Contract transport | Contract transport | Unit, integration, transport contract              | Supported    |
+| `agent/authenticatedExtendedCard`     | Legacy alias retained                     | `authenticatedExtendedCard`    | N/A                   | JSON-RPC only                                               | N/A            | Not exposed        | Not exposed        | Unit and integration tests                         | Legacy alias |
 
 ## Protocol negotiation and metadata
 
@@ -37,9 +37,9 @@ The conformance fixtures additionally execute the exact public Agent Card discov
 path, validate interface and extension metadata, reject unsupported required
 extensions and protocol versions, and compare JSON-RPC/REST task and push
 configuration results. SSE version rejection runs in the same suite. WebSocket and
-gRPC parity is limited to the operations each transport declares and is exercised by
-their package tests and the shared transport contract; HTTP-only routes remain
-explicitly `Planned` for those transports.
+gRPC implement the canonical A2A v1 operation set declared by the shared transport
+contract. Transport-specific framing, authentication hooks, malformed input handling,
+stream cleanup, and version rejection are exercised by their package tests.
 
 ## Fixture ownership
 

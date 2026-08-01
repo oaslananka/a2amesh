@@ -7,21 +7,23 @@ import {
   type TransportCapabilityMap,
 } from '../../../tests/transport-contract/transportContract.js';
 
+const CONTRACT_AUTHORIZATION = 'Bearer contract-token';
+
 const GRPC_CAPABILITIES: TransportCapabilityMap = {
   sendMessage: { supported: true },
   streamMessage: { supported: true },
   getTask: { supported: true },
+  listTasks: { supported: true },
   cancelTask: { supported: true },
+  resubscribeTask: { supported: true },
+  createPushNotificationConfig: { supported: true },
+  getPushNotificationConfig: { supported: true },
+  listPushNotificationConfigs: { supported: true },
+  deletePushNotificationConfig: { supported: true },
   resolveCard: { supported: true },
-  health: {
-    supported: false,
-    reason: 'gRPC Contract Agent proto does not define a Health RPC for gRPC.',
-  },
-  authErrors: {
-    supported: false,
-    reason:
-      'gRPC Contract Agent proto does not define authentication metadata requirements for gRPC.',
-  },
+  getAuthenticatedExtendedCard: { supported: true },
+  health: { supported: true },
+  authErrors: { supported: true },
   malformedRequests: {
     supported: false,
     reason:
@@ -36,11 +38,14 @@ class GrpcContractA2AServer extends A2AServer {
   }
 
   async handleTask(task: Task, message: Message): Promise<Artifact[]> {
-    await delay(readMessageText(message) === 'contract-cancel' ? 250 : 10);
+    const text = readMessageText(message);
+    await delay(
+      ['contract-cancel', 'contract-resubscribe', 'contract-push-config'].includes(text) ? 250 : 10,
+    );
     return [
       {
         artifactId: `artifact-${task.id}`,
-        parts: [{ type: 'text', text: `echo:${readMessageText(message)}` }],
+        parts: [{ type: 'text', text: `echo:${text}` }],
         index: 0,
         lastChunk: true,
       },
@@ -61,6 +66,7 @@ runTransportContract({
       capabilities: {
         streaming: true,
         stateTransitionHistory: true,
+        extendedAgentCard: true,
       },
       supportedInterfaces: [
         {
@@ -71,7 +77,11 @@ runTransportContract({
       ],
     };
     const adapter = new GrpcContractA2AServer(agentCard);
-    const server = new GrpcServer(adapter, agentCard);
+    const server = new GrpcServer(adapter, agentCard, {
+      authenticate(metadata) {
+        return metadata.get('authorization')[0] === CONTRACT_AUTHORIZATION;
+      },
+    });
     const port = await server.bind(0);
     const url = `127.0.0.1:${port}`;
     agentCard.url = `grpc://${url}`;
@@ -82,38 +92,73 @@ runTransportContract({
         url: `grpc://${url}`,
       },
     ];
-    const client = new GrpcClient(url);
+    const client = new GrpcClient(url, {
+      metadata: { authorization: CONTRACT_AUTHORIZATION },
+    });
 
     return {
-      async sendMessage(text, options) {
-        const task = await client.sendMessage(text);
-        applyContext(adapter, task, options?.contextId);
-        return assertTask(task);
+      sendMessage(text, options) {
+        return client
+          .sendMessage(text, {
+            ...(options?.contextId ? { contextId: options.contextId } : {}),
+            ...(options?.returnImmediately ? { returnImmediately: true } : {}),
+          })
+          .then(assertTask);
       },
       async streamMessage(text, options) {
-        const stream = client.streamMessage(text);
-        if (!options?.contextId) {
-          return stream;
-        }
-
-        return (async function* streamWithContext(): AsyncGenerator<Task> {
-          for await (const task of stream) {
-            applyContext(adapter, task, options.contextId);
-            yield task;
-          }
-        })();
+        return client.streamMessage(text, {
+          ...(options?.contextId ? { contextId: options.contextId } : {}),
+        });
       },
       getTask(taskId) {
         return client.getTask(taskId);
       },
+      listTasks(params) {
+        return client.listTasks(params);
+      },
       cancelTask(taskId) {
         return client.cancelTask(taskId);
+      },
+      async resubscribeTask(taskId) {
+        return client.subscribeTask(taskId);
+      },
+      createPushNotificationConfig(taskId, config, configId) {
+        return client.createPushNotificationConfig(taskId, config, configId);
+      },
+      getPushNotificationConfig(taskId, configId) {
+        return client.getPushNotificationConfig(taskId, configId);
+      },
+      listPushNotificationConfigs(taskId) {
+        return client.listPushNotificationConfigs(taskId);
+      },
+      deletePushNotificationConfig(taskId, configId) {
+        return client.deletePushNotificationConfig(taskId, configId);
       },
       resolveCard() {
         return client.getAgentCard();
       },
+      getAuthenticatedExtendedCard() {
+        return client.getAuthenticatedExtendedCard();
+      },
+      health() {
+        return client.health();
+      },
+      async sendWithoutAuth() {
+        const anonymousClient = new GrpcClient(url);
+        try {
+          await anonymousClient.sendMessage('unauthorized');
+          return { message: 'Authentication was unexpectedly accepted' };
+        } catch (error) {
+          return { message: error instanceof Error ? error.message : String(error) };
+        } finally {
+          anonymousClient.close();
+        }
+      },
       async negotiateUnsupportedVersion() {
-        const unsupportedClient = new GrpcClient(url, { protocolVersion: '9.9' });
+        const unsupportedClient = new GrpcClient(url, {
+          protocolVersion: '9.9',
+          metadata: { authorization: CONTRACT_AUTHORIZATION },
+        });
         try {
           await unsupportedClient.getAgentCard();
           return { message: 'Protocol version was unexpectedly accepted' };
@@ -130,21 +175,6 @@ runTransportContract({
     };
   },
 });
-
-function applyContext(
-  adapter: GrpcContractA2AServer,
-  task: Task | null,
-  contextId: string | undefined,
-): void {
-  if (!task || !contextId) {
-    return;
-  }
-  task.contextId = contextId;
-  const storedTask = adapter.getTaskManager().getTask(task.id);
-  if (storedTask) {
-    storedTask.contextId = contextId;
-  }
-}
 
 function assertTask(task: Task | null): Task {
   if (!task) {
