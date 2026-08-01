@@ -9,8 +9,15 @@ const HTTP_CAPABILITIES: TransportCapabilityMap = {
   sendMessage: { supported: true },
   streamMessage: { supported: true },
   getTask: { supported: true },
+  listTasks: { supported: true },
   cancelTask: { supported: true },
+  resubscribeTask: { supported: true },
+  createPushNotificationConfig: { supported: true },
+  getPushNotificationConfig: { supported: true },
+  listPushNotificationConfigs: { supported: true },
+  deletePushNotificationConfig: { supported: true },
   resolveCard: { supported: true },
+  getAuthenticatedExtendedCard: { supported: true },
   health: { supported: true },
   authErrors: { supported: true },
   malformedRequests: { supported: true },
@@ -29,6 +36,7 @@ class HttpSseContractServer extends A2AServer {
         capabilities: {
           streaming: true,
           stateTransitionHistory: true,
+          extendedAgentCard: true,
         },
         supportedInterfaces: [
           {
@@ -49,11 +57,14 @@ class HttpSseContractServer extends A2AServer {
   }
 
   async handleTask(task: Task, message: Message): Promise<Artifact[]> {
-    await delay(readMessageText(message) === 'contract-cancel' ? 250 : 10);
+    const text = readMessageText(message);
+    await delay(
+      ['contract-cancel', 'contract-resubscribe', 'contract-push-config'].includes(text) ? 250 : 10,
+    );
     return [
       {
         artifactId: `artifact-${task.id}`,
-        parts: [{ type: 'text', text: `echo:${readMessageText(message)}` }],
+        parts: [{ type: 'text', text: `echo:${text}` }],
         index: 0,
         lastChunk: true,
       },
@@ -101,11 +112,32 @@ runTransportContract({
       getTask(taskId) {
         return client.getTask(taskId);
       },
+      listTasks(params) {
+        return client.listTasks(params);
+      },
       cancelTask(taskId) {
         return client.cancelTask(taskId);
       },
+      resubscribeTask(taskId) {
+        return Promise.resolve(client.subscribeTask(taskId) as AsyncIterable<Task>);
+      },
+      createPushNotificationConfig(taskId, config, configId) {
+        return client.createPushNotificationConfig(taskId, config, configId);
+      },
+      getPushNotificationConfig(taskId, configId) {
+        return client.getPushNotificationConfig(taskId, configId);
+      },
+      listPushNotificationConfigs(taskId) {
+        return client.listPushNotificationConfigs(taskId);
+      },
+      deletePushNotificationConfig(taskId, configId) {
+        return client.deletePushNotificationConfig(taskId, configId);
+      },
       resolveCard() {
         return client.resolveCard();
+      },
+      getAuthenticatedExtendedCard() {
+        return client.getAuthenticatedExtendedCard();
       },
       health() {
         return client.health();
