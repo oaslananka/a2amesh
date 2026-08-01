@@ -7,19 +7,15 @@ import {
   type OutboundPolicyOptions,
   type Task,
 } from '@a2amesh/runtime';
-import type {
-  OpenClawMcpAgentConfig,
-  OpenClawMcpBridgeOptions,
-  OpenClawMcpOperations,
-} from './types.js';
+import type { A2AMcpAgentConfig, A2AMcpBridgeOptions, A2AMcpOperations } from './types.js';
 
-export class OpenClawBridgeOperationError extends Error {
+export class A2ABridgeOperationError extends Error {
   constructor(readonly reasonCode: string) {
     super(reasonCode);
   }
 }
 
-export function redactOpenClawOutput(value: string, secrets: readonly string[]): string {
+export function redactA2AOutput(value: string, secrets: readonly string[]): string {
   let result = value
     .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [REDACTED]')
     .replace(
@@ -41,17 +37,17 @@ function taskOutput(task: Task, secrets: readonly string[]): string {
       return '[Binary file omitted]';
     }),
   );
-  return redactOpenClawOutput(values.join('\n\n'), secrets);
+  return redactA2AOutput(values.join('\n\n'), secrets);
 }
 
-export function createOpenClawTaskSummary(
+export function createA2ATaskSummary(
   task: Task,
   secrets: readonly string[],
 ): Record<string, unknown> {
   return {
-    id: redactOpenClawOutput(String(task.id ?? ''), secrets),
-    state: redactOpenClawOutput(String(task.status?.state ?? 'UNKNOWN'), secrets),
-    ...(task.contextId ? { contextId: redactOpenClawOutput(String(task.contextId), secrets) } : {}),
+    id: redactA2AOutput(String(task.id ?? ''), secrets),
+    state: redactA2AOutput(String(task.status?.state ?? 'UNKNOWN'), secrets),
+    ...(task.contextId ? { contextId: redactA2AOutput(String(task.contextId), secrets) } : {}),
     output: taskOutput(task, secrets),
   };
 }
@@ -60,9 +56,7 @@ function mergeSignals(primary: AbortSignal, secondary?: AbortSignal | null): Abo
   return secondary ? AbortSignal.any([primary, secondary]) : primary;
 }
 
-export function createDefaultOpenClawOperations(
-  options: OpenClawMcpBridgeOptions,
-): OpenClawMcpOperations {
+export function createDefaultA2AOperations(options: A2AMcpBridgeOptions): A2AMcpOperations {
   const timeoutMs = options.operationTimeoutMs ?? 30_000;
   const outboundPolicy: OutboundPolicyOptions = {
     timeoutMs,
@@ -70,7 +64,7 @@ export function createDefaultOpenClawOperations(
     ...(options.outboundPolicy ?? {}),
   };
 
-  function clientFor(agent: OpenClawMcpAgentConfig, signal: AbortSignal): A2AClient {
+  function clientFor(agent: A2AMcpAgentConfig, signal: AbortSignal): A2AClient {
     const policyFetch = createOutboundPolicyFetch(outboundPolicy);
     const scopedFetch = ((input: Parameters<typeof fetch>[0], init?: RequestInit) =>
       policyFetch(input, {
@@ -90,11 +84,11 @@ export function createDefaultOpenClawOperations(
     });
   }
 
-  async function validateAgent(agent: OpenClawMcpAgentConfig): Promise<void> {
+  async function validateAgent(agent: A2AMcpAgentConfig): Promise<void> {
     try {
       await validateUrl(agent.url, outboundPolicy);
     } catch {
-      throw new OpenClawBridgeOperationError('mcp-outbound-policy-denied');
+      throw new A2ABridgeOperationError('mcp-outbound-policy-denied');
     }
   }
 
@@ -105,7 +99,7 @@ export function createDefaultOpenClawOperations(
         message: {
           role: 'user',
           parts: [{ type: 'text', text: message }],
-          messageId: `openclaw-mcp-${randomUUID()}`,
+          messageId: `a2amesh-mcp-${randomUUID()}`,
           timestamp: new Date().toISOString(),
         },
         ...(contextId ? { contextId } : {}),
@@ -118,7 +112,7 @@ export function createDefaultOpenClawOperations(
   };
 }
 
-export async function runBoundedOpenClawOperation<T>(
+export async function runBoundedA2AOperation<T>(
   operation: (signal: AbortSignal) => Promise<T>,
   parentSignal: AbortSignal | undefined,
   timeoutMs: number,
@@ -144,23 +138,23 @@ export async function runBoundedOpenClawOperation<T>(
     return await Promise.race([work, abortPromise]);
   } catch (error: unknown) {
     if (parentSignal?.aborted) {
-      throw new OpenClawBridgeOperationError('mcp-operation-cancelled');
+      throw new A2ABridgeOperationError('mcp-operation-cancelled');
     }
     if (timeoutController.signal.aborted) {
-      throw new OpenClawBridgeOperationError('mcp-operation-timeout');
+      throw new A2ABridgeOperationError('mcp-operation-timeout');
     }
-    if (error instanceof OpenClawBridgeOperationError) throw error;
-    throw new OpenClawBridgeOperationError('mcp-operation-failed');
+    if (error instanceof A2ABridgeOperationError) throw error;
+    throw new A2ABridgeOperationError('mcp-operation-failed');
   } finally {
     clearTimeout(timeout);
   }
 }
 
-export function resolveOpenClawAgent(
-  options: OpenClawMcpBridgeOptions,
+export function resolveA2AAgent(
+  options: A2AMcpBridgeOptions,
   tenantId: string,
   agentId: string,
-): OpenClawMcpAgentConfig | undefined {
+): A2AMcpAgentConfig | undefined {
   return options.agents.find(
     (agent) =>
       agent.id === agentId && agent.tenantId === tenantId && tenantId === options.expectedTenantId,

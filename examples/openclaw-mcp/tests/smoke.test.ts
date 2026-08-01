@@ -4,6 +4,12 @@ import test from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import {
+  A2A_MCP_TOOL_NAMES as OPENCLAW_MCP_TOOL_NAMES,
+  createA2AMcpBridge as createOpenClawMcpBridge,
+  createA2AMcpHttpApp as createOpenClawMcpHttpApp,
+  createA2AMcpHttpAppWithFactory as createOpenClawMcpHttpAppWithFactory,
+} from '@a2amesh/mcp/server';
 
 type ToolName = 'a2a_discover' | 'a2a_send_message' | 'a2a_get_task';
 
@@ -81,12 +87,16 @@ type BridgeModule = {
   };
 };
 
-const bridgeModulePath = '../src/bridge.js';
+const bridgeModule: BridgeModule = {
+  OPENCLAW_MCP_TOOL_NAMES,
+  createOpenClawMcpBridge:
+    createOpenClawMcpBridge as unknown as BridgeModule['createOpenClawMcpBridge'],
+  createOpenClawMcpHttpApp:
+    createOpenClawMcpHttpApp as unknown as BridgeModule['createOpenClawMcpHttpApp'],
+};
 
 async function loadBridgeModule(): Promise<BridgeModule> {
-  const loaded = await import(bridgeModulePath).catch(() => undefined);
-  assert.ok(loaded, 'OpenClaw MCP bridge implementation must exist');
-  return loaded as BridgeModule;
+  return bridgeModule;
 }
 
 function completedTask(id: string, text: string): Record<string, unknown> {
@@ -410,12 +420,13 @@ type HttpModule = {
   };
 };
 
-const httpModulePath = '../src/http.js';
+const httpModule: HttpModule = {
+  createOpenClawMcpHttpAppWithFactory:
+    createOpenClawMcpHttpAppWithFactory as unknown as HttpModule['createOpenClawMcpHttpAppWithFactory'],
+};
 
 async function loadHttpModule(): Promise<HttpModule> {
-  const loaded = await import(httpModulePath).catch(() => undefined);
-  assert.ok(loaded, 'OpenClaw MCP HTTP implementation must exist');
-  return loaded as HttpModule;
+  return httpModule;
 }
 
 void test('Streamable HTTP closes request-scoped MCP resources after each response', async () => {

@@ -6,6 +6,20 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const expectedSkills = ['a2a-endpoint-validation', 'a2a-task-operations', 'a2a-mcp-consumption'];
+const runtimeConfigPaths = [
+  '.mcp.json',
+  '.codex/config.example.toml',
+  '.vscode/mcp.example.json',
+  'opencode.example.jsonc',
+];
+const expectedServerArgs = [
+  '-y',
+  '-p',
+  '@a2amesh/mcp@alpha',
+  'a2amesh-mcp',
+  '--transport',
+  'stdio',
+];
 
 const args = process.argv.slice(2);
 const rootIndex = args.indexOf('--root');
@@ -86,6 +100,70 @@ async function replaceDirectory(source, destination) {
   await rm(temporary, { force: true, recursive: true });
 }
 
+function validateServerCommand(path, entry, errors) {
+  if (entry?.command !== 'npx') errors.push(`${path}: command must be npx`);
+  if (JSON.stringify(entry?.args) !== JSON.stringify(expectedServerArgs)) {
+    errors.push(`${path}: args must use the supported a2amesh-mcp alpha stdio command`);
+  }
+  const env = entry?.env;
+  if (!env || typeof env !== 'object' || Array.isArray(env)) {
+    errors.push(`${path}: env configuration is missing`);
+    return;
+  }
+  if (env.A2AMESH_MCP_ALLOWED_TOOLS !== 'a2a_discover,a2a_get_task') {
+    errors.push(`${path}: default tool policy must remain read-only`);
+  }
+  if (env.A2AMESH_MCP_ALLOW_LOCALHOST !== '0' || env.A2AMESH_MCP_ALLOW_PRIVATE_NETWORKS !== '0') {
+    errors.push(`${path}: private and localhost network access must be disabled by default`);
+  }
+  if (env.A2AMESH_MCP_SEND_APPROVAL_ID !== undefined) {
+    errors.push(`${path}: default configuration must not pre-approve send operations`);
+  }
+  try {
+    const agents = JSON.parse(env.A2AMESH_MCP_AGENTS_JSON ?? '');
+    if (!Array.isArray(agents) || agents.length === 0) throw new Error('agent list missing');
+    if (agents.some((agent) => agent?.token !== undefined || agent?.apiKey !== undefined)) {
+      errors.push(`${path}: agent configuration cannot contain inline credentials`);
+    }
+  } catch {
+    errors.push(`${path}: A2AMESH_MCP_AGENTS_JSON must be valid JSON`);
+  }
+}
+
+async function validateRuntimeConfigs(bundleRoot) {
+  const errors = [];
+  const claudePath = join(bundleRoot, '.mcp.json');
+  const claude = JSON.parse(await readFile(claudePath, 'utf8'));
+  validateServerCommand('.mcp.json', claude?.mcpServers?.a2amesh, errors);
+
+  const vscodePath = join(bundleRoot, '.vscode/mcp.example.json');
+  const vscode = JSON.parse(await readFile(vscodePath, 'utf8'));
+  const vscodeEntry = vscode?.servers?.a2amesh;
+  validateServerCommand('.vscode/mcp.example.json', vscodeEntry, errors);
+  if (vscodeEntry?.type !== 'stdio') {
+    errors.push('.vscode/mcp.example.json: server type must be stdio');
+  }
+
+  for (const path of ['.codex/config.example.toml', 'opencode.example.jsonc']) {
+    const text = await readFile(join(bundleRoot, path), 'utf8');
+    for (const term of [
+      '@a2amesh/mcp@alpha',
+      'a2amesh-mcp',
+      'A2AMESH_MCP_ALLOWED_TOOLS',
+      'a2a_discover,a2a_get_task',
+      'A2AMESH_MCP_ALLOW_LOCALHOST',
+      'A2AMESH_MCP_ALLOW_PRIVATE_NETWORKS',
+    ]) {
+      if (!text.includes(term)) errors.push(`${path}: missing runtime contract term ${term}`);
+    }
+    if (text.includes('A2AMESH_MCP_SEND_APPROVAL_ID')) {
+      errors.push(`${path}: default configuration must not pre-approve send operations`);
+    }
+  }
+
+  if (errors.length > 0) throw new Error(errors.join('; '));
+}
+
 async function validateInstalledBundle(bundleRoot, expectedVersion) {
   const manifest = JSON.parse(
     await readFile(join(bundleRoot, '.claude-plugin/plugin.json'), 'utf8'),
@@ -95,6 +173,7 @@ async function validateInstalledBundle(bundleRoot, expectedVersion) {
   for (const skill of expectedSkills) {
     await stat(join(bundleRoot, 'skills', skill, 'SKILL.md'));
   }
+  await validateRuntimeConfigs(bundleRoot);
 }
 
 async function copySourceBundle(destination) {
@@ -104,6 +183,11 @@ async function copySourceBundle(destination) {
     join(destination, '.claude-plugin/plugin.json'),
   );
   await cp(join(repoRoot, 'skills'), join(destination, 'skills'), { recursive: true });
+  for (const path of runtimeConfigPaths) {
+    const target = join(destination, path);
+    await mkdir(dirname(target), { recursive: true });
+    await cp(join(repoRoot, path), target);
+  }
 }
 
 function adjacentPrereleaseVersion(version, delta) {
@@ -258,6 +342,10 @@ const cliPackage = parseJson(
   'packages/cli/package.json',
   await readRequired('packages/cli/package.json'),
 );
+const mcpPackage = parseJson(
+  'packages/mcp/package.json',
+  await readRequired('packages/mcp/package.json'),
+);
 const expectedManifestSkills = expectedSkills.map((skill) => `./skills/${skill}`);
 
 if (manifest.$schema !== 'https://anthropic.com/claude-code/plugin.schema.json') {
@@ -275,6 +363,20 @@ if (JSON.stringify(manifest.skills) !== JSON.stringify(expectedManifestSkills)) 
 }
 if (manifest.author?.name !== 'oaslananka') {
   failures.push(`${manifestPath} author must preserve the product owner identity`);
+}
+if (mcpPackage.version !== cliPackage.version) {
+  failures.push('packages/mcp/package.json version must match @a2amesh/cli');
+}
+if (mcpPackage.bin?.['a2amesh-mcp'] !== './dist/server/cli.js') {
+  failures.push('packages/mcp/package.json must publish the a2amesh-mcp binary');
+}
+if (!mcpPackage.exports?.['./server']) {
+  failures.push('packages/mcp/package.json must export the standalone server contract');
+}
+try {
+  await validateRuntimeConfigs(repoRoot);
+} catch (error) {
+  failures.push(`runtime configuration validation failed: ${String(error)}`);
 }
 
 const requiredHeadings = [
@@ -334,11 +436,14 @@ for (const heading of [
   if (!plan.includes(heading)) failures.push(`${planPath} missing heading: ${heading}`);
 }
 for (const term of [
-  'skills-only alpha bundle',
-  'planned_plugins',
-  cliPackage.version,
-  '@a2amesh/cli@alpha',
-  'examples/openclaw-mcp',
+  'distribution-capable alpha bundle',
+  'a2amesh-mcp',
+  '@a2amesh/mcp@alpha',
+  '@a2amesh/cli',
+  '.mcp.json',
+  '.codex/config.example.toml',
+  '.vscode/mcp.example.json',
+  'opencode.example.jsonc',
   'Claude Code',
   'OpenCode',
   'Codex',

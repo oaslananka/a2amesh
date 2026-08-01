@@ -5,7 +5,7 @@ description: Configure and consume the bounded A2A Mesh MCP bridge without expos
 
 # A2A MCP Consumption
 
-Use this skill to connect an MCP-capable client to the repository-owned compatibility bridge and invoke only its reviewed A2A tool surface.
+Use this skill to connect an MCP-capable client to the published `a2amesh-mcp` server and invoke only its reviewed A2A tool surface.
 
 ## When to use
 
@@ -16,15 +16,15 @@ Use this skill when the user asks to:
 - diagnose MCP connection or tool-registration failures; or
 - invoke `a2a_discover`, `a2a_send_message`, or `a2a_get_task` under the documented policy.
 
-This is not an OpenClaw-specific plugin and does not make OpenClaw, Claude Code, or any other client part of the A2A protocol implementation.
+This is not an OpenClaw-specific plugin and does not make any client part of the A2A protocol implementation.
 
 ## Required context
 
 Confirm:
 
-- the repository checkout and built `examples/openclaw-mcp` compatibility server;
+- the exact released `@a2amesh/mcp` version or reviewed local build;
 - the transport: stdio or loopback Streamable HTTP;
-- the exact tool allowlist;
+- the exact tool allowlist and whether it remains read-only;
 - expected tenant, audience, scopes, and approval identifiers;
 - named credential variables already provided by the runtime secret source;
 - statically allowlisted A2A agents and destinations; and
@@ -32,13 +32,13 @@ Confirm:
 
 ## Workflow
 
-1. Read `examples/openclaw-mcp/README.md` and ADR-0016 before configuring a client.
-2. Prefer stdio for a local one-user flow. Use Streamable HTTP only on loopback with the documented bearer transport credential.
-3. Configure exactly `a2a_discover`, `a2a_send_message`, and `a2a_get_task`; do not widen the allowlist.
+1. Start from `.mcp.json` or the matching Codex, VS Code, or OpenCode example.
+2. Prefer stdio for a local one-user flow. Use Streamable HTTP only on loopback with the documented bearer credential.
+3. Keep the default allowlist at `a2a_discover,a2a_get_task` until a send is explicitly approved.
 4. Run the client's status, doctor, or probe command before any tool call.
 5. Start with `a2a_discover` for the expected tenant.
 6. Use `a2a_get_task` only for a known allowlisted agent and task.
-7. Obtain explicit approval before `a2a_send_message` and pass the configured approval identifier.
+7. Before `a2a_send_message`, obtain explicit approval, add the send scope and tool, set a fresh scoped approval identifier, and restart the MCP process.
 8. Preserve audit evidence and report bounded reason codes without exposing input or output secrets.
 
 ## Safety boundaries

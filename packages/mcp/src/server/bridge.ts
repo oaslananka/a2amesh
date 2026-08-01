@@ -1,34 +1,34 @@
 import { randomUUID } from 'node:crypto';
-import type { evaluateMcpBridgeAuthorization } from '@a2amesh/mcp';
+import type { evaluateMcpBridgeAuthorization } from '../McpBridgeSecurity.js';
 import type { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { createOpenClawMcpHttpAppWithFactory } from './http.js';
+import { createA2AMcpHttpAppWithFactory } from './http.js';
 import {
-  createDefaultOpenClawOperations,
-  createOpenClawTaskSummary,
-  OpenClawBridgeOperationError,
-  redactOpenClawOutput,
-  resolveOpenClawAgent,
-  runBoundedOpenClawOperation,
+  createDefaultA2AOperations,
+  createA2ATaskSummary,
+  A2ABridgeOperationError,
+  redactA2AOutput,
+  resolveA2AAgent,
+  runBoundedA2AOperation,
 } from './operations.js';
 import {
-  auditOpenClawAuthorization,
-  auditOpenClawExecution,
-  auditOpenClawInvalidInput,
-  createOpenClawBridgePolicy,
+  auditA2AAuthorization,
+  auditA2AExecution,
+  auditA2AInvalidInput,
+  createA2ABridgePolicy,
 } from './security.js';
 import {
-  OPENCLAW_MCP_TOOL_DEFINITIONS,
-  parseOpenClawToolInput,
-  registerOpenClawMcpTools,
+  A2A_MCP_TOOL_DEFINITIONS,
+  parseA2AToolInput,
+  registerA2AMcpTools,
   resolveAllowedTools,
 } from './toolDefinitions.js';
 import type {
-  OpenClawMcpBridge,
-  OpenClawMcpBridgeOptions,
-  OpenClawMcpHttpOptions,
-  OpenClawMcpToolName,
+  A2AMcpBridge,
+  A2AMcpBridgeOptions,
+  A2AMcpHttpOptions,
+  A2AMcpToolName,
 } from './types.js';
 
 function errorResult(reasonCode: string): CallToolResult {
@@ -48,15 +48,15 @@ function successResult(value: Record<string, unknown>): CallToolResult {
 }
 
 async function runDiscovery(
-  options: OpenClawMcpBridgeOptions,
+  options: A2AMcpBridgeOptions,
   input: Record<string, unknown>,
   secrets: readonly string[],
 ): Promise<CallToolResult> {
-  const tool = OPENCLAW_MCP_TOOL_DEFINITIONS.a2a_discover;
-  const policy = createOpenClawBridgePolicy(options, 'a2a_discover', input, randomUUID());
+  const tool = A2A_MCP_TOOL_DEFINITIONS.a2a_discover;
+  const policy = createA2ABridgePolicy(options, 'a2a_discover', input, randomUUID());
   let authorization: ReturnType<typeof evaluateMcpBridgeAuthorization>;
   try {
-    authorization = await auditOpenClawAuthorization(tool, input, policy);
+    authorization = await auditA2AAuthorization(tool, input, policy);
   } catch {
     return errorResult('mcp-audit-failed');
   }
@@ -65,12 +65,12 @@ async function runDiscovery(
   const agents = options.agents
     .filter((agent) => agent.tenantId === options.expectedTenantId)
     .map((agent) => ({
-      id: redactOpenClawOutput(agent.id, secrets),
-      name: redactOpenClawOutput(agent.name, secrets),
-      description: redactOpenClawOutput(agent.description, secrets),
+      id: redactA2AOutput(agent.id, secrets),
+      name: redactA2AOutput(agent.name, secrets),
+      description: redactA2AOutput(agent.description, secrets),
     }));
   try {
-    await auditOpenClawExecution(tool, input, policy, {
+    await auditA2AExecution(tool, input, policy, {
       decision: 'allow',
       outcome: 'succeeded',
       reasonCode: 'mcp-a2a-discovery-succeeded',
@@ -82,28 +82,28 @@ async function runDiscovery(
 }
 
 async function runAgentTool(options: {
-  bridgeOptions: OpenClawMcpBridgeOptions;
-  name: Exclude<OpenClawMcpToolName, 'a2a_discover'>;
+  bridgeOptions: A2AMcpBridgeOptions;
+  name: Exclude<A2AMcpToolName, 'a2a_discover'>;
   input: Record<string, unknown>;
   signal?: AbortSignal | undefined;
   secrets: readonly string[];
 }): Promise<CallToolResult> {
   const { bridgeOptions, name, input, signal, secrets } = options;
-  const tool = OPENCLAW_MCP_TOOL_DEFINITIONS[name];
-  const policy = createOpenClawBridgePolicy(bridgeOptions, name, input, randomUUID());
+  const tool = A2A_MCP_TOOL_DEFINITIONS[name];
+  const policy = createA2ABridgePolicy(bridgeOptions, name, input, randomUUID());
   let authorization: ReturnType<typeof evaluateMcpBridgeAuthorization>;
   try {
-    authorization = await auditOpenClawAuthorization(tool, input, policy);
+    authorization = await auditA2AAuthorization(tool, input, policy);
   } catch {
     return errorResult('mcp-audit-failed');
   }
   if (authorization.decision === 'block') return errorResult(authorization.reasonCode);
 
   const tenantId = String(input['tenantId']);
-  const agent = resolveOpenClawAgent(bridgeOptions, tenantId, String(input['agentId']));
+  const agent = resolveA2AAgent(bridgeOptions, tenantId, String(input['agentId']));
   if (!agent) {
     try {
-      await auditOpenClawExecution(tool, input, policy, {
+      await auditA2AExecution(tool, input, policy, {
         decision: 'block',
         outcome: 'denied',
         reasonCode: 'mcp-agent-unavailable',
@@ -115,10 +115,10 @@ async function runAgentTool(options: {
     return errorResult('mcp-agent-unavailable');
   }
 
-  const operations = bridgeOptions.operations ?? createDefaultOpenClawOperations(bridgeOptions);
+  const operations = bridgeOptions.operations ?? createDefaultA2AOperations(bridgeOptions);
   const timeoutMs = Math.max(1, bridgeOptions.operationTimeoutMs ?? 30_000);
   try {
-    const task = await runBoundedOpenClawOperation(
+    const task = await runBoundedA2AOperation(
       (operationSignal) =>
         name === 'a2a_send_message'
           ? operations.sendMessage({
@@ -137,18 +137,18 @@ async function runAgentTool(options: {
       signal,
       timeoutMs,
     );
-    await auditOpenClawExecution(tool, input, policy, {
+    await auditA2AExecution(tool, input, policy, {
       decision: 'allow',
       outcome: 'succeeded',
       reasonCode:
         name === 'a2a_send_message' ? 'mcp-a2a-message-succeeded' : 'mcp-a2a-task-read-succeeded',
     });
-    return successResult({ task: createOpenClawTaskSummary(task, secrets) });
+    return successResult({ task: createA2ATaskSummary(task, secrets) });
   } catch (error: unknown) {
     const reasonCode =
-      error instanceof OpenClawBridgeOperationError ? error.reasonCode : 'mcp-operation-failed';
+      error instanceof A2ABridgeOperationError ? error.reasonCode : 'mcp-operation-failed';
     try {
-      await auditOpenClawExecution(tool, input, policy, {
+      await auditA2AExecution(tool, input, policy, {
         decision: reasonCode === 'mcp-outbound-policy-denied' ? 'block' : 'allow',
         outcome: reasonCode === 'mcp-outbound-policy-denied' ? 'denied' : 'failed',
         reasonCode,
@@ -160,24 +160,24 @@ async function runAgentTool(options: {
   }
 }
 
-export function createOpenClawMcpBridge(options: OpenClawMcpBridgeOptions): OpenClawMcpBridge {
+export function createA2AMcpBridge(options: A2AMcpBridgeOptions): A2AMcpBridge {
   const tools = resolveAllowedTools(options);
   const secrets = options.agents.flatMap((agent) => (agent.token ? [agent.token] : []));
-  const invoke: OpenClawMcpBridge['invoke'] = async (name, rawInput, signal) => {
-    const input = parseOpenClawToolInput(name, rawInput);
+  const invoke: A2AMcpBridge['invoke'] = async (name, rawInput, signal) => {
+    const input = parseA2AToolInput(name, rawInput);
     if (!input) {
       const record =
         rawInput && typeof rawInput === 'object' && !Array.isArray(rawInput)
           ? (rawInput as Record<string, unknown>)
           : {};
-      const policy = createOpenClawBridgePolicy(
+      const policy = createA2ABridgePolicy(
         options,
         name,
         { tenantId: typeof record['tenantId'] === 'string' ? record['tenantId'] : '' },
         randomUUID(),
       );
       try {
-        await auditOpenClawInvalidInput(OPENCLAW_MCP_TOOL_DEFINITIONS[name], rawInput, policy);
+        await auditA2AInvalidInput(A2A_MCP_TOOL_DEFINITIONS[name], rawInput, policy);
       } catch {
         return errorResult('mcp-audit-failed');
       }
@@ -190,22 +190,22 @@ export function createOpenClawMcpBridge(options: OpenClawMcpBridgeOptions): Open
 
   const server = new McpServer(
     {
-      name: options.serverName ?? 'a2amesh-openclaw-mcp-compat',
+      name: options.serverName ?? 'a2amesh-mcp',
       version: options.serverVersion ?? '0.1.0',
     },
     {
       instructions:
-        'Bounded A2A Mesh compatibility bridge. Only configured tools, tenants, agents, and destinations are available.',
+        'Bounded A2A Mesh MCP bridge. Only configured tools, tenants, agents, and destinations are available.',
     },
   );
-  registerOpenClawMcpTools(server, invoke, tools);
+  registerA2AMcpTools(server, invoke, tools);
   return { server, invoke };
 }
 
-export function createOpenClawMcpHttpApp(
-  options: OpenClawMcpHttpOptions,
+export function createA2AMcpHttpApp(
+  options: A2AMcpHttpOptions,
 ): ReturnType<typeof createMcpExpressApp> {
-  return createOpenClawMcpHttpAppWithFactory(options, createOpenClawMcpBridge);
+  return createA2AMcpHttpAppWithFactory(options, createA2AMcpBridge);
 }
 
 export * from './types.js';

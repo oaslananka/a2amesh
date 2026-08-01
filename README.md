@@ -129,7 +129,7 @@ a2amesh trust verify .\agent-card.signed.json --trusted-key my-key:.\public-key.
 
 ## Agent Plugin
 
-The repository owns a skills-only alpha plugin for safe endpoint validation, approved task operations, and bounded MCP consumption. It is not active in the public catalog yet. See [Agent plugin plan](docs/agent-plugin.md) for installation, upgrade, rollback, workflow support, and marketplace activation gates.
+The repository owns a product-level alpha plugin for safe endpoint validation, approved task operations, and bounded MCP consumption. The public `@a2amesh/mcp` package now provides the `a2amesh-mcp` stdio server command, while `.mcp.json`, Codex, VS Code, and OpenCode examples remain read-only by default. See [Agent plugin plan](docs/agent-plugin.md) for installation, upgrade, rollback, workflow support, and the separate catalog activation process.
 
 ## Package List
 
@@ -138,7 +138,7 @@ The repository owns a skills-only alpha plugin for safe endpoint validation, app
 | `@a2amesh/protocol`       | Protocol types, Agent Card, Task, Message, Artifact, JSON schemas, compatibility fixtures.        |
 | `@a2amesh/runtime`        | A2A client/server runtime, task lifecycle, streaming, push, auth hooks, storage, telemetry hooks. |
 | `@a2amesh/registry`       | Agent discovery, health, trust score, signed cards, registry API.                                 |
-| `@a2amesh/mcp`            | Secure, auditable, approval-aware, policy-bound A2A ↔ MCP bridge.                                 |
+| `@a2amesh/mcp`            | Secure A2A ↔ MCP bridge plus the standalone `a2amesh-mcp` stdio server.                           |
 | `@a2amesh/cli`            | CLI binary `a2amesh`.                                                                             |
 | `@a2amesh/create-a2amesh` | Project scaffolder.                                                                               |
 

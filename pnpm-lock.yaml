@@ -387,9 +387,6 @@ importers:
       '@a2amesh/mcp':
         specifier: workspace:*
         version: link:../../packages/mcp
-      '@a2amesh/runtime':
-        specifier: workspace:*
-        version: link:../../packages/runtime
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
@@ -681,6 +678,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       typescript:
         specifier: 6.0.3

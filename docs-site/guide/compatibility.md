@@ -35,7 +35,7 @@ All public packages in the `0.15.0-alpha.1` release line share the same Node eng
 | Package                   | Current version  | Node range      | Compatibility notes                                                         |
 | ------------------------- | ---------------- | --------------- | --------------------------------------------------------------------------- |
 | `@a2amesh/cli`            | `0.15.0-alpha.1` | `>=22.22.1 <25` | Published `a2amesh` command-line interface.                                 |
-| `@a2amesh/mcp`            | `0.15.0-alpha.1` | `>=22.22.1 <25` | A2A and MCP mapping helpers and bridge runtime.                             |
+| `@a2amesh/mcp`            | `0.15.0-alpha.1` | `>=22.22.1 <25` | Bridge helpers, `@a2amesh/mcp/server`, and `a2amesh-mcp` stdio command.     |
 | `@a2amesh/protocol`       | `0.15.0-alpha.1` | `>=22.22.1 <25` | Protocol types, interfaces, constants, and validators.                      |
 | `@a2amesh/registry`       | `0.15.0-alpha.1` | `>=22.22.1 <25` | Registry server, discovery, health, and storage helpers.                    |
 | `@a2amesh/runtime`        | `0.15.0-alpha.1` | `>=22.22.1 <25` | Core runtime, client/server APIs, task lifecycle, and telemetry/auth hooks. |

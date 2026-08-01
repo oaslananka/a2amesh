@@ -1,0 +1,32 @@
+// SPDX-FileCopyrightText: 2025-2026 oaslananka
+// SPDX-License-Identifier: Apache-2.0
+
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "a2amesh": {
+      "type": "local",
+      "command": ["npx", "-y", "-p", "@a2amesh/mcp@alpha", "a2amesh-mcp", "--transport", "stdio"],
+      "enabled": true,
+      "environment": {
+        "A2AMESH_MCP_TENANT_ID": "example-tenant",
+        "A2AMESH_MCP_AUDIENCE": "urn:mcp:a2amesh",
+        "A2AMESH_MCP_CLIENT_ID": "opencode-local",
+        "A2AMESH_MCP_SCOPES": "a2a:agents:read,a2a:tasks:read",
+        "A2AMESH_MCP_READ_APPROVAL_ID": "local-read-policy",
+        "A2AMESH_MCP_ALLOWED_TOOLS": "a2a_discover,a2a_get_task",
+        "A2AMESH_MCP_AGENTS_JSON": "[{\"id\":\"example-agent\",\"name\":\"Example Agent\",\"description\":\"Replace with an authorized A2A endpoint.\",\"url\":\"https://agent.example.com\"}]",
+        "A2AMESH_MCP_ALLOW_LOCALHOST": "0",
+        "A2AMESH_MCP_ALLOW_PRIVATE_NETWORKS": "0",
+      },
+      "timeout": 30000,
+    },
+  },
+  "permission": {
+    "skill": {
+      "a2a-endpoint-validation": "allow",
+      "a2a-task-operations": "allow",
+      "a2a-mcp-consumption": "allow",
+    },
+  },
+}

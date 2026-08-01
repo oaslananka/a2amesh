@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { createOpenClawMcpBridge, createOpenClawMcpHttpApp } from './bridge.js';
+import {
+  createA2AMcpBridge as createOpenClawMcpBridge,
+  createA2AMcpHttpApp as createOpenClawMcpHttpApp,
+} from '@a2amesh/mcp/server';
 import { loadOpenClawMcpRuntimeConfig } from './config.js';
 
 async function start(): Promise<void> {

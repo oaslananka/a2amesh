@@ -5,18 +5,18 @@ are secondary channels with limited scope.
 
 ## npm (primary)
 
-All approved packages are prepared for first publication to the npm registry
-under the `@a2amesh` scope, including the `@a2amesh/create-a2amesh` scaffolder.
-npm publication has not happened yet and requires explicit future approval.
+Approved public packages are published to npm under the `@a2amesh` scope on the
+`alpha` channel, including the `@a2amesh/create-a2amesh` scaffolder. Stable-channel
+promotion remains a separate reviewed release decision.
 
-| Package         | npm name                  |
-| --------------- | ------------------------- |
-| Protocol types  | `@a2amesh/protocol`       |
-| Core runtime    | `@a2amesh/runtime`        |
-| Registry server | `@a2amesh/registry`       |
-| MCP bridge      | `@a2amesh/mcp`            |
-| CLI             | `@a2amesh/cli`            |
-| Scaffolder      | `@a2amesh/create-a2amesh` |
+| Package           | npm name                  |
+| ----------------- | ------------------------- |
+| Protocol types    | `@a2amesh/protocol`       |
+| Core runtime      | `@a2amesh/runtime`        |
+| Registry server   | `@a2amesh/registry`       |
+| MCP bridge/server | `@a2amesh/mcp`            |
+| CLI               | `@a2amesh/cli`            |
+| Scaffolder        | `@a2amesh/create-a2amesh` |
 
 Install:
 
@@ -28,10 +28,10 @@ See [Install](install.md) for detailed requirements.
 
 ### Provenance
 
-Plan: npm packages will be published with [provenance](https://docs.npmjs.com/generating-provenance-statements)
-via [npm Trusted Publishing / OIDC](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect).
-Each published package will include a signed attestation linking the package to the
-GitHub Actions workflow and commit that produced it.
+npm packages are published with [provenance](https://docs.npmjs.com/generating-provenance-statements)
+through [npm Trusted Publishing / OIDC](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect).
+Published artifacts include attestations linking them to the GitHub Actions workflow
+and source commit.
 
 ### Version skew policy
 
@@ -45,7 +45,7 @@ GitHub Actions workflow and commit that produced it.
 
 | Ecosystem | Packages approved for first publication | Publishing method                                        |
 | --------- | --------------------------------------- | -------------------------------------------------------- |
-| npm       | Approved public `@a2amesh/*` packages   | `publish.yml` via npm OIDC/Trusted Publishing (planned)  |
+| npm       | Approved public `@a2amesh/*` packages   | `publish.yml` via npm OIDC/Trusted Publishing            |
 | JSR       | None yet                                | Manual `npx jsr publish` (requires JSR token in secrets) |
 | Homebrew  | None yet                                | Manual formula update in `a2amesh/homebrew-tap`          |
 

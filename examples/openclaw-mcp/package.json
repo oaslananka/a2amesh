@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@a2amesh/mcp": "workspace:*",
-    "@a2amesh/runtime": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^4.4.3"
   },

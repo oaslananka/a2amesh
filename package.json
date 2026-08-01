@@ -55,7 +55,7 @@
     "perf:load": "pnpm run build && pnpm run perf:load:no-build",
     "ui:test:a11y": "pnpm --dir apps/registry-ui run test:a11y",
     "build": "pnpm -r --workspace-concurrency=1 --if-present run build && node scripts/sync-injected-workspace-dist.mjs",
-    "pack:dry-run": "node scripts/check-npm-pack.mjs",
+    "pack:dry-run": "node scripts/check-npm-pack.mjs && node scripts/check-mcp-distribution.mjs",
     "docs:dev": "pnpm --dir docs-site run dev",
     "docs:build": "pnpm --dir docs-site run build",
     "docs:preview": "pnpm --dir docs-site run preview",
@@ -156,7 +156,8 @@
     "labels:apply": "node scripts/sync-github-labels.mjs --apply",
     "agent:plugin:check": "node scripts/check-agent-plugin.mjs",
     "agent:plugin:check:claude": "node scripts/check-agent-plugin.mjs --claude",
-    "agent:plugin:check:claude-lifecycle": "node scripts/check-agent-plugin.mjs --claude-lifecycle"
+    "agent:plugin:check:claude-lifecycle": "node scripts/check-agent-plugin.mjs --claude-lifecycle",
+    "mcp:distribution:check": "pnpm --filter @a2amesh/protocol --filter @a2amesh/runtime --filter @a2amesh/mcp run build && node scripts/check-mcp-distribution.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

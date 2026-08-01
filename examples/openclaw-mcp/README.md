@@ -1,6 +1,6 @@
 # OpenClaw MCP Compatibility Example
 
-This example proves that OpenClaw can consume a narrowly scoped A2A Mesh MCP server without adding an OpenClaw runtime dependency, a public plugin package, or unrestricted tools to A2A Mesh.
+This example proves that OpenClaw can consume the narrowly scoped server exported by `@a2amesh/mcp/server` without adding an OpenClaw runtime dependency, a dedicated OpenClaw plugin, or unrestricted tools to A2A Mesh.
 
 The required smoke test uses the official MCP TypeScript SDK as a fake OpenClaw-compatible consumer. It performs no external network request and needs no real credential. A separate real OpenClaw probe is opt-in.
 
@@ -49,17 +49,22 @@ Use a runtime secret manager as the source of real values. `.env.example` contai
 
 ## Recommended OpenClaw registration: stdio
 
-Build the workspace, then register the compiled server as a local stdio MCP server. Resolve absolute paths before saving the definition.
+For a released package, register the standalone local command. The source-tree command remains available only for compatibility development.
 
 ```bash
-pnpm run build
-
 openclaw mcp add a2amesh \
-  --command /absolute/path/to/node \
-  --arg /absolute/path/to/a2amesh/examples/openclaw-mcp/dist/src/index.js \
-  --cwd /absolute/path/to/a2amesh \
-  --include 'a2a_discover,a2a_send_message,a2a_get_task'
+  --command npx \
+  --arg -y \
+  --arg -p \
+  --arg @a2amesh/mcp@alpha \
+  --arg a2amesh-mcp \
+  --arg --transport \
+  --arg stdio \
+  --include 'a2a_discover,a2a_get_task'
 ```
+
+The default registration is read-only. Add `a2a_send_message`, its scope, and a fresh
+send approval identifier only after explicit approval.
 
 Run OpenClaw itself through the runtime secret manager so the child process inherits the A2A Mesh variables without writing credentials into OpenClaw-managed configuration:
 
@@ -131,10 +136,10 @@ Remove the OpenClaw registry entry and rotate/revoke any dedicated credentials o
 openclaw mcp unset a2amesh
 ```
 
-Stop the HTTP process if used. Removing this example does not change `@a2amesh/mcp`, the public A2A runtime API, the registry, or published package dependencies.
+Stop the HTTP process if used. Removing the OpenClaw registration does not change `@a2amesh/mcp`, the public A2A runtime API, the registry, or published package dependencies.
 
 ## Decision
 
-The compatibility result is **go** for the native MCP integration path and **no-go** for a dedicated OpenClaw plugin, public package, or separate integration repository at this stage. The native OpenClaw MCP registry already supplies the required connection, diagnostics, and tool-filtering boundary. Revisit a plugin only if a product workflow needs behavior that cannot be expressed through standard MCP configuration and the demand is demonstrated.
+The compatibility result is **go** for the native MCP integration path through the public `@a2amesh/mcp` package and **no-go** for a dedicated OpenClaw plugin or separate integration repository at this stage. The native OpenClaw MCP registry already supplies the required connection, diagnostics, and tool-filtering boundary. Revisit a plugin only if a product workflow needs behavior that cannot be expressed through standard MCP configuration and the demand is demonstrated.
 
 See [ADR-0016](../../docs/architecture/adr/0016-openclaw-mcp-consumption.md) and the current [OpenClaw MCP documentation](https://docs.openclaw.ai/cli/mcp).
