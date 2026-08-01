@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.1-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/mcp-v0.16.0-alpha.1...@a2amesh/mcp-v0.16.1-alpha.1) (2026-08-01)
+
+
+### Bug Fixes
+
+* **mcp:** run npm-linked server binary ([#269](https://github.com/oaslananka/a2amesh/issues/269)) ([b661cb5](https://github.com/oaslananka/a2amesh/commit/b661cb5659de9d1957d6743c4654895db39e63b6))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/runtime bumped to 0.16.1-alpha.1
+
 ## [0.16.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/mcp-v0.15.0-alpha.1...@a2amesh/mcp-v0.16.0-alpha.1) (2026-08-01)
 
 

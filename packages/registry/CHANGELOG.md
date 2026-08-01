@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.1-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/registry-v0.16.0-alpha.1...@a2amesh/registry-v0.16.1-alpha.1) (2026-08-01)
+
+
+### Miscellaneous Chores
+
+* **@a2amesh/registry:** Synchronize A2A Mesh public packages versions
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/runtime bumped to 0.16.1-alpha.1
+
 ## [0.16.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/registry-v0.15.0-alpha.1...@a2amesh/registry-v0.16.0-alpha.1) (2026-08-01)
 
 
