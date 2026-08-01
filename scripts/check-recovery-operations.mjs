@@ -46,6 +46,13 @@ requireCondition(
   Array.isArray(policy.datasets) && policy.datasets.some((entry) => entry.id === 'registry-agents'),
   'recovery policy must inventory registry agents',
 );
+const redisRecovery = policy.externalBackends?.find((entry) => entry.id === 'registry-redis');
+requireCondition(
+  ['registry-agents', 'registry-trust-log', 'registry-polling-leases'].every((dataset) =>
+    redisRecovery?.datasets?.includes(dataset),
+  ),
+  'recovery policy must inventory all Redis registry datasets',
+);
 requireCondition(
   !genericManifest.requiredFiles.includes('recovery-report.json'),
   'generic diagnostic bundles must not require recovery-only evidence',
