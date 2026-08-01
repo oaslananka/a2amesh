@@ -1,3 +1,4 @@
+import { WatchError } from 'redis';
 import type {
   ITrustLogStorage,
   TrustLogEntry,
@@ -25,8 +26,14 @@ export interface RedisTrustLogStorageOptions {
   maxAppendAttempts?: number;
 }
 
-function isWatchConflict(error: unknown): boolean {
-  return error instanceof Error && error.name === 'WatchError';
+function isWatchConflict(error: unknown): error is WatchError {
+  return error instanceof WatchError;
+}
+
+export function normalizeRedisPrefix(prefix: string): string {
+  let end = prefix.length;
+  while (end > 0 && prefix.charCodeAt(end - 1) === 58) end -= 1;
+  return prefix.slice(0, end);
 }
 
 function parseEntry(value: string): TrustLogEntry {
@@ -64,7 +71,7 @@ export class RedisTrustLogStorage implements ITrustLogStorage {
     prefix = 'a2a:registry',
     options: RedisTrustLogStorageOptions = {},
   ) {
-    const normalizedPrefix = prefix.replace(/:+$/u, '');
+    const normalizedPrefix = normalizeRedisPrefix(prefix);
     const namespace = `${normalizedPrefix}:{trust-log}`;
     this.entriesKey = `${namespace}:entries`;
     this.headKey = `${namespace}:head`;

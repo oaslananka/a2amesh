@@ -1,6 +1,8 @@
+import { WatchError } from 'redis';
 import { describe, expect, it } from 'vitest';
 import { InMemoryTrustLogStorage } from '../src/storage/InMemoryTrustLogStorage.js';
 import {
+  normalizeRedisPrefix,
   RedisTrustLogStorage,
   type RegistryRedisTrustLogClient,
   type RegistryRedisTrustLogTransaction,
@@ -83,14 +85,10 @@ class FakeRedisTrustLogClient implements RegistryRedisTrustLogClient {
   private async execute(commands: Array<() => void>): Promise<unknown> {
     if (this.failExecAttempts > 0) {
       this.failExecAttempts -= 1;
-      const error = new Error('watched key changed');
-      error.name = 'WatchError';
-      throw error;
+      throw new WatchError();
     }
     if (this.watchedVersion !== this.state.version) {
-      const error = new Error('watched key changed');
-      error.name = 'WatchError';
-      throw error;
+      throw new WatchError();
     }
     for (const command of commands) command();
     this.state.version += 1;
@@ -115,6 +113,12 @@ function sharedState(): SharedRedisState {
 }
 
 describe('RedisTrustLogStorage', () => {
+  it('normalizes Redis prefixes in linear time for adversarial suffixes', () => {
+    const adversarial = `a2a${':'.repeat(100_000)}x`;
+    expect(normalizeRedisPrefix(adversarial)).toBe(adversarial);
+    expect(normalizeRedisPrefix(`a2a${':'.repeat(100_000)}`)).toBe('a2a');
+  });
+
   it('preserves the canonical trust hash chain and list filters', async () => {
     const state = sharedState();
     const redis = new RedisTrustLogStorage(new FakeRedisTrustLogClient(state), 'a2a:test');

@@ -1,6 +1,6 @@
 import type { RegistryServerOptions } from '../RegistryServer.js';
 
-export type RegistryStorageBackend = 'memory' | 'sqlite' | 'redis';
+type RegistryStorageBackend = 'memory' | 'sqlite' | 'redis';
 
 export interface RegistryProcessConfig {
   port: number;
