@@ -4,6 +4,7 @@ export * from './storage/IAgentStorage.js';
 export * from './storage/InMemoryStorage.js';
 export * from './storage/SqliteAgentStorage.js';
 export * from './storage/RedisStorage.js';
+export * from './storage/RedisTrustLogStorage.js';
 export * from './storage/ITrustLogStorage.js';
 export * from './storage/InMemoryTrustLogStorage.js';
 export * from './storage/SqliteTrustLogStorage.js';

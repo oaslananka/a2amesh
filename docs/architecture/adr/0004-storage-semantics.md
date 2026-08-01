@@ -36,7 +36,15 @@ synchronous storage mutations and exposes the optional transaction hook used by
 Registry storage remains `IAgentStorage` with async `upsert`, `get`, `list`,
 `summarize`, `delete`, `updateStatus`, and `findBySkill` operations. `InMemoryStorage`
 is the local/test default, and `RedisStorage` owns Redis-specific indexing for tenant,
-public visibility, status, skill, tag, transport, and MCP compatibility queries.
+public visibility, status, skill, tag, transport, and MCP compatibility queries. The
+packaged registry process can select Redis with `REGISTRY_STORAGE_BACKEND=redis`; it opens
+separate connections for directory state and `RedisTrustLogStorage`, defaults scheduled
+polling to distributed leases, and fails closed when the Redis URL is absent.
+
+The registry trust log remains a separate `ITrustLogStorage` contract. In-memory, SQLite,
+and Redis implementations share the canonical SHA-256 chain. Redis appends serialize
+within one process and use connection-scoped optimistic transactions across processes, so
+the trust-log client is dedicated rather than shared with unrelated `WATCH` operations.
 
 Storage backends may add persistence or indexing optimizations, but they must keep public
 contract behavior stable and let runtime or registry managers enforce policy.
@@ -83,3 +91,5 @@ Relevant coverage:
 - [`SqliteTaskStorage.test.ts`](../../../packages/runtime/tests/SqliteTaskStorage.test.ts)
 - [`registry storage tests`](../../../packages/registry/tests/storage.test.ts)
 - [`redis storage tests`](../../../packages/registry/tests/redis-storage.test.ts)
+- [`Redis trust-log tests`](../../../packages/registry/tests/RedisTrustLogStorage.test.ts)
+- [`Redis shared-state integration test`](../../../tests/integration/registry-redis-ha.test.ts)
