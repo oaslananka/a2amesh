@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createA2AMcpBridge, createA2AMcpHttpApp } from './bridge.js';
 import { loadA2AMcpRuntimeConfig } from './config.js';
@@ -137,8 +137,16 @@ export function startA2AMcpServerCliIfEntrypoint(
   moduleUrl: string = import.meta.url,
   runCli: () => Promise<void> = runA2AMcpServerCli,
 ): boolean {
-  const invokedPath = argv[1] ? pathToFileURL(resolve(argv[1])).href : undefined;
-  if (invokedPath !== moduleUrl) return false;
+  if (!argv[1]) return false;
+  let invokedUrl: string;
+  let canonicalModuleUrl: string;
+  try {
+    invokedUrl = pathToFileURL(realpathSync(resolve(argv[1]))).href;
+    canonicalModuleUrl = pathToFileURL(realpathSync(fileURLToPath(moduleUrl))).href;
+  } catch {
+    return false;
+  }
+  if (invokedUrl !== canonicalModuleUrl) return false;
   void runCli();
   return true;
 }
