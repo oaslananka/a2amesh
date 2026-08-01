@@ -431,10 +431,20 @@
     "storage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["backend", "sqlitePath", "trustLog", "distributedPollingLeases"],
+      "required": ["backend", "sqlitePath", "redis", "trustLog", "distributedPollingLeases"],
       "properties": {
-        "backend": { "type": "string", "enum": ["memory", "sqlite"] },
+        "backend": { "type": "string", "enum": ["memory", "sqlite", "redis"] },
         "sqlitePath": { "type": "string", "minLength": 1 },
+        "redis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["existingSecret", "secretKey", "prefix"],
+          "properties": {
+            "existingSecret": { "type": "string" },
+            "secretKey": { "type": "string", "minLength": 1 },
+            "prefix": { "type": "string", "minLength": 1 }
+          }
+        },
         "trustLog": {
           "type": "object",
           "additionalProperties": false,

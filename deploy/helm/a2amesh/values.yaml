@@ -63,6 +63,10 @@ registry:
   storage:
     backend: memory
     sqlitePath: /var/lib/a2amesh/registry.sqlite
+    redis:
+      existingSecret: ''
+      secretKey: url
+      prefix: a2a:registry
     trustLog:
       enabled: false
       path: /var/lib/a2amesh/trust-log.sqlite
