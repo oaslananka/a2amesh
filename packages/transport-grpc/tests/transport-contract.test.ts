@@ -11,8 +11,36 @@ const GRPC_CAPABILITIES: TransportCapabilityMap = {
   sendMessage: { supported: true },
   streamMessage: { supported: true },
   getTask: { supported: true },
+  listTasks: {
+    supported: false,
+    reason: 'gRPC Contract Agent proto does not define task listing for gRPC.',
+  },
   cancelTask: { supported: true },
+  resubscribeTask: {
+    supported: false,
+    reason: 'gRPC Contract Agent proto does not define task resubscription for gRPC.',
+  },
+  createPushNotificationConfig: {
+    supported: false,
+    reason: 'gRPC Contract Agent proto does not define push config creation for gRPC.',
+  },
+  getPushNotificationConfig: {
+    supported: false,
+    reason: 'gRPC Contract Agent proto does not define push config lookup for gRPC.',
+  },
+  listPushNotificationConfigs: {
+    supported: false,
+    reason: 'gRPC Contract Agent proto does not define push config listing for gRPC.',
+  },
+  deletePushNotificationConfig: {
+    supported: false,
+    reason: 'gRPC Contract Agent proto does not define push config deletion for gRPC.',
+  },
   resolveCard: { supported: true },
+  getAuthenticatedExtendedCard: {
+    supported: false,
+    reason: 'gRPC Contract Agent proto does not define extended card lookup for gRPC.',
+  },
   health: {
     supported: false,
     reason: 'gRPC Contract Agent proto does not define a Health RPC for gRPC.',

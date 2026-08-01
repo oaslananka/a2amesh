@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import type {
+  A2AHealthResponse,
+  AgentCard,
   Message,
   MessageSendParams,
+  PushNotificationConfig,
   Task,
   TaskListParams,
   TaskListResult,
@@ -25,7 +28,30 @@ interface JsonRpcFailure {
   };
 }
 
+interface JsonRpcStreamNext<TResult> {
+  jsonrpc: '2.0';
+  id: string;
+  stream: 'next';
+  result: TResult;
+}
+
+interface JsonRpcStreamComplete {
+  jsonrpc: '2.0';
+  id: string;
+  stream: 'complete';
+}
+
+interface JsonRpcStreamError extends JsonRpcFailure {
+  id: string;
+  stream: 'error';
+}
+
 type JsonRpcResponse<TResult> = JsonRpcSuccess<TResult> | JsonRpcFailure;
+type JsonRpcStreamResponse<TResult> =
+  | JsonRpcStreamNext<TResult>
+  | JsonRpcStreamComplete
+  | JsonRpcStreamError;
+type IncomingJsonRpcMessage = JsonRpcResponse<unknown> | JsonRpcStreamResponse<unknown>;
 
 interface PendingRequest<TResult> {
   resolve: (value: TResult) => void;
@@ -33,10 +59,20 @@ interface PendingRequest<TResult> {
   timeout: NodeJS.Timeout;
 }
 
+interface PendingStream<TResult> {
+  method: string;
+  queue: TResult[];
+  done: boolean;
+  error?: unknown;
+  wake: (() => void) | undefined;
+  timeout?: NodeJS.Timeout;
+}
+
 export interface WsClientOptions {
   protocols?: string | string[];
   protocolVersion?: string;
   requestTimeoutMs?: number;
+  headers?: Record<string, string>;
 }
 
 async function loadWebSocket(): Promise<typeof WebSocket> {
@@ -44,17 +80,25 @@ async function loadWebSocket(): Promise<typeof WebSocket> {
   return module.default;
 }
 
-function isErrorResponse<TResult>(value: JsonRpcResponse<TResult>): value is JsonRpcFailure {
+function isErrorResponse(value: IncomingJsonRpcMessage): value is JsonRpcFailure {
   return 'error' in value;
 }
 
-function createMessageParams(message: Message): MessageSendParams {
-  return { message };
+function isStreamResponse(value: IncomingJsonRpcMessage): value is JsonRpcStreamResponse<unknown> {
+  return 'stream' in value;
+}
+
+function createMessageParams(
+  message: Message,
+  options: Omit<MessageSendParams, 'message'> = {},
+): MessageSendParams {
+  return { message, ...options };
 }
 
 export class WsClient {
   private socket: WebSocket | undefined;
   private readonly pending = new Map<string, PendingRequest<unknown>>();
+  private readonly pendingStreams = new Map<string, PendingStream<unknown>>();
 
   constructor(
     private readonly url: string,
@@ -79,15 +123,22 @@ export class WsClient {
     const WebSocketCtor = await loadWebSocket();
 
     await new Promise<void>((resolve, reject) => {
-      const socket = new WebSocketCtor(this.connectionUrl(), this.options.protocols);
+      const socket = new WebSocketCtor(this.connectionUrl(), this.options.protocols, {
+        ...(this.options.headers ? { headers: this.options.headers } : {}),
+      });
       const handleOpen = () => {
         cleanup();
         this.socket = socket;
         socket.on('message', (payload) => {
           this.handleMessage(String(payload));
         });
-        socket.on('close', () => {
-          this.rejectPending(new Error('WebSocket connection closed'));
+        socket.on('close', (_code, reason) => {
+          const detail = reason.toString().trim();
+          this.rejectPending(
+            new Error(
+              detail ? `WebSocket connection closed: ${detail}` : 'WebSocket connection closed',
+            ),
+          );
           this.socket = undefined;
         });
         resolve();
@@ -112,6 +163,11 @@ export class WsClient {
       return;
     }
 
+    if (socket.readyState === socket.CLOSED) {
+      this.socket = undefined;
+      return;
+    }
+
     await new Promise<void>((resolve) => {
       socket.once('close', () => resolve());
       socket.close();
@@ -131,7 +187,7 @@ export class WsClient {
       jsonrpc: '2.0',
       id,
       method,
-      ...(params ? { params } : {}),
+      ...(params !== undefined ? { params } : {}),
     });
 
     return new Promise<TResult>((resolve, reject) => {
@@ -153,14 +209,85 @@ export class WsClient {
             clearTimeout(pending.timeout);
             this.pending.delete(id);
           }
-          reject(error);
+          reject(this.normalizeSendError(socket, error));
         }
       });
     });
   }
 
-  async sendMessage(message: Message): Promise<Task> {
-    return this.request<Task>('message/send', createMessageParams(message));
+  async *streamRequest<TResult>(method: string, params?: unknown): AsyncGenerator<TResult> {
+    await this.connect();
+
+    const socket = this.socket;
+    if (!socket) {
+      throw new Error('WebSocket connection is not available');
+    }
+
+    const id = randomUUID();
+    const state: PendingStream<TResult> = {
+      method,
+      queue: [],
+      done: false,
+      wake: undefined,
+    };
+    this.pendingStreams.set(id, state as PendingStream<unknown>);
+    this.armStreamTimeout(id, state);
+
+    const payload = JSON.stringify({
+      jsonrpc: '2.0',
+      id,
+      method,
+      ...(params !== undefined ? { params } : {}),
+    });
+
+    socket.send(payload, (error) => {
+      if (!error) {
+        return;
+      }
+      state.error = this.normalizeSendError(socket, error);
+      state.done = true;
+      this.notifyStream(state);
+    });
+
+    try {
+      while (true) {
+        const value = state.queue.shift();
+        if (value !== undefined) {
+          yield value;
+          continue;
+        }
+
+        if (state.error) {
+          throw state.error;
+        }
+        if (state.done) {
+          return;
+        }
+
+        await new Promise<void>((resolve) => {
+          state.wake = resolve;
+        });
+      }
+    } finally {
+      if (state.timeout) {
+        clearTimeout(state.timeout);
+      }
+      this.pendingStreams.delete(id);
+    }
+  }
+
+  async sendMessage(
+    message: Message,
+    options: Omit<MessageSendParams, 'message'> = {},
+  ): Promise<Task> {
+    return this.request<Task>('message/send', createMessageParams(message, options));
+  }
+
+  streamMessage(
+    message: Message,
+    options: Omit<MessageSendParams, 'message'> = {},
+  ): AsyncGenerator<Task> {
+    return this.streamRequest<Task>('message/stream', createMessageParams(message, options));
   }
 
   async getTask(taskId: string): Promise<Task> {
@@ -170,16 +297,83 @@ export class WsClient {
   async listTasks(params: TaskListParams = {}): Promise<TaskListResult> {
     return this.request<TaskListResult>('tasks/list', params);
   }
+
+  async cancelTask(taskId: string): Promise<Task> {
+    return this.request<Task>('tasks/cancel', { taskId });
+  }
+
+  subscribeTask(taskId: string): AsyncGenerator<Task> {
+    return this.streamRequest<Task>('tasks/resubscribe', { taskId });
+  }
+
+  async createPushNotificationConfig(
+    taskId: string,
+    pushNotificationConfig: PushNotificationConfig,
+    configId = pushNotificationConfig.id,
+  ): Promise<PushNotificationConfig> {
+    return this.request<PushNotificationConfig>('tasks/pushNotificationConfig/create', {
+      taskId,
+      pushNotificationConfig,
+      ...(configId ? { configId } : {}),
+    });
+  }
+
+  async getPushNotificationConfig(
+    taskId: string,
+    configId = 'default',
+  ): Promise<PushNotificationConfig | null> {
+    return this.request<PushNotificationConfig | null>('tasks/pushNotificationConfig/get', {
+      taskId,
+      configId,
+    });
+  }
+
+  async listPushNotificationConfigs(
+    taskId: string,
+  ): Promise<{ configs: PushNotificationConfig[] }> {
+    return this.request<{ configs: PushNotificationConfig[] }>(
+      'tasks/pushNotificationConfig/list',
+      { taskId },
+    );
+  }
+
+  async deletePushNotificationConfig(
+    taskId: string,
+    configId = 'default',
+  ): Promise<{ deleted: boolean }> {
+    return this.request<{ deleted: boolean }>('tasks/pushNotificationConfig/delete', {
+      taskId,
+      configId,
+    });
+  }
+
+  async getAgentCard(): Promise<AgentCard> {
+    return this.request<AgentCard>('agent/card');
+  }
+
+  async getAuthenticatedExtendedCard(): Promise<AgentCard> {
+    return this.request<AgentCard>('agent/getAuthenticatedExtendedCard', {});
+  }
+
+  async health(): Promise<A2AHealthResponse | Record<string, unknown>> {
+    return this.request<A2AHealthResponse | Record<string, unknown>>('health');
+  }
+
   private handleMessage(payload: string): void {
-    let parsed: JsonRpcResponse<unknown>;
+    let parsed: IncomingJsonRpcMessage;
     try {
-      parsed = JSON.parse(payload) as JsonRpcResponse<unknown>;
+      parsed = JSON.parse(payload) as IncomingJsonRpcMessage;
     } catch {
       return;
     }
 
     const responseId = parsed.id;
     if (typeof responseId !== 'string') {
+      return;
+    }
+
+    if (isStreamResponse(parsed)) {
+      this.handleStreamMessage(responseId, parsed);
       return;
     }
 
@@ -198,11 +392,67 @@ export class WsClient {
 
     pending.resolve(parsed.result);
   }
+
+  private handleStreamMessage(id: string, parsed: JsonRpcStreamResponse<unknown>): void {
+    const state = this.pendingStreams.get(id);
+    if (!state) {
+      return;
+    }
+
+    this.armStreamTimeout(id, state);
+
+    if (parsed.stream === 'next') {
+      state.queue.push(parsed.result);
+    } else if (parsed.stream === 'error') {
+      state.error = new JsonRpcError(parsed.error.code, parsed.error.message, parsed.error.data);
+      state.done = true;
+    } else {
+      state.done = true;
+    }
+
+    this.notifyStream(state);
+  }
+
+  private armStreamTimeout(id: string, state: PendingStream<unknown>): void {
+    if (state.timeout) {
+      clearTimeout(state.timeout);
+    }
+    state.timeout = setTimeout(() => {
+      state.error = new Error(`Timed out waiting for ${state.method} stream response`);
+      state.done = true;
+      this.pendingStreams.delete(id);
+      this.notifyStream(state);
+    }, this.options.requestTimeoutMs ?? 10_000);
+  }
+
+  private normalizeSendError(socket: WebSocket, error: Error): Error {
+    if (socket.readyState === socket.CLOSING || socket.readyState === socket.CLOSED) {
+      return new Error('WebSocket connection closed');
+    }
+    return error;
+  }
+
+  private notifyStream(state: PendingStream<unknown>): void {
+    const wake = state.wake;
+    state.wake = undefined;
+    wake?.();
+  }
+
   private rejectPending(error: Error): void {
     for (const [id, pending] of this.pending.entries()) {
       clearTimeout(pending.timeout);
       pending.reject(error);
       this.pending.delete(id);
+    }
+
+    for (const [id, state] of this.pendingStreams.entries()) {
+      if (state.timeout) {
+        clearTimeout(state.timeout);
+      }
+      state.error = error;
+      state.done = true;
+      this.pendingStreams.delete(id);
+      this.notifyStream(state);
     }
   }
 }

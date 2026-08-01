@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { A2AHealthResponse, AgentCard, Task, TaskState } from '@a2amesh/runtime';
+import type {
+  A2AHealthResponse,
+  AgentCard,
+  PushNotificationConfig,
+  Task,
+  TaskListParams,
+  TaskListResult,
+  TaskState,
+} from '@a2amesh/runtime';
 
 const TERMINAL_STATES = new Set<TaskState>(['COMPLETED', 'FAILED', 'CANCELED']);
 
@@ -7,8 +15,15 @@ const transportOperationNames = [
   'sendMessage',
   'streamMessage',
   'getTask',
+  'listTasks',
   'cancelTask',
+  'resubscribeTask',
+  'createPushNotificationConfig',
+  'getPushNotificationConfig',
+  'listPushNotificationConfigs',
+  'deletePushNotificationConfig',
   'resolveCard',
+  'getAuthenticatedExtendedCard',
   'health',
   'authErrors',
   'malformedRequests',
@@ -38,8 +53,22 @@ interface TransportContractSession {
   sendMessage(text: string, options?: SendMessageOptions): Promise<Task>;
   streamMessage?(text: string, options?: SendMessageOptions): Promise<AsyncIterable<Task>>;
   getTask(taskId: string): Promise<Task | null | undefined>;
+  listTasks?(params?: TaskListParams): Promise<TaskListResult>;
   cancelTask?(taskId: string): Promise<Task | null | undefined>;
+  resubscribeTask?(taskId: string): Promise<AsyncIterable<Task>>;
+  createPushNotificationConfig?(
+    taskId: string,
+    config: PushNotificationConfig,
+    configId?: string,
+  ): Promise<PushNotificationConfig | null | undefined>;
+  getPushNotificationConfig?(
+    taskId: string,
+    configId?: string,
+  ): Promise<PushNotificationConfig | null | undefined>;
+  listPushNotificationConfigs?(taskId: string): Promise<{ configs: PushNotificationConfig[] }>;
+  deletePushNotificationConfig?(taskId: string, configId?: string): Promise<{ deleted: boolean }>;
   resolveCard?(): Promise<AgentCard>;
+  getAuthenticatedExtendedCard?(): Promise<AgentCard>;
   health?(): Promise<A2AHealthResponse | Record<string, unknown>>;
   sendWithoutAuth?(): Promise<TransportContractFailure>;
   sendMalformedRequest?(): Promise<TransportContractFailure>;
@@ -108,6 +137,26 @@ export function runTransportContract(spec: TransportContractSpec): void {
       });
     });
 
+    it(`${spec.name}: lists tasks with context filtering and pagination when supported`, async () => {
+      const capability = spec.capabilities.listTasks;
+      if (!capability.supported) {
+        expect(capability.reason).toContain(spec.name);
+        return;
+      }
+
+      await withSession(spec, async (session) => {
+        expect(session.listTasks).toBeDefined();
+        const first = await session.sendMessage('contract list first', { contextId: 'list-a' });
+        const second = await session.sendMessage('contract list second', { contextId: 'list-b' });
+        await waitForTaskState(session, first.id, ['COMPLETED']);
+        await waitForTaskState(session, second.id, ['COMPLETED']);
+
+        const filtered = await session.listTasks!({ contextId: 'list-a', limit: 1, offset: 0 });
+        expect(filtered.total).toBe(1);
+        expect(filtered.tasks.map((task) => task.id)).toEqual([first.id]);
+      });
+    });
+
     it(`${spec.name}: cancels a task when supported`, async () => {
       const capability = spec.capabilities.cancelTask;
       if (!capability.supported) {
@@ -126,6 +175,97 @@ export function runTransportContract(spec: TransportContractSpec): void {
 
         const stored = await waitForTaskState(session, task.id, ['CANCELED']);
         expect(stored.status.state).toBe('CANCELED');
+      });
+    });
+
+    it(`${spec.name}: resubscribes to an active task when supported`, async () => {
+      const capability = spec.capabilities.resubscribeTask;
+      if (!capability.supported) {
+        expect(capability.reason).toContain(spec.name);
+        return;
+      }
+
+      await withSession(spec, async (session) => {
+        expect(session.resubscribeTask).toBeDefined();
+        const task = await session.sendMessage('contract-resubscribe', {
+          contextId: `${spec.name}-resubscribe`,
+          returnImmediately: true,
+        });
+        const stream = await session.resubscribeTask!(task.id);
+        const updates: Task[] = [];
+        for await (const update of stream) {
+          updates.push(update);
+        }
+
+        expect(updates.length).toBeGreaterThan(0);
+        const terminal = updates.find((update) => TERMINAL_STATES.has(update.status.state));
+        expect(terminal?.status.state).toBe('COMPLETED');
+        expect(readTaskText(terminal!)).toContain('contract-resubscribe');
+      });
+    });
+
+    it(`${spec.name}: manages push notification configurations when supported`, async () => {
+      const operations = [
+        'createPushNotificationConfig',
+        'getPushNotificationConfig',
+        'listPushNotificationConfigs',
+        'deletePushNotificationConfig',
+      ] as const;
+      const unsupported = operations.find((name) => !spec.capabilities[name].supported);
+      if (unsupported) {
+        expect(spec.capabilities[unsupported].reason).toContain(spec.name);
+        return;
+      }
+
+      await withSession(spec, async (session) => {
+        expect(session.createPushNotificationConfig).toBeDefined();
+        expect(session.getPushNotificationConfig).toBeDefined();
+        expect(session.listPushNotificationConfigs).toBeDefined();
+        expect(session.deletePushNotificationConfig).toBeDefined();
+
+        const task = await session.sendMessage('contract-push-config', {
+          contextId: `${spec.name}-push-config`,
+          returnImmediately: true,
+        });
+        const config: PushNotificationConfig = {
+          id: 'contract-hook',
+          url: 'https://hooks.example.test/a2a',
+          metadata: { source: 'transport-contract' },
+        };
+        const created = await session.createPushNotificationConfig!(
+          task.id,
+          config,
+          'contract-hook',
+        );
+        expect(created).toMatchObject(config);
+
+        const read = await session.getPushNotificationConfig!(task.id, 'contract-hook');
+        expect(read).toMatchObject(config);
+
+        const listed = await session.listPushNotificationConfigs!(task.id);
+        expect(listed.configs).toEqual(expect.arrayContaining([expect.objectContaining(config)]));
+
+        await expect(
+          session.deletePushNotificationConfig!(task.id, 'contract-hook'),
+        ).resolves.toEqual({ deleted: true });
+        await expect(
+          session.getPushNotificationConfig!(task.id, 'contract-hook'),
+        ).resolves.toBeNull();
+      });
+    });
+
+    it(`${spec.name}: returns an authenticated extended card when supported`, async () => {
+      const capability = spec.capabilities.getAuthenticatedExtendedCard;
+      if (!capability.supported) {
+        expect(capability.reason).toContain(spec.name);
+        return;
+      }
+
+      await withSession(spec, async (session) => {
+        expect(session.getAuthenticatedExtendedCard).toBeDefined();
+        const card = await session.getAuthenticatedExtendedCard!();
+        expect(card.capabilities?.extendedAgentCard).toBe(true);
+        expect(card.name).toContain('Contract');
       });
     });
 
