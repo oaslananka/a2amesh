@@ -211,6 +211,18 @@ describe('gRPC transport package', () => {
     );
   });
 
+  it('requires authentication before returning an extended agent card', async () => {
+    const session = await createGrpcSession();
+
+    try {
+      await expect(session.client.getAuthenticatedExtendedCard()).rejects.toThrow(
+        'Authenticated extended card requires authentication',
+      );
+    } finally {
+      await session.close();
+    }
+  });
+
   it('rejects unary calls that request an unsupported A2A protocol version', async () => {
     const session = await createGrpcSession();
     const client = new GrpcClient(session.address, { protocolVersion: '9.9' });
