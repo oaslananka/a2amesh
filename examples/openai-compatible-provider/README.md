@@ -1,14 +1,16 @@
 # OpenAI-Compatible Provider Example
 
-This example demonstrates the existing private OpenAI adapter with a provider-neutral configuration path. It does not add a NVIDIA-specific adapter or make any provider the default.
+This example demonstrates both the existing private OpenAI adapter and the experimental OpenAI-compatible Fleet worker through one provider-neutral configuration path. It does not add a NVIDIA-specific adapter or make any provider the default.
 
-The required smoke test uses an in-memory fake client. It performs no network request and needs no real credential. A separate live command is available only when explicitly enabled.
+The required smoke test uses an in-memory fake client. It performs no network request and needs no real credential. The Fleet path routes a text-generation task, runs the complete worker lifecycle, verifies a checksummed artifact, and cleans up the run. A separate live command is available only when explicitly enabled.
 
 ## What the example proves
 
 - The API key, base URL, model identifier, timeout, and optional request settings come from environment variables.
 - Switching between compatible providers does not require a source edit.
 - The required smoke path cannot reach the network.
+- Fleet capability routing selects the OpenAI-compatible worker and completes prepare, start, stream, verify, finalize, and cleanup.
+- The Fleet result includes a SHA-256 checksummed text artifact without exposing credentials.
 - Rate-limit and timeout failures produce bounded messages without echoing provider responses or credentials.
 - Provider capability claims remain separate from the current adapter contract. The provider may support streaming or tool calling, while this internal adapter currently uses non-streaming text chat completions and does not expose tools.
 
@@ -30,7 +32,7 @@ $env:A2AMESH_OPENAI_COMPAT_MODEL = "replace-with-model-id"
 pnpm --dir examples/openai-compatible-provider run smoke
 ```
 
-The fake smoke does not validate provider availability. It validates configuration, request shaping, adapter integration, capability reporting, and secret-safe failures.
+The fake smoke does not validate provider availability. It validates configuration, request shaping, adapter integration, Fleet routing and lifecycle integration, checksummed artifact handoff, capability reporting, and secret-safe failures.
 
 ## Configuration
 
@@ -128,11 +130,13 @@ interoperability evidence rather than a permanent support promise.
 
 ## Current compatibility boundary
 
-NVIDIA NIM documents OpenAI-compatible `/v1/chat/completions`, streaming, model discovery, and—in supported releases/models—tool calling. This example records provider capability declarations but intentionally keeps the current `OpenAIAdapter` behavior unchanged:
+NVIDIA NIM documents OpenAI-compatible `/v1/chat/completions`, streaming, model discovery, and—in supported releases/models—tool calling. This example records provider capability declarations, keeps the current `OpenAIAdapter` behavior unchanged, and exercises the Fleet worker as read-only text inference:
 
 - chat completions: exercised,
 - streaming: not exposed by the adapter,
 - tool calling: not exposed by the adapter,
+- Fleet worker lifecycle: exercised with an injected fake client and no network access,
+- provider tools and remote side effects: denied by the Fleet worker,
 - NVIDIA-specific runtime package: not added.
 
 See NVIDIA's current [NIM LLM API reference](https://docs.nvidia.com/nim/large-language-models/latest/api-reference.html) and [quickstart](https://docs.nvidia.com/nim/large-language-models/latest/get-started/quickstart.html) before selecting a production profile.

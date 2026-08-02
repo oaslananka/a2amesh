@@ -2,6 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { OpenAIAdapter } from '@a2amesh/internal-adapter-openai';
 import type { AnyAgentCard, Message, Task } from '@a2amesh/runtime';
+import {
+  runConfiguredFleetProvider,
+  type OpenAICompatibleFleetExampleResult,
+} from './fleet-example.js';
 
 type Environment = Readonly<Record<string, string | undefined>>;
 type ProviderCapabilityState = 'supported' | 'unsupported' | 'unknown';
@@ -26,8 +30,16 @@ export interface OpenAICompatibleRequest {
 export interface OpenAICompatibleClient {
   chat: {
     completions: {
-      create(request: OpenAICompatibleRequest): Promise<{
+      create(
+        request: OpenAICompatibleRequest,
+        options?: { signal?: AbortSignal },
+      ): Promise<{
         choices: Array<{ message: { content: string | null } }>;
+        usage?: {
+          prompt_tokens?: number;
+          completion_tokens?: number;
+          total_tokens?: number;
+        };
       }>;
     };
   };
@@ -111,6 +123,18 @@ export function readProviderConfig(env: Environment): ProviderConfig {
     providerStreaming: readCapability(env, 'A2AMESH_OPENAI_COMPAT_SUPPORTS_STREAMING'),
     providerToolCalling: readCapability(env, 'A2AMESH_OPENAI_COMPAT_SUPPORTS_TOOL_CALLING'),
   };
+}
+
+export async function runFleetExample(
+  options: RunOptions,
+): Promise<OpenAICompatibleFleetExampleResult> {
+  const config = readProviderConfig(options.env);
+  const client = (options.clientFactory ?? createFakeClient)({
+    apiKey: config.apiKey,
+    baseURL: config.baseURL,
+    timeout: config.timeoutMs,
+  });
+  return runConfiguredFleetProvider(config, client);
 }
 
 export async function runExample(options: RunOptions): Promise<ProviderExampleResult> {

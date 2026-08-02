@@ -1,6 +1,14 @@
 # Provider Workers and Mission Control Plan
 
-Fleet provider workers are planned as post-1.0 adapters that run only through documented integration surfaces. Mission Control is the operator surface for health, routing evidence, approvals, artifacts, and incidents. It is not a browser automation layer and must never scrape provider sessions.
+Fleet provider workers run only through documented integration surfaces. Mission Control is the operator surface for health, routing evidence, approvals, artifacts, and incidents. It is not a browser automation layer and must never scrape provider sessions.
+
+## Implementation status
+
+`@a2amesh/internal-worker-openai-compatible` is the first experimental remote provider worker. It implements the full Fleet worker lifecycle for text-only inference through a caller-supplied official OpenAI-compatible API client. It supports bounded timeout, cancellation, concurrency, usage reporting, checksummed artifact handoff, and secret-safe failure classification. Credentials and provider base URLs remain the caller's responsibility and must come from the deployment secret manager. Provider tools, browser sessions, hidden endpoints, and non-read-only side effects fail closed.
+
+Official CLI, MCP, GitHub Action, webhook, service-account cloud, and manual-handoff workers remain planned.
+
+The [OpenAI-compatible provider example](https://github.com/oaslananka/a2amesh/tree/main/examples/openai-compatible-provider) provides a network-free end-to-end proof: Fleet capability routing selects the worker, the complete lifecycle runs through an injected fake client, and verification requires a checksummed artifact. It does not claim live provider availability.
 
 ## Supported integration surfaces
 
