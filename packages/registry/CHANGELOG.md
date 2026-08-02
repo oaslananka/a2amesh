@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/registry-v0.17.0-alpha.1...@a2amesh/registry-v0.18.0-alpha.1) (2026-08-02)
+
+
+### Features
+
+* **release:** add fail-closed stable surface gate ([#282](https://github.com/oaslananka/a2amesh/issues/282)) ([167bc4c](https://github.com/oaslananka/a2amesh/commit/167bc4cfb0cbabf0fbf06d94582fdbc283c239ee))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/runtime bumped to 0.18.0-alpha.1
+
 ## [0.17.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/registry-v0.16.1-alpha.1...@a2amesh/registry-v0.17.0-alpha.1) (2026-08-01)
 
 
