@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-08-02T09:02:31.943Z",
+  "observed_at": "2026-08-02T11:18:33.784Z",
   "refresh_cadence_days": 14,
   "repository": {
     "name": "oaslananka/a2amesh",
@@ -11,12 +11,12 @@
     "license": "Apache-2.0",
     "open_work": {
       "issues": 1,
-      "pull_requests": 1,
-      "total": 2
+      "pull_requests": 0,
+      "total": 1
     }
   },
   "release": {
-    "source_version": "0.17.0-alpha.1",
+    "source_version": "0.18.0-alpha.1",
     "package_paths": [
       "packages/cli",
       "packages/create-a2amesh",
@@ -26,27 +26,22 @@
       "packages/runtime"
     ],
     "latest_github_release": {
-      "tag": "@a2amesh/runtime-v0.17.0-alpha.1",
-      "name": "A2A Mesh 0.17.0-alpha.1",
-      "url": "https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.17.0-alpha.1",
-      "published_at": "2026-08-01T22:16:42Z",
+      "tag": "@a2amesh/runtime-v0.18.0-alpha.1",
+      "name": "A2A Mesh 0.18.0-alpha.1",
+      "url": "https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.18.0-alpha.1",
+      "published_at": "2026-08-02T09:19:35Z",
       "prerelease": true
     },
     "latest_canonical_tag": {
-      "name": "@a2amesh/runtime-v0.17.0-alpha.1",
-      "commit": "fd2530b9202e09d9eab1944ab8907070e2b5f3e5"
+      "name": "@a2amesh/runtime-v0.18.0-alpha.1",
+      "commit": "21a30c6757ce2a0d9712f3aeb92147a0db7fa36f"
     },
     "npm": {
       "package": "@a2amesh/runtime",
-      "alpha": "0.17.0-alpha.1",
+      "alpha": "0.18.0-alpha.1",
       "latest": "0.1.0-alpha.1"
     },
-    "active_release_pr": {
-      "number": 283,
-      "title": "chore: release main",
-      "url": "https://github.com/oaslananka/a2amesh/pull/283",
-      "proposed_version": "0.18.0-alpha.1"
-    }
+    "active_release_pr": null
   },
   "settings": [
     {

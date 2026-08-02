@@ -8,19 +8,19 @@ Priority values: `Required now`, `Recommended`, `Optional`, `Future`, `Not appli
 
 ## Live repository evidence
 
-Observed at **2026-08-02T09:02:31.943Z**. This generated section must be refreshed within 14 days from the machine-readable snapshot in [`docs/governance/repository-evidence.json`](governance/repository-evidence.json).
+Observed at **2026-08-02T11:18:33.784Z**. This generated section must be refreshed within 14 days from the machine-readable snapshot in [`docs/governance/repository-evidence.json`](governance/repository-evidence.json).
 
 Refresh with `pnpm run repository:evidence:write`; CI validates freshness and local release parity through `pnpm run repository:evidence:check` in `docs:check`.
 
 | Fact                         | Observed value                                                                                                              | Authoritative source                                                                                                      |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Repository                   | [`oaslananka/a2amesh`](https://github.com/oaslananka/a2amesh); public; default branch `main`; license `Apache-2.0`          | GitHub REST API: GET /repos/oaslananka/a2amesh                                                                            |
-| Linked source version        | `0.17.0-alpha.1` across 6 public packages                                                                                   | .release-please-manifest.json and release-tracked package.json files                                                      |
-| npm publication              | `alpha` → `0.17.0-alpha.1`; `latest` → `0.1.0-alpha.1`                                                                      | npm registry metadata for @a2amesh/runtime                                                                                |
-| Latest canonical release tag | `@a2amesh/runtime-v0.17.0-alpha.1` at `fd2530b9202e`                                                                        | GitHub REST API: releases and tags for oaslananka/a2amesh                                                                 |
-| Latest GitHub Release        | [`@a2amesh/runtime-v0.17.0-alpha.1`](https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.17.0-alpha.1) | GitHub REST API: releases and tags for oaslananka/a2amesh                                                                 |
-| Active Release Please PR     | [#283](https://github.com/oaslananka/a2amesh/pull/283) proposes `0.18.0-alpha.1`                                            | GitHub CLI: pr list --repo oaslananka/a2amesh --state open                                                                |
-| Open work                    | 1 issues and 1 pull request (2 total)                                                                                       | GitHub CLI: issue list --repo oaslananka/a2amesh --state open; GitHub CLI: pr list --repo oaslananka/a2amesh --state open |
+| Linked source version        | `0.18.0-alpha.1` across 6 public packages                                                                                   | .release-please-manifest.json and release-tracked package.json files                                                      |
+| npm publication              | `alpha` → `0.18.0-alpha.1`; `latest` → `0.1.0-alpha.1`                                                                      | npm registry metadata for @a2amesh/runtime                                                                                |
+| Latest canonical release tag | `@a2amesh/runtime-v0.18.0-alpha.1` at `21a30c6757ce`                                                                        | GitHub REST API: releases and tags for oaslananka/a2amesh                                                                 |
+| Latest GitHub Release        | [`@a2amesh/runtime-v0.18.0-alpha.1`](https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.18.0-alpha.1) | GitHub REST API: releases and tags for oaslananka/a2amesh                                                                 |
+| Active Release Please PR     | None                                                                                                                        | GitHub CLI: pr list --repo oaslananka/a2amesh --state open                                                                |
+| Open work                    | 1 issues and 0 pull requests (1 total)                                                                                      | GitHub CLI: issue list --repo oaslananka/a2amesh --state open; GitHub CLI: pr list --repo oaslananka/a2amesh --state open |
 
 ### Manually verified repository settings
 
