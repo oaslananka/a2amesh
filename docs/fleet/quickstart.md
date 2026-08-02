@@ -199,6 +199,12 @@ Use `OfficialCliWorkerRuntimeAdapter` from `@a2amesh/internal-worker-cli` above 
 
 The [`examples/local-cli-fleet`](https://github.com/oaslananka/a2amesh/tree/main/examples/local-cli-fleet) smoke path demonstrates routing, explicit local approval, confined execution, and checksummed artifact verification without installing an external CLI.
 
+### Policy-backed MCP tool admission
+
+Use `McpWorkerRuntimeAdapter` from `@a2amesh/internal-worker-mcp` when a documented MCP tool is the integration surface. The caller supplies and authenticates the MCP client; the worker invokes one configured tool from an explicit allowlist, validates task/worker/tool/side-effect admission, enforces timeout and concurrency limits, and converts bounded text output into a SHA-256 checksummed artifact. `local-write` requires audited maintainer approval, while `remote-write`, `publish`, and `deploy` fail closed.
+
+The [`examples/mcp-bridge`](../../examples/mcp-bridge/README.md) smoke path keeps the existing A2A/MCP mapping proof and adds a network-free Fleet worker lifecycle using an injected fake client.
+
 ## A realistic workflow: issue triage to PR-ready patch
 
 1. **Route**: `routeFleetTask` picks a worker capable of `patch-generation` for the target workspace.

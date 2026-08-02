@@ -7,5 +7,18 @@
   },
   "include": ["src/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules", "dist"],
-  "references": [{ "path": "../../packages/mcp" }]
+  "references": [
+    {
+      "path": "../../packages/mcp"
+    },
+    {
+      "path": "../../packages/fleet"
+    },
+    {
+      "path": "../../packages/worker-runtime"
+    },
+    {
+      "path": "../../packages/worker-mcp"
+    }
+  ]
 }

@@ -22,11 +22,12 @@ const packageByImport = new Map([
   ['@a2amesh/internal-fleet', 'fleet'],
   ['@a2amesh/internal-worker-runtime', 'worker-runtime'],
   ['@a2amesh/internal-worker-cli', 'worker-cli'],
+  ['@a2amesh/internal-worker-mcp', 'worker-mcp'],
   ['@a2amesh/internal-worker-openai-compatible', 'worker-openai-compatible'],
   ['@a2amesh/internal-fleet-server', 'fleet-server'],
 ]);
 
-const providerWorkers = ['worker-cli', 'worker-openai-compatible'];
+const providerWorkers = ['worker-cli', 'worker-mcp', 'worker-openai-compatible'];
 const adapterImplementations = [
   'adapter-openai',
   'adapter-anthropic',
@@ -120,6 +121,20 @@ const disallowed = {
   fleet: new Set(['worker-runtime', ...providerWorkers, 'fleet-server']),
   'worker-runtime': new Set([...providerWorkers, 'fleet-server']),
   'worker-cli': new Set([
+    'runtime',
+    'registry',
+    'mcp',
+    'cli',
+    'adapters',
+    'adapter-base',
+    ...adapterImplementations,
+    'transport-ws',
+    'transport-grpc',
+    'fleet-server',
+    'auth',
+    'telemetry',
+  ]),
+  'worker-mcp': new Set([
     'runtime',
     'registry',
     'mcp',
