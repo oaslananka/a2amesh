@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@a2amesh/internal-fleet": "workspace:*",
-    "@a2amesh/internal-worker-runtime": "workspace:*"
+    "@a2amesh/internal-worker-runtime": "workspace:*",
+    "@a2amesh/internal-worker-cli": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.19.19",

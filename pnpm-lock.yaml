@@ -339,6 +339,9 @@ importers:
       '@a2amesh/internal-fleet':
         specifier: workspace:*
         version: link:../../packages/fleet
+      '@a2amesh/internal-worker-cli':
+        specifier: workspace:*
+        version: link:../../packages/worker-cli
       '@a2amesh/internal-worker-runtime':
         specifier: workspace:*
         version: link:../../packages/worker-runtime
@@ -819,6 +822,19 @@ importers:
       ws:
         specifier: 8.21.0
         version: 8.21.0
+
+  packages/worker-cli:
+    dependencies:
+      '@a2amesh/internal-fleet':
+        specifier: workspace:^
+        version: link:../fleet
+      '@a2amesh/internal-worker-runtime':
+        specifier: workspace:^
+        version: link:../worker-runtime
+    devDependencies:
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
 
   packages/worker-openai-compatible:
     dependencies:

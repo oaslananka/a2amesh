@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { runExample } from '../src/index.js';
+import { formatExampleFailure, runExample } from '../src/index.js';
 
 void test('local CLI fleet example routes and runs a task through the bundled stand-in command', async () => {
   // Deliberately does not set A2AMESH_CLI_FLEET_COMMAND: this only exercises
@@ -13,5 +13,13 @@ void test('local CLI fleet example routes and runs a task through the bundled st
   assert.equal(result.runStatus, 'COMPLETED');
   assert.equal(result.artifactName, 'out.patch');
   assert.match(result.artifactChecksum ?? '', /^[a-f0-9]{64}$/u);
-  assert.equal(result.plan.credentialPolicy, 'env-ref');
+  assert.equal(result.plan.credentialPolicy, 'official-cli-session');
+});
+
+void test('local CLI fleet example keeps configuration failures credential-safe', () => {
+  const sensitiveInput = 'A2AMESH_API_KEY_super-secret-value';
+  const message = formatExampleFailure(new Error(sensitiveInput));
+
+  assert.equal(message, 'Local CLI Fleet example failed. Review configuration names and policy.');
+  assert.doesNotMatch(message, /super-secret-value/u);
 });
