@@ -193,6 +193,12 @@ Platform behavior:
   provide the fail-closed boundary available through Node.js. Use canonical drive-qualified
   executable and workspace paths.
 
+### Policy-backed official CLI admission
+
+Use `OfficialCliWorkerRuntimeAdapter` from `@a2amesh/internal-worker-cli` above the generic runtime when a documented vendor CLI is the integration surface. The wrapper requires a `FleetProviderWorkerPlan`, binds the absolute executable to each `FleetWorkerRunAdmission`, forwards credential references by name only, and requires an audited `APPROVED` gate before `local-write` worktree mutation. `remote-write`, `publish`, and `deploy` remain denied; those actions require a separate operator-controlled integration.
+
+The [`examples/local-cli-fleet`](https://github.com/oaslananka/a2amesh/tree/main/examples/local-cli-fleet) smoke path demonstrates routing, explicit local approval, confined execution, and checksummed artifact verification without installing an external CLI.
+
 ## A realistic workflow: issue triage to PR-ready patch
 
 1. **Route**: `routeFleetTask` picks a worker capable of `patch-generation` for the target workspace.

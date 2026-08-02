@@ -15,10 +15,8 @@ import {
   type FleetWorkerDiscoveryRecord,
   type WorkerCard,
 } from '@a2amesh/internal-fleet';
-import {
-  LocalCliWorkerRuntimeAdapter,
-  type WorkerRuntimeContext,
-} from '@a2amesh/internal-worker-runtime';
+import { OfficialCliWorkerRuntimeAdapter } from '@a2amesh/internal-worker-cli';
+import type { WorkerRuntimeContext } from '@a2amesh/internal-worker-runtime';
 
 /**
  * Experimental example (alpha): wires a generic local CLI coding agent in as
@@ -33,25 +31,26 @@ import {
 
 const CODE_EDIT_CAPABILITY = 'code-edit';
 
-const localCliCoderPlan: FleetProviderWorkerPlan = {
-  providerId: 'local-cli-coder',
-  workerRole: 'code-editor',
-  supportStatus: 'experimental',
-  allowedSurfaces: ['official-cli', 'artifact-handoff', 'git-worktree'],
-  forbiddenSurfaces: [
-    'browser-session',
-    'web-ui-scraping',
-    'token-extraction',
-    'subscription-bypass',
-    'private-endpoint',
-  ],
-  capabilities: [CODE_EDIT_CAPABILITY, 'patch-generation'],
-  credentialPolicy: 'env-ref',
-  notes:
-    'Point A2AMESH_CLI_FLEET_COMMAND at a local coding CLI. Provider keys are ' +
-    'never inlined here - set A2AMESH_CLI_FLEET_API_KEY_ENV to the name of an ' +
-    'environment variable that already holds one.',
-};
+function createLocalCliCoderPlan(apiKeyEnvName: string | undefined): FleetProviderWorkerPlan {
+  return {
+    providerId: 'local-cli-coder',
+    workerRole: 'code-editor',
+    supportStatus: 'experimental',
+    allowedSurfaces: ['official-cli', 'artifact-handoff', 'git-worktree'],
+    forbiddenSurfaces: [
+      'browser-session',
+      'web-ui-scraping',
+      'token-extraction',
+      'subscription-bypass',
+      'private-endpoint',
+    ],
+    capabilities: [CODE_EDIT_CAPABILITY, 'patch-generation'],
+    credentialPolicy: apiKeyEnvName ? 'env-ref' : 'official-cli-session',
+    notes:
+      'Point A2AMESH_CLI_FLEET_COMMAND at a documented local coding CLI. ' +
+      'Credentials stay in the CLI session or a named environment reference.',
+  };
+}
 
 export interface LocalCliFleetExampleResult {
   mode: 'local-cli-fleet';
@@ -105,6 +104,7 @@ export async function runExample(): Promise<LocalCliFleetExampleResult> {
   }
   const command = realpathSync(configuredCommand);
   const apiKeyEnvName = process.env['A2AMESH_CLI_FLEET_API_KEY_ENV'];
+  const localCliCoderPlan = createLocalCliCoderPlan(apiKeyEnvName);
   const workspaceRoot =
     process.env['A2AMESH_CLI_FLEET_WORKSPACE'] ??
     mkdtempSync(join(tmpdir(), 'a2amesh-local-cli-fleet-'));
@@ -139,17 +139,52 @@ export async function runExample(): Promise<LocalCliFleetExampleResult> {
   }
   const selectedWorkerId = decision.selectedWorkerId;
 
-  const adapter = new LocalCliWorkerRuntimeAdapter({
+  const adapter = new OfficialCliWorkerRuntimeAdapter({
     id: selectedWorkerId,
     card,
+    providerPlan: localCliCoderPlan,
     command,
     buildArgs: (context) => ['-e', buildStandInScript(context.task.description ?? context.task.id)],
     artifactFiles: () => ['out.patch'],
-    ...(apiKeyEnvName ? { env: { [apiKeyEnvName]: process.env[apiKeyEnvName] ?? '' } } : {}),
+    environmentReferences: apiKeyEnvName ? [apiKeyEnvName] : [],
+    resolveAdmission: (context) => ({
+      taskId: context.task.id,
+      workerId: selectedWorkerId,
+      decision: {
+        allowed: true,
+        sideEffectLevel: 'local-write',
+        sandbox: {
+          isolation: 'process',
+          network: 'disabled',
+          filesystem: 'workspace-write',
+          allowedCommands: [command],
+        },
+        artifactPolicy: {
+          sensitivity: 'internal',
+          allowedArtifactTypes: ['patch'],
+          requireChecksum: true,
+          requireRedaction: true,
+        },
+        approval: {
+          requiredFor: ['local-write'],
+          state: 'APPROVED',
+          approver: 'local-example-operator',
+          reason: 'The bundled stand-in is approved to write one confined patch artifact.',
+        },
+        evidence: ['example:explicit-local-write-approval'],
+      },
+      boundaries: [
+        {
+          level: 'local-write',
+          requiresApproval: true,
+          requiresAudit: true,
+          permittedCommands: [command],
+        },
+      ],
+    }),
     policy: {
       commandAllowlist: [command],
       workspaceRoot,
-      envAllowlist: apiKeyEnvName ? [apiKeyEnvName] : [],
     },
   });
 
@@ -174,7 +209,12 @@ export async function runExample(): Promise<LocalCliFleetExampleResult> {
     workerId: selectedWorkerId,
     status: 'RUNNING',
   };
-  const context: WorkerRuntimeContext = { task, worker, run };
+  const context: WorkerRuntimeContext = {
+    task,
+    worker,
+    run,
+    metadata: { sideEffectLevel: 'local-write' },
+  };
 
   await adapter.start(context);
   for await (const event of adapter.stream(context)) {
@@ -195,13 +235,17 @@ export async function runExample(): Promise<LocalCliFleetExampleResult> {
   };
 }
 
+export function formatExampleFailure(_error: unknown): string {
+  return 'Local CLI Fleet example failed. Review configuration names and policy.';
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   runExample()
     .then((result) => {
       process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     })
     .catch((error: unknown) => {
-      console.error(error instanceof Error ? error.message : String(error));
+      console.error(formatExampleFailure(error));
       process.exit(1);
     });
 }
