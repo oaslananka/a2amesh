@@ -8,6 +8,8 @@ Fleet provider workers run only through documented integration surfaces. Mission
 
 Official CLI, MCP, GitHub Action, webhook, service-account cloud, and manual-handoff workers remain planned.
 
+The [`openai-compatible-provider`](../../examples/openai-compatible-provider/README.md) example provides a network-free end-to-end proof: Fleet capability routing selects the worker, the complete lifecycle runs through an injected fake client, and verification requires a checksummed artifact. It does not claim live provider availability.
+
 ## Supported integration surfaces
 
 | Surface             | Status                | Notes                                                                                                               |

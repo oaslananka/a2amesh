@@ -4,6 +4,7 @@ import {
   ProviderExampleError,
   readProviderConfig,
   runExample,
+  runFleetExample,
   runLiveSmoke,
   type OpenAICompatibleClientFactory,
   type OpenAICompatibleClientOptions,
@@ -179,6 +180,74 @@ void test('configuration errors name variables without echoing their values', ()
       assert.ok(error instanceof ProviderExampleError);
       assert.match(error.message, /A2AMESH_OPENAI_COMPAT_BASE_URL/u);
       assert.equal(error.message.includes('do-not-print-me'), false);
+      return true;
+    },
+  );
+});
+
+void test('routes a task through the OpenAI-compatible Fleet worker without network access', async () => {
+  const recording = createRecordingFactory({ responseText: 'fleet provider response' });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error('network access is forbidden in the Fleet fake-client path');
+  };
+
+  try {
+    const longProfile = `${'-'.repeat(4096)}provider-a${'-'.repeat(4096)}`;
+    const result = await runFleetExample({
+      env: {
+        ...baseEnvironment,
+        A2AMESH_OPENAI_COMPAT_PROFILE: longProfile,
+      },
+      clientFactory: recording.factory,
+    });
+
+    assert.equal(result.mode, 'openai-compatible-fleet-fake');
+    assert.equal(result.selectedWorkerId, 'provider-a-worker');
+    assert.equal(result.runStatus, 'COMPLETED');
+    assert.equal(result.verificationStatus, 'PASSED');
+    assert.equal(result.text, 'fleet provider response');
+    assert.match(result.artifactChecksum, /^[a-f0-9]{64}$/u);
+    assert.equal(result.providerId, longProfile);
+    assert.equal(result.model, 'provider-a/model-alpha');
+    assert.match(result.routedReason, /capability/u);
+    assert.equal(recording.constructorOptions.length, 1);
+    assert.deepEqual(recording.requests, [
+      {
+        model: 'provider-a/model-alpha',
+        messages: [
+          {
+            role: 'user',
+            content: 'Confirm OpenAI-compatible Fleet provider connectivity.',
+          },
+        ],
+        max_tokens: 96,
+        temperature: 0.25,
+      },
+    ]);
+    assert.equal(
+      JSON.stringify(result).includes(baseEnvironment.A2AMESH_OPENAI_COMPAT_API_KEY),
+      false,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+void test('keeps Fleet provider failures bounded and credential-safe', async () => {
+  const recording = createRecordingFactory({
+    failure: {
+      status: 503,
+      message: `provider failed with ${baseEnvironment.A2AMESH_OPENAI_COMPAT_API_KEY}`,
+    },
+  });
+
+  await assert.rejects(
+    runFleetExample({ env: baseEnvironment, clientFactory: recording.factory }),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.equal(error.message, 'Fleet provider worker did not complete successfully.');
+      assert.equal(error.message.includes(baseEnvironment.A2AMESH_OPENAI_COMPAT_API_KEY), false);
       return true;
     },
   );
