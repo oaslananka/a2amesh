@@ -65,6 +65,9 @@
       "path": "./packages/worker-runtime"
     },
     {
+      "path": "./packages/worker-openai-compatible"
+    },
+    {
       "path": "./apps/demo"
     },
     {

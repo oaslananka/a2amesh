@@ -21,9 +21,11 @@ const packageByImport = new Map([
   ['@a2amesh/internal-transport-grpc', 'transport-grpc'],
   ['@a2amesh/internal-fleet', 'fleet'],
   ['@a2amesh/internal-worker-runtime', 'worker-runtime'],
+  ['@a2amesh/internal-worker-openai-compatible', 'worker-openai-compatible'],
   ['@a2amesh/internal-fleet-server', 'fleet-server'],
 ]);
 
+const providerWorkers = ['worker-openai-compatible'];
 const adapterImplementations = [
   'adapter-openai',
   'adapter-anthropic',
@@ -45,19 +47,42 @@ const disallowed = {
     'transport-grpc',
     'fleet',
     'worker-runtime',
+    ...providerWorkers,
     'fleet-server',
     'auth',
     'telemetry',
   ]),
-  registry: new Set(['mcp', 'cli', 'adapters', 'adapter-base', ...adapterImplementations]),
-  mcp: new Set(['registry', 'cli', 'adapters', 'adapter-base', ...adapterImplementations]),
-  'adapter-base': new Set(['registry', 'cli', 'mcp', 'adapters', ...adapterImplementations]),
+  registry: new Set([
+    'mcp',
+    'cli',
+    'adapters',
+    'adapter-base',
+    ...adapterImplementations,
+    ...providerWorkers,
+  ]),
+  mcp: new Set([
+    'registry',
+    'cli',
+    'adapters',
+    'adapter-base',
+    ...adapterImplementations,
+    ...providerWorkers,
+  ]),
+  'adapter-base': new Set([
+    'registry',
+    'cli',
+    'mcp',
+    'adapters',
+    ...adapterImplementations,
+    ...providerWorkers,
+  ]),
   'adapter-openai': new Set([
     'registry',
     'cli',
     'mcp',
     'adapters',
     ...adapterImplementations.filter((name) => name !== 'adapter-openai'),
+    ...providerWorkers,
   ]),
   'adapter-anthropic': new Set([
     'registry',
@@ -65,6 +90,7 @@ const disallowed = {
     'mcp',
     'adapters',
     ...adapterImplementations.filter((name) => name !== 'adapter-anthropic'),
+    ...providerWorkers,
   ]),
   'adapter-langchain': new Set([
     'registry',
@@ -72,6 +98,7 @@ const disallowed = {
     'mcp',
     'adapters',
     ...adapterImplementations.filter((name) => name !== 'adapter-langchain'),
+    ...providerWorkers,
   ]),
   'adapter-google-adk': new Set([
     'registry',
@@ -79,6 +106,7 @@ const disallowed = {
     'mcp',
     'adapters',
     ...adapterImplementations.filter((name) => name !== 'adapter-google-adk'),
+    ...providerWorkers,
   ]),
   'adapter-llamaindex': new Set([
     'registry',
@@ -86,6 +114,23 @@ const disallowed = {
     'mcp',
     'adapters',
     ...adapterImplementations.filter((name) => name !== 'adapter-llamaindex'),
+    ...providerWorkers,
+  ]),
+  fleet: new Set(['worker-runtime', ...providerWorkers, 'fleet-server']),
+  'worker-runtime': new Set([...providerWorkers, 'fleet-server']),
+  'worker-openai-compatible': new Set([
+    'runtime',
+    'registry',
+    'mcp',
+    'cli',
+    'adapters',
+    'adapter-base',
+    ...adapterImplementations,
+    'transport-ws',
+    'transport-grpc',
+    'fleet-server',
+    'auth',
+    'telemetry',
   ]),
   'adapter-crewai': new Set([
     'registry',
@@ -93,6 +138,7 @@ const disallowed = {
     'mcp',
     'adapters',
     ...adapterImplementations.filter((name) => name !== 'adapter-crewai'),
+    ...providerWorkers,
   ]),
 };
 
@@ -128,6 +174,6 @@ if (printSummary && failures.length === 0) {
     `Checked ${packageByImport.size} package aliases across ${disallowedEdgeCount} forbidden dependency edges.`,
   );
   console.log(
-    'Dependency direction: protocol -> runtime -> transports/client/registry -> adapters/bridges -> CLI/apps.',
+    'Dependency direction: protocol -> runtime/fleet -> worker contracts -> provider workers/adapters -> control plane/apps.',
   );
 }

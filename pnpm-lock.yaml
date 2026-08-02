@@ -811,6 +811,22 @@ importers:
         specifier: 8.21.0
         version: 8.21.0
 
+  packages/worker-openai-compatible:
+    dependencies:
+      '@a2amesh/internal-fleet':
+        specifier: workspace:^
+        version: link:../fleet
+      '@a2amesh/internal-worker-runtime':
+        specifier: workspace:^
+        version: link:../worker-runtime
+      '@a2amesh/protocol':
+        specifier: workspace:^
+        version: link:../protocol
+    devDependencies:
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+
   packages/worker-runtime:
     dependencies:
       '@a2amesh/internal-fleet':
