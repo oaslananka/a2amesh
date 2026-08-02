@@ -1,3 +1,5 @@
 {
-  "exports": [".", "./middleware", "./schemas", "./client", "./testing", "./codex-bridge"]
+  "status": "alpha",
+  "exports": [".", "./middleware", "./schemas", "./client", "./testing", "./codex-bridge"],
+  "bins": []
 }

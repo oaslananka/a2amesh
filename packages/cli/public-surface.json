@@ -1,5 +1,5 @@
 {
   "status": "alpha",
   "exports": ["."],
-  "bins": ["a2amesh-registry"]
+  "bins": ["a2amesh"]
 }

@@ -2,7 +2,7 @@
 
 <!-- Synced from scripts/generate-command-docs.mjs. -->
 
-Runs the full release readiness checklist: git worktree state, release config integrity, pack dry-run, schema generation, docs build, security audit, public surface, package registry parity, and release artifact validation. Exits non-zero if any check fails.
+Runs the full release readiness checklist: git worktree state, release config integrity, pack dry-run, schema generation, docs build, security audit, public surface, package registry parity, and release artifact validation. Use --stable to additionally require stable package versions and surface inventories. Exits non-zero if any check fails.
 
 ## Usage
 
@@ -11,9 +11,11 @@ Usage: a2amesh release-check [options]
 
 Runs the full release readiness checklist: git worktree state, release config integrity, pack
 dry-run, schema generation, docs build, security audit, public surface, package registry parity, and
-release artifact validation. Exits non-zero if any check fails.
+release artifact validation. Use --stable to additionally require stable package versions and
+surface inventories. Exits non-zero if any check fails.
 
 Options:
+  --stable    Require stable package versions and public surface inventories
   -h, --help  display help for command
 ```
 
@@ -41,4 +43,16 @@ a2amesh release-check --json
 
 ```powershell
 a2amesh release-check --json
+```
+
+### Evaluate stable-release readiness. (Linux/macOS)
+
+```bash
+a2amesh release-check --stable --json
+```
+
+### Evaluate stable-release readiness. (PowerShell)
+
+```powershell
+a2amesh release-check --stable --json
 ```

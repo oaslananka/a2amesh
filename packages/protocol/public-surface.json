@@ -1,3 +1,5 @@
 {
-  "exports": ["."]
+  "status": "alpha",
+  "exports": ["."],
+  "bins": []
 }

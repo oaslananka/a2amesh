@@ -40,6 +40,25 @@ describe('release-check command', () => {
     );
   });
 
+  it('adds a fail-closed stable release target gate only when requested', () => {
+    expect(createReleaseCheckPlan()).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'Stable release target' })]),
+    );
+
+    expect(createReleaseCheckPlan({ stable: true })).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'Stable release target',
+          command: 'node scripts/check-public-surface.mjs --target=stable',
+          remediation: expect.stringContaining('prerelease'),
+        }),
+      ]),
+    );
+
+    const command = createReleaseCheckCommand(jsonOptions);
+    expect(command.helpInformation()).toContain('--stable');
+  });
+
   it('fails dirty worktrees with remediation metadata', () => {
     const check = createGitWorktreeCheckFromStatus(' M packages/cli/src/index.ts', 12);
 
