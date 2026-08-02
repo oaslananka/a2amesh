@@ -33,7 +33,9 @@ release commit and exist only so Release Please can calculate the next changelog
 boundary correctly.
 
 Do not create tags, GitHub Releases, npm publishes, or container pushes during
-rebuild work without owner instruction.
+rebuild work without owner instruction. A prerelease that passes this flow is not automatically
+a stable candidate; use the [Stable Release Criteria](./stable-release-criteria.md) and its
+fail-closed `release:stable-ready` gate before removing prerelease identifiers.
 
 ## Local maintainer validation
 

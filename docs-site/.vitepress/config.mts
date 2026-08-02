@@ -170,6 +170,7 @@ export default defineConfig({
           text: 'Release',
           items: [
             { text: 'Release Process', link: '/release/process' },
+            { text: 'Stable Release Criteria', link: '/release/stable-release-criteria' },
             { text: 'Package Verification', link: '/release/package-verification' },
           ],
         },

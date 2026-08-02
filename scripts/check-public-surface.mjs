@@ -1,20 +1,29 @@
 import { readJson, fail } from './check-utils.mjs';
+import { validatePublicSurfacePolicy } from './public-surface-policy.mjs';
 
-const inventories = [
-  ['packages/runtime/package.json', 'packages/runtime/public-surface.json'],
-  ['packages/registry/package.json', 'packages/registry/public-surface.json'],
-  ['packages/mcp/package.json', 'packages/mcp/public-surface.json'],
-  ['packages/protocol/package.json', 'packages/protocol/public-surface.json'],
-];
+const publicPackages = ['protocol', 'runtime', 'registry', 'mcp', 'cli', 'create-a2amesh'];
+const target =
+  process.argv.includes('--target=stable') || process.argv.includes('--stable')
+    ? 'stable'
+    : 'current';
 const failures = [];
-for (const [pkgPath, inventoryPath] of inventories) {
-  const pkg = readJson(pkgPath);
-  const inventory = readJson(inventoryPath);
-  const actual = Object.keys(pkg.exports ?? {}).sort();
-  const expected = [...inventory.exports].sort();
-  if (JSON.stringify(actual) !== JSON.stringify(expected))
-    failures.push(
-      `${pkgPath}: exports ${JSON.stringify(actual)} do not match ${inventoryPath} ${JSON.stringify(expected)}`,
-    );
+
+for (const packageDirectory of publicPackages) {
+  const packagePath = `packages/${packageDirectory}/package.json`;
+  const inventoryPath = `packages/${packageDirectory}/public-surface.json`;
+  failures.push(
+    ...validatePublicSurfacePolicy({
+      packagePath,
+      inventoryPath,
+      packageJson: readJson(packagePath),
+      inventory: readJson(inventoryPath),
+      target,
+    }),
+  );
 }
-if (failures.length > 0) fail('Public surface validation failed.', failures);
+
+if (failures.length > 0) {
+  fail('Public surface validation failed.', failures);
+} else {
+  console.log(`Public surface validation passed for ${target} target.`);
+}

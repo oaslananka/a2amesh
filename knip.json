@@ -10,6 +10,7 @@
     "scripts/dispatch-renovate-checks.d.mts",
     "scripts/repository-evidence-core.d.mts",
     "scripts/release-state-core.d.mts",
+    "scripts/public-surface-policy.d.mts",
     "scripts/report-coverage.d.mts",
     "scripts/run-pnpm.d.mts",
     "scripts/sync-security-policy.d.mts",

@@ -10,7 +10,7 @@ export const releaseCheckCommandDoc = {
   path: ['release-check'],
   summary: 'Check release readiness.',
   description:
-    'Runs the full release readiness checklist: git worktree state, release config integrity, pack dry-run, schema generation, docs build, security audit, public surface, package registry parity, and release artifact validation. Exits non-zero if any check fails.',
+    'Runs the full release readiness checklist: git worktree state, release config integrity, pack dry-run, schema generation, docs build, security audit, public surface, package registry parity, and release artifact validation. Use --stable to additionally require stable package versions and surface inventories. Exits non-zero if any check fails.',
   examples: [
     {
       title: 'Run release readiness checks.',
@@ -21,6 +21,11 @@ export const releaseCheckCommandDoc = {
       title: 'Emit machine-readable JSON report.',
       bash: ['a2amesh release-check --json'],
       powershell: ['a2amesh release-check --json'],
+    },
+    {
+      title: 'Evaluate stable-release readiness.',
+      bash: ['a2amesh release-check --stable --json'],
+      powershell: ['a2amesh release-check --stable --json'],
     },
   ],
 } satisfies CliCommandDoc;
@@ -35,6 +40,16 @@ export interface CheckResult {
   error?: string;
 }
 
+interface ReleaseCheckPlanOptions {
+  stable?: boolean;
+}
+
+interface ReleaseCheckCommandOptions {
+  stable?: boolean;
+}
+
+const STABLE_RELEASE_CHECK_NAME = 'Stable release target';
+
 interface ActionableFailure {
   name: string;
   error?: string | undefined;
@@ -43,6 +58,7 @@ interface ActionableFailure {
 
 export interface ReleaseCheckReport {
   command: 'release-check';
+  target: 'current' | 'stable';
   checks: CheckResult[];
   localGate: LocalReleaseGate;
   summary: {
@@ -117,6 +133,15 @@ const RELEASE_CHECK_METADATA = new Map<
     },
   ],
   [
+    STABLE_RELEASE_CHECK_NAME,
+    {
+      command: 'node scripts/check-public-surface.mjs --target=stable',
+      ciEquivalent: 'CI / public-surface',
+      remediation:
+        'Keep the prerelease channel until every published package version and surface inventory is marked stable.',
+    },
+  ],
+  [
     'Command surface',
     {
       command: 'node scripts/check-command-surface.mjs',
@@ -142,10 +167,12 @@ const RELEASE_CHECK_METADATA = new Map<
   ],
 ]);
 
-export function createReleaseCheckPlan(): Array<
-  Pick<CheckResult, 'name' | 'command' | 'ciEquivalent' | 'remediation'>
-> {
-  return Array.from(RELEASE_CHECK_METADATA, ([name, metadata]) => ({ name, ...metadata }));
+export function createReleaseCheckPlan(
+  options: ReleaseCheckPlanOptions = {},
+): Array<Pick<CheckResult, 'name' | 'command' | 'ciEquivalent' | 'remediation'>> {
+  return Array.from(RELEASE_CHECK_METADATA, ([name, metadata]) => ({ name, ...metadata })).filter(
+    (entry) => options.stable || entry.name !== STABLE_RELEASE_CHECK_NAME,
+  );
 }
 
 function annotateCheck(result: CheckResult): CheckResult {
@@ -188,7 +215,10 @@ export function createGitWorktreeCheckFromStatus(output: string, duration = 0): 
   return annotateCheck({ name: 'Git worktree clean', status: 'passed', duration });
 }
 
-export function createReleaseCheckReport(checks: CheckResult[]): ReleaseCheckReport {
+export function createReleaseCheckReport(
+  checks: CheckResult[],
+  target: 'current' | 'stable' = 'current',
+): ReleaseCheckReport {
   const total = checks.length;
   const passed = checks.filter((check) => check.status === 'passed').length;
   const failed = checks.filter((check) => check.status === 'failed').length;
@@ -198,6 +228,7 @@ export function createReleaseCheckReport(checks: CheckResult[]): ReleaseCheckRep
 
   return {
     command: 'release-check',
+    target,
     localGate: releaseCheckGate(),
     checks,
     summary: {
@@ -242,8 +273,13 @@ function runCheck(
   }
 }
 
-function runNodeScript(name: string, script: string, cwd: string): CheckResult {
-  return runCheck(name, 'node', [script], { cwd });
+function runNodeScript(
+  name: string,
+  script: string,
+  cwd: string,
+  args: readonly string[] = [],
+): CheckResult {
+  return runCheck(name, 'node', [script, ...args], { cwd });
 }
 
 function runPnpm(name: string, args: readonly string[], cwd: string): CheckResult {
@@ -272,7 +308,12 @@ function runGitWorktreeClean(cwd: string): CheckResult {
 }
 
 export function createReleaseCheckCommand(getOptions: RootOptionsProvider): Command {
-  return applyCommandDoc(new Command('release-check'), releaseCheckCommandDoc).action(() => {
+  const command = applyCommandDoc(new Command('release-check'), releaseCheckCommandDoc).option(
+    '--stable',
+    'Require stable package versions and public surface inventories',
+  );
+
+  return command.action((commandOptions: ReleaseCheckCommandOptions) => {
     const options = getOptions();
     const workspaceRoot = findWorkspaceRoot(process.cwd());
 
@@ -354,6 +395,16 @@ export function createReleaseCheckCommand(getOptions: RootOptionsProvider): Comm
         workspaceRoot,
       ),
     );
+    if (commandOptions.stable) {
+      checks.push(
+        runNodeScript(
+          STABLE_RELEASE_CHECK_NAME,
+          resolve(workspaceRoot, 'scripts/check-public-surface.mjs'),
+          workspaceRoot,
+          ['--target=stable'],
+        ),
+      );
+    }
     checks.push(
       runNodeScript(
         'Command surface',
@@ -388,7 +439,7 @@ export function createReleaseCheckCommand(getOptions: RootOptionsProvider): Comm
       ),
     );
 
-    const report = createReleaseCheckReport(checks);
+    const report = createReleaseCheckReport(checks, commandOptions.stable ? 'stable' : 'current');
 
     emitResult(report, options);
 

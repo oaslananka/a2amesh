@@ -29,7 +29,7 @@ Commands:
   conformance-badge [options] <report-file>  Generate a conformance badge from a report JSON file.
   conformance [options] <url>                Run the A2A conformance fixture suite.
   doctor [options]                           Print local CLI diagnostics.
-  release-check                              Check release readiness.
+  release-check [options]                    Check release readiness.
   export-card [options] <url>                Export an endpoint Agent Card to JSON.
   replay [options] <cassette>                Replay a recorded task cassette without invoking a real
                                              adapter.

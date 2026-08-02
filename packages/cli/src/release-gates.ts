@@ -31,6 +31,15 @@ const LOCAL_RELEASE_GATES: readonly LocalReleaseGate[] = [
     remediation:
       'Inspect failed check remediation text, fix the failing gate, and rerun release-check.',
   },
+  {
+    id: 'stable-release-check',
+    command: 'a2amesh release-check --stable --json',
+    ciEquivalent: 'CI / public-surface plus the standard release-check gates',
+    purpose:
+      'Fail closed until every published package version and public export/bin inventory is stable.',
+    remediation:
+      'Keep publishing prereleases until all stable-release criteria are satisfied and reviewed.',
+  },
 ];
 
 export function getLocalReleaseGates(): readonly LocalReleaseGate[] {

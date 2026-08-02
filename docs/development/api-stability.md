@@ -18,9 +18,13 @@ A2A Mesh packages are pre-1.0 alpha packages. Public surfaces should still be tr
 - Prefer additive changes.
 - Include tests for changed behavior.
 - Include migration notes for breaking or potentially breaking changes.
-- Keep command-surface and public-surface checks green.
+- Keep command-surface and public-surface checks green. All six published packages must keep reviewed export and binary inventories in `packages/<name>/public-surface.json`.
 - Avoid mixing public API changes with repository maturity/docs PRs.
 
 ## Breaking changes
 
 Breaking changes require explicit PR risk notes, release notes or changelog entries, migration guidance, and a versioning decision aligned with pre-1.0 semver policy.
+
+## Stable release gate
+
+Package inventory `status` must match its SemVer channel (`alpha`, `beta`, `rc`, or `stable`). `pnpm run release:stable-ready` fails closed while any linked public package remains a prerelease or any inventory is not marked `stable`. See [Stable Release Criteria](../release/stable-release-criteria.md).
