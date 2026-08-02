@@ -11,7 +11,7 @@ The worker:
 - accepts a caller-created API client instead of raw credentials;
 - permits `read-only` inference only;
 - does not execute provider tools or remote side effects;
-- applies bounded timeouts, concurrency, and response-size limits;
+- applies bounded prompt, timeout, concurrency, and response-size limits;
 - classifies provider failures without returning raw provider error text;
 - emits checksummed text artifacts and token-usage metadata;
 - supports cancellation through `AbortSignal`;
@@ -46,6 +46,7 @@ const worker = new OpenAICompatibleWorkerRuntimeAdapter({
   policy: {
     timeoutMs: 30_000,
     maxConcurrentRuns: 1,
+    maxPromptCharacters: 100_000,
     maxOutputCharacters: 100_000,
   },
 });
@@ -55,7 +56,7 @@ The `openai` SDK remains a caller dependency. This package only requires the sma
 
 ## Admission metadata
 
-The worker recognizes two optional `WorkerRuntimeContext.metadata` fields:
+The worker recognizes two optional `WorkerRuntimeContext.metadata` fields. Repeated `start` calls for the same run id are idempotent; a run id cannot be rebound to a different task or worker:
 
 - `sideEffectLevel`: omitted or `read-only`; any other value is denied.
 - `requestedProviderTools`: a non-empty array is denied because this worker does not execute tools.
