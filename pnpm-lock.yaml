@@ -355,6 +355,15 @@ importers:
 
   examples/mcp-bridge:
     dependencies:
+      '@a2amesh/internal-fleet':
+        specifier: workspace:*
+        version: link:../../packages/fleet
+      '@a2amesh/internal-worker-mcp':
+        specifier: workspace:*
+        version: link:../../packages/worker-mcp
+      '@a2amesh/internal-worker-runtime':
+        specifier: workspace:*
+        version: link:../../packages/worker-runtime
       '@a2amesh/mcp':
         specifier: workspace:*
         version: link:../../packages/mcp
@@ -831,6 +840,22 @@ importers:
       '@a2amesh/internal-worker-runtime':
         specifier: workspace:^
         version: link:../worker-runtime
+    devDependencies:
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+
+  packages/worker-mcp:
+    dependencies:
+      '@a2amesh/internal-fleet':
+        specifier: workspace:^
+        version: link:../fleet
+      '@a2amesh/internal-worker-runtime':
+        specifier: workspace:^
+        version: link:../worker-runtime
+      '@a2amesh/protocol':
+        specifier: workspace:^
+        version: link:../protocol
     devDependencies:
       typescript:
         specifier: 6.0.3

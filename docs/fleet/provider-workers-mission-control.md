@@ -8,9 +8,11 @@ Fleet provider workers run only through documented integration surfaces. Mission
 
 `@a2amesh/internal-worker-cli` is the experimental official CLI worker. It validates the documented provider surface and a task-bound `FleetWorkerRunAdmission` before delegating execution to the confined `LocalCliWorkerRuntimeAdapter`. It accepts named environment references or an existing official CLI session, requires explicit approval for local worktree mutation, and denies remote-write, publish, and deploy side effects.
 
-MCP, GitHub Action, webhook, service-account cloud, and manual-handoff workers remain planned.
+`@a2amesh/internal-worker-mcp` is the experimental MCP worker. It invokes one allowlisted documented MCP tool through a caller-supplied client, binds the call to task-level Fleet admission, requires approval for local worktree mutation, and returns bounded checksummed text artifacts with credential-safe failures.
 
-The [`openai-compatible-provider`](../../examples/openai-compatible-provider/README.md) example provides a network-free remote-provider proof. The [`local-cli-fleet`](../../examples/local-cli-fleet/README.md) example routes a task through the policy-backed official CLI worker using only the canonical Node.js stand-in and a confined checksummed patch artifact.
+GitHub Action, webhook, service-account cloud, and manual-handoff workers remain planned.
+
+The [`openai-compatible-provider`](../../examples/openai-compatible-provider/README.md) example provides a network-free remote-provider proof. The [`local-cli-fleet`](../../examples/local-cli-fleet/README.md) example routes a task through the policy-backed official CLI worker using only the canonical Node.js stand-in and a confined checksummed patch artifact. The [`mcp-bridge`](../../examples/mcp-bridge/README.md) example adds a network-free Fleet lifecycle proof using an injected fake MCP client and a checksummed artifact.
 
 ## Supported integration surfaces
 
@@ -92,7 +94,9 @@ When a provider does not expose a documented automation surface, Fleet must choo
 ```bash
 pnpm --filter @a2amesh/internal-fleet run typecheck
 pnpm --filter @a2amesh/internal-worker-cli run test
+pnpm --filter @a2amesh/internal-worker-mcp run test
 pnpm --filter @a2amesh/runtime-example-local-cli-fleet run smoke
+pnpm --filter @a2amesh/runtime-example-mcp-bridge run smoke
 pnpm exec vitest run --project unit packages/fleet/tests/domain.test.ts
 pnpm run lint:md
 pnpm run docs:check

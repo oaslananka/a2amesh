@@ -48,7 +48,7 @@ A2A runtime/protocol only. Must remain strictly provider-neutral.
 
 ### Worker & Provider Adapter Packages
 
-Packages designed to interface with specific runtime environments or providers (for example `packages/adapter-openai` and `packages/worker-*`). `packages/worker-openai-compatible` implements the documented remote API surface; `packages/worker-cli` implements the policy-backed official CLI surface. Both stay private and depend only on provider-neutral Fleet/worker-runtime contracts and required public protocol types.
+Packages designed to interface with specific runtime environments or providers (for example `packages/adapter-openai` and `packages/worker-*`). `packages/worker-openai-compatible` implements the documented remote API surface; `packages/worker-cli` implements the policy-backed official CLI surface; `packages/worker-mcp` implements the allowlisted documented MCP tool surface. These worker packages stay private and depend only on provider-neutral Fleet/worker-runtime contracts and required public protocol types.
 
 - **Does NOT Belong Here:** Core protocol logic, fleet orchestration algorithms, or cross-provider routing rules.
 

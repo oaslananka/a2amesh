@@ -68,6 +68,9 @@
       "path": "./packages/worker-cli"
     },
     {
+      "path": "./packages/worker-mcp"
+    },
+    {
       "path": "./packages/worker-openai-compatible"
     },
     {

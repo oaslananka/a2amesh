@@ -196,6 +196,15 @@
         "lines": 85
       }
     },
+    "worker-mcp": {
+      "root": "packages/worker-mcp/src",
+      "thresholds": {
+        "statements": 85,
+        "branches": 75,
+        "functions": 90,
+        "lines": 85
+      }
+    },
     "worker-openai-compatible": {
       "root": "packages/worker-openai-compatible/src",
       "thresholds": {
