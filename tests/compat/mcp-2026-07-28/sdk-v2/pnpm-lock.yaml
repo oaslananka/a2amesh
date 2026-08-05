@@ -6,6 +6,7 @@ settings:
 
 overrides:
   '@hono/node-server': 2.0.12
+  hono: 4.12.34
 
 importers:
 
@@ -19,7 +20,7 @@ importers:
         version: 2.0.0
       '@modelcontextprotocol/node':
         specifier: 2.0.0
-        version: 2.0.0(@modelcontextprotocol/server@2.0.0)(hono@4.12.32)
+        version: 2.0.0(@modelcontextprotocol/server@2.0.0)(hono@4.12.34)
       '@modelcontextprotocol/server':
         specifier: 2.0.0
         version: 2.0.0
@@ -30,7 +31,7 @@ packages:
     resolution: {integrity: sha512-eWpQYr67tqJLeaSUl0Q+TquuYfUdTibpOJlUMV2FfUP7+KqCC5TufnwnlXL6mobZBJbGAYRd7ZvEBDCbLInjhg==}
     engines: {node: '>=20'}
     peerDependencies:
-      hono: ^4
+      hono: 4.12.34
 
   '@modelcontextprotocol/client@2.0.0':
     resolution: {integrity: sha512-8f1OghQ2rjzIOfqgUCP+8GiUWqRs89njoWLNqAe8kWmDePv3s1fZXseej+QXemssEuuOvLLmLO/kqM3IQHtISw==}
@@ -45,7 +46,7 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       '@modelcontextprotocol/server': ^2.0.0
-      hono: ^4.11.4
+      hono: 4.12.34
     peerDependenciesMeta:
       hono:
         optional: true
@@ -66,8 +67,8 @@ packages:
     resolution: {integrity: sha512-CRT1WTyuQoD771GW56XEZFQ/ZoSfWid1alKGDYMmkt2yl8UXrVR4pspqWNEcqKvVIzg6PAltWjxcSSPrboA4iA==}
     engines: {node: '>=18.0.0'}
 
-  hono@4.12.32:
-    resolution: {integrity: sha512-XcuyW9qE2kJn07PkecMOBd5Vq/hMy7mmGw+idz1yblbg9N17ijJODrvPkn7/dwL3Kulj8LcRJ69DLOWf91dRUg==}
+  hono@4.12.34:
+    resolution: {integrity: sha512-GqXJqY/xJkJmuloTrnV1ZEXG3fqte+VjkUqoRNZXcrUidiUOP4fMSIHHY4tsqZBK++kVyWmt/AAfSUuy57/eSA==}
     engines: {node: '>=16.9.0'}
 
   isexe@2.0.0:
@@ -102,9 +103,9 @@ packages:
 
 snapshots:
 
-  '@hono/node-server@2.0.12(hono@4.12.32)':
+  '@hono/node-server@2.0.12(hono@4.12.34)':
     dependencies:
-      hono: 4.12.32
+      hono: 4.12.34
 
   '@modelcontextprotocol/client@2.0.0':
     dependencies:
@@ -120,12 +121,12 @@ snapshots:
     dependencies:
       zod: 4.4.3
 
-  '@modelcontextprotocol/node@2.0.0(@modelcontextprotocol/server@2.0.0)(hono@4.12.32)':
+  '@modelcontextprotocol/node@2.0.0(@modelcontextprotocol/server@2.0.0)(hono@4.12.34)':
     dependencies:
-      '@hono/node-server': 2.0.12(hono@4.12.32)
+      '@hono/node-server': 2.0.12(hono@4.12.34)
       '@modelcontextprotocol/server': 2.0.0
     optionalDependencies:
-      hono: 4.12.32
+      hono: 4.12.34
 
   '@modelcontextprotocol/server@2.0.0':
     dependencies:
@@ -144,7 +145,7 @@ snapshots:
     dependencies:
       eventsource-parser: 3.1.0
 
-  hono@4.12.32: {}
+  hono@4.12.34: {}
 
   isexe@2.0.0: {}
 
