@@ -45,8 +45,14 @@ function validConfig() {
       },
       {
         customType: 'regex',
-        managerFilePatterns: ['/^\\.github\\/workflows\\/security\\.yml$/'],
-        matchStrings: ['OSV_SCANNER_VERSION'],
+        managerFilePatterns: [
+          '/^\\.github\\/workflows\\/security\\.yml$/',
+          '/^\\.github\\/workflows\\/dependency-freshness\\.yml$/',
+        ],
+        matchStrings: [
+          'OSV_SCANNER_VERSION',
+          'releases/download/(?<currentValue>v?\\d+\\.\\d+\\.\\d+)/osv-scanner_linux_amd64',
+        ],
         datasourceTemplate: 'github-releases',
         depNameTemplate: 'google/osv-scanner',
         versioningTemplate: 'loose',
@@ -266,6 +272,32 @@ describe('Renovate policy validation', () => {
         'Renovate must extract pinned security tool versions: GITLEAKS_VERSION, ACTIONLINT_VERSION, OSV_SCANNER_VERSION, ZIZMOR_VERSION, SEMGREP_VERSION',
       ]),
     );
+  });
+
+  it('requires Renovate to update the daily OSV literal pin', () => {
+    const config = validConfig();
+    const manager = config.customManagers.find(
+      (candidate) => candidate.depNameTemplate === 'google/osv-scanner',
+    );
+    if (!manager) throw new Error('OSV manager fixture missing');
+    manager.managerFilePatterns = manager.managerFilePatterns.filter(
+      (pattern) => !pattern.includes('dependency-freshness'),
+    );
+    manager.matchStrings = manager.matchStrings.filter(
+      (pattern) => !pattern.includes('releases/download/'),
+    );
+
+    expect(
+      validateRenovatePolicy({
+        config,
+        globalConfig: validGlobalConfig(),
+        workflow: validWorkflow,
+        repositoryLabels: labels,
+        docsWorkflow: validDocsWorkflow,
+        dependencyReviewWorkflow: validDependencyReviewWorkflow,
+        dispatchScript: validDispatchScript,
+      }),
+    ).toContain('Renovate must update the daily OSV-Scanner literal pin');
   });
 
   it('rejects missing vulnerability release-age synchronization', () => {

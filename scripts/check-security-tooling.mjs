@@ -15,6 +15,9 @@ export function validateSecurityTooling({
   preCommit,
   semgrepConfig,
   securityWorkflow,
+  dependencyFreshnessWorkflow,
+  actionlintConfig,
+  securityPolicy,
   packageJson,
   ruleset,
   workflows = {},
@@ -24,6 +27,9 @@ export function validateSecurityTooling({
   validatePreCommit(preCommit, failures);
   validateSemgrepConfig(semgrepConfig, failures);
   validateSecurityWorkflow(securityWorkflow, failures);
+  validateDependencyFreshnessWorkflow(dependencyFreshnessWorkflow, securityWorkflow, failures);
+  validateActionlintConfig(actionlintConfig, failures);
+  validateSecurityPolicy(securityPolicy, failures);
   validatePackageScripts(packageJson, failures);
   validateRuleset(ruleset, failures);
   validateCredentialInventory(workflows, credentialInventory, failures);
@@ -78,11 +84,182 @@ function validateSecurityWorkflow(workflow, failures) {
     'Security workflow must expose a stable Semgrep check',
     failures,
   );
+  requireText(
+    workflow,
+    'name: Security / audit',
+    'Security workflow must expose Security / audit',
+    failures,
+  );
+  requireText(
+    workflow,
+    'pnpm audit --audit-level high',
+    'Security workflow must keep pnpm audit at high severity',
+    failures,
+  );
+  requireText(
+    workflow,
+    'name: Security / osv',
+    'Security workflow must expose Security / osv',
+    failures,
+  );
+  requireText(
+    workflow,
+    'osv-scanner scan source --lockfile=pnpm-lock.yaml .',
+    'Security workflow must scan the canonical pnpm lockfile with OSV',
+    failures,
+  );
   if (/\bsnyk\s+(test|code)|SNYK_(?:VERSION|TOKEN|PAT_TOKEN)/i.test(workflow)) {
     failures.push('Security workflow must not reintroduce the removed Snyk gate');
   }
   if (/semgrep ci|SEMGREP_APP_TOKEN/.test(workflow)) {
     failures.push('Semgrep CI must remain limited to repository-owned custom rules');
+  }
+}
+
+function validateDependencyFreshnessWorkflow(workflow, securityWorkflow, failures) {
+  if (typeof workflow !== 'string' || workflow.length === 0) {
+    failures.push('Dependency freshness workflow must be present');
+    return;
+  }
+  if (!/cron:\s*['"]\d+\s+\d+\s+\*\s+\*\s+\*['"]/.test(workflow)) {
+    failures.push('Dependency freshness workflow must run at least daily');
+  }
+  requireText(
+    workflow,
+    'workflow_dispatch:',
+    'Dependency freshness workflow must support manual dispatch',
+    failures,
+  );
+  requireText(
+    workflow,
+    'vulnerability-alerts: read',
+    'Dependency freshness workflow must read Dependabot alerts',
+    failures,
+  );
+  if (/vulnerability-alerts:\s*(?!read\b)\S+/.test(workflow)) {
+    failures.push('Dependency freshness workflow may only read vulnerability alerts');
+  }
+  if (/permissions:\s*write-all|\b[a-z-]+:\s*write\b/.test(workflow)) {
+    failures.push('Dependency freshness workflow must remain read-only');
+  }
+  if (/\$\{\{\s*secrets\./.test(workflow)) {
+    failures.push('Dependency freshness workflow must not reference repository secrets');
+  }
+  const workflowLines = workflow.split('\n');
+  const hasEnvironmentDeclaration = workflowLines.some((line) =>
+    line.trimStart().startsWith('environment:'),
+  );
+  const normalizedWorkflow = workflow.toLowerCase();
+  const hasReleaseSurface = ['npm-publish', 'deployment', 'deploy', 'publish'].some((value) =>
+    normalizedWorkflow.includes(value),
+  );
+  if (hasEnvironmentDeclaration || hasReleaseSurface) {
+    failures.push('Dependency freshness workflow must not use release or deployment environments');
+  }
+  if (/\b(?:OPENAI_API_KEY|ANTHROPIC_API_KEY|GOOGLE_API_KEY|DOPPLER_TOKEN)\b/.test(workflow)) {
+    failures.push('Dependency freshness workflow must not use provider credentials');
+  }
+  requireText(
+    workflow,
+    "install: 'false'",
+    'Dependency freshness workflow must control its canonical install explicitly',
+    failures,
+  );
+  requireText(
+    workflow,
+    "cache: 'false'",
+    'Dependency freshness workflow must not reuse the pnpm store cache',
+    failures,
+  );
+  requireText(
+    workflow,
+    'corepack pnpm install --frozen-lockfile',
+    'Dependency freshness workflow must install from the canonical frozen lockfile',
+    failures,
+  );
+  const dailyOsvPinPattern =
+    /https:\/\/github\.com\/google\/osv-scanner\/releases\/download\/(?<version>v\d+\.\d+\.\d+)\/osv-scanner_linux_amd64/;
+  const dailyOsvPin = dailyOsvPinPattern.exec(workflow)?.groups?.version;
+  if (!dailyOsvPin) {
+    failures.push(
+      'Dependency freshness workflow must download a literal prebuilt OSV-Scanner release',
+    );
+  }
+  if (!/OSV_SCANNER_SHA256:\s*["']?[a-f0-9]{64}["']?/.test(workflow)) {
+    failures.push('Dependency freshness workflow must pin the OSV-Scanner SHA-256 checksum');
+  }
+  requireText(
+    workflow,
+    'sha256sum --check --strict',
+    'Dependency freshness workflow must verify the OSV-Scanner SHA-256 checksum',
+    failures,
+  );
+  const securityOsvPinPattern = /OSV_SCANNER_VERSION:\s*["']?(?<version>v\d+\.\d+\.\d+)["']?/;
+  const securityOsvPin = securityOsvPinPattern.exec(securityWorkflow)?.groups?.version;
+  if (!securityOsvPin) {
+    failures.push('Security workflow must expose an OSV-Scanner release pin');
+  } else if (dailyOsvPin && dailyOsvPin !== securityOsvPin) {
+    failures.push('Dependency freshness OSV-Scanner pin must match the Security workflow');
+  }
+  requireText(
+    workflow,
+    'pnpm audit --audit-level high --json',
+    'Dependency freshness workflow must keep pnpm audit at high severity',
+    failures,
+  );
+  requireText(
+    workflow,
+    'osv-scanner scan source --lockfile=pnpm-lock.yaml . --format json',
+    'Dependency freshness workflow must scan the canonical pnpm lockfile with OSV JSON output',
+    failures,
+  );
+  requireText(
+    workflow,
+    'dependabot/alerts?state=open',
+    'Dependency freshness workflow must observe open Dependabot alerts',
+    failures,
+  );
+  requireText(
+    workflow,
+    'node scripts/check-dependency-freshness.mjs',
+    'Dependency freshness workflow must evaluate bounded repository-owned output',
+    failures,
+  );
+}
+
+function validateActionlintConfig(config, failures) {
+  if (typeof config !== 'string' || config.length === 0) {
+    failures.push(
+      'Actionlint configuration must document the scoped vulnerability-alerts exception',
+    );
+    return;
+  }
+  requireText(
+    config,
+    '.github/workflows/dependency-freshness.yml:',
+    'Actionlint vulnerability-alerts exception must be scoped to dependency-freshness.yml',
+    failures,
+  );
+  requireText(
+    config,
+    'unknown permission scope "vulnerability-alerts"',
+    'Actionlint configuration must ignore only the known vulnerability-alerts schema lag',
+    failures,
+  );
+  if (/\.github\/workflows\/\*\*/.test(config) || /unknown permission scope "\.\*"/.test(config)) {
+    failures.push('Actionlint vulnerability-alerts exception must not be repository-wide');
+  }
+}
+
+function validateSecurityPolicy(policy, failures) {
+  requireText(
+    policy ?? '',
+    'within 24 hours',
+    'Security policy must document the dependency advisory detection target',
+    failures,
+  );
+  if (!/`@oaslananka`\s+owns dependency advisory\s+triage/.test(policy ?? '')) {
+    failures.push('Security policy must document the dependency advisory triage owner');
   }
 }
 
@@ -112,6 +289,12 @@ function validateRuleset(ruleset, failures) {
     requiredRule?.parameters?.required_status_checks?.map(({ context }) => context) ?? [];
   if (contexts.filter((context) => context === SEMGREP_CHECK).length !== 1) {
     failures.push('Repository ruleset must require Security / semgrep exactly once');
+  }
+  if (contexts.filter((context) => context === 'Security / audit').length !== 1) {
+    failures.push('Repository ruleset must require Security / audit exactly once');
+  }
+  if (contexts.filter((context) => context === 'Security / osv').length !== 1) {
+    failures.push('Repository ruleset must require Security / osv exactly once');
   }
   if (contexts.some((context) => /snyk/i.test(context))) {
     failures.push('Repository ruleset must not require a removed Snyk check');
@@ -279,6 +462,9 @@ function runCli() {
     preCommit: readFileSync('.pre-commit-config.yaml', 'utf8'),
     semgrepConfig: readFileSync('.semgrep.yml', 'utf8'),
     securityWorkflow: readFileSync('.github/workflows/security.yml', 'utf8'),
+    dependencyFreshnessWorkflow: readFileSync('.github/workflows/dependency-freshness.yml', 'utf8'),
+    actionlintConfig: readFileSync('.github/actionlint.yaml', 'utf8'),
+    securityPolicy: readFileSync('SECURITY.md', 'utf8'),
     packageJson: JSON.parse(readFileSync('package.json', 'utf8')),
     ruleset: readFileSync('.github/rulesets/main.json', 'utf8'),
     workflows: Object.fromEntries(

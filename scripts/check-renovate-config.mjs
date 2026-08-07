@@ -46,6 +46,7 @@ export function validateRenovatePolicy({
   validateRepositoryConfig(config, failures);
   validatePackageRules(config, failures);
   validateSecurityToolManagers(config, failures);
+  validateDependencyFreshnessOsvManager(config, failures);
   validateCodecovToolManager(config, failures);
   validatePnpmPolicy(config, failures);
   validateLabels(config, repositoryLabels, failures);
@@ -146,6 +147,24 @@ function matchesSecurityToolManager(manager, policy) {
 
 function isSecurityWorkflowPattern(pattern) {
   return pattern.includes('workflows') && pattern.includes('security');
+}
+
+function validateDependencyFreshnessOsvManager(config, failures) {
+  const managers = Array.isArray(config.customManagers) ? config.customManagers : [];
+  const manager = managers.find(
+    (candidate) =>
+      candidate.customType === 'regex' &&
+      candidate.datasourceTemplate === 'github-releases' &&
+      candidate.depNameTemplate === 'google/osv-scanner',
+  );
+  const managesDailyWorkflow =
+    manager?.managerFilePatterns?.some((pattern) => pattern.includes('dependency-freshness')) ===
+    true;
+  const extractsLiteralPin =
+    manager?.matchStrings?.some((pattern) => pattern.includes('releases/download/')) === true;
+  if (!managesDailyWorkflow || !extractsLiteralPin) {
+    failures.push('Renovate must update the daily OSV-Scanner literal pin');
+  }
 }
 
 function validateCodecovToolManager(config, failures) {

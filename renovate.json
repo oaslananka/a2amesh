@@ -40,8 +40,14 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": ["/^\\.github\\/workflows\\/security\\.yml$/"],
-      "matchStrings": ["OSV_SCANNER_VERSION:\\\\s*['\\\"]?(?<currentValue>[^'\\\"\\\\s]+)['\\\"]?"],
+      "managerFilePatterns": [
+        "/^\\.github\\/workflows\\/security\\.yml$/",
+        "/^\\.github\\/workflows\\/dependency-freshness\\.yml$/"
+      ],
+      "matchStrings": [
+        "OSV_SCANNER_VERSION:\\\\s*['\\\"]?(?<currentValue>[^'\\\"\\\\s]+)['\\\"]?",
+        "releases/download/(?<currentValue>v?\\d+\\.\\d+\\.\\d+)/osv-scanner_linux_amd64"
+      ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "google/osv-scanner",
       "versioningTemplate": "loose"

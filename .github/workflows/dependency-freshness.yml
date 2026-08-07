@@ -1,0 +1,81 @@
+name: Dependency Freshness
+
+'on':
+  schedule:
+    - cron: '43 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  vulnerability-alerts: read
+
+concurrency:
+  group: dependency-freshness-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  NODE_VERSION: '24.16.0'
+
+jobs:
+  advisory-freshness:
+    name: Dependency Freshness / advisory gate
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          install: 'false'
+          cache: 'false'
+      - name: Clean canonical install
+        run: corepack pnpm install --frozen-lockfile
+      - name: Install OSV-Scanner
+        env:
+          OSV_SCANNER_SHA256: 'bc98e15319ed0d515e3f9235287ba53cdc5535d576d24fd573978ecfe9ab92dc'
+        run: |
+          install_dir="${RUNNER_TEMP}/osv-scanner-bin"
+          mkdir -p "${install_dir}"
+          curl --fail --show-error --location --proto '=https' --tlsv1.2 \
+            --output "${install_dir}/osv-scanner" \
+            "https://github.com/google/osv-scanner/releases/download/v2.3.8/osv-scanner_linux_amd64"
+          printf '%s  %s\n' "${OSV_SCANNER_SHA256}" "${install_dir}/osv-scanner" \
+            | sha256sum --check --strict
+          chmod 0755 "${install_dir}/osv-scanner"
+          printf '%s\n' "${install_dir}" >> "${GITHUB_PATH}"
+      - name: Observe pnpm audit
+        run: |
+          mkdir -p .artifacts/dependency-freshness
+          set +e
+          corepack pnpm audit --audit-level high --json > .artifacts/dependency-freshness/audit.json
+          status=$?
+          set -e
+          printf '%s\n' "${status}" > .artifacts/dependency-freshness/audit.status
+      - name: Observe OSV lockfile scan
+        run: |
+          set +e
+          osv-scanner scan source --lockfile=pnpm-lock.yaml . --format json > .artifacts/dependency-freshness/osv.json
+          status=$?
+          set -e
+          printf '%s\n' "${status}" > .artifacts/dependency-freshness/osv.status
+      - name: Observe open Dependabot alerts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/dependabot/alerts?state=open&per_page=100" --jq '.[]' \
+            | jq -s '.' > .artifacts/dependency-freshness/dependabot.json
+      - name: Evaluate dependency freshness
+        run: |
+          node scripts/check-dependency-freshness.mjs \
+            --audit .artifacts/dependency-freshness/audit.json \
+            --audit-status .artifacts/dependency-freshness/audit.status \
+            --osv .artifacts/dependency-freshness/osv.json \
+            --osv-status .artifacts/dependency-freshness/osv.status \
+            --dependabot .artifacts/dependency-freshness/dependabot.json

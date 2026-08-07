@@ -61,6 +61,11 @@ an emergency and may change the sequence below.
 If a target cannot be met, maintainers should update the reporter privately with the current risk,
 blocker, mitigation, and next review date.
 
+For dependency advisories, the daily freshness gate targets detection of a newly published fixable
+high- or critical-severity advisory **within 24 hours**. `@oaslananka` owns dependency advisory
+triage and targets an initial remediation decision within 48 hours of detection. The daily gate is
+read-only and complements, rather than replaces, the blocking pull-request audit and OSV checks.
+
 ## Remediation and Disclosure Lifecycle
 
 1. Reproduce and assess the report privately.

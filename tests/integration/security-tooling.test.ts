@@ -19,9 +19,37 @@ exclude: ^deploy/[h]elm/[^/]+/templates/
   - id: a2amesh.node.no-dynamic-evaluation
     severity: ERROR
 `,
-    securityWorkflow: `SEMGREP_VERSION: '1.170.0'
+    securityWorkflow: `OSV_SCANNER_VERSION: 'v2.3.8'
+SEMGREP_VERSION: '1.170.0'
 name: Security / semgrep
+name: Security / audit
+pnpm audit --audit-level high
+name: Security / osv
+osv-scanner scan source --lockfile=pnpm-lock.yaml .
 semgrep scan --config .semgrep.yml --error --disable-version-check --metrics=off
+`,
+    actionlintConfig: `paths:
+  .github/workflows/dependency-freshness.yml:
+    ignore:
+      - 'unknown permission scope "vulnerability-alerts"'
+`,
+    securityPolicy: `Dependency advisories are detected within 24 hours. \`@oaslananka\` owns dependency advisory triage.`,
+    dependencyFreshnessWorkflow: `name: Dependency Freshness
+'on':
+  schedule:
+    - cron: '43 3 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  vulnerability-alerts: read
+install: 'false'
+cache: 'false'
+corepack pnpm install --frozen-lockfile
+curl -fsSLo osv-scanner https://github.com/google/osv-scanner/releases/download/v2.3.8/osv-scanner_linux_amd64\nOSV_SCANNER_SHA256: 'bc98e15319ed0d515e3f9235287ba53cdc5535d576d24fd573978ecfe9ab92dc'\nprintf checksum | sha256sum --check --strict
+pnpm audit --audit-level high --json
+osv-scanner scan source --lockfile=pnpm-lock.yaml . --format json
+gh api --paginate repos/example/dependabot/alerts?state=open
+node scripts/check-dependency-freshness.mjs
 `,
     workflows: {
       '.github/workflows/ci.yml': `permissions:
@@ -76,7 +104,13 @@ jobs:
       rules: [
         {
           type: 'required_status_checks',
-          parameters: { required_status_checks: [{ context: 'Security / semgrep' }] },
+          parameters: {
+            required_status_checks: [
+              { context: 'Security / semgrep' },
+              { context: 'Security / audit' },
+              { context: 'Security / osv' },
+            ],
+          },
         },
       ],
     }),
@@ -171,6 +205,105 @@ describe('repository-owned Semgrep policy', () => {
 
     expect(validateSecurityTooling(input)).toContain(
       'Credential inventory observation is older than its refresh cadence',
+    );
+  });
+
+  it('requires a read-only daily dependency freshness workflow at high severity', () => {
+    const input = validInputs();
+    input.dependencyFreshnessWorkflow = input.dependencyFreshnessWorkflow
+      .replace("- cron: '43 3 * * *'\n", '')
+      .replace('pnpm audit --audit-level high --json', 'pnpm audit --audit-level moderate --json')
+      .replace('  vulnerability-alerts: read\n', '  vulnerability-alerts: write\n')
+      .replace('  contents: read\n', '  contents: write\n');
+
+    expect(validateSecurityTooling(input)).toEqual(
+      expect.arrayContaining([
+        'Dependency freshness workflow must run at least daily',
+        'Dependency freshness workflow must keep pnpm audit at high severity',
+        'Dependency freshness workflow may only read vulnerability alerts',
+        'Dependency freshness workflow must remain read-only',
+      ]),
+    );
+  });
+
+  it('requires a checksummed prebuilt OSV release matching the weekly security workflow', () => {
+    const sourceBuildInput = validInputs();
+    sourceBuildInput.dependencyFreshnessWorkflow =
+      sourceBuildInput.dependencyFreshnessWorkflow.replace(
+        `curl -fsSLo osv-scanner https://github.com/google/osv-scanner/releases/download/v2.3.8/osv-scanner_linux_amd64`,
+        `go install "github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.3.8"`,
+      );
+    expect(validateSecurityTooling(sourceBuildInput)).toContain(
+      'Dependency freshness workflow must download a literal prebuilt OSV-Scanner release',
+    );
+
+    const driftedInput = validInputs();
+    driftedInput.dependencyFreshnessWorkflow = driftedInput.dependencyFreshnessWorkflow.replace(
+      '/v2.3.8/osv-scanner_linux_amd64',
+      '/v2.3.7/osv-scanner_linux_amd64',
+    );
+    expect(validateSecurityTooling(driftedInput)).toContain(
+      'Dependency freshness OSV-Scanner pin must match the Security workflow',
+    );
+
+    const uncheckedInput = validInputs();
+    uncheckedInput.dependencyFreshnessWorkflow = uncheckedInput.dependencyFreshnessWorkflow.replace(
+      'sha256sum --check --strict',
+      'echo unchecked',
+    );
+    expect(validateSecurityTooling(uncheckedInput)).toContain(
+      'Dependency freshness workflow must verify the OSV-Scanner SHA-256 checksum',
+    );
+  });
+
+  it('rejects release environments and provider credentials from the daily gate', () => {
+    const input = validInputs();
+    input.dependencyFreshnessWorkflow += `\nenvironment: npm-publish\nOPENAI_API_KEY: placeholder\n`;
+
+    expect(validateSecurityTooling(input)).toEqual(
+      expect.arrayContaining([
+        'Dependency freshness workflow must not use release or deployment environments',
+        'Dependency freshness workflow must not use provider credentials',
+      ]),
+    );
+  });
+
+  it('keeps pull-request audit and OSV checks blocking in the main ruleset', () => {
+    const input = validInputs();
+    input.ruleset = input.ruleset
+      .replace('{"context":"Security / audit"},', '')
+      .replace('{"context":"Security / osv"}', '{"context":"Security / removed-osv"}');
+
+    expect(validateSecurityTooling(input)).toEqual(
+      expect.arrayContaining([
+        'Repository ruleset must require Security / audit exactly once',
+        'Repository ruleset must require Security / osv exactly once',
+      ]),
+    );
+  });
+
+  it('keeps the actionlint schema-lag exception narrow and workflow-specific', () => {
+    const input = validInputs();
+    input.actionlintConfig = `paths:\n  .github/workflows/**/*.yml:\n    ignore:\n      - 'unknown permission scope ".*"'\n`;
+
+    expect(validateSecurityTooling(input)).toEqual(
+      expect.arrayContaining([
+        'Actionlint vulnerability-alerts exception must be scoped to dependency-freshness.yml',
+        'Actionlint configuration must ignore only the known vulnerability-alerts schema lag',
+        'Actionlint vulnerability-alerts exception must not be repository-wide',
+      ]),
+    );
+  });
+
+  it('requires dependency detection timing and triage ownership in the security policy', () => {
+    const input = validInputs();
+    input.securityPolicy = 'Dependency security policy without service-level targets.';
+
+    expect(validateSecurityTooling(input)).toEqual(
+      expect.arrayContaining([
+        'Security policy must document the dependency advisory detection target',
+        'Security policy must document the dependency advisory triage owner',
+      ]),
     );
   });
 

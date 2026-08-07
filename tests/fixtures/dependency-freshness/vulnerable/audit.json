@@ -1,0 +1,13 @@
+{
+  "advisories": {
+    "1001": {
+      "module_name": "fixture-audit-package",
+      "severity": "high",
+      "patched_versions": ">=2.0.0",
+      "overview": "private narrative should not render"
+    }
+  },
+  "metadata": {
+    "vulnerabilities": { "info": 0, "low": 0, "moderate": 0, "high": 1, "critical": 0 }
+  }
+}
