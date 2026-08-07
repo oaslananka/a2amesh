@@ -39,7 +39,13 @@ describe.skipIf(process.platform === 'win32')('repository evidence CLI', () => {
     const input = join(root, 'live-observation.json');
     await writeFile(input, JSON.stringify(createSnapshot('2026-07-23T21:05:00.000Z'), null, 2));
 
-    const writeResult = await runCli(root, ['--write', '--input', input]);
+    const writeResult = await runCli(root, [
+      '--write',
+      '--input',
+      input,
+      '--now',
+      '2026-07-24T00:00:00.000Z',
+    ]);
     expect(writeResult.exitCode).toBe(0);
 
     const report = await readFile(join(root, 'docs/repo-maturity-report.md'), 'utf8');
