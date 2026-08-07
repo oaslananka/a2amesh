@@ -24,6 +24,7 @@ function validConfig() {
     minimumReleaseAge: '3 days',
     internalChecksFilter: 'strict',
     prCreation: 'not-pending',
+    postUpdateOptions: ['pnpmDedupe'],
     lockFileMaintenance: { enabled: true },
     dependencyDashboard: true,
     dependencyDashboardTitle: 'Dependency Dashboard',
@@ -98,6 +99,18 @@ function validConfig() {
         labels: ['area:ci', 'area:deps', 'type:task'],
       },
       {
+        description: 'Synchronize reviewed release-age exceptions for vulnerability updates.',
+        matchManagers: ['npm'],
+        matchJsonata: ['$exists(vulnerabilityFixVersion)'],
+        postUpgradeTasks: {
+          commands: ['node scripts/sync-dependency-policy.mjs --write'],
+          dataFileTemplate:
+            '[{{#each upgrades}}{"depName":"{{{depName}}}","currentVersion":"{{{currentVersion}}}","newVersion":"{{{newVersion}}}","isVulnerabilityAlert":"{{{isVulnerabilityAlert}}}"}{{#unless @last}},{{/unless}}{{/each}}]',
+          fileFilters: ['pnpm-workspace.yaml'],
+          executionMode: 'branch',
+        },
+      },
+      {
         groupName: 'pnpm toolchain',
         matchPackageNames: ['pnpm'],
         postUpgradeTasks: {
@@ -116,6 +129,7 @@ function validConfig() {
       enabled: true,
       labels: ['priority:P1', 'type:security', 'area:deps'],
     },
+    osvVulnerabilityAlerts: true,
   };
 }
 
@@ -126,7 +140,10 @@ function validGlobalConfig() {
     onboarding: false,
     requireConfig: 'required',
     branchPrefix: 'repository-managed-renovate/',
-    allowedCommands: ['^node scripts/check-runtime-versions\\.mjs --write$'],
+    allowedCommands: [
+      '^node scripts/check-runtime-versions\\.mjs --write$',
+      '^node scripts/sync-dependency-policy\\.mjs --write$',
+    ],
   };
 }
 
@@ -251,6 +268,62 @@ describe('Renovate policy validation', () => {
     );
   });
 
+  it('rejects missing vulnerability release-age synchronization', () => {
+    const config = validConfig();
+    config.packageRules = config.packageRules.filter(
+      (rule) =>
+        rule.postUpgradeTasks?.commands?.includes(
+          'node scripts/sync-dependency-policy.mjs --write',
+        ) !== true,
+    );
+    const globalConfig = validGlobalConfig();
+    globalConfig.allowedCommands = globalConfig.allowedCommands.filter(
+      (command) => !command.includes('sync-dependency-policy'),
+    );
+
+    expect(
+      validateRenovatePolicy({
+        config,
+        globalConfig,
+        workflow: validWorkflow,
+        repositoryLabels: labels,
+        docsWorkflow: validDocsWorkflow,
+        dependencyReviewWorkflow: validDependencyReviewWorkflow,
+        dispatchScript: validDispatchScript,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        'Renovate vulnerability updates must synchronize reviewed release-age exceptions',
+        'Repository-managed Renovate must allow only the reviewed policy synchronizer commands',
+      ]),
+    );
+  });
+
+  it('rejects missing pnpm dedupe and vulnerability alert ownership', () => {
+    const config = validConfig();
+    config.postUpdateOptions = [];
+    config.vulnerabilityAlerts.enabled = false;
+    config.osvVulnerabilityAlerts = false;
+
+    expect(
+      validateRenovatePolicy({
+        config,
+        globalConfig: validGlobalConfig(),
+        workflow: validWorkflow,
+        repositoryLabels: labels,
+        docsWorkflow: validDocsWorkflow,
+        dependencyReviewWorkflow: validDependencyReviewWorkflow,
+        dispatchScript: validDispatchScript,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        'Renovate must keep pnpmDedupe enabled after lockfile updates',
+        'Renovate vulnerability alerts must remain enabled',
+        'Renovate OSV vulnerability alerts must remain enabled',
+      ]),
+    );
+  });
+
   it('rejects on-demand npx execution for the official validator', () => {
     const workflow = `${validWorkflow}
 run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
@@ -313,7 +386,7 @@ run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
         'Renovate Dependency Dashboard must be explicitly enabled',
         'Renovate must extract the pnpm runtime source of truth',
         'Renovate pnpm updates must run the runtime-version synchronizer',
-        'Repository-managed Renovate must allow only the runtime-version synchronizer command',
+        'Repository-managed Renovate must allow only the reviewed policy synchronizer commands',
         'Renovate job missing permission: actions: write',
         'Renovate job missing permission: security-events: read',
         'Renovate workflow must dispatch required checks after repository updates',

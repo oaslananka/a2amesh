@@ -74,6 +74,15 @@ function validateRepositoryConfig(config, failures) {
   if (config.prCreation !== 'not-pending') {
     failures.push('Renovate prCreation must be not-pending');
   }
+  if (config.postUpdateOptions?.includes('pnpmDedupe') !== true) {
+    failures.push('Renovate must keep pnpmDedupe enabled after lockfile updates');
+  }
+  if (config.vulnerabilityAlerts?.enabled !== true) {
+    failures.push('Renovate vulnerability alerts must remain enabled');
+  }
+  if (config.osvVulnerabilityAlerts !== true) {
+    failures.push('Renovate OSV vulnerability alerts must remain enabled');
+  }
   if (config.lockFileMaintenance?.enabled !== true) {
     failures.push('Renovate lockFileMaintenance must be enabled');
   }
@@ -168,6 +177,27 @@ function validatePnpmPolicy(config, failures) {
   if (!hasPnpmManager) failures.push('Renovate must extract the pnpm runtime source of truth');
 
   const packageRules = Array.isArray(config.packageRules) ? config.packageRules : [];
+  const dependencyPolicyRule = packageRules.find(
+    (rule) =>
+      rule.matchManagers?.includes('npm') &&
+      rule.matchJsonata?.includes('$exists(vulnerabilityFixVersion)') &&
+      rule.postUpgradeTasks?.commands?.includes(
+        'node scripts/sync-dependency-policy.mjs --write',
+      ) === true &&
+      rule.postUpgradeTasks.executionMode === 'branch' &&
+      JSON.stringify(rule.postUpgradeTasks.fileFilters) ===
+        JSON.stringify(['pnpm-workspace.yaml']) &&
+      typeof rule.postUpgradeTasks.dataFileTemplate === 'string' &&
+      ['depName', 'currentVersion', 'newVersion', 'isVulnerabilityAlert'].every((field) =>
+        rule.postUpgradeTasks.dataFileTemplate.includes(field),
+      ),
+  );
+  if (!dependencyPolicyRule) {
+    failures.push(
+      'Renovate vulnerability updates must synchronize reviewed release-age exceptions',
+    );
+  }
+
   const pnpmRule = packageRules.find(
     (rule) => rule.matchPackageNames?.includes('pnpm') && rule.groupName === 'pnpm toolchain',
   );
@@ -212,10 +242,13 @@ function validateGlobalConfig(globalConfig, failures) {
   }
   if (
     JSON.stringify(globalConfig.allowedCommands) !==
-    JSON.stringify([String.raw`^node scripts/check-runtime-versions\.mjs --write$`])
+    JSON.stringify([
+      String.raw`^node scripts/check-runtime-versions\.mjs --write$`,
+      String.raw`^node scripts/sync-dependency-policy\.mjs --write$`,
+    ])
   ) {
     failures.push(
-      'Repository-managed Renovate must allow only the runtime-version synchronizer command',
+      'Repository-managed Renovate must allow only the reviewed policy synchronizer commands',
     );
   }
 }
