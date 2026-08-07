@@ -1,0 +1,6 @@
+paths:
+  .github/workflows/dependency-freshness.yml:
+    ignore:
+      # GitHub supports this repository permission, but actionlint v1.7.12 does not yet.
+      # Remove this exception once upstream support lands in a released actionlint version.
+      - 'unknown permission scope "vulnerability-alerts"'

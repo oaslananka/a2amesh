@@ -1,0 +1,28 @@
+{
+  "results": [
+    {
+      "source": { "path": "pnpm-lock.yaml", "type": "lockfile" },
+      "packages": [
+        {
+          "package": { "name": "fixture-osv-package", "version": "1.0.0", "ecosystem": "npm" },
+          "vulnerabilities": [
+            {
+              "id": "OSV-FIXTURE-PRIVATE-DETAIL",
+              "database_specific": {
+                "severity": "CRITICAL",
+                "private_payload": "private detail should not render"
+              },
+              "affected": [
+                {
+                  "ranges": [
+                    { "type": "SEMVER", "events": [{ "introduced": "0" }, { "fixed": "2.0.0" }] }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "number": 999,
+    "state": "open",
+    "dependency": { "package": { "ecosystem": "pip", "name": "fixture-python-package" } },
+    "security_advisory": {
+      "severity": "high",
+      "summary": "private summary should not render"
+    },
+    "security_vulnerability": {
+      "first_patched_version": { "identifier": "2.0.0" }
+    }
+  }
+]
