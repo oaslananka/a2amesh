@@ -488,6 +488,7 @@ jobs:
             if docker exec a2amesh-dependency-update-redis redis-cli ping | grep -q PONG; then
               exit 0
             fi
+            echo "Redis is not ready yet (attempt ${attempt}/30)."
             sleep 1
           done
           docker logs a2amesh-dependency-update-redis >&2
