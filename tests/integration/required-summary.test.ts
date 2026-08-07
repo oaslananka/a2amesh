@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,6 +66,7 @@ const requiredJobs = [
   'ui-e2e',
   'build',
   'package-dry-run',
+  'dependency-update',
   'workspace-graph',
   'public-surface',
   'command-surface',
@@ -110,6 +111,33 @@ describe.skipIf(process.platform === 'win32')('required CI summary', () => {
     expect(result.stderr).toContain(
       'consumer-smoke is missing from the required-summary needs graph',
     );
+  });
+
+  it('keeps repository-managed dependency updates on an isolated clean-store validation lane', async () => {
+    const workflow = await readFile(
+      new URL('../../.github/workflows/ci.yml', import.meta.url),
+      'utf8',
+    );
+
+    expect(workflow).toContain('name: CI / dependency-update');
+    expect(workflow).toContain('repository-managed-renovate/*');
+    expect(workflow).toContain("cache: 'false'");
+    expect(workflow).toContain('--store-dir "${RUNNER_TEMP}/pnpm-store"');
+    expect(workflow).toContain(
+      'redis:8-alpine@sha256:9d317178eceac8454a2284a9e6df2466b93c745529947f0cd42a0fa9609d7005',
+    );
+    expect(workflow).toContain('A2AMESH_TEST_REDIS_URL=redis://localhost:6379');
+    for (const command of [
+      'node scripts/check-workspace-declarations.mjs',
+      'pnpm run docs:check',
+      'pnpm run gc',
+      'pnpm run build:clean',
+      'pnpm run test:unit:no-build',
+      'pnpm run test:integration:no-build',
+      'pnpm run pack:dry-run',
+    ]) {
+      expect(workflow).toContain(command);
+    }
   });
 
   it('validates the stable context across pull requests and merge queues', async () => {

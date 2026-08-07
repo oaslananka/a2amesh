@@ -6,5 +6,8 @@
   "requireConfig": "required",
   "branchPrefix": "repository-managed-renovate/",
   "persistRepoData": true,
-  "allowedCommands": ["^node scripts/check-runtime-versions\\.mjs --write$"]
+  "allowedCommands": [
+    "^node scripts/check-runtime-versions\\.mjs --write$",
+    "^node scripts/sync-dependency-policy\\.mjs --write$"
+  ]
 }

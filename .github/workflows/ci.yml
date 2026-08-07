@@ -432,6 +432,77 @@ jobs:
           artifact-name: workspace-build-${{ github.sha }}-${{ github.run_attempt }}
       - run: pnpm run pack:dry-run
 
+  dependency-update:
+    name: CI / dependency-update
+    permissions:
+      contents: read
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DEPENDENCY_UPDATE_BRANCH: ${{ github.head_ref || github.ref_name }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          install: 'false'
+          cache: 'false'
+      - name: Validate workspace lockfile policy
+        run: node scripts/check-workspace-declarations.mjs
+      - name: Detect repository-managed dependency branch
+        id: dependency-update
+        run: |
+          if [[ "${DEPENDENCY_UPDATE_BRANCH}" == repository-managed-renovate/* ]]; then
+            echo "run=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "run=false" >> "${GITHUB_OUTPUT}"
+            echo "Not a repository-managed Renovate branch; clean-store dependency validation is an explicit successful no-op."
+          fi
+      - name: Verify clean checkout has no build artifacts
+        if: steps.dependency-update.outputs.run == 'true'
+        run: |
+          if find packages apps examples -mindepth 2 -maxdepth 2 -type d -name dist -print -quit | grep -q .; then
+            echo "Dependency-update validation must start without workspace dist artifacts." >&2
+            exit 1
+          fi
+      - name: Install from isolated empty pnpm store
+        if: steps.dependency-update.outputs.run == 'true'
+        run: corepack pnpm install --frozen-lockfile --store-dir "${RUNNER_TEMP}/pnpm-store"
+      - name: Validate docs and garbage collection without stale build artifacts
+        if: steps.dependency-update.outputs.run == 'true'
+        run: |
+          pnpm run docs:check
+          pnpm run clean:build
+          pnpm run gc
+      - name: Start Redis for dependency integration tests
+        if: steps.dependency-update.outputs.run == 'true'
+        run: |
+          docker run --detach --rm \
+            --name a2amesh-dependency-update-redis \
+            --publish 6379:6379 \
+            redis:8-alpine@sha256:9d317178eceac8454a2284a9e6df2466b93c745529947f0cd42a0fa9609d7005
+          for attempt in {1..30}; do
+            if docker exec a2amesh-dependency-update-redis redis-cli ping | grep -q PONG; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs a2amesh-dependency-update-redis >&2
+          exit 1
+      - name: Build, test, and pack dependency update
+        if: steps.dependency-update.outputs.run == 'true'
+        run: |
+          pnpm run build:clean
+          pnpm run test:unit:no-build
+          A2AMESH_TEST_REDIS_URL=redis://localhost:6379 pnpm run test:integration:no-build
+          pnpm run pack:dry-run
+      - name: Stop dependency test Redis
+        if: ${{ always() && steps.dependency-update.outputs.run == 'true' }}
+        run: docker rm --force a2amesh-dependency-update-redis 2>/dev/null || true
+
   workspace-graph:
     name: CI / workspace-graph
     permissions:
@@ -647,6 +718,7 @@ jobs:
       - ui-e2e
       - build
       - package-dry-run
+      - dependency-update
       - workspace-graph
       - public-surface
       - command-surface

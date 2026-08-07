@@ -57,6 +57,7 @@ const REQUIRED_JOBS = [
   'ui-e2e',
   'build',
   'package-dry-run',
+  'dependency-update',
   'workspace-graph',
   'public-surface',
   'command-surface',

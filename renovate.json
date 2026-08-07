@@ -146,6 +146,17 @@
       "labels": ["area:ci", "area:deps", "type:task"]
     },
     {
+      "description": "Synchronize reviewed release-age exceptions for vulnerability updates.",
+      "matchManagers": ["npm"],
+      "matchJsonata": ["$exists(vulnerabilityFixVersion)"],
+      "postUpgradeTasks": {
+        "commands": ["node scripts/sync-dependency-policy.mjs --write"],
+        "dataFileTemplate": "[{{#each upgrades}}{\"depName\":\"{{{depName}}}\",\"currentVersion\":\"{{{currentVersion}}}\",\"newVersion\":\"{{{newVersion}}}\",\"isVulnerabilityAlert\":\"{{{isVulnerabilityAlert}}}\"}{{#unless @last}},{{/unless}}{{/each}}]",
+        "fileFilters": ["pnpm-workspace.yaml"],
+        "executionMode": "branch"
+      }
+    },
+    {
       "description": "Update the pnpm source of truth and regenerate every governed runtime mirror.",
       "groupName": "pnpm toolchain",
       "matchPackageNames": ["pnpm"],

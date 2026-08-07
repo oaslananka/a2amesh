@@ -31,6 +31,16 @@ Major updates are not created until a maintainer approves them in the Dashboard.
 
 ## Project-specific rules
 
+### Automated update ownership and workspace topology
+
+Renovate is the only automation allowed to open dependency manifest or lockfile pull requests for this repository. GitHub vulnerability alerts remain enabled for detection, while Dependabot automated security update pull requests remain disabled in the repository settings. Do not add an npm `package-ecosystem` entry to `.github/dependabot.yml` while Renovate owns manifest and lockfile updates.
+
+The canonical pnpm workspace topology is `link:` for internal workspace dependencies except for the explicitly reviewed injected resolutions enforced by `scripts/check-workspace-declarations.mjs`. Exact direct dependency pins that are also present in `pnpm-workspace.yaml` `overrides` must move together, and the lockfile override must match the workspace override. The same checker rejects partial version updates and unexpected `file:packages/...` importer rewrites.
+
+Renovate keeps `pnpmDedupe` enabled after lockfile updates. Repository-managed Renovate branches also pass `CI / dependency-update`, which validates the workspace contract and then installs from an isolated empty pnpm store before running documentation checks, garbage collection, a clean build, unit and integration tests, and package dry-runs. Other CI events take an explicit successful no-op for the expensive clean-store portion while still validating the static workspace contract.
+
+Release-age exceptions remain explicit, reviewed security decisions. For a Renovate vulnerability update, an existing version-specific `minimumReleaseAgeExclude` entry follows that security fix to the new version; the synchronizer never creates a new exception. Routine updates do not carry exceptions forward merely to bypass the normal release-age policy.
+
 - Internal `@a2amesh/*` packages are excluded. Release Please owns their linked versions.
 - npm releases wait at least three days before a normal update is proposed.
 - GitHub Actions and container dependencies remain pinned.
