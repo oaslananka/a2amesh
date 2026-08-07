@@ -36,7 +36,7 @@ async function writeEvidence(options) {
     parser: 'markdown',
   });
   writeFileSync(REPORT_PATH, updatedReport);
-  await checkEvidence({ ...options, now: new Date() });
+  await checkEvidence({ ...options, now: options.now ?? new Date() });
   console.log('Repository evidence refreshed.');
 }
 
