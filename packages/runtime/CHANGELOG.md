@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.1-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/runtime-v0.18.0-alpha.1...@a2amesh/runtime-v0.18.1-alpha.1) (2026-08-08)
+
+
+### Bug Fixes
+
+* **release:** align prerelease install channel ([f766165](https://github.com/oaslananka/a2amesh/commit/f766165291a533c7d61ac5d00df64b3ffecd08f6))
+* **security:** remediate current dependency advisories ([#296](https://github.com/oaslananka/a2amesh/issues/296)) ([b1287cc](https://github.com/oaslananka/a2amesh/commit/b1287cc1a0c8ee7d39b7a29fa41175950d5e32a0)), closes [#290](https://github.com/oaslananka/a2amesh/issues/290)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/protocol bumped to 0.18.1-alpha.1
+
 ## [0.18.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/runtime-v0.17.0-alpha.1...@a2amesh/runtime-v0.18.0-alpha.1) (2026-08-02)
 
 

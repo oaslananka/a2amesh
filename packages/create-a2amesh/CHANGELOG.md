@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.1-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/create-a2amesh-v0.18.0-alpha.1...@a2amesh/create-a2amesh-v0.18.1-alpha.1) (2026-08-08)
+
+
+### Bug Fixes
+
+* **release:** align prerelease install channel ([f766165](https://github.com/oaslananka/a2amesh/commit/f766165291a533c7d61ac5d00df64b3ffecd08f6))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/cli bumped to 0.18.1-alpha.1
+
 ## [0.18.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/create-a2amesh-v0.17.0-alpha.1...@a2amesh/create-a2amesh-v0.18.0-alpha.1) (2026-08-02)
 
 
