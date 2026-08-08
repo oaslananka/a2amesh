@@ -1,7 +1,9 @@
 # A2A Mesh Open Issues Triage & Roadmap
 
+> **Historical snapshot — observed 2026-06-27.** This document preserves migration-era issue triage and is not the current roadmap or issue/milestone source of truth. See the [current roadmap](../../ROADMAP.md).
+
 **Date**: 2026-06-27  
-**Status**: 71 Open Issues Triaged from Repository Backup
+**Status**: Historical repository-backup triage snapshot
 
 This document triages the 71 open issues imported from the backup of the historical `a2a-warp` repository. It groups them logically into milestones from clean-start validation to stable releases and the future post-1.0 Fleet control plane.
 

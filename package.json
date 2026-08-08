@@ -143,7 +143,7 @@
     "schemas:check:no-build": "node scripts/generate-json-schemas.mjs --check",
     "openapi:generate:no-build": "node scripts/check-openapi.mjs --write",
     "openapi:check:no-build": "node scripts/check-openapi.mjs",
-    "docs:check:no-build": "node scripts/check-docs-commands.mjs && node scripts/check-docs-package-parity.mjs && node scripts/check-architecture-docs.mjs && node scripts/check-adrs.mjs && node scripts/check-compatibility-docs.mjs && node scripts/check-powershell-doc-parity.mjs && pnpm run repository:evidence:check && pnpm run openapi:check:no-build",
+    "docs:check:no-build": "node scripts/check-docs-commands.mjs && node scripts/check-doc-current-state.mjs && node scripts/check-docs-package-parity.mjs && node scripts/check-architecture-docs.mjs && node scripts/check-adrs.mjs && node scripts/check-compatibility-docs.mjs && node scripts/check-powershell-doc-parity.mjs && pnpm run repository:evidence:check && pnpm run openapi:check:no-build",
     "verify:clean": "node scripts/run-verification.mjs --clean",
     "verify:changed": "git diff --check origin/main...HEAD && pnpm run lint && pnpm run typecheck:no-build && pnpm run test:unit:changed",
     "build:manifest": "node scripts/build-artifact-manifest.mjs --write .artifacts/build/manifest.json",

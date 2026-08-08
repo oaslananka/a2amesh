@@ -134,6 +134,72 @@ function pnpmEngineRange(version) {
   return `>=${major} <${major + 1}`;
 }
 
+function parseNodeEngineRange(value) {
+  const match = /^>=(\d+)\.(\d+)\.(\d+)\s+<(\d+)$/.exec(value ?? '');
+  if (!match) return undefined;
+  return {
+    floor: match.slice(1, 4).map(Number),
+    ceilingMajor: Number(match[4]),
+  };
+}
+
+function compareVersions(left, right) {
+  for (let index = 0; index < 3; index += 1) {
+    if (left[index] !== right[index]) return left[index] - right[index];
+  }
+  return 0;
+}
+
+function versionTuple(version) {
+  return version.split('.').map(Number);
+}
+
+function validateNodeSupportContract(manifest) {
+  const rootPackage = readJson('package.json');
+  const engine = rootPackage.engines?.node;
+  const range = parseNodeEngineRange(engine);
+  if (!range) {
+    failures.push(
+      'package.json: engines.node must use the canonical >=major.minor.patch <major support range',
+    );
+    return;
+  }
+
+  for (const version of new Set([manifest.node, ...(manifest.nodeCompatibility ?? [])])) {
+    if (typeof version !== 'string' || !semverPattern.test(version)) continue;
+    const tuple = versionTuple(version);
+    const supported = compareVersions(tuple, range.floor) >= 0 && tuple[0] < range.ceilingMajor;
+    if (!supported) {
+      failures.push(
+        `${manifestPath}: Node.js ${version} is outside package.json engines.node ${engine}`,
+      );
+    }
+  }
+}
+
+function syncReadmeNodeBadge() {
+  const path = 'README.md';
+  const rootPackage = readJson('package.json');
+  const engine = rootPackage.engines?.node;
+  if (typeof engine !== 'string' || !parseNodeEngineRange(engine)) return;
+
+  const original = readText(path);
+  const badgePattern =
+    /(https:\/\/img\.shields\.io\/badge\/node-)[^"]+?(-339933(?:\?[^"]*)?" alt="Node\.js )[^"]+(")/;
+  if (!badgePattern.test(original)) {
+    failures.push('README.md: Node.js badge must match package.json engines.node');
+    return;
+  }
+  const expected = original.replace(
+    badgePattern,
+    (_match, prefix, suffix, closingQuote) =>
+      `${prefix}${encodeURIComponent(engine)}${suffix}${engine}${closingQuote}`,
+  );
+  if (expected === original) return;
+  if (write) writeFileSync(path, expected);
+  else failures.push('README.md: Node.js badge must match package.json engines.node');
+}
+
 function syncWorkspacePnpm(manifest) {
   const engineRange = pnpmEngineRange(manifest.pnpm);
   for (const { path, packageJson } of getWorkspacePackages()) {
@@ -421,6 +487,7 @@ function validateCompatibilityConfiguration(manifest, rows) {
 
 const manifest = readRuntimeManifest();
 validateRuntimeManifest(manifest);
+validateNodeSupportContract(manifest);
 
 if (failures.length === 0) {
   syncTextFile('.node-version', `${manifest.node}\n`);
@@ -430,6 +497,7 @@ if (failures.length === 0) {
   syncCompatibilityToolchainStep('.github/workflows/ci.yml');
   validateSetupActionToolchainContract('.github/actions/setup-pnpm/action.yml');
   syncPnpmDockerMirrors(manifest);
+  syncReadmeNodeBadge();
   syncPnpmDocumentation(manifest);
   for (const path of [
     '.github/workflows/ci.yml',

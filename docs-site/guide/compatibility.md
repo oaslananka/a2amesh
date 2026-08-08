@@ -18,6 +18,10 @@ In plain engine terms, use Node.js `>=22.22.1 <25` and pnpm >=11 <12.
 Development tooling pins pnpm `11.8.0` through `packageManager` and
 `tools/runtime-versions.json`.
 
+`package.json` `engines.node` is the authoritative package support range. The exact Node.js versions
+in `tools/runtime-versions.json` are the repository-tested compatibility lanes inside that range,
+not a narrower or broader support claim.
+
 | Runtime            | Repository status         | Current repository version                | Upstream status on 2026-05-26                                 | Support policy                                                                 |
 | ------------------ | ------------------------- | ----------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | Node.js 22 Jod     | Supported LTS floor       | `22.22.3` in CI smoke                     | Maintenance LTS, EOL `2027-04-30`                             | Supported until the repository announces a higher floor through this page.     |
