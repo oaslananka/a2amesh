@@ -1,7 +1,6 @@
-import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { isAbsolute, join, normalize } from 'node:path';
-import { fail, getWorkspacePackages } from './check-utils.mjs';
+import { fail, getWorkspacePackages, listFiles } from './check-utils.mjs';
 
 const failures = [];
 
@@ -18,19 +17,7 @@ function binEntries(packageJson) {
   return [];
 }
 
-function isSourceVisible(path) {
-  try {
-    const output = execFileSync(
-      'git',
-      ['ls-files', '--cached', '--others', '--exclude-standard', '--', path],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
-    );
-    return output.trim().length > 0;
-  } catch {
-    // Temp fixture directories used by integration tests are intentionally not Git repositories.
-    return true;
-  }
-}
+const sourceFiles = new Set(listFiles());
 
 for (const entry of getWorkspacePackages()) {
   const packageName = entry.packageJson.name ?? entry.dir;
@@ -56,12 +43,12 @@ for (const entry of getWorkspacePackages()) {
       continue;
     }
 
-    const packageTarget = normalize(join(entry.dir, normalize(target)));
+    const packageTarget = normalizeTarget(normalize(join(entry.dir, normalize(target))));
     if (!existsSync(packageTarget) || !statSync(packageTarget).isFile()) {
       failures.push(`${packageName}: declared bin target ${target} is missing before build`);
       continue;
     }
-    if (!isSourceVisible(packageTarget)) {
+    if (!sourceFiles.has(packageTarget)) {
       failures.push(`${packageName}: declared bin target ${target} must be source-controlled`);
     }
 

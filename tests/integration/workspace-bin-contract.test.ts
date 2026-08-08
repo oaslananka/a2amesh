@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,12 @@ describe('prebuild workspace binary contract', () => {
     await Promise.all(
       tempRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
     );
+  });
+
+  it('validates source visibility without spawning PATH-resolved commands', async () => {
+    const source = await readFile(scriptPath, 'utf8');
+    expect(source).not.toContain('node:child_process');
+    expect(source).not.toContain('execFileSync');
   });
 
   it('accepts a committed executable launcher that exists before build', async () => {
