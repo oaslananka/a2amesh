@@ -32,6 +32,11 @@ corepack pnpm install --frozen-lockfile
 
 After `mise install`, `pnpm --version`, `corepack pnpm --version`, and pnpm launched by a Node.js child process must all resolve to the version in the root `packageManager` field.
 
+A fresh frozen install does not require generated `dist/` output in order to create workspace binary
+links. Published workspace binaries use committed launchers. Before executing those launchers from a
+source checkout, build their runtime targets with `corepack pnpm run build:clean` (or the focused
+package build while iterating).
+
 ## Corepack without mise
 
 Install a Node.js version listed in `tools/runtime-versions.json`, then enable Corepack and use the explicit bootstrap path.

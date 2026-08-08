@@ -109,7 +109,7 @@ async function validatePackageDirectory(root, expectedVersion) {
   const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
   if (packageJson.name !== '@a2amesh/mcp') throw new Error('installed package name differs');
   if (packageJson.version !== expectedVersion) throw new Error('installed package version differs');
-  if (packageJson.bin?.['a2amesh-mcp'] !== './dist/server/cli.js') {
+  if (packageJson.bin?.['a2amesh-mcp'] !== 'bin/a2amesh-mcp.js') {
     throw new Error('installed package binary contract differs');
   }
   await stat(join(root, 'dist/server/cli.js'));

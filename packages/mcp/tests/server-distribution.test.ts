@@ -108,7 +108,7 @@ describe('standalone MCP distribution contract', () => {
       exports?: Record<string, unknown>;
     };
 
-    expect(packageJson.bin).toEqual({ 'a2amesh-mcp': './dist/server/cli.js' });
+    expect(packageJson.bin).toEqual({ 'a2amesh-mcp': 'bin/a2amesh-mcp.js' });
     expect(packageJson.exports).toHaveProperty('./server');
   });
 

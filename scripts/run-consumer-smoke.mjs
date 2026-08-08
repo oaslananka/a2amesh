@@ -14,11 +14,13 @@
  *   1. Server     – start A2AServer, send message/send JSON-RPC, verify response
  *   2. Client     – import & instantiate A2AClient, call sendMessage
  *   3. Registry   – start registry server, register & query agents
- *   4. CLI        – a2amesh --version, --help, agent validate --help
- *   5. Scaffolder – @a2amesh/create-a2amesh, verify output structure
- *   6. WS         – load @a2amesh/internal-transport-ws module
- *   7. gRPC       – load @a2amesh/internal-transport-grpc module
- *   8. MCP bridge – load @a2amesh/mcp module
+ *   4. Registry binary – execute installed a2amesh-registry --help
+ *   5. CLI        – a2amesh --version, --help, agent validate --help
+ *   6. Scaffolder – @a2amesh/create-a2amesh, verify output structure
+ *   7. WS         – load @a2amesh/internal-transport-ws module
+ *   8. gRPC       – load @a2amesh/internal-transport-grpc module
+ *   9. MCP bridge – load @a2amesh/mcp module
+ *  10. MCP binary – execute installed a2amesh-mcp --help
  *
  * Each failure identifies which package and which surface.
  * Exit code = number of failed surfaces (0 = all pass).
@@ -389,6 +391,25 @@ await surf(
 `,
 );
 
+// ── Installed Registry binary ─────────────────────────────────────
+await surf(
+  'registry binary / a2amesh-registry',
+  `
+  import { execFileSync } from 'node:child_process';
+  import { fileURLToPath } from 'node:url';
+  import { join } from 'node:path';
+
+  const root = fileURLToPath(new URL('.', import.meta.url));
+  const binDir = join(root, 'node_modules', '.bin');
+  const isWin = process.platform === 'win32';
+  const bin = isWin ? 'cmd' : join(binDir, 'a2amesh-registry');
+  const binArgv = isWin ? ['/c', join(binDir, 'a2amesh-registry.cmd')] : [];
+  const helpArgs = ['--help'];
+  const help = execFileSync(bin, [...binArgv, ...helpArgs], { encoding: 'utf-8' });
+  assert.ok(help.includes('Usage: a2amesh-registry'), 'Registry binary help missing expected usage');
+`,
+);
+
 // ── Surface 4: CLI ───────────────────────────────────────────────
 await surf(
   'cli / a2amesh commands',
@@ -466,6 +487,25 @@ await surf(
   const mod = await import('@a2amesh/mcp');
   assert.ok(mod.createMcpToolFromAgent, 'Missing createMcpToolFromAgent export');
   assert.ok(mod.createA2ASkillFromMcpTool, 'Missing createA2ASkillFromMcpTool export');
+`,
+);
+
+// ── Installed MCP binary ──────────────────────────────────────────
+await surf(
+  'mcp binary / a2amesh-mcp',
+  `
+  import { execFileSync } from 'node:child_process';
+  import { fileURLToPath } from 'node:url';
+  import { join } from 'node:path';
+
+  const root = fileURLToPath(new URL('.', import.meta.url));
+  const binDir = join(root, 'node_modules', '.bin');
+  const isWin = process.platform === 'win32';
+  const bin = isWin ? 'cmd' : join(binDir, 'a2amesh-mcp');
+  const binArgv = isWin ? ['/c', join(binDir, 'a2amesh-mcp.cmd')] : [];
+  const helpArgs = ['--help'];
+  const help = execFileSync(bin, [...binArgv, ...helpArgs], { encoding: 'utf-8' });
+  assert.ok(help.includes('Usage: a2amesh-mcp'), 'MCP binary help missing expected usage');
 `,
 );
 

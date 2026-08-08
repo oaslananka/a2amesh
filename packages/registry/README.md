@@ -12,6 +12,17 @@ The supported prerelease channel is `alpha`.
 npm install @a2amesh/registry@alpha
 ```
 
+Start the installed registry with the default in-memory backend, or inspect its supported environment
+variables without starting a server:
+
+```bash
+a2amesh-registry
+a2amesh-registry --help
+```
+
+Repository contributors should run `corepack pnpm run build:clean` before executing the workspace
+launcher directly from a source checkout.
+
 ## OpenAPI
 
 The registry REST contract is available as [registry.openapi.json](../../docs/openapi/registry.openapi.json) for client generation, UI mocks, and API contract checks.
