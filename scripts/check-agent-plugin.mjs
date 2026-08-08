@@ -367,7 +367,7 @@ if (manifest.author?.name !== 'oaslananka') {
 if (mcpPackage.version !== cliPackage.version) {
   failures.push('packages/mcp/package.json version must match @a2amesh/cli');
 }
-if (mcpPackage.bin?.['a2amesh-mcp'] !== './dist/server/cli.js') {
+if (mcpPackage.bin?.['a2amesh-mcp'] !== 'bin/a2amesh-mcp.js') {
   failures.push('packages/mcp/package.json must publish the a2amesh-mcp binary');
 }
 if (!mcpPackage.exports?.['./server']) {

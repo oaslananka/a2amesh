@@ -53,6 +53,7 @@
   },
   "files": [
     "dist",
+    "bin",
     "README.md",
     "LICENSE",
     "package.json"
@@ -69,6 +70,6 @@
     "node": ">=22.22.1 <25"
   },
   "bin": {
-    "a2amesh-mcp": "./dist/server/cli.js"
+    "a2amesh-mcp": "bin/a2amesh-mcp.js"
   }
 }

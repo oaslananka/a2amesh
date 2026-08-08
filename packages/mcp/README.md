@@ -14,6 +14,23 @@ The MCP package keeps endpoint targeting and tool approval as separate decisions
 
 A caller context accepted for an MCP resource does not automatically approve every tool on that resource. Multi-audience contexts require an explicit selected MCP resource.
 
+## Installation
+
+The supported prerelease channel is `alpha`:
+
+```bash
+npm install @a2amesh/mcp@alpha
+```
+
+The installed binary can print help without runtime credentials:
+
+```bash
+a2amesh-mcp --help
+```
+
+Repository contributors should run `corepack pnpm run build:clean` before executing the workspace
+launcher directly from a source checkout.
+
 ## Standalone server
 
 The package publishes a local MCP server command in addition to the library API:
