@@ -11,6 +11,9 @@ const scriptPath = fileURLToPath(
   new URL('../../scripts/check-runtime-versions.mjs', import.meta.url),
 );
 const tempRoots: string[] = [];
+const nodeEngine = '>=22.22.1 <25';
+const nodeBadge =
+  '<img src="https://img.shields.io/badge/node-%3E%3D22.22.1%20%3C25-339933" alt="Node.js >=22.22.1 <25" />';
 
 const manifest = {
   node: '24.16.0',
@@ -42,6 +45,40 @@ describe('runtime version manifest checks', () => {
     await expect(execRuntimeCheck(workspace)).rejects.toMatchObject({
       stderr: expect.stringContaining('not present in tools/runtime-versions.json'),
     });
+  });
+
+  it('rejects manifest compatibility versions outside the root Node engine', async () => {
+    const workspace = await createRuntimeWorkspace();
+    const packagePath = join(workspace, 'package.json');
+    const packageJson = JSON.parse(await readFile(packagePath, 'utf8'));
+    packageJson.engines.node = '>=24.0.0 <25';
+    await writeFile(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
+
+    await expect(execRuntimeCheck(workspace)).rejects.toMatchObject({
+      stderr: expect.stringContaining('outside package.json engines.node'),
+    });
+  });
+
+  it('rejects and rewrites a stale README Node engine badge', async () => {
+    const workspace = await createRuntimeWorkspace();
+    const readmePath = join(workspace, 'README.md');
+    await writeFile(
+      readmePath,
+      (await readFile(readmePath, 'utf8')).replace(
+        nodeBadge,
+        '<img src="https://img.shields.io/badge/node-%3E%3D24.16%20%3C27-339933" alt="Node.js >=24.16 <27" />',
+      ),
+    );
+
+    await expect(execRuntimeCheck(workspace)).rejects.toMatchObject({
+      stderr: expect.stringContaining(
+        'README.md: Node.js badge must match package.json engines.node',
+      ),
+    });
+
+    await expect(execRuntimeCheck(workspace, ['--write'])).resolves.toBeDefined();
+    await expect(readFile(readmePath, 'utf8')).resolves.toContain(nodeBadge);
+    await expect(execRuntimeCheck(workspace)).resolves.toBeDefined();
   });
 
   it('accepts compatibility matrix rows with reordered keys and trailing comments', async () => {
@@ -174,7 +211,7 @@ node.corepack = true
       `${JSON.stringify(
         {
           packageManager: 'pnpm@11.1.0',
-          engines: { pnpm: '>=11.1.0 <12' },
+          engines: { node: nodeEngine, pnpm: '>=11.1.0 <12' },
           scripts: {
             setup: 'corepack prepare pnpm@11.1.0 --activate && pnpm install --frozen-lockfile',
           },
@@ -217,7 +254,7 @@ node.corepack = true
     await writeFixture(
       workspace,
       'README.md',
-      '<img src="https://img.shields.io/badge/pnpm-11.1.0-F69220" alt="pnpm 11.1.0" />\n',
+      `${nodeBadge}\n<img src="https://img.shields.io/badge/pnpm-11.1.0-F69220" alt="pnpm 11.1.0" />\n`,
     );
     await writeFixture(workspace, 'CONTRIBUTING.md', 'Use pnpm `11.1.0` by default.\n');
     await writeFixture(workspace, 'docs/compatibility.md', 'pnpm `11.1.0` and `11.1.0`.\n');
@@ -422,7 +459,7 @@ async function createRuntimeWorkspace(
     `${JSON.stringify(
       {
         packageManager: `pnpm@${manifest.pnpm}`,
-        engines: { pnpm: '>=11 <12' },
+        engines: { node: nodeEngine, pnpm: '>=11 <12' },
         scripts: {
           setup: 'node scripts/run-pnpm.mjs install --frozen-lockfile',
           'toolchain:check': 'node scripts/check-toolchain.mjs',
@@ -460,7 +497,7 @@ async function createRuntimeWorkspace(
   await writeFixture(
     root,
     'README.md',
-    `<img src="https://img.shields.io/badge/pnpm-${manifest.pnpm}-F69220" alt="pnpm ${manifest.pnpm}" />\n`,
+    `${nodeBadge}\n<img src="https://img.shields.io/badge/pnpm-${manifest.pnpm}-F69220" alt="pnpm ${manifest.pnpm}" />\n`,
   );
   await writeFixture(root, 'CONTRIBUTING.md', `Use pnpm \`${manifest.pnpm}\` by default.\n`);
   await writeFixture(
