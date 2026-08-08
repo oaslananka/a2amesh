@@ -2,6 +2,14 @@
 
 Publishes the `a2amesh` binary for validation, discovery, messaging, registry management, monitoring, benchmarking, diagnostics, and scaffolding.
 
+## Installation
+
+The supported prerelease channel is `alpha`.
+
+```bash
+npm install --global @a2amesh/cli@alpha
+```
+
 ## Commands
 
 | Command             | Description                                       |

@@ -61,7 +61,7 @@ for package in \
  done
 ```
 
-For prereleases, the expected prerelease channel, such as `alpha`, must point to the release version. The `latest` tag may also point at the first alpha package if there is no stable release yet; once stable releases exist, do not move `latest` to prerelease builds.
+For prereleases, the expected prerelease channel, such as `alpha`, must point to the release version. `latest` is not advanced by prerelease publication; users select the prerelease channel explicitly (for example `@alpha`) or pin an exact version. A stable publish advances `latest` only through the separately confirmed stable release path.
 
 The repository metadata for every package must point to `oaslananka/a2amesh`. If a package is missing, private, or assigned to the wrong dist-tag, stop and investigate the publish workflow logs before any follow-up release action.
 
@@ -84,11 +84,13 @@ Compare the SHA-256 output with the checksum artifact created by `publish.yml` a
 A2A Mesh publishes through npm Trusted Publishing and GitHub OIDC. For every public package, confirm that npm provenance is present:
 
 ```bash
-npm view "$PACKAGE@$VERSION" provenance --json
-npm audit signatures --package-lock-only
+npm view "$PACKAGE@$VERSION" dist.attestations dist.integrity dist.shasum --json
+npm audit signatures --include-attestations
 ```
 
-The provenance statement must resolve to:
+The registry metadata must expose `dist.attestations.provenance.predicateType` as SLSA provenance,
+and the signature audit must verify registry signatures and attestations. The provenance statement
+must resolve to:
 
 - GitHub repository: `oaslananka/a2amesh`
 - Workflow file: `publish.yml`

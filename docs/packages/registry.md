@@ -11,7 +11,7 @@
 ## Installation
 
 ```bash
-npm install @a2amesh/registry
+npm install @a2amesh/registry@alpha
 ```
 
 ## Usage Example

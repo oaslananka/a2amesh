@@ -7,7 +7,7 @@
   <g font-family="Inter,Arial,sans-serif">
     <rect x="48" y="130" width="198" height="220" rx="18" fill="#111827" stroke="#38bdf8"/>
     <text x="74" y="170" fill="#e0f2fe" font-size="18" font-weight="700">1. Install</text>
-    <text x="74" y="210" fill="#cbd5e1" font-size="14">pnpm create a2amesh demo</text>
+    <text x="74" y="210" fill="#cbd5e1" font-size="14">pnpm dlx @a2amesh/create-a2amesh@alpha demo</text>
     <text x="74" y="236" fill="#cbd5e1" font-size="14">cd demo</text>
     <text x="74" y="262" fill="#cbd5e1" font-size="14">pnpm install</text>
     <rect x="270" y="130" width="198" height="220" rx="18" fill="#111827" stroke="#34d399"/>

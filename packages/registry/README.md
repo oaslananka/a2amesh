@@ -4,6 +4,14 @@ Registry server, discovery API, health polling, matching, and storage helpers.
 
 See [Compatibility](../../docs/compatibility.md) for supported Node.js, protocol, transport, package, and peer ranges.
 
+## Installation
+
+The supported prerelease channel is `alpha`.
+
+```bash
+npm install @a2amesh/registry@alpha
+```
+
 ## OpenAPI
 
 The registry REST contract is available as [registry.openapi.json](../../docs/openapi/registry.openapi.json) for client generation, UI mocks, and API contract checks.

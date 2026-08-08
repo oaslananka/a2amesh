@@ -8,7 +8,7 @@ validated Agent2Agent task flow.
 ## 1. Create a project
 
 ```bash
-pnpm create a2amesh demo
+pnpm dlx @a2amesh/create-a2amesh@alpha demo
 cd demo
 pnpm install
 ```
@@ -16,7 +16,7 @@ pnpm install
 PowerShell:
 
 ```powershell
-pnpm create a2amesh demo
+pnpm dlx @a2amesh/create-a2amesh@alpha demo
 Set-Location demo
 pnpm install
 ```

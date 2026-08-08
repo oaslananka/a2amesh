@@ -41,6 +41,18 @@ describe('release workflow guards', () => {
     expect(workflow).not.toContain('node scripts/release-state.mjs --check');
   });
 
+  it('requires a distinct confirmation before a stable publish can advance latest', async () => {
+    const workflow = await readFile(new URL('.github/workflows/publish.yml', repoRoot), 'utf8');
+    const checker = await readFile(new URL('scripts/check-release-config.mjs', repoRoot), 'utf8');
+
+    for (const source of [workflow, checker]) {
+      expect(source).toContain('PUBLISH STABLE ${TAG}');
+      expect(source).toContain('STABLE_RELEASE_TAG_PATTERN');
+    }
+    expect(workflow).toContain('Prerelease: PUBLISH <tag>; stable: PUBLISH STABLE <tag>');
+    expect(workflow).toContain('if [[ "${TAG}" =~ ${STABLE_RELEASE_TAG_PATTERN} ]]');
+  });
+
   it('requires an explicit asset-retention operation and skips npm publication', async () => {
     const workflow = await readFile(new URL('.github/workflows/publish.yml', repoRoot), 'utf8');
 
