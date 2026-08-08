@@ -4,6 +4,14 @@ Agent2Agent protocol TypeScript types, interfaces, constants, and validators.
 
 Zero runtime dependencies.
 
+## Installation
+
+The supported prerelease channel is `alpha`.
+
+```bash
+npm install @a2amesh/protocol@alpha
+```
+
 ## Exports
 
 | Export path | Content                           |

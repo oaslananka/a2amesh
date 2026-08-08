@@ -12,6 +12,14 @@ Use `SyncTaskStorageAdapter` to run an existing `ITaskStorage` implementation be
 
 SQLite storage is optional. Install `better-sqlite3` in the application workspace before constructing `SqliteTaskStorage` or `AsyncSqliteTaskStorage`.
 
+## Installation
+
+The supported prerelease channel is `alpha`.
+
+```bash
+npm install @a2amesh/runtime@alpha
+```
+
 ## Outbound HTTP policy
 
 `A2AClient` and `AgentRegistryClient` use the shared outbound policy by default. An

@@ -11,8 +11,8 @@ and npm publication. Ordinary CI never publishes packages.
 4. Merge the reviewed Release Please pull request.
 5. Maintainer creates the git tag and GitHub Release manually for the reviewed
    commit because `release-please.yml` sets `skip-github-release: true`.
-6. Owner dispatches `publish.yml` with the release tag and the exact
-   `PUBLISH <tag>` confirmation input.
+6. Owner dispatches `publish.yml` with the release tag and the exact prerelease
+   `PUBLISH <tag>` confirmation, or `PUBLISH STABLE <tag>` for a reviewed stable tag.
 7. Publish workflow validates release state, runs publish preflight, checks that
    package sources match the tag, packs packages, smoke-installs tarballs,
    writes SHA-256 checksums, emits the CycloneDX SBOM, creates artifact
@@ -24,6 +24,86 @@ The canonical publish tag format is:
 ```text
 @a2amesh/runtime-v<semver>
 ```
+
+## npm channel contract and stable promotion
+
+Prerelease publication never advances `latest`. A prerelease version derives its npm dist-tag from
+the first SemVer prerelease identifier (`alpha`, `beta`, or `rc`), and every linked public package
+must expose that tag at the exact release version. Keep user-facing prerelease install commands on
+the intended channel such as `@alpha`, or pin the exact published version for repeatable automation.
+
+A stable version without a prerelease identifier is the only publish path that derives `latest`.
+Stable promotion is a separate maintainer decision: verify `pnpm run release:stable-ready`, record the
+current dist-tags for every linked public package, and dispatch `publish.yml` with the exact
+`PUBLISH STABLE <tag>` confirmation. The ordinary `PUBLISH <tag>` confirmation remains the
+prerelease path and cannot authorize a stable tag.
+
+After any publish or approved dist-tag repair, run all three checks before announcing the channel:
+
+```bash
+pnpm run release:tags:check
+pnpm run release:parity
+pnpm run release:state
+```
+
+PowerShell:
+
+```powershell
+pnpm run release:tags:check
+pnpm run release:parity
+pnpm run release:state
+```
+
+## Dist-tag recovery
+
+If publication is partial or a dist-tag drifts, stop further promotion and inspect the registry before
+changing anything. npm versions are immutable; do not republish an existing version to repair tag
+state. Record `npm view <package> dist-tags --json` for every public package and preserve the
+previous `latest` value before any stable promotion.
+
+For a prerelease whose intended channel is stale or missing, use `pnpm run release:tags:check` first
+and then the reviewed `pnpm run release:tags:sync` repair path. That synchronizer updates the
+intended prerelease tag only; it must not be used to advance `latest`.
+
+If an authorized release operation changed `latest` incorrectly, restore the exact value recorded
+before that operation. With an authenticated npm maintainer session, repeat this for every linked
+public package and then rerun the checks above:
+
+```bash
+previous_latest=0.0.0
+for package in \
+  @a2amesh/protocol \
+  @a2amesh/runtime \
+  @a2amesh/registry \
+  @a2amesh/mcp \
+  @a2amesh/cli \
+  @a2amesh/create-a2amesh
+ do
+  npm dist-tag add "$package@$previous_latest" latest
+ done
+```
+
+PowerShell:
+
+```powershell
+$previousLatest = '0.0.0'
+$packages = @(
+  '@a2amesh/protocol',
+  '@a2amesh/runtime',
+  '@a2amesh/registry',
+  '@a2amesh/mcp',
+  '@a2amesh/cli',
+  '@a2amesh/create-a2amesh'
+)
+foreach ($package in $packages) {
+  npm dist-tag add "$package@$previousLatest" latest
+}
+```
+
+Replace the placeholder with the previously observed `latest` version; never infer a rollback target
+from the failed release. If there was no prior `latest`, remove the accidental tag explicitly with
+`npm dist-tag rm <package> latest` instead of inventing one. Keep the before/after dist-tag output,
+release workflow URL, and parity/state results with the release evidence.
 
 The canonical runtime tag is the only tag accepted by `publish.yml` and the only
 tag that carries the GitHub Release. After registry parity passes, the protected
@@ -123,7 +203,7 @@ component-specific tag to dispatch `publish.yml`.
 
 `publish.yml` performs these guardrails before it can publish:
 
-1. Confirms the input must exactly equal `PUBLISH <tag>`.
+1. Confirms prereleases with `PUBLISH <tag>` and stable tags only with `PUBLISH STABLE <tag>`.
 2. Validates the tag format and extracts the version.
 3. Stages the current release-state guard modules, checks out the requested
    canonical tag, and runs publish mode against that tagged source. A newer

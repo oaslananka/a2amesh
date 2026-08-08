@@ -1,5 +1,10 @@
 # Install
 
+The supported prerelease channel is `alpha`. All copy-paste install commands below select
+`@alpha`; unqualified package references resolve `latest` and are not supported for the current
+prerelease. For repeatable automation, replace `@alpha` with the exact version returned by
+`npm view @a2amesh/runtime@alpha version`.
+
 ## Requirements
 
 - Node.js `>=22.22.1 <25`
@@ -10,31 +15,31 @@
 pnpm (recommended):
 
 ```bash
-pnpm add @a2amesh/runtime
+pnpm add @a2amesh/runtime@alpha
 ```
 
 npm:
 
 ```bash
-npm install @a2amesh/runtime
+npm install @a2amesh/runtime@alpha
 ```
 
 yarn:
 
 ```bash
-yarn add @a2amesh/runtime
+yarn add @a2amesh/runtime@alpha
 ```
 
 PowerShell:
 
 ```powershell
-pnpm add @a2amesh/runtime
+pnpm add @a2amesh/runtime@alpha
 ```
 
 ## Install the CLI globally
 
 ```bash
-pnpm add --global @a2amesh/cli
+pnpm add --global @a2amesh/cli@alpha
 ```
 
 After install, run `a2amesh --help` to list commands.
@@ -43,12 +48,12 @@ After install, run `a2amesh --help` to list commands.
 
 The following public packages are part of the A2A Mesh ecosystem:
 
-| Package                   | Description                                       | Install Command                                 |
-| ------------------------- | ------------------------------------------------- | ----------------------------------------------- |
-| `@a2amesh/protocol`       | Protocol types and validators (zero dependencies) | `npm install @a2amesh/protocol`                 |
-| `@a2amesh/registry`       | Registry server for agent capability discovery    | `npm install @a2amesh/registry`                 |
-| `@a2amesh/mcp`            | Bridge helpers and `a2amesh-mcp` stdio server     | `npm install @a2amesh/mcp`                      |
-| `@a2amesh/create-a2amesh` | Scaffolding tool to bootstrap new projects        | `npm exec @a2amesh/create-a2amesh -- <project>` |
+| Package                   | Description                                       | Install Command                                       |
+| ------------------------- | ------------------------------------------------- | ----------------------------------------------------- |
+| `@a2amesh/protocol`       | Protocol types and validators (zero dependencies) | `npm install @a2amesh/protocol@alpha`                 |
+| `@a2amesh/registry`       | Registry server for agent capability discovery    | `npm install @a2amesh/registry@alpha`                 |
+| `@a2amesh/mcp`            | Bridge helpers and `a2amesh-mcp` stdio server     | `npm install @a2amesh/mcp@alpha`                      |
+| `@a2amesh/create-a2amesh` | Scaffolding tool to bootstrap new projects        | `npm exec @a2amesh/create-a2amesh@alpha -- <project>` |
 
 ## Run the standalone MCP server
 

@@ -12,10 +12,10 @@
 Run the initialization wizard directly via:
 
 ```bash
-npm create a2amesh
+npm exec @a2amesh/create-a2amesh@alpha -- my-agent
 ```
 
-This is equivalent to invoking `npm exec @a2amesh/create-a2amesh` or running `a2amesh init` via the global CLI.
+With pnpm, use `pnpm dlx @a2amesh/create-a2amesh@alpha my-agent`; an installed alpha CLI can also run `a2amesh init`.
 
 ## Release State
 

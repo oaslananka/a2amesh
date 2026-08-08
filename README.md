@@ -53,20 +53,25 @@ A2A Mesh keeps public trust evidence in [`docs/security/trust-evidence.md`](docs
 
 ## Install
 
+A2A Mesh is currently published on the `alpha` npm dist-tag. Use `@alpha` for interactive
+installs and scaffolding while the project is prerelease. Unqualified package references resolve
+`latest`, which intentionally does not move to prerelease builds. For repeatable automation, pin
+the exact version currently reported by `npm view @a2amesh/runtime@alpha version`.
+
 ```bash
-pnpm add @a2amesh/runtime
+pnpm add @a2amesh/runtime@alpha
 ```
 
 PowerShell:
 
 ```powershell
-pnpm add @a2amesh/runtime
+pnpm add @a2amesh/runtime@alpha
 ```
 
 ## Quickstart
 
 ```bash
-pnpm dlx @a2amesh/create-a2amesh demo
+pnpm dlx @a2amesh/create-a2amesh@alpha demo
 cd demo
 pnpm install
 pnpm run dev
@@ -75,7 +80,7 @@ pnpm run dev
 PowerShell:
 
 ```powershell
-pnpm dlx @a2amesh/create-a2amesh demo
+pnpm dlx @a2amesh/create-a2amesh@alpha demo
 Set-Location demo
 pnpm install
 pnpm run dev

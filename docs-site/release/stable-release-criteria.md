@@ -71,3 +71,5 @@ node scripts/check-public-surface.mjs --target=stable
 ## Release decision
 
 A stable release is a separate maintainer decision after the gate passes. Do not remove prerelease identifiers, change inventories to `stable`, create a stable tag, or advance npm `latest` merely to make the gate pass. Resolve the underlying compatibility, documentation, verification, and release-evidence requirements first.
+
+After those requirements pass, record the current npm dist-tags and dispatch the protected publish workflow with the exact `PUBLISH STABLE <tag>` confirmation. The ordinary `PUBLISH <tag>` confirmation is reserved for prereleases and cannot authorize a stable `latest` promotion.

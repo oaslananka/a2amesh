@@ -11,7 +11,7 @@
 ## Installation
 
 ```bash
-npm install @a2amesh/runtime
+npm install @a2amesh/runtime@alpha
 ```
 
 ## Usage Example

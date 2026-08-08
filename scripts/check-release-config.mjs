@@ -136,6 +136,17 @@ if (!publishWorkflow.includes('confirmation:')) {
 if (!publishWorkflow.includes('PUBLISH ${TAG}')) {
   failures.push('publish workflow confirmation must include the resolved tag');
 }
+for (const stableConfirmationFragment of [
+  'STABLE_RELEASE_TAG_PATTERN',
+  'if [[ "${TAG}" =~ ${STABLE_RELEASE_TAG_PATTERN} ]]',
+  'PUBLISH STABLE ${TAG}',
+]) {
+  if (!publishWorkflow.includes(stableConfirmationFragment)) {
+    failures.push(
+      `publish workflow stable confirmation contract is missing: ${stableConfirmationFragment}`,
+    );
+  }
+}
 if (/^\s+release:\s*$/m.test(publishWorkflow) || /^\s+push:\s*$/m.test(publishWorkflow)) {
   failures.push('publish workflow must be owner-dispatched only');
 }

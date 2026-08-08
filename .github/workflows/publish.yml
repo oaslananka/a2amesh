@@ -15,7 +15,7 @@ name: Publish
         description: 'Release tag to publish (e.g., @a2amesh/runtime-v0.1.0-alpha.0)'
         required: true
       confirmation:
-        description: 'Type PUBLISH <tag> to publish or RETAIN <tag> to retain verified assets'
+        description: 'Prerelease: PUBLISH <tag>; stable: PUBLISH STABLE <tag>; retention: RETAIN <tag>'
         required: true
 
 permissions:
@@ -58,8 +58,15 @@ jobs:
             echo "No tag was provided"
             exit 1
           fi
+          STABLE_RELEASE_TAG_PATTERN='^@a2amesh/runtime-v[0-9]+\.[0-9]+\.[0-9]+$'
           case "${OPERATION}" in
-            publish) EXPECTED_CONFIRMATION="PUBLISH ${TAG}" ;;
+            publish)
+              if [[ "${TAG}" =~ ${STABLE_RELEASE_TAG_PATTERN} ]]; then
+                EXPECTED_CONFIRMATION="PUBLISH STABLE ${TAG}"
+              else
+                EXPECTED_CONFIRMATION="PUBLISH ${TAG}"
+              fi
+              ;;
             retain-assets) EXPECTED_CONFIRMATION="RETAIN ${TAG}" ;;
             *)
               echo "Unsupported operation: ${OPERATION}"

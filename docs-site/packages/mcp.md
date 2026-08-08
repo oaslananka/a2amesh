@@ -12,7 +12,7 @@
 ## Installation
 
 ```bash
-npm install @a2amesh/mcp
+npm install @a2amesh/mcp@alpha
 ```
 
 ## Standalone MCP server
