@@ -10,7 +10,7 @@ export const releaseCheckCommandDoc = {
   path: ['release-check'],
   summary: 'Check release readiness.',
   description:
-    'Runs the full release readiness checklist: git worktree state, release config integrity, pack dry-run, schema generation, docs build, security audit, public surface, package registry parity, and release artifact validation. Use --stable to additionally require stable package versions and surface inventories. Exits non-zero if any check fails.',
+    'Runs the release readiness checklist: git worktree state, release config integrity, pack dry-run, schema generation, docs build, security audit, public surface, and release artifact validation. Current-channel checks include npm registry parity; --stable instead validates the unpublished stable candidate and defers registry parity to the protected post-publish gate. Exits non-zero if any applicable check fails.',
   examples: [
     {
       title: 'Run release readiness checks.',
@@ -171,7 +171,11 @@ export function createReleaseCheckPlan(
   options: ReleaseCheckPlanOptions = {},
 ): Array<Pick<CheckResult, 'name' | 'command' | 'ciEquivalent' | 'remediation'>> {
   return Array.from(RELEASE_CHECK_METADATA, ([name, metadata]) => ({ name, ...metadata })).filter(
-    (entry) => options.stable || entry.name !== STABLE_RELEASE_CHECK_NAME,
+    (entry) => {
+      if (options.stable && entry.name === 'Package parity') return false;
+      if (!options.stable && entry.name === STABLE_RELEASE_CHECK_NAME) return false;
+      return true;
+    },
   );
 }
 
@@ -420,14 +424,17 @@ export function createReleaseCheckCommand(getOptions: RootOptionsProvider): Comm
       ),
     );
 
-    // 8. Package registry parity
-    checks.push(
-      runNodeScript(
-        'Package parity',
-        resolve(workspaceRoot, 'scripts/check-package-registry-parity.mjs'),
-        workspaceRoot,
-      ),
-    );
+    // 8. Package registry parity is a current-channel/post-publish check. A stable candidate
+    // must not require its unpublished target version to exist on npm before publication.
+    if (!commandOptions.stable) {
+      checks.push(
+        runNodeScript(
+          'Package parity',
+          resolve(workspaceRoot, 'scripts/check-package-registry-parity.mjs'),
+          workspaceRoot,
+        ),
+      );
+    }
 
     // 9. Release artifact validation
     checks.push(runPnpm('Release artifacts', ['run', 'release:artifacts'], workspaceRoot));

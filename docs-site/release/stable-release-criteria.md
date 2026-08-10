@@ -24,7 +24,7 @@ pnpm run release:stable-ready
 pnpm run release:stable-ready
 ```
 
-`release:stable-ready` runs the standard `a2amesh release-check` workflow and adds a fail-closed public-surface gate. It exits non-zero while any linked public package has a prerelease version or an export/binary inventory that is not marked `stable`.
+`release:stable-ready` runs the pre-publish `a2amesh release-check` workflow and adds a fail-closed public-surface gate. It exits non-zero while any linked public package has a prerelease version or an export/binary inventory that is not marked `stable`. Because the candidate version must not exist on npm before publication, this pre-publish mode defers registry/dist-tag parity to the protected publish workflow and the explicit `pnpm run release:parity` post-publish check.
 
 ## Required criteria
 
@@ -36,7 +36,7 @@ A stable candidate must satisfy all of the following:
 4. **Migration evidence.** Every breaking or potentially breaking API, CLI, registry, MCP, configuration, or environment-variable change includes migration guidance and a versioning decision.
 5. **Release verification.** Required CI, security scanning, CodeQL, documentation, package dry-runs, conformance, examples, containers, and deployment chart lifecycle checks succeed on the reviewed commit.
 6. **Supply-chain evidence.** The protected publish path produces reviewed tarballs, SHA-256 checksums, a CycloneDX SBOM, GitHub artifact attestations, and npm provenance through Trusted Publishing/OIDC.
-7. **Post-publish parity.** All linked packages are visible under the expected version, `latest` points to the stable release, component tags resolve to the canonical release commit, and registry parity succeeds.
+7. **Post-publish parity.** After publication, all linked packages are visible under the expected version, `latest` points to the stable release, component tags resolve to the canonical release commit, and `pnpm run release:parity` succeeds. This criterion is intentionally verified after publish rather than by the pre-publish stable-candidate gate.
 8. **Experimental boundaries.** Internal Fleet, provider-worker, adapter, and transport packages remain private unless they receive a separate public API review and release decision.
 
 ## Public surface inventories

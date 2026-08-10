@@ -40,6 +40,15 @@ describe('release-check command', () => {
     );
   });
 
+  it('defers npm registry parity until after stable publication', () => {
+    expect(createReleaseCheckPlan()).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'Package parity' })]),
+    );
+    expect(createReleaseCheckPlan({ stable: true })).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'Package parity' })]),
+    );
+  });
+
   it('adds a fail-closed stable release target gate only when requested', () => {
     expect(createReleaseCheckPlan()).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'Stable release target' })]),
