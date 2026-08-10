@@ -1,6 +1,7 @@
 import type {
   AgentCapabilities,
   AgentCard,
+  Message,
   MessageSendParams,
   ProtocolVersion,
   SupportedInterface,
@@ -33,14 +34,14 @@ export type ConformanceCapability = keyof Pick<
   'streaming' | 'pushNotifications' | 'stateTransitionHistory' | 'extendedAgentCard'
 >;
 
-export interface ConformanceClient {
+export interface ConformanceClient<TSendResult extends Task | Message = Task> {
   resolveCard(): Promise<AgentCard>;
-  sendMessage(params: MessageSendParams): Promise<Task>;
+  sendMessage(params: MessageSendParams): Promise<TSendResult>;
   getTask(taskId: string, historyLength?: number): Promise<Task>;
 }
 
 export interface ConformanceRunOptions {
-  client: ConformanceClient;
+  client: ConformanceClient<Task | Message>;
   endpointUrl: string;
   packageVersion: string;
   protocolVersion?: ConformanceProtocolVersion | undefined;
@@ -279,6 +280,32 @@ function skippedCase(
   };
 }
 
+function isTaskResult(result: Task | Message): result is Task {
+  return 'status' in result;
+}
+
+function assertMessageShape(message: Message): Record<string, unknown> {
+  if (!message.messageId) {
+    throw new Error('message/send did not return a message id');
+  }
+  if (!message.contextId) {
+    throw new Error('message/send direct response did not return a context id');
+  }
+  if (message.role !== 'agent' && message.role !== 'ROLE_AGENT') {
+    throw new Error('message/send direct response did not use the agent role');
+  }
+  if (!Array.isArray(message.parts)) {
+    throw new Error('message/send direct response did not return message parts');
+  }
+
+  return {
+    messageId: message.messageId,
+    contextId: message.contextId,
+    partCount: message.parts.length,
+    responseKind: 'message',
+  };
+}
+
 function assertTaskShape(task: Task): Record<string, unknown> {
   if (!task.id) {
     throw new Error('message/send did not return a task id');
@@ -391,11 +418,14 @@ export async function runConformanceSuite({
       if (!agentCard) {
         throw new Error('Agent card was not resolved');
       }
-      const task = await client.sendMessage(
+      const result = await client.sendMessage(
         createConformanceMessageParams(resolvedProtocolVersion),
       );
-      sentTask = task;
-      return assertTaskShape(task);
+      if (isTaskResult(result)) {
+        sentTask = result;
+        return assertTaskShape(result);
+      }
+      return assertMessageShape(result);
     }),
   );
 
