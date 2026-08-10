@@ -84,11 +84,13 @@ export interface JsonRpcHttpHandlerDependencies {
 export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): RequestHandler {
   return async (req, res) => {
     let idempotency: IdempotencyResolution | null | undefined;
+    let responseDialect: A2AJsonRpcDialect = 'mesh';
+    let originalMethod: string | undefined;
     try {
-      const { receivedRpcReq, rpcReq, responseDialect } = prepareJsonRpcRequest(
-        req,
-        deps.jsonRpcInputLimits,
-      );
+      const preparedRequest = prepareJsonRpcRequest(req, deps.jsonRpcInputLimits);
+      const { receivedRpcReq, rpcReq } = preparedRequest;
+      responseDialect = preparedRequest.responseDialect;
+      originalMethod = receivedRpcReq.method;
       const requestContext = await resolveJsonRpcRequestContext(
         req,
         deps.authMiddleware,
@@ -134,6 +136,8 @@ export function createJsonRpcHttpHandler(deps: JsonRpcHttpHandlerDependencies): 
       await writeJsonRpcErrorResponse(req, res, err, idempotency, {
         store: deps.idempotencyStore,
         ttlMs: deps.idempotencyTtlMs,
+        responseDialect,
+        ...(originalMethod ? { originalMethod } : {}),
       });
     }
   };

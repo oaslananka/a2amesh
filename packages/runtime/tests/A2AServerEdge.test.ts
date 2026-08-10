@@ -202,6 +202,138 @@ describe('A2AServer edge cases', () => {
     });
   });
 
+  it('normalizes official v1 task lookup errors at the JSON-RPC boundary', async () => {
+    const server = new EdgeHarnessServer();
+
+    const response = await request(server.getExpressApp())
+      .post('/rpc')
+      .send({
+        jsonrpc: '2.0',
+        id: 'official-missing-task',
+        method: 'GetTask',
+        params: { id: 'does-not-exist' },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.error).toMatchObject({
+      code: -32001,
+      message: 'Task not found',
+      data: [
+        expect.objectContaining({
+          '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+          reason: 'TASK_NOT_FOUND',
+          domain: 'a2a-protocol.org',
+        }),
+      ],
+    });
+  });
+
+  it('normalizes official v1 terminal cancellation and replays the same protocol error', async () => {
+    const server = new EdgeHarnessServer();
+    const task = server
+      .getTaskManager()
+      .createTask('session-official-cancel', 'context-official-cancel');
+    server.getTaskManager().updateTaskState(task.id, 'WORKING');
+    server.getTaskManager().updateTaskState(task.id, 'COMPLETED');
+
+    const payload = {
+      jsonrpc: '2.0' as const,
+      method: 'CancelTask',
+      params: { id: task.id },
+    };
+    const first = await request(server.getExpressApp())
+      .post('/rpc')
+      .set('Idempotency-Key', 'official-cancel-terminal-key')
+      .send({ ...payload, id: 'official-cancel-terminal' });
+
+    expect(first.status).toBe(200);
+    expect(first.body.error).toMatchObject({
+      code: -32002,
+      data: [
+        expect.objectContaining({
+          reason: 'TASK_NOT_CANCELABLE',
+          domain: 'a2a-protocol.org',
+        }),
+      ],
+    });
+
+    const replay = await request(server.getExpressApp())
+      .post('/rpc')
+      .set('Idempotency-Key', 'official-cancel-terminal-key')
+      .send({ ...payload, id: 'official-cancel-terminal-replay' });
+    expect(replay.status).toBe(200);
+    expect(replay.body.error).toMatchObject(first.body.error);
+    expect(replay.body.id).toBe('official-cancel-terminal-replay');
+  });
+
+  it('maps official v1 terminal message sends to UnsupportedOperation', async () => {
+    const server = new EdgeHarnessServer();
+    const task = server
+      .getTaskManager()
+      .createTask('session-official-send', 'context-official-send');
+    server.getTaskManager().updateTaskState(task.id, 'WORKING');
+    server.getTaskManager().updateTaskState(task.id, 'COMPLETED');
+
+    const response = await request(server.getExpressApp())
+      .post('/rpc')
+      .send({
+        jsonrpc: '2.0',
+        id: 'official-terminal-send',
+        method: 'SendMessage',
+        params: {
+          message: { ...createMessage('terminal official send'), taskId: task.id },
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.error).toMatchObject({
+      code: -32004,
+      data: [expect.objectContaining({ reason: 'UNSUPPORTED_OPERATION' })],
+    });
+  });
+
+  it('maps official v1 required extension failures to ExtensionSupportRequired', async () => {
+    const server = new EdgeHarnessServer();
+
+    const response = await request(server.getExpressApp())
+      .post('/rpc')
+      .send({
+        jsonrpc: '2.0',
+        id: 'official-required-extension',
+        method: 'SendMessage',
+        params: {
+          message: createMessage('official extension'),
+          configuration: {
+            extensions: [{ uri: 'https://unsupported.example/extensions/a', required: true }],
+          },
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.error).toMatchObject({
+      code: -32008,
+      data: [expect.objectContaining({ reason: 'EXTENSION_SUPPORT_REQUIRED' })],
+    });
+  });
+
+  it('maps terminal REST cancellation to the official v1 task-not-cancelable error', async () => {
+    const server = new EdgeHarnessServer();
+    const task = server.getTaskManager().createTask('session-rest-cancel', 'context-rest-cancel');
+    server.getTaskManager().updateTaskState(task.id, 'WORKING');
+    server.getTaskManager().updateTaskState(task.id, 'COMPLETED');
+
+    const response = await request(server.getExpressApp())
+      .post(`/tasks/${task.id}:cancel`)
+      .set('Accept', 'application/a2a+json')
+      .set('A2A-Version', '1.0');
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      code: -32002,
+      data: [expect.objectContaining({ reason: 'TASK_NOT_CANCELABLE' })],
+    });
+  });
+
   it('rejects JSON-RPC batch arrays before method dispatch', async () => {
     const server = new EdgeHarnessServer();
 

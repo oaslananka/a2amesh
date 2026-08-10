@@ -138,8 +138,10 @@ new owner. The stable method surface is:
 | `tasks/pushNotification/get`         | Reads an accessible task's callback config.                                                                                                                                                                 |
 | `agent/getAuthenticatedExtendedCard` | Official v1.x method that returns the full card only when the agent card advertises `extendedAgentCard`; legacy alias `agent/authenticatedExtendedCard` remains accepted.                                   |
 
-JSON-RPC error normalization maps lifecycle failures into protocol errors. Unknown
-internal failures are logged and returned as `Internal Error`.
+JSON-RPC error normalization maps lifecycle failures into protocol errors. Official A2A v1
+method names are projected to the normative v1 error codes and ErrorInfo reasons at the HTTP
+response boundary, while legacy Mesh method names keep their historical codes. Unknown internal
+failures are logged and returned as `Internal Error`.
 
 ## Task Lifecycle
 

@@ -6,7 +6,11 @@ import type { RequestContext } from '../../types/auth.js';
 import type { JsonRpcInputLimits } from '../../utils/json-rpc-input-limits.js';
 import { ErrorCodes, JsonRpcError, type JsonRpcRequest } from '../../types/jsonrpc.js';
 import type { Message, Task } from '../../types/task.js';
-import { toOfficialSendMessageResponse, toOfficialTaskJson } from '../../utils/officialWire.js';
+import {
+  toOfficialSendMessageResponse,
+  toOfficialTaskJson,
+  toOfficialV1JsonRpcError,
+} from '../../utils/officialWire.js';
 import type { IdempotencyStore } from '../IdempotencyStore.js';
 import type { SSEStreamer } from '../SSEStreamer.js';
 import type { TaskManager } from '../TaskManager.js';
@@ -353,7 +357,7 @@ async function handleRestRpc(
     const result = await deps.handleRpc(rpcReq, { req, requestContext });
     res.type(pv.A2A_REST_MEDIA_TYPE).json(serializeRestResult(req, method, result));
   } catch (error) {
-    writeRestError(res, error);
+    writeRestError(res, error, method);
   }
 }
 
@@ -411,13 +415,14 @@ async function handleRestStream(
     const rpcReq: JsonRpcRequest = { jsonrpc: '2.0', id: null, method, params };
     await deps.handleStreamingRpc(rpcReq, { req, requestContext }, res);
   } catch (error) {
-    writeRestError(res, error);
+    writeRestError(res, error, method);
   }
 }
 
-function writeRestError(res: Response, error: unknown): void {
+function writeRestError(res: Response, error: unknown, method?: string): void {
   if (error instanceof JsonRpcError) {
-    if (error.code === ErrorCodes.VersionNotSupported) {
+    const responseError = toOfficialV1JsonRpcError(error, method);
+    if (responseError.code === ErrorCodes.VersionNotSupported) {
       res
         .status(400)
         .type('application/problem+json')
@@ -425,36 +430,34 @@ function writeRestError(res: Response, error: unknown): void {
           type: pv.A2A_VERSION_NOT_SUPPORTED_PROBLEM_TYPE,
           title: 'Protocol Version Not Supported',
           status: 400,
-          detail: error.message,
+          detail: responseError.message,
           supportedVersions: [...pv.SUPPORTED_A2A_PROTOCOL_VERSIONS],
         });
       return;
     }
 
-    const status = restStatusForError(error.code);
+    const status = restStatusForError(responseError);
+    const problem = restProblemDetailsForError(responseError);
     res
       .status(status)
       .type('application/problem+json')
       .json({
-        type: restProblemDetailsForError(error.code).type,
-        title: restProblemDetailsForError(error.code).title,
+        type: problem.type,
+        title: problem.title,
         status,
-        detail: error.message,
-        code: error.code,
-        ...(error.data !== undefined ? { data: error.data } : {}),
+        detail: responseError.message,
+        code: responseError.code,
+        ...(responseError.data !== undefined ? { data: responseError.data } : {}),
       });
     return;
   }
-  res
-    .status(500)
-    .type('application/problem+json')
-    .json({
-      type: restProblemDetailsForError(ErrorCodes.InternalError).type,
-      title: restProblemDetailsForError(ErrorCodes.InternalError).title,
-      status: 500,
-      detail: 'Internal Error',
-      code: ErrorCodes.InternalError,
-    });
+  res.status(500).type('application/problem+json').json({
+    type: INTERNAL_ERROR_PROBLEM.type,
+    title: INTERNAL_ERROR_PROBLEM.title,
+    status: 500,
+    detail: 'Internal Error',
+    code: ErrorCodes.InternalError,
+  });
 }
 
 interface RestProblemDetails {
@@ -500,12 +503,54 @@ const REST_PROBLEM_DETAILS_BY_CODE = new Map<number, RestProblemDetails>([
   ],
 ]);
 
-function restProblemDetailsForError(code: number): RestProblemDetails {
-  return REST_PROBLEM_DETAILS_BY_CODE.get(code) ?? INTERNAL_ERROR_PROBLEM;
+function restErrorReason(error: JsonRpcError): string | undefined {
+  return error.data?.[0]?.reason;
 }
 
-function restStatusForError(code: number): number {
-  switch (code) {
+function restProblemDetailsForError(error: JsonRpcError): RestProblemDetails {
+  switch (restErrorReason(error)) {
+    case 'TASK_NOT_FOUND':
+      return { type: 'https://a2a-protocol.org/errors/task-not-found', title: 'Task Not Found' };
+    case 'TASK_NOT_CANCELABLE':
+      return {
+        type: 'https://a2a-protocol.org/errors/task-not-cancelable',
+        title: 'Task Not Cancelable',
+      };
+    case 'PUSH_NOTIFICATION_NOT_SUPPORTED':
+      return {
+        type: 'https://a2a-protocol.org/errors/push-notification-not-supported',
+        title: 'Push Notification Not Supported',
+      };
+    case 'UNSUPPORTED_OPERATION':
+      return {
+        type: 'https://a2a-protocol.org/errors/unsupported-operation',
+        title: 'Unsupported Operation',
+      };
+    case 'EXTENSION_SUPPORT_REQUIRED':
+      return {
+        type: 'https://a2a-protocol.org/errors/extension-support-required',
+        title: 'Extension Support Required',
+      };
+    default:
+      return REST_PROBLEM_DETAILS_BY_CODE.get(error.code) ?? INTERNAL_ERROR_PROBLEM;
+  }
+}
+
+function restStatusForError(error: JsonRpcError): number {
+  switch (restErrorReason(error)) {
+    case 'TASK_NOT_FOUND':
+      return 404;
+    case 'TASK_NOT_CANCELABLE':
+    case 'PUSH_NOTIFICATION_NOT_SUPPORTED':
+    case 'UNSUPPORTED_OPERATION':
+    case 'EXTENSION_SUPPORT_REQUIRED':
+    case 'VERSION_NOT_SUPPORTED':
+      return 400;
+    default:
+      break;
+  }
+
+  switch (error.code) {
     case ErrorCodes.InvalidParams:
     case ErrorCodes.InvalidRequest:
     case ErrorCodes.VersionNotSupported:

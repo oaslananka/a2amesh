@@ -1,6 +1,6 @@
 # A2A v1 Compatibility Matrix
 
-Last reviewed: 2026-08-01.
+Last reviewed: 2026-08-10.
 
 This matrix records the repository-backed compatibility status for the Agent2Agent v1 line. A2A Mesh targets the official v1.0 method surface and keeps selected legacy aliases only where they are already covered by tests.
 
@@ -23,15 +23,17 @@ This matrix records the repository-backed compatibility status for the Agent2Age
 
 ## Protocol negotiation and metadata
 
-| Capability                             | Implementation                                                                            | Verification                             | Status    |
-| -------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------- | --------- |
-| `A2A-Version` header negotiation       | Runtime HTTP middleware, client headers, WebSocket query negotiation, gRPC metadata paths | Unit, transport, and compatibility tests | Supported |
-| `application/a2a+json` REST media type | REST binding responses and protocol-version errors                                        | Unit tests                               | Supported |
-| Required extension rejection           | Runtime message configuration validation                                                  | Unit and integration tests               | Supported |
-| Optional extension passthrough         | Task/message extension propagation                                                        | Unit tests and golden traces             | Supported |
-| Agent Card signing                     | Runtime/registry signing and verification helpers                                         | Unit tests and registry hardening tests  | Supported |
-| JSON-RPC error normalization           | Runtime JSON-RPC handler and REST problem detail mapping                                  | Unit, fuzz, and integration tests        | Supported |
-| Tenant-aware task authorization        | Runtime and registry request context filters                                              | Unit and integration tests               | Supported |
+| Capability                             | Implementation                                                                                | Verification                             | Status    |
+| -------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------- | --------- |
+| `A2A-Version` header negotiation       | Runtime HTTP middleware, client headers, WebSocket query negotiation, gRPC metadata paths     | Unit, transport, and compatibility tests | Supported |
+| `application/a2a+json` REST media type | REST binding responses and protocol-version errors                                            | Unit tests                               | Supported |
+| Required extension rejection           | Runtime message configuration validation                                                      | Unit and integration tests               | Supported |
+| Optional extension passthrough         | Task/message extension propagation                                                            | Unit tests and golden traces             | Supported |
+| Agent Card signing                     | Runtime/registry signing and verification helpers                                             | Unit tests and registry hardening tests  | Supported |
+| JSON-RPC error normalization           | Official-v1 response projection plus REST semantic/status mapping; mesh codes stay compatible | Unit, fuzz, and integration tests        | Supported |
+| Tenant-aware task authorization        | Runtime and registry request context filters                                                  | Unit and integration tests               | Supported |
+
+Official v1 JSON-RPC method names are projected to the A2A v1 error identities at the response boundary. `GetTask` task misses use `TaskNotFoundError` (`-32001`), terminal `CancelTask` requests use `TaskNotCancelableError` (`-32002`), terminal message/subscribe lifecycle failures use `UnsupportedOperationError` (`-32004`), and required-extension failures use `ExtensionSupportRequiredError` (`-32008`). The equivalent REST routes use the same semantic mapping for HTTP status and problem details. Legacy Mesh JSON-RPC method names retain their historical internal error codes for compatibility.
 
 The conformance fixtures additionally execute the exact public Agent Card discovery
 path, validate interface and extension metadata, reject unsupported required

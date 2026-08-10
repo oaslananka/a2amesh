@@ -1111,7 +1111,8 @@ describe('A2AServer', () => {
         title: 'Task Not Found',
         status: 404,
         detail: 'Task not found',
-        code: ErrorCodes.TaskNotFound,
+        code: -32001,
+        data: [expect.objectContaining({ reason: 'TASK_NOT_FOUND' })],
       }),
     );
 

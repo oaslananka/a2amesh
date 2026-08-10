@@ -1,3 +1,4 @@
+import { ErrorCodes, JsonRpcError, type GoogleRpcErrorInfo } from '../types/jsonrpc.js';
 import type { Artifact, Message, Task, TaskState } from '../types/task.js';
 import { normalizeMessageRole, normalizeTaskState } from './compat.js';
 
@@ -315,6 +316,72 @@ function isMessageLike(value: unknown): value is Message {
 }
 
 export type A2AJsonRpcDialect = 'mesh' | 'official-v1';
+
+interface OfficialV1ErrorMapping {
+  code: number;
+  reason: string;
+}
+
+function officialV1ErrorMapping(
+  error: JsonRpcError,
+  method: string | undefined,
+): OfficialV1ErrorMapping | undefined {
+  if (error.code === ErrorCodes.TaskNotFound) {
+    return { code: -32001, reason: 'TASK_NOT_FOUND' };
+  }
+  if (error.code === ErrorCodes.InvalidTaskTransition) {
+    if (method === 'CancelTask' || method === 'tasks/cancel') {
+      return { code: -32002, reason: 'TASK_NOT_CANCELABLE' };
+    }
+    if (
+      method === 'SendMessage' ||
+      method === 'SendStreamingMessage' ||
+      method === 'SubscribeToTask' ||
+      method === 'message/send' ||
+      method === 'message/stream' ||
+      method === 'tasks/resubscribe'
+    ) {
+      return { code: -32004, reason: 'UNSUPPORTED_OPERATION' };
+    }
+    return undefined;
+  }
+  if (error.code === ErrorCodes.PushNotificationNotSupported) {
+    return { code: -32003, reason: 'PUSH_NOTIFICATION_NOT_SUPPORTED' };
+  }
+  if (error.code === ErrorCodes.UnsupportedOperation) {
+    return { code: -32004, reason: 'UNSUPPORTED_OPERATION' };
+  }
+  if (error.code === ErrorCodes.ExtensionRequired) {
+    return { code: -32008, reason: 'EXTENSION_SUPPORT_REQUIRED' };
+  }
+  if (error.code === ErrorCodes.VersionNotSupported) {
+    return { code: -32009, reason: 'VERSION_NOT_SUPPORTED' };
+  }
+  return undefined;
+}
+
+function officialV1ErrorData(error: JsonRpcError, reason: string): GoogleRpcErrorInfo[] {
+  if (error.data && error.data.length > 0) {
+    return error.data.map((info) => ({
+      ...info,
+      reason,
+      domain: 'a2a-protocol.org',
+    }));
+  }
+  return [
+    {
+      '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+      reason,
+      domain: 'a2a-protocol.org',
+    },
+  ];
+}
+
+export function toOfficialV1JsonRpcError(error: JsonRpcError, method?: string): JsonRpcError {
+  const mapping = officialV1ErrorMapping(error, method);
+  if (!mapping) return error;
+  return new JsonRpcError(mapping.code, error.message, officialV1ErrorData(error, mapping.reason));
+}
 
 const MESH_TO_OFFICIAL_RPC_METHOD = {
   'message/send': 'SendMessage',

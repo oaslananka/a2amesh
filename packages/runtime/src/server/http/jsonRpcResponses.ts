@@ -7,6 +7,7 @@ import {
   type JsonRpcSuccessResponse,
 } from '../../types/jsonrpc.js';
 import { logger } from '../../utils/logger.js';
+import { toOfficialV1JsonRpcError, type A2AJsonRpcDialect } from '../../utils/officialWire.js';
 import type { IdempotencyStore } from '../IdempotencyStore.js';
 import {
   completeIdempotency,
@@ -18,6 +19,8 @@ import {
 export interface JsonRpcErrorResponseDependencies {
   store: IdempotencyStore;
   ttlMs: number;
+  responseDialect?: A2AJsonRpcDialect;
+  originalMethod?: string;
 }
 
 export function createJsonRpcSuccessResponse<T>(
@@ -54,16 +57,20 @@ export async function writeJsonRpcErrorResponse(
   deps: JsonRpcErrorResponseDependencies,
 ): Promise<void> {
   const responseId = extractJsonRpcId(req.body);
-  if (err instanceof JsonRpcError) {
+  const responseError =
+    err instanceof JsonRpcError && deps.responseDialect === 'official-v1'
+      ? toOfficialV1JsonRpcError(err, deps.originalMethod)
+      : err;
+  if (responseError instanceof JsonRpcError) {
     if (
       idempotency?.ownerId &&
-      err.code !== ErrorCodes.IdempotencyConflict &&
-      err.code !== ErrorCodes.IdempotencyInProgress
+      responseError.code !== ErrorCodes.IdempotencyConflict &&
+      responseError.code !== ErrorCodes.IdempotencyInProgress
     ) {
       const error = {
-        code: err.code,
-        message: err.message,
-        ...(err.data ? { data: err.data } : {}),
+        code: responseError.code,
+        message: responseError.message,
+        ...(responseError.data ? { data: responseError.data } : {}),
       };
       try {
         await completeIdempotency(deps.store, idempotency, { kind: 'error', error }, deps.ttlMs);
@@ -80,7 +87,7 @@ export async function writeJsonRpcErrorResponse(
         return;
       }
     }
-    res.json(createJsonRpcErrorResponse(err, responseId));
+    res.json(createJsonRpcErrorResponse(responseError, responseId));
     return;
   }
 
