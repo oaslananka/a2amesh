@@ -89,6 +89,14 @@ jobs:
       - name: Install release pull request dependencies
         if: steps.release.outputs.prs_created == 'true'
         run: corepack pnpm install --frozen-lockfile
+      - name: Verify release pull request branch is clean
+        if: steps.release.outputs.prs_created == 'true'
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Release Please branch must be clean before release candidate generation."
+            git status --short
+            exit 1
+          fi
       - name: Build release pull request workspace
         if: steps.release.outputs.prs_created == 'true'
         run: corepack pnpm run build
@@ -99,11 +107,6 @@ jobs:
           RELEASE_PR_JSON: ${{ steps.release.outputs.pr }}
         run: |
           set -euo pipefail
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "Release Please branch must be clean before release-policy synchronization."
-            git status --short
-            exit 1
-          fi
           (cd packages/cli && node ../../scripts/build-tsc-package.mjs --generated-only)
           node scripts/sync-compatibility-docs.mjs
           node scripts/sync-security-policy.mjs

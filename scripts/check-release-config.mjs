@@ -206,10 +206,10 @@ if (!releasePrCheckout.test(releasePleaseWorkflow)) {
   failures.push('Release Please must check out the release pull request branch with full history');
 }
 const releasePrWorkspacePreparation =
-  /corepack pnpm install --frozen-lockfile[\s\S]*?corepack pnpm run build[\s\S]*?name: Sync generated files and release policies/;
+  /corepack pnpm install --frozen-lockfile[\s\S]*?name: Verify release pull request branch is clean[\s\S]*?git status --porcelain[\s\S]*?corepack pnpm run build[\s\S]*?name: Sync generated files and release policies/;
 if (!releasePrWorkspacePreparation.test(releasePleaseWorkflow)) {
   failures.push(
-    'Release Please must build the release pull request workspace before policy synchronization',
+    'Release Please must verify a clean candidate, then build it before policy synchronization',
   );
 }
 for (const releasePrSafetyFragment of [
