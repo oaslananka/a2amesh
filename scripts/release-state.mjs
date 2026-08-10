@@ -303,15 +303,16 @@ function collectReleasePrs(repository, config, errors) {
   });
 }
 
+function normalizeSingleNpmJsonResult(value) {
+  return Array.isArray(value) && value.length === 1 ? value[0] : value;
+}
+
 function collectNpmPackage(source, errors) {
   let versionExists = false;
   try {
-    const observed = runJsonOrThrow('npm', [
-      'view',
-      `${source.name}@${source.version}`,
-      'version',
-      '--json',
-    ]);
+    const observed = normalizeSingleNpmJsonResult(
+      runJsonOrThrow('npm', ['view', `${source.name}@${source.version}`, 'version', '--json']),
+    );
     versionExists = observed === source.version;
   } catch (error) {
     const detail = errorMessage(error);
@@ -322,7 +323,13 @@ function collectNpmPackage(source, errors) {
 
   let distTags = {};
   try {
-    distTags = runJsonOrThrow('npm', ['view', source.name, 'dist-tags', '--json']) ?? {};
+    const observedDistTags = normalizeSingleNpmJsonResult(
+      runJsonOrThrow('npm', ['view', source.name, 'dist-tags', '--json']),
+    );
+    distTags =
+      observedDistTags && typeof observedDistTags === 'object' && !Array.isArray(observedDistTags)
+        ? observedDistTags
+        : {};
   } catch (error) {
     errors.push(`${source.name}: npm dist-tag observation failed: ${errorMessage(error)}`);
   }
