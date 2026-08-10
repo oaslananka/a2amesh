@@ -1,9 +1,8 @@
 # Install
 
-The supported prerelease channel is `alpha`. All copy-paste install commands below select
-`@alpha`; unqualified package references resolve `latest` and are not supported for the current
-prerelease. For repeatable automation, replace `@alpha` with the exact version returned by
-`npm view @a2amesh/runtime@alpha version`.
+The supported stable channel is `latest`. Unqualified package references in the copy-paste
+commands below resolve the current stable release. For repeatable automation, pin the exact
+version returned by `npm view @a2amesh/runtime@latest version`.
 
 ## Requirements
 
@@ -72,7 +71,7 @@ variable names through `tokenEnv` in `A2AMESH_MCP_AGENTS_JSON`.
 ## Internal Packages
 
 > [!NOTE]
-> The following packages are internal/private utilities in this release line. They are **not published** for the first alpha, not part of the stable public API surface, and are subject to change:
+> The following packages are internal/private utilities in this release line. They are **not published**, are not part of the stable public API surface, and are subject to change:
 >
 > - `@a2amesh/internal-auth` (Authentication middleware and JWT/JWKS utilities)
 > - `@a2amesh/internal-telemetry` (OpenTelemetry and trace propagation)

@@ -14,6 +14,11 @@ const PUBLIC_PACKAGE_PATTERN = new RegExp(
 const INSTALL_COMMAND_PATTERN =
   /\b(?:pnpm\s+(?:add|dlx)|npm\s+(?:install|exec)|yarn\s+(?:add|dlx)|npx\b)/;
 const UNSCOPED_CREATE_PATTERN = /\b(?:npm|pnpm|yarn)\s+create\s+a2amesh(?:\s|$)/;
+const STALE_STABLE_CHANNEL_GUIDANCE = [
+  /currently published on the `(?:alpha|beta|rc)` npm dist-tag/i,
+  /supported prerelease channel is `(?:alpha|beta|rc)`/i,
+  /installed (?:alpha|beta|rc) CLI/i,
+];
 
 export const PUBLIC_INSTALL_DOC_PATHS = [
   'README.md',
@@ -21,6 +26,8 @@ export const PUBLIC_INSTALL_DOC_PATHS = [
   'docs/quickstart.md',
   'docs/faq.md',
   'docs/distribution.md',
+  'docs/agent-plugin.md',
+  'docs/migrating/security-upgrades.md',
   'docs/packages/runtime.md',
   'docs/packages/protocol.md',
   'docs/packages/registry.md',
@@ -42,6 +49,7 @@ export const PUBLIC_INSTALL_DOC_PATHS = [
   'docs-site/packages/cli.md',
   'docs-site/packages/mcp.md',
   'docs-site/packages/create-a2amesh.md',
+  'docs-site/security/security-upgrades.md',
   'docs-site/public/screenshots/quick-demo-flow.svg',
 ];
 
@@ -50,18 +58,28 @@ export function validatePublicInstallPolicy(documents, activeVersion = '0.0.0-al
   const prerelease = channel !== 'latest';
   const failures = [];
   for (const [path, text] of Object.entries(documents)) {
+    let continuedInstallCommand = false;
     for (const rawLine of text.split(/\r?\n/)) {
       const line = rawLine.trim();
       if (!line) continue;
+      if (!prerelease && STALE_STABLE_CHANNEL_GUIDANCE.some((pattern) => pattern.test(line))) {
+        failures.push(
+          `${path}: stable public docs contain stale prerelease-channel guidance: ${line}`,
+        );
+        continue;
+      }
       if (UNSCOPED_CREATE_PATTERN.test(line)) {
         failures.push(
           `${path}: unscoped create shorthand cannot select the supported @a2amesh alpha package: ${line}`,
         );
+        continuedInstallCommand = false;
         continue;
       }
+
       const commandMatch = INSTALL_COMMAND_PATTERN.exec(line);
-      if (!commandMatch) continue;
-      const command = line.slice(commandMatch.index);
+      if (!commandMatch && !continuedInstallCommand) continue;
+      const command = commandMatch ? line.slice(commandMatch.index) : line;
+      const displayCommand = command.replace(/\s*\\$/, '').trim();
 
       PUBLIC_PACKAGE_PATTERN.lastIndex = 0;
       for (const match of command.matchAll(PUBLIC_PACKAGE_PATTERN)) {
@@ -72,11 +90,12 @@ export function validatePublicInstallPolicy(documents, activeVersion = '0.0.0-al
         if (supported) continue;
         failures.push(
           prerelease
-            ? `${path}: public prerelease command must select @${channel} or an exact version: ${line}`
-            : `${path}: stable public command must resolve latest or exact active version: ${line}`,
+            ? `${path}: public prerelease command must select @${channel} or an exact version: ${displayCommand}`
+            : `${path}: stable public command must resolve latest or exact active version: ${displayCommand}`,
         );
         break;
       }
+      continuedInstallCommand = line.endsWith('\\');
     }
   }
   return failures;
@@ -85,13 +104,17 @@ export function validatePublicInstallPolicy(documents, activeVersion = '0.0.0-al
 export function rewritePublicInstallPolicy(text, activeVersion) {
   const channel = expectedDistTag(activeVersion);
   const selector = channel === 'latest' ? '' : `@${channel}`;
+  let continuedInstallCommand = false;
 
   return text
     .split('\n')
     .map((rawLine) => {
       const hasCarriageReturn = rawLine.endsWith('\r');
       const line = hasCarriageReturn ? rawLine.slice(0, -1) : rawLine;
-      if (!INSTALL_COMMAND_PATTERN.test(line)) return rawLine;
+      const commandMatch = INSTALL_COMMAND_PATTERN.exec(line);
+      const inInstallCommand = Boolean(commandMatch) || continuedInstallCommand;
+      continuedInstallCommand = inInstallCommand && line.trimEnd().endsWith('\\');
+      if (!inInstallCommand) return rawLine;
 
       PUBLIC_PACKAGE_PATTERN.lastIndex = 0;
       const rewritten = line.replace(PUBLIC_PACKAGE_PATTERN, (_match, packageName) => {

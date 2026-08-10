@@ -14,7 +14,7 @@ SQLite storage is optional. Install `better-sqlite3` in the application workspac
 
 ## Installation
 
-The supported prerelease channel is `alpha`.
+The supported stable channel is `latest`.
 
 ```bash
 npm install @a2amesh/runtime

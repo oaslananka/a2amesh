@@ -12,15 +12,15 @@
 
 <!-- security-support:end -->
 
-A2A Mesh is currently a pre-1.0 alpha project. Support applies only to the newest fully published,
-linked prerelease exposed through the npm `alpha` dist-tag. All six public packages move together;
-mixing package versions is outside the supported configuration.
+A2A Mesh is a pre-1.0 project with a supported stable npm channel. Support applies to the newest
+fully published linked stable release exposed through the npm `latest` dist-tag. All six public
+packages move together; mixing package versions is outside the supported configuration.
 
-A prerelease reaches end of support as soon as its successor is fully published, registry parity is
-verified, and the `alpha` dist-tag advances. Security fixes normally ship forward in the next linked
-release rather than as backports to historical alphas. The default branch, untagged commits, local
-builds, and source snapshots receive best-effort development attention but are not supported
-installable releases.
+A stable release reaches end of support as soon as its supported successor is fully published,
+registry parity is verified, and the `latest` dist-tag advances. Historical prereleases, including
+the preserved `alpha` channel, do not receive routine backports. The default branch, untagged
+commits, local builds, and source snapshots receive best-effort development attention but are not
+supported installable releases.
 
 ## Reporting a Vulnerability
 
@@ -47,7 +47,7 @@ The current repository setting and governance evidence are recorded in the
 
 ## Response Targets
 
-These are operational targets for a solo-maintained alpha project, not contractual service-level
+These are operational targets for a solo-maintained project, not contractual service-level
 agreements. Active exploitation, credible credential exposure, or cross-tenant impact is handled as
 an emergency and may change the sequence below.
 
@@ -71,7 +71,7 @@ read-only and complements, rather than replaces, the blocking pull-request audit
 1. Reproduce and assess the report privately.
 2. Create or update a draft repository security advisory for confirmed vulnerabilities.
 3. Develop regression tests and a fail-closed fix without exposing private details.
-4. Publish and verify the linked package release, provenance, registry parity, and prerelease
+4. Publish and verify the linked package release, provenance, registry parity, and expected npm
    dist-tag.
 5. Publish the advisory with affected and patched version ranges plus practical upgrade guidance.
 6. Request a CVE when a high-impact or broadly deployed vulnerability benefits from a globally
@@ -89,5 +89,5 @@ Before upgrading, review the current
 [API stability policy](https://github.com/oaslananka/a2amesh/blob/main/docs/development/api-stability.md).
 Release-integrity and provenance requirements are documented in the
 [release integrity guide](https://github.com/oaslananka/a2amesh/blob/main/docs/release/release-integrity.md).
-Breaking alpha changes and required application updates are documented in the
+Breaking pre-1.0 changes and required application updates are documented in the
 [security upgrade guide](https://github.com/oaslananka/a2amesh/blob/main/docs/migrating/security-upgrades.md).

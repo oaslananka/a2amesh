@@ -51,10 +51,10 @@ A2A Mesh keeps public trust evidence in [`docs/security/trust-evidence.md`](docs
 
 ## Install
 
-A2A Mesh is currently published on the `alpha` npm dist-tag. Use `@alpha` for interactive
-installs and scaffolding while the project is prerelease. Unqualified package references resolve
-`latest`, which intentionally does not move to prerelease builds. For repeatable automation, pin
-the exact version currently reported by `npm view @a2amesh/runtime@alpha version`.
+A2A Mesh publishes its supported stable release on the npm `latest` dist-tag. Unqualified package
+references resolve that stable release. The historical `alpha` dist-tag remains available for older
+prerelease builds but is not the recommended install channel. For repeatable automation, pin the
+exact version currently reported by `npm view @a2amesh/runtime@latest version`.
 
 ```bash
 pnpm add @a2amesh/runtime

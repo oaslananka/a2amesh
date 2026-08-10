@@ -1,17 +1,15 @@
 # Security Upgrade Guide
 
-A2A Mesh public packages use linked prerelease versions. When a security fix is released, upgrade
+A2A Mesh public packages use linked release versions. When a security fix is released, upgrade
 all six public packages to the same supported version rather than updating only the package named
 in an advisory.
 
 ## Supported release
 
 The current supported installable release is listed in [`SECURITY.md`](../../SECURITY.md). During
-the pre-1.0 lifecycle, support applies only to the newest fully published version exposed through
-the npm `alpha` dist-tag.
-
-Earlier prereleases stop receiving routine fixes when the successor is fully published, registry
-parity is verified, and the `alpha` dist-tag advances.
+the pre-1.0 lifecycle, support applies to the newest fully published linked stable release exposed
+through the npm `latest` dist-tag. Historical prereleases are unsupported once a stable successor
+is published and registry parity is verified.
 
 ## Upgrade the linked package set
 
@@ -19,28 +17,28 @@ For an existing pnpm project, update every A2A Mesh public package together:
 
 ```bash
 pnpm add \
-  @a2amesh/protocol@alpha \
-  @a2amesh/runtime@alpha \
-  @a2amesh/registry@alpha \
-  @a2amesh/mcp@alpha \
-  @a2amesh/cli@alpha \
-  @a2amesh/create-a2amesh@alpha
+  @a2amesh/protocol \
+  @a2amesh/runtime \
+  @a2amesh/registry \
+  @a2amesh/mcp \
+  @a2amesh/cli \
+  @a2amesh/create-a2amesh
 ```
 
 For npm projects:
 
 ```bash
 npm install \
-  @a2amesh/protocol@alpha \
-  @a2amesh/runtime@alpha \
-  @a2amesh/registry@alpha \
-  @a2amesh/mcp@alpha \
-  @a2amesh/cli@alpha \
-  @a2amesh/create-a2amesh@alpha
+  @a2amesh/protocol \
+  @a2amesh/runtime \
+  @a2amesh/registry \
+  @a2amesh/mcp \
+  @a2amesh/cli \
+  @a2amesh/create-a2amesh
 ```
 
 Install only the packages the application uses, but keep all installed A2A Mesh public packages on
-the same version. Do not mix historical alpha versions with the current release.
+the same version. Do not mix historical prerelease versions with the current release.
 
 ## Validate the upgrade
 

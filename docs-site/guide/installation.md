@@ -1,8 +1,8 @@
 # Installation
 
-The supported prerelease channel is `alpha`; use `@alpha` for copy-paste installs and pin an
-exact published version for repeatable automation. Unqualified package references resolve
-`latest`, which prerelease publication does not advance.
+The supported stable channel is `latest`. Unqualified package references resolve the current
+stable release; pin an exact published version for repeatable automation. Historical prerelease
+dist-tags remain available only for consumers that deliberately select an older prerelease.
 
 Install the runtime:
 

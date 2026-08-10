@@ -53,6 +53,20 @@ describe('security support policy', () => {
     expect(result).not.toContain('stale');
   });
 
+  it('rejects prerelease-only support prose for a stable linked release', () => {
+    const staleStablePolicy = `${syncPolicyText(policyTemplate, '0.18.1')}\nA2A Mesh is currently a pre-1.0 alpha project. Support applies only to the newest fully published,\nlinked prerelease exposed through the npm \`alpha\` dist-tag.\n`;
+
+    expect(
+      validatePolicyFiles({
+        version: '0.18.1',
+        rootPolicy: staleStablePolicy,
+        githubPolicy: staleStablePolicy,
+      }),
+    ).toEqual([
+      'SECURITY.md contains prerelease-only support guidance for stable linked release 0.18.1.',
+    ]);
+  });
+
   it('flags version drift and duplicate policy copies', () => {
     const current = syncPolicyText(policyTemplate, '0.12.0-alpha.1');
     const stale = syncPolicyText(policyTemplate, '0.11.0-alpha.1');

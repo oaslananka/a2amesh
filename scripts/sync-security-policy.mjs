@@ -6,6 +6,8 @@ const START_MARKER = '<!-- security-support:start -->';
 const END_MARKER = '<!-- security-support:end -->';
 const ROOT_POLICY = 'SECURITY.md';
 const GITHUB_POLICY = '.github/SECURITY.md';
+const PRERELEASE_ONLY_STABLE_POLICY =
+  /currently a pre-1\.0 alpha project[\s\S]*linked prerelease exposed through the npm `alpha` dist-tag/i;
 
 export function extractLinkedVersion(manifest) {
   if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
@@ -82,6 +84,11 @@ export function validatePolicyFiles({ version, rootPolicy, githubPolicy }) {
   }
   if (syncPolicyText(githubPolicy, version) !== githubPolicy) {
     failures.push('.github/SECURITY.md support fragment is out of date.');
+  }
+  if (!version.includes('-') && PRERELEASE_ONLY_STABLE_POLICY.test(rootPolicy)) {
+    failures.push(
+      `SECURITY.md contains prerelease-only support guidance for stable linked release ${version}.`,
+    );
   }
   if (rootPolicy !== githubPolicy) {
     failures.push('Root and .github security policy copies must match.');

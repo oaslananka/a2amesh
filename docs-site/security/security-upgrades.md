@@ -1,18 +1,18 @@
 # Security Upgrades
 
-A2A Mesh public packages move as one linked prerelease set. When a security fix is released, upgrade
+A2A Mesh public packages move as one linked release set. When a security fix is released, upgrade
 all installed public packages to the same supported version.
 
-## Upgrade from the alpha channel
+## Upgrade the linked stable release
 
 ```bash
 pnpm add \
-  @a2amesh/protocol@alpha \
-  @a2amesh/runtime@alpha \
-  @a2amesh/registry@alpha \
-  @a2amesh/mcp@alpha \
-  @a2amesh/cli@alpha \
-  @a2amesh/create-a2amesh@alpha
+  @a2amesh/protocol \
+  @a2amesh/runtime \
+  @a2amesh/registry \
+  @a2amesh/mcp \
+  @a2amesh/cli \
+  @a2amesh/create-a2amesh
 ```
 
 Install only the packages your application uses, but do not mix A2A Mesh public package versions.

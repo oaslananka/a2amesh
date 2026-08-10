@@ -6,7 +6,7 @@ See [Compatibility](../../docs/compatibility.md) for supported Node.js, protocol
 
 ## Installation
 
-The supported prerelease channel is `alpha`.
+The supported stable channel is `latest`.
 
 ```bash
 npm install @a2amesh/registry

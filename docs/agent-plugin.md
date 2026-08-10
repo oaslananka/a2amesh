@@ -41,7 +41,7 @@ The first phase does not:
 - provide or claim a hosted remote MCP endpoint;
 - bypass tenant, audience, scope, approval, authentication, or outbound-network policy;
 - claim that one client probe proves generic MCP or A2A conformance; or
-- claim production readiness for the current alpha packages.
+- claim that the plugin's alpha status changes the supported package release channel.
 
 ## Installation
 
@@ -71,7 +71,7 @@ All examples start with only `a2a_discover` and `a2a_get_task`. They disable loc
 Use the published local command:
 
 ```bash
-npx -y -p @a2amesh/mcp@alpha a2amesh-mcp --transport stdio
+npx -y -p @a2amesh/mcp a2amesh-mcp --transport stdio
 ```
 
 Pin the exact released version in repeatable automation. The command reads `A2AMESH_MCP_*` variables. `A2AMESH_MCP_AGENTS_JSON` accepts `tokenEnv` names but rejects inline token fields.

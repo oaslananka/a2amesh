@@ -26,6 +26,9 @@ describe('public prerelease install channel policy', () => {
       'validatePublicInstallPolicy(publicInstallDocuments, activeVersion)',
     );
     expect(checkerSource).toContain("'docs-site/guide/quick-start.md'");
+    expect(checkerSource).toContain("'docs/agent-plugin.md'");
+    expect(checkerSource).toContain("'docs/migrating/security-upgrades.md'");
+    expect(checkerSource).toContain("'docs-site/security/security-upgrades.md'");
     expect(checkerSource).toContain("'docs-site/public/screenshots/quick-demo-flow.svg'");
   });
 
@@ -39,6 +42,8 @@ describe('public prerelease install channel policy', () => {
       'docs/quickstart.md',
       'docs/faq.md',
       'docs/distribution.md',
+      'docs/agent-plugin.md',
+      'docs/migrating/security-upgrades.md',
       'docs/packages/runtime.md',
       'docs/packages/protocol.md',
       'docs/packages/registry.md',
@@ -60,6 +65,7 @@ describe('public prerelease install channel policy', () => {
       'docs-site/packages/cli.md',
       'docs-site/packages/mcp.md',
       'docs-site/packages/create-a2amesh.md',
+      'docs-site/security/security-upgrades.md',
       'docs-site/public/screenshots/quick-demo-flow.svg',
     ];
     const documents = Object.fromEntries(
@@ -106,6 +112,27 @@ describe('public prerelease install channel policy', () => {
     );
   });
 
+  it('validates and rewrites multiline install command continuations', async () => {
+    const moduleUrl = new URL('../../scripts/check-docs-commands.mjs', import.meta.url);
+    const checker = (await import(moduleUrl.href)) as Record<string, unknown>;
+    const validate = checker['validatePublicInstallPolicy'] as PublicInstallValidator;
+    const rewrite = checker['rewritePublicInstallPolicy'] as PublicInstallRewriter;
+    const source = ['pnpm add \\', '  @a2amesh/protocol@alpha \\', '  @a2amesh/runtime@alpha'].join(
+      '\n',
+    );
+
+    expect(validate({ 'docs/security-upgrades.md': source }, '0.18.1')).toEqual([
+      'docs/security-upgrades.md: stable public command must resolve latest or exact active version: @a2amesh/protocol@alpha',
+      'docs/security-upgrades.md: stable public command must resolve latest or exact active version: @a2amesh/runtime@alpha',
+    ]);
+    expect(rewrite(source, '0.18.1')).toBe(
+      ['pnpm add \\', '  @a2amesh/protocol \\', '  @a2amesh/runtime'].join('\n'),
+    );
+    expect(rewrite(source, '0.19.0-beta.1')).toBe(
+      ['pnpm add \\', '  @a2amesh/protocol@beta \\', '  @a2amesh/runtime@beta'].join('\n'),
+    );
+  });
+
   it('requires stable docs to resolve latest or the exact active stable version', async () => {
     const moduleUrl = new URL('../../scripts/check-docs-commands.mjs', import.meta.url);
     const checker = (await import(moduleUrl.href)) as Record<string, unknown>;
@@ -126,6 +153,24 @@ describe('public prerelease install channel policy', () => {
         '1.0.0',
       ),
     ).toEqual([]);
+  });
+
+  it('rejects stale prerelease-channel prose for stable releases', async () => {
+    const moduleUrl = new URL('../../scripts/check-docs-commands.mjs', import.meta.url);
+    const checker = (await import(moduleUrl.href)) as Record<string, unknown>;
+    const validate = checker['validatePublicInstallPolicy'] as PublicInstallValidator;
+    const stale = [
+      'A2A Mesh is currently published on the `alpha` npm dist-tag.',
+      'The supported prerelease channel is `alpha`.',
+      'An installed alpha CLI can also run `a2amesh init`.',
+    ].join('\n');
+
+    expect(validate({ 'README.md': stale }, '0.18.1')).toEqual([
+      'README.md: stable public docs contain stale prerelease-channel guidance: A2A Mesh is currently published on the `alpha` npm dist-tag.',
+      'README.md: stable public docs contain stale prerelease-channel guidance: The supported prerelease channel is `alpha`.',
+      'README.md: stable public docs contain stale prerelease-channel guidance: An installed alpha CLI can also run `a2amesh init`.',
+    ]);
+    expect(validate({ 'README.md': stale }, '0.19.0-alpha.1')).toEqual([]);
   });
 
   it('rejects unqualified prerelease package and scaffolder commands', async () => {

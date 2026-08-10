@@ -16,7 +16,7 @@ A caller context accepted for an MCP resource does not automatically approve eve
 
 ## Installation
 
-The supported prerelease channel is `alpha`:
+The supported stable channel is `latest`:
 
 ```bash
 npm install @a2amesh/mcp
