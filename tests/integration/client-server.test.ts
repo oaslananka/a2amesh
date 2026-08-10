@@ -76,6 +76,9 @@ describe('A2A client/server integration', () => {
     const card = await client.resolveCard();
     expect(card.name).toBe('Integration Agent');
 
+    const extendedCard = await client.getExtendedAgentCard();
+    expect(extendedCard.name).toBe('Integration Agent');
+
     const createdTask = await client.sendMessage({
       message: createUserMessage('hello'),
       contextId: 'ctx-1',

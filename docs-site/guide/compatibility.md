@@ -114,7 +114,7 @@ The runtime compatibility fixtures explicitly cover these protocol-sensitive pat
 - Omitted `A2A-Version` headers are treated as legacy `0.3` compatibility inputs.
 - Explicit `A2A-Version: 1.0` requests are accepted on HTTP+JSON REST surfaces.
 - Unsupported requested versions return structured version-negotiation errors instead of falling through to task execution.
-- Authenticated extended Agent Card retrieval is covered through the JSON-RPC HTTP binding: public Agent Card discovery remains available, unauthenticated extended-card access fails closed, and authenticated access returns the card.
+- Authenticated extended Agent Card retrieval covers the official `GetExtendedAgentCard` JSON-RPC method and `GET /extendedAgentCard` HTTP+JSON route; the Mesh compatibility method and legacy alias remain tested, unauthenticated access fails closed, and authenticated access returns the card.
 - Agent Card signing tests cover successful verification, tampering rejection, and untrusted-key rejection.
 
 These fixtures intentionally keep `1.2` as opt-in experimental coverage and do not make it the default client or conformance target.

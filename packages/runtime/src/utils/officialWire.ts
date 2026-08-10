@@ -389,6 +389,7 @@ const MESH_TO_OFFICIAL_RPC_METHOD = {
   'tasks/get': 'GetTask',
   'tasks/cancel': 'CancelTask',
   'tasks/resubscribe': 'SubscribeToTask',
+  'agent/getAuthenticatedExtendedCard': 'GetExtendedAgentCard',
 } as const;
 
 const OFFICIAL_TO_MESH_RPC_METHOD = Object.fromEntries(
