@@ -1,5 +1,5 @@
 {
-  "status": "alpha",
+  "status": "stable",
   "exports": [".", "./middleware", "./schemas", "./client", "./testing", "./codex-bridge"],
   "bins": []
 }

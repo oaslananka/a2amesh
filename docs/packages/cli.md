@@ -12,7 +12,7 @@
 ## Installation
 
 ```bash
-npm install -g @a2amesh/cli@alpha
+npm install -g @a2amesh/cli
 ```
 
 ## Available Commands

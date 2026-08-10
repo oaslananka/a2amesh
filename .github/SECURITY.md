@@ -4,11 +4,11 @@
 
 <!-- security-support:start -->
 
-| Installable release line                         | Status      | Maintenance policy                                                         |
-| ------------------------------------------------ | ----------- | -------------------------------------------------------------------------- |
-| `0.18.0-alpha.1` (`alpha` dist-tag)              | Supported   | Current linked alpha release. Security fixes ship in a new linked release. |
-| Earlier prereleases                              | Unsupported | Upgrade to the current linked release; routine backports are not provided. |
-| Unreleased `main` revisions and source snapshots | Best effort | Development revisions are not installable supported releases.              |
+| Installable release line                         | Status      | Maintenance policy                                                                 |
+| ------------------------------------------------ | ----------- | ---------------------------------------------------------------------------------- |
+| `0.18.1` (`latest` dist-tag)                     | Supported   | Current stable release. Security fixes ship in a supported patch or minor release. |
+| Earlier prereleases                              | Unsupported | Upgrade to the current linked release; routine backports are not provided.         |
+| Unreleased `main` revisions and source snapshots | Best effort | Development revisions are not installable supported releases.                      |
 
 <!-- security-support:end -->
 

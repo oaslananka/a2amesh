@@ -21,7 +21,7 @@ promotion remains a separate reviewed release decision.
 Install:
 
 ```bash
-pnpm add @a2amesh/runtime@alpha
+pnpm add @a2amesh/runtime
 ```
 
 See [Install](install.md) for detailed requirements.
