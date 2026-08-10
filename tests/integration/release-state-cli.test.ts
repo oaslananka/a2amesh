@@ -28,6 +28,7 @@ type FixtureOptions = {
   npmPublished?: string[];
   openReleaseVersion?: string;
   npmFailure?: string;
+  npmJsonArray?: boolean;
   superseded?: boolean;
   successorVersion?: string;
   decisionDate?: string;
@@ -222,6 +223,20 @@ describe.skipIf(process.platform === 'win32')('release-state CLI', () => {
     expect(result.json.blockers).toContainEqual(expect.stringContaining('40-character'));
   });
 
+  it('accepts npm 12 single-result JSON arrays', async () => {
+    const result = await runFixture({
+      mode: 'release-please',
+      head: 'post-release-commit',
+      tagCommit: 'release-commit',
+      tagIsAncestor: true,
+      npmJsonArray: true,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.json.state).toBe('published');
+    expect(result.json.gates.releasePlease).toBe(true);
+  });
+
   it('returns unavailable when npm cannot be observed', async () => {
     const result = await runFixture({ npmFailure: 'ETIMEDOUT' });
 
@@ -296,6 +311,7 @@ async function runFixture(options: FixtureOptions) {
     tagPackageVersion: options.tagPackageVersion ?? '0.11.0-alpha.1',
     openReleaseVersion: options.openReleaseVersion ?? null,
     npmFailure: options.npmFailure ?? null,
+    npmJsonArray: options.npmJsonArray ?? false,
     releaseCommit,
     historicalManifestVersion: '0.11.0-alpha.1',
     npm: Object.fromEntries(
@@ -396,10 +412,10 @@ if (command === 'git') {
     const marker = target.lastIndexOf('@');
     const name = target.slice(0, marker);
     const version = target.slice(marker + 1);
-    if (fixture.npm[name]?.published) out(JSON.stringify(version));
+    if (fixture.npm[name]?.published) out(fixture.npmJsonArray ? [version] : JSON.stringify(version));
     else { process.stderr.write('npm error code E404\\n'); process.exit(1); }
   } else if (args[2] === 'dist-tags') {
-    out(fixture.npm[target].distTags);
+    out(fixture.npmJsonArray ? [fixture.npm[target].distTags] : fixture.npm[target].distTags);
   } else process.exit(2);
 }
 `;
