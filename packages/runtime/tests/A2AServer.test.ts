@@ -1216,7 +1216,7 @@ describe('A2AServer', () => {
 
     const port = (listener.address() as { port: number }).port;
     const baseUrl = `http://localhost:${port}`;
-    const method = ['agent', 'authenticatedExtendedCard'].join('/');
+    const method = 'GetExtendedAgentCard';
     const headerName = ['x', 'api', 'key'].join('-');
     const apiKey = ['sec', 'ret'].join('');
 
@@ -1254,5 +1254,23 @@ describe('A2AServer', () => {
     const authenticatedPayload = (await authenticatedResponse.json()) as { result: AgentCard };
     expect(authenticatedResponse.status).toBe(200);
     expect(authenticatedPayload.result).toEqual(expect.objectContaining({ name: 'Harness Agent' }));
+
+    const unauthenticatedRestResponse = await fetch(`${baseUrl}/extendedAgentCard`, {
+      headers: { Accept: 'application/a2a+json', 'A2A-Version': '1.0' },
+    });
+    expect(unauthenticatedRestResponse.status).toBe(401);
+
+    const authenticatedRestResponse = await fetch(`${baseUrl}/extendedAgentCard`, {
+      headers: {
+        Accept: 'application/a2a+json',
+        'A2A-Version': '1.0',
+        [headerName]: apiKey,
+      },
+    });
+    expect(authenticatedRestResponse.status).toBe(200);
+    expect(authenticatedRestResponse.headers.get('content-type')).toContain('application/a2a+json');
+    expect((await authenticatedRestResponse.json()) as AgentCard).toEqual(
+      expect.objectContaining({ name: 'Harness Agent' }),
+    );
   });
 });

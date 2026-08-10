@@ -282,6 +282,10 @@ export class A2AClient {
     );
   }
 
+  async getExtendedAgentCard(): Promise<AgentCard> {
+    return this.getAuthenticatedExtendedCard();
+  }
+
   async getAuthenticatedExtendedCard(): Promise<AgentCard> {
     return this.rpcTransport.rpc<AgentCard, Record<string, never>>(
       'agent/getAuthenticatedExtendedCard',

@@ -44,8 +44,11 @@ interface AuthenticatedExtendedCardFixture {
   security: { header: string; value: string };
   methods: Array<{
     id: string;
-    method: 'agent/getAuthenticatedExtendedCard' | 'agent/authenticatedExtendedCard';
-    classification: 'official' | 'legacy-alias';
+    method:
+      | 'GetExtendedAgentCard'
+      | 'agent/getAuthenticatedExtendedCard'
+      | 'agent/authenticatedExtendedCard';
+    classification: 'official' | 'mesh-compatibility' | 'legacy-alias';
   }>;
   expectedUnauthorizedCode: number;
   expectedCard: Pick<AgentCard, 'protocolVersion' | 'name' | 'version'>;

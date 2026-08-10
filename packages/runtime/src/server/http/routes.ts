@@ -119,6 +119,9 @@ function registerRestBindingRoutes(deps: A2AHttpRouteDependencies): void {
   const cancelTaskHandler = async (req: Request, res: Response) => {
     await handleRestRpc(req, res, deps, 'tasks/cancel', { taskId: restParam(req, 0) });
   };
+  const extendedAgentCardHandler = async (req: Request, res: Response) => {
+    await handleRestRpc(req, res, deps, 'agent/getAuthenticatedExtendedCard', {});
+  };
   const setPushHandler = async (req: Request, res: Response) => {
     const body = restBody(req);
     const config = selectRestPushConfig(body);
@@ -156,6 +159,7 @@ function registerRestBindingRoutes(deps: A2AHttpRouteDependencies): void {
   deps.app.get(/^\/([^/]+)\/tasks\/([^/]+)$/, restRoute(tenantAware(getTaskHandler, 1)));
   deps.app.post(/^\/tasks\/([^/]+):cancel$/, restRoute(cancelTaskHandler));
   deps.app.post(/^\/([^/]+)\/tasks\/([^/]+):cancel$/, restRoute(tenantAware(cancelTaskHandler, 1)));
+  deps.app.get(/^\/extendedAgentCard$/, restRoute(extendedAgentCardHandler));
   deps.app.get(/^\/tasks\/([^/]+):subscribe$/, restRoute(subscribeHandler));
   deps.app.get(
     /^\/([^/]+)\/tasks\/([^/]+):subscribe$/,

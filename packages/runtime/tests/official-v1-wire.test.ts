@@ -98,6 +98,15 @@ describe('official A2A v1 JSON wire compatibility', () => {
       method: 'CancelTask',
       params: { tenant: '', id: 'task-1' },
     });
+    expect(toOfficialV1RpcRequest('agent/getAuthenticatedExtendedCard', {})).toEqual({
+      method: 'GetExtendedAgentCard',
+      params: {},
+    });
+    expect(normalizeOfficialV1RpcRequest('GetExtendedAgentCard', {})).toEqual({
+      method: 'agent/getAuthenticatedExtendedCard',
+      params: {},
+      officialV1: true,
+    });
     expect(
       toOfficialV1RpcResult('GetTask', {
         id: 'task-1',

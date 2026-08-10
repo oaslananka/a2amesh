@@ -7,9 +7,14 @@
   },
   "methods": [
     {
-      "id": "canonical-authenticated-card",
-      "method": "agent/getAuthenticatedExtendedCard",
+      "id": "canonical-extended-agent-card",
+      "method": "GetExtendedAgentCard",
       "classification": "official"
+    },
+    {
+      "id": "mesh-authenticated-card-compatibility",
+      "method": "agent/getAuthenticatedExtendedCard",
+      "classification": "mesh-compatibility"
     },
     {
       "id": "legacy-authenticated-card-alias",
