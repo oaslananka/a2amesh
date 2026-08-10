@@ -72,7 +72,7 @@ const officialA2aV1Requirements = [
     status: 'supported',
     required: true,
     evidence:
-      'The conformance runner sends the message/send fixture and validates the returned task shape.',
+      'The conformance runner sends the message/send fixture and validates the returned Task or direct Message shape.',
   },
   {
     id: 'binding.http-json-rest',

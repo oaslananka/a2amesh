@@ -1,4 +1,4 @@
-import type { AgentCard, MessageSendParams, Task } from '@a2amesh/runtime';
+import type { AgentCard, Message, MessageSendParams, Task } from '@a2amesh/runtime';
 import { describe, expect, it } from 'vitest';
 import {
   createConformanceMessageParams,
@@ -126,6 +126,48 @@ describe('conformance fixture runner', () => {
       expect.objectContaining({ returnImmediately: false, historyLength: 1 }),
     );
     expect(getTaskRequests).toEqual([{ taskId: completedTask.id, historyLength: 0 }]);
+  });
+
+  it('accepts a direct Message response from message/send', async () => {
+    const directMessage = {
+      role: 'agent',
+      parts: [{ type: 'text', text: 'direct response' }],
+      messageId: 'message-direct-1',
+      timestamp: '2026-08-10T18:00:00Z',
+      contextId: 'ctx-direct-1',
+    } satisfies Message;
+    let getTaskCalled = false;
+    const client = {
+      resolveCard: async () => createAgentCard(),
+      sendMessage: async () => directMessage,
+      getTask: async () => {
+        getTaskCalled = true;
+        throw new Error('task-get should not run for a direct Message response');
+      },
+    };
+
+    const report = await runConformanceSuite({
+      client,
+      endpointUrl: 'http://agent.test',
+      packageVersion: '1.0.3',
+    });
+
+    expect(report.cases).toContainEqual(
+      expect.objectContaining({
+        id: 'message-send',
+        required: true,
+        status: 'pass',
+        metadata: expect.objectContaining({
+          responseKind: 'message',
+          messageId: directMessage.messageId,
+        }),
+      }),
+    );
+    expect(report.cases).toContainEqual(
+      expect.objectContaining({ id: 'task-get', required: true, status: 'skip' }),
+    );
+    expect(hasRequiredConformanceFailures(report)).toBe(false);
+    expect(getTaskCalled).toBe(false);
   });
 
   it('marks required cases as failed when a fixture-backed request fails', async () => {
