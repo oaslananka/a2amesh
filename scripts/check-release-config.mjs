@@ -183,8 +183,25 @@ if (!releasePleaseWorkflow.includes('include-component-in-tag: true')) {
 if (!releasePleaseWorkflow.includes('node scripts/sync-security-policy.mjs')) {
   failures.push('Release Please must synchronize the security support policy');
 }
-if (!releasePleaseWorkflow.includes('SECURITY.md .github/SECURITY.md')) {
-  failures.push('Release Please must commit both security policy copies with the release version');
+const releasePrPolicySync =
+  'node scripts/sync-release-pr-policy.mjs --clear-release-as --sync-install-docs';
+if (!releasePleaseWorkflow.includes(releasePrPolicySync)) {
+  failures.push(
+    'Release Please must synchronize release-channel/install policy and clear one-shot release-as',
+  );
+}
+for (const releasePrSafetyFragment of [
+  'git status --porcelain',
+  'git ls-files --others --exclude-standard',
+  'git diff --check',
+  'git add -u',
+  'git diff --cached --check',
+]) {
+  if (!releasePleaseWorkflow.includes(releasePrSafetyFragment)) {
+    failures.push(
+      `Release Please policy synchronization guard is missing: ${releasePrSafetyFragment}`,
+    );
+  }
 }
 const releasePleaseGate = 'node scripts/release-state.mjs --mode release-please --json';
 const releasePleaseComponentTags = 'name: Verify published component tags';

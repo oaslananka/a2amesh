@@ -1,26 +1,21 @@
 import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { readJson, readText, fail } from './check-utils.mjs';
 import { expectedDistTag } from './release-state-core.mjs';
 
-execFileSync(process.execPath, ['scripts/generate-command-docs.mjs', '--check'], {
-  stdio: 'inherit',
-});
-
-const commandIndex = readText('docs/cli/index.md');
-const requiredCommands = [
-  ...new Set([...commandIndex.matchAll(/`a2amesh ([a-z][a-z0-9-]*)`/g)].map((match) => match[1])),
-].sort();
+const scriptPath = fileURLToPath(import.meta.url);
 
 const PUBLIC_INSTALL_PACKAGES = ['runtime', 'protocol', 'registry', 'cli', 'mcp', 'create-a2amesh'];
 const PUBLIC_PACKAGE_PATTERN = new RegExp(
-  `@a2amesh/(?:${PUBLIC_INSTALL_PACKAGES.join('|')})(?:@([0-9A-Za-z][0-9A-Za-z._-]*))?`,
+  `(@a2amesh/(?:${PUBLIC_INSTALL_PACKAGES.join('|')}))(?:@([0-9A-Za-z][0-9A-Za-z._-]*))?`,
   'g',
 );
 const INSTALL_COMMAND_PATTERN =
   /\b(?:pnpm\s+(?:add|dlx)|npm\s+(?:install|exec)|yarn\s+(?:add|dlx)|npx\b)/;
 const UNSCOPED_CREATE_PATTERN = /\b(?:npm|pnpm|yarn)\s+create\s+a2amesh(?:\s|$)/;
 
-const PUBLIC_INSTALL_DOC_PATHS = [
+export const PUBLIC_INSTALL_DOC_PATHS = [
   'README.md',
   'docs/install.md',
   'docs/quickstart.md',
@@ -70,7 +65,7 @@ export function validatePublicInstallPolicy(documents, activeVersion = '0.0.0-al
 
       PUBLIC_PACKAGE_PATTERN.lastIndex = 0;
       for (const match of command.matchAll(PUBLIC_PACKAGE_PATTERN)) {
-        const selector = match[1];
+        const selector = match[2];
         const supported = prerelease
           ? selector === channel || selector === activeVersion
           : selector === undefined || selector === 'latest' || selector === activeVersion;
@@ -87,34 +82,69 @@ export function validatePublicInstallPolicy(documents, activeVersion = '0.0.0-al
   return failures;
 }
 
-const failures = [];
-const releaseManifest = readJson('.release-please-manifest.json');
-const activeVersion = releaseManifest['packages/runtime'];
-if (
-  typeof activeVersion !== 'string' ||
-  !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(activeVersion)
-) {
-  failures.push('.release-please-manifest.json: packages/runtime must provide the active semver');
-} else {
-  const publicInstallDocuments = Object.fromEntries(
-    PUBLIC_INSTALL_DOC_PATHS.map((path) => [path, readText(path)]),
-  );
-  failures.push(...validatePublicInstallPolicy(publicInstallDocuments, activeVersion));
+export function rewritePublicInstallPolicy(text, activeVersion) {
+  const channel = expectedDistTag(activeVersion);
+  const selector = channel === 'latest' ? '' : `@${channel}`;
+
+  return text
+    .split('\n')
+    .map((rawLine) => {
+      const hasCarriageReturn = rawLine.endsWith('\r');
+      const line = hasCarriageReturn ? rawLine.slice(0, -1) : rawLine;
+      if (!INSTALL_COMMAND_PATTERN.test(line)) return rawLine;
+
+      PUBLIC_PACKAGE_PATTERN.lastIndex = 0;
+      const rewritten = line.replace(PUBLIC_PACKAGE_PATTERN, (_match, packageName) => {
+        return `${packageName}${selector}`;
+      });
+      return hasCarriageReturn ? `${rewritten}\r` : rewritten;
+    })
+    .join('\n');
 }
 
-for (const command of requiredCommands) {
-  const path = `docs/cli/${command}.md`;
-  const text = readText(path);
-  if (!text.includes(`a2amesh ${command}`)) failures.push(`${path}: missing command example`);
-  if (!text.includes('```bash')) failures.push(`${path}: missing bash example block`);
-  if (!text.includes('```powershell')) failures.push(`${path}: missing PowerShell example block`);
-}
+export function runDocsCommandValidation() {
+  execFileSync(process.execPath, ['scripts/generate-command-docs.mjs', '--check'], {
+    stdio: 'inherit',
+  });
 
-const readme = readText('README.md');
-for (const command of requiredCommands) {
-  if (!readme.includes(`a2amesh ${command}`)) {
-    failures.push(`README.md: missing ${command} example`);
+  const commandIndex = readText('docs/cli/index.md');
+  const requiredCommands = [
+    ...new Set([...commandIndex.matchAll(/`a2amesh ([a-z][a-z0-9-]*)`/g)].map((match) => match[1])),
+  ].sort();
+  const failures = [];
+  const releaseManifest = readJson('.release-please-manifest.json');
+  const activeVersion = releaseManifest['packages/runtime'];
+  if (
+    typeof activeVersion !== 'string' ||
+    !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(activeVersion)
+  ) {
+    failures.push('.release-please-manifest.json: packages/runtime must provide the active semver');
+  } else {
+    const publicInstallDocuments = Object.fromEntries(
+      PUBLIC_INSTALL_DOC_PATHS.map((path) => [path, readText(path)]),
+    );
+    failures.push(...validatePublicInstallPolicy(publicInstallDocuments, activeVersion));
   }
+
+  for (const command of requiredCommands) {
+    const path = `docs/cli/${command}.md`;
+    const text = readText(path);
+    if (!text.includes(`a2amesh ${command}`)) failures.push(`${path}: missing command example`);
+    if (!text.includes('```bash')) failures.push(`${path}: missing bash example block`);
+    if (!text.includes('```powershell')) failures.push(`${path}: missing PowerShell example block`);
+  }
+
+  const readme = readText('README.md');
+  for (const command of requiredCommands) {
+    if (!readme.includes(`a2amesh ${command}`)) {
+      failures.push(`README.md: missing ${command} example`);
+    }
+  }
+
+  if (failures.length > 0) fail('Command documentation validation failed.', failures);
+  return failures;
 }
 
-if (failures.length > 0) fail('Command documentation validation failed.', failures);
+if (process.argv[1] && resolve(process.argv[1]) === scriptPath) {
+  runDocsCommandValidation();
+}

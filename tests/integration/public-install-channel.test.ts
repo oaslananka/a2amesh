@@ -5,6 +5,7 @@ type PublicInstallValidator = (
   documents: Record<string, string>,
   activeVersion?: string,
 ) => string[];
+type PublicInstallRewriter = (text: string, activeVersion: string) => string;
 
 describe('public prerelease install channel policy', () => {
   it('exposes a reusable validator from the docs command checker', async () => {
@@ -28,7 +29,7 @@ describe('public prerelease install channel policy', () => {
     expect(checkerSource).toContain("'docs-site/public/screenshots/quick-demo-flow.svg'");
   });
 
-  it('keeps checked-in public install surfaces on the active prerelease channel', async () => {
+  it('keeps checked-in public install surfaces aligned with the active release channel', async () => {
     const moduleUrl = new URL('../../scripts/check-docs-commands.mjs', import.meta.url);
     const checker = (await import(moduleUrl.href)) as Record<string, unknown>;
     const validate = checker['validatePublicInstallPolicy'] as PublicInstallValidator;
@@ -70,19 +71,39 @@ describe('public prerelease install channel policy', () => {
       ),
     );
 
-    expect(validate(documents, '0.18.0-alpha.1')).toEqual([]);
+    const manifest = JSON.parse(
+      await readFile(new URL('../../.release-please-manifest.json', import.meta.url), 'utf8'),
+    ) as Record<string, string>;
+    expect(validate(documents, manifest['packages/runtime'])).toEqual([]);
+  });
 
-    const packageReadmes = {
-      runtime: documents['packages/runtime/README.md'],
-      protocol: documents['packages/protocol/README.md'],
-      registry: documents['packages/registry/README.md'],
-      cli: documents['packages/cli/README.md'],
-      mcp: documents['packages/mcp/README.md'],
-      'create-a2amesh': documents['packages/create-a2amesh/README.md'],
-    };
-    for (const [packageName, readme] of Object.entries(packageReadmes)) {
-      expect(readme).toContain(`@a2amesh/${packageName}@alpha`);
-    }
+  it('rewrites install selectors for stable and prerelease channels', async () => {
+    const moduleUrl = new URL('../../scripts/check-docs-commands.mjs', import.meta.url);
+    const checker = (await import(moduleUrl.href)) as Record<string, unknown>;
+    const rewrite = checker['rewritePublicInstallPolicy'] as PublicInstallRewriter;
+    const source = [
+      'pnpm add @a2amesh/runtime@alpha',
+      'pnpm add --global @a2amesh/cli@alpha',
+      'pnpm dlx @a2amesh/create-a2amesh@alpha demo',
+      'Narrative @a2amesh/runtime@alpha remains untouched.',
+    ].join('\n');
+
+    expect(rewrite(source, '0.18.1')).toBe(
+      [
+        'pnpm add @a2amesh/runtime',
+        'pnpm add --global @a2amesh/cli',
+        'pnpm dlx @a2amesh/create-a2amesh demo',
+        'Narrative @a2amesh/runtime@alpha remains untouched.',
+      ].join('\n'),
+    );
+    expect(rewrite(source, '0.19.0-beta.1')).toBe(
+      [
+        'pnpm add @a2amesh/runtime@beta',
+        'pnpm add --global @a2amesh/cli@beta',
+        'pnpm dlx @a2amesh/create-a2amesh@beta demo',
+        'Narrative @a2amesh/runtime@alpha remains untouched.',
+      ].join('\n'),
+    );
   });
 
   it('requires stable docs to resolve latest or the exact active stable version', async () => {
