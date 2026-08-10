@@ -200,6 +200,11 @@ for (const releaseEvidenceFragment of [
     );
   }
 }
+const releasePrCheckout =
+  /ref: \$\{\{ steps\.release_pr\.outputs\.branch \}\}[\s\S]*?fetch-depth: 0[\s\S]*?persist-credentials: false/;
+if (!releasePrCheckout.test(releasePleaseWorkflow)) {
+  failures.push('Release Please must check out the release pull request branch with full history');
+}
 for (const releasePrSafetyFragment of [
   'git status --porcelain',
   'git ls-files --others --exclude-standard',
