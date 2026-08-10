@@ -12,6 +12,8 @@ Observed at **2026-08-02T12:03:43.439Z**. This generated section must be refresh
 
 Refresh with `pnpm run repository:evidence:write`; CI validates freshness and local release parity through `pnpm run repository:evidence:check` in `docs:check`.
 
+The Active Release Please PR row is synchronized by release automation and may be newer than the point-in-time snapshot used for the other repository facts.
+
 | Fact                         | Observed value                                                                                                              | Authoritative source                                                                                                      |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Repository                   | [`oaslananka/a2amesh`](https://github.com/oaslananka/a2amesh); public; default branch `main`; license `Apache-2.0`          | GitHub REST API: GET /repos/oaslananka/a2amesh                                                                            |

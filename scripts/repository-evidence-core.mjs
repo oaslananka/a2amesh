@@ -276,6 +276,8 @@ export function renderRepositoryEvidence(snapshot) {
     '',
     'Refresh with `pnpm run repository:evidence:write`; CI validates freshness and local release parity through `pnpm run repository:evidence:check` in `docs:check`.',
     '',
+    'The Active Release Please PR row is synchronized by release automation and may be newer than the point-in-time snapshot used for the other repository facts.',
+    '',
     '| Fact | Observed value | Authoritative source |',
     '| ---- | -------------- | -------------------- |',
     `| Repository | [\`${snapshot.repository.name}\`](${snapshot.repository.url}); ${snapshot.repository.visibility}; default branch \`${snapshot.repository.default_branch}\`; license \`${snapshot.repository.license}\` | ${snapshot.provenance.repository} |`,

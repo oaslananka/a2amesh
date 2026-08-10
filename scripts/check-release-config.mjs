@@ -184,11 +184,21 @@ if (!releasePleaseWorkflow.includes('node scripts/sync-security-policy.mjs')) {
   failures.push('Release Please must synchronize the security support policy');
 }
 const releasePrPolicySync =
-  'node scripts/sync-release-pr-policy.mjs --clear-release-as --sync-install-docs';
+  'node scripts/sync-release-pr-policy.mjs --clear-release-as --sync-install-docs --sync-repository-evidence';
 if (!releasePleaseWorkflow.includes(releasePrPolicySync)) {
   failures.push(
-    'Release Please must synchronize release-channel/install policy and clear one-shot release-as',
+    'Release Please must synchronize release-channel/install/evidence policy and clear one-shot release-as',
   );
+}
+for (const releaseEvidenceFragment of [
+  'RELEASE_PR_JSON: ${{ steps.release.outputs.pr }}',
+  'corepack pnpm install --frozen-lockfile',
+]) {
+  if (!releasePleaseWorkflow.includes(releaseEvidenceFragment)) {
+    failures.push(
+      `Release Please staged-evidence synchronization is missing: ${releaseEvidenceFragment}`,
+    );
+  }
 }
 for (const releasePrSafetyFragment of [
   'git status --porcelain',
