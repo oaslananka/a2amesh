@@ -10,7 +10,6 @@
   <a href="https://www.npmjs.com/package/@a2amesh/runtime"><img src="https://img.shields.io/npm/dt/%40a2amesh%2Fruntime?style=flat-square&logo=npm&label=total%20downloads&color=4c1" alt="npm total downloads" /></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-%3E%3D22.22.1%20%3C25-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js >=22.22.1 <25" /></a>
   <a href="https://pnpm.io/"><img src="https://img.shields.io/badge/pnpm-11.8.0-F69220?style=flat-square&logo=pnpm&logoColor=white" alt="pnpm 11.8.0" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/npm/l/%40a2amesh%2Fruntime?style=flat-square&label=license&color=blue" alt="license" /></a>
 </p>
 
 <p>
@@ -30,8 +29,7 @@
 </p>
 
 <p>
-  <a href="https://www.buymeacoffee.com/oaslananka"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=%E2%98%95&slug=oaslananka&button_colour=FFDD00&font_colour=000000&font_family=Arial&outline_colour=000000&coffee_colour=ffffff"  height="28" alt="Buy me a coffee" /></a>
-  <a href="https://github.com/oaslananka/a2amesh/stargazers"><img src="https://img.shields.io/github/stars/oaslananka/a2amesh?style=for-the-badge&logo=github&label=Star%20on%20GitHub&labelColor=1a1a1a&color=f79000" alt="Star on GitHub" /></a>
+  <a href="https://www.buymeacoffee.com/oaslananka"><img src="https://img.shields.io/badge/sponsor-Buy%20me%20a%20coffee-ffdd00?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee" /></a>
 </p>
 
 </div>
