@@ -103,7 +103,14 @@ function registerRestBindingRoutes(deps: A2AHttpRouteDependencies): void {
     await handleRestStream(req, res, deps, 'tasks/resubscribe', { taskId: restParam(req, 0) });
   };
   const getTaskHandler = async (req: Request, res: Response) => {
-    await handleRestRpc(req, res, deps, 'tasks/get', { taskId: restParam(req, 0) });
+    const historyLength = restOptionalNonNegativeInteger(
+      req.query['historyLength'],
+      'historyLength',
+    );
+    await handleRestRpc(req, res, deps, 'tasks/get', {
+      taskId: restParam(req, 0),
+      ...(historyLength !== undefined ? { historyLength } : {}),
+    });
   };
   const cancelTaskHandler = async (req: Request, res: Response) => {
     await handleRestRpc(req, res, deps, 'tasks/cancel', { taskId: restParam(req, 0) });
@@ -249,6 +256,19 @@ function applyRestTenantScope(
 function restParam(req: Request, index: number): string | undefined {
   const value = req.params[String(index)];
   return typeof value === 'string' ? value : undefined;
+}
+
+function restOptionalNonNegativeInteger(value: unknown, name: string): number | undefined {
+  if (value === undefined) return undefined;
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (typeof raw !== 'string' || raw.trim().length === 0) {
+    throw new JsonRpcError(ErrorCodes.InvalidParams, `${name} must be a non-negative integer`);
+  }
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new JsonRpcError(ErrorCodes.InvalidParams, `${name} must be a non-negative integer`);
+  }
+  return parsed;
 }
 
 function restBody(req: Request): Record<string, unknown> {

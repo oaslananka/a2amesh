@@ -193,9 +193,10 @@ describe('conformance command', () => {
     expect(payload.summary.skipped).toBe(2);
     expect(junit).toContain('<?xml version="1.0" encoding="UTF-8"?>');
     expect(junit).toContain('<testsuite');
-    expect(junit).toContain('tests="7"');
+    expect(junit).toContain('tests="8"');
     expect(junit).toContain('failures="0"');
     expect(junit).toContain('skipped="2"');
+    expect(junit).toContain('<testcase name="task-get"');
     expect(junit).toContain('<testcase name="message-send"');
     expect(junit).toContain('<skipped message="Capability is not advertised" />');
   });

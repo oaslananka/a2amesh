@@ -226,6 +226,39 @@ describe('A2A Protocol v1.0 Compliance', () => {
       expect(retrieved.id).toBe(task.id);
     });
 
+    it('honors historyLength when retrieving a task', async () => {
+      const client = new A2AClient(handle.url, { headers: authHeaders });
+      const task = await client.sendMessage({
+        message: createUserMessage('get history test'),
+      });
+
+      const body = await postJsonRpc<{ result: Task }>(
+        handle.url,
+        'GetTask',
+        { id: task.id, historyLength: 0 },
+        { ...authHeaders, 'A2A-Version': '1.0' },
+      );
+
+      expect(body.result.id).toBe(task.id);
+      expect(body.result.history ?? []).toHaveLength(0);
+    });
+
+    it('honors historyLength on the HTTP+JSON Get Task binding', async () => {
+      const client = new A2AClient(handle.url, { headers: authHeaders });
+      const task = await client.sendMessage({
+        message: createUserMessage('get rest history test'),
+      });
+
+      const response = await fetch(`${handle.url}/tasks/${task.id}?historyLength=0`, {
+        headers: { ...authHeaders, 'A2A-Version': '1.0' },
+      });
+      const retrieved = (await response.json()) as Task;
+
+      expect(response.status).toBe(200);
+      expect(retrieved.id).toBe(task.id);
+      expect(retrieved.history ?? []).toHaveLength(0);
+    });
+
     it('returns TaskNotFound for unknown task ids', async () => {
       const body = await postJsonRpc<{ error: { code: number } }>(
         handle.url,

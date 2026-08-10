@@ -62,10 +62,15 @@ describe('conformance fixture runner', () => {
 
   it('emits endpoint metadata, package version, skipped capabilities and passing cases', async () => {
     const sentMessages: MessageSendParams[] = [];
+    const getTaskRequests: Array<{ taskId: string; historyLength?: number }> = [];
     const client = {
       resolveCard: async () => createAgentCard(),
       sendMessage: async (params: MessageSendParams) => {
         sentMessages.push(params);
+        return completedTask;
+      },
+      getTask: async (taskId: string, historyLength?: number) => {
+        getTaskRequests.push({ taskId, ...(historyLength !== undefined ? { historyLength } : {}) });
         return completedTask;
       },
     };
@@ -109,6 +114,7 @@ describe('conformance fixture runner', () => {
       'agent-card',
       'protocol-version',
       'message-send',
+      'task-get',
       'capability.streaming',
       'capability.pushNotifications',
       'capability.stateTransitionHistory',
@@ -119,6 +125,7 @@ describe('conformance fixture runner', () => {
     expect(sentMessages[0]?.configuration).toEqual(
       expect.objectContaining({ returnImmediately: false, historyLength: 1 }),
     );
+    expect(getTaskRequests).toEqual([{ taskId: completedTask.id, historyLength: 0 }]);
   });
 
   it('marks required cases as failed when a fixture-backed request fails', async () => {
@@ -127,6 +134,7 @@ describe('conformance fixture runner', () => {
       sendMessage: async () => {
         throw new Error('RPC rejected the message fixture');
       },
+      getTask: async () => completedTask,
     };
 
     const report = await runConformanceSuite({
@@ -156,6 +164,7 @@ describe('conformance fixture runner', () => {
     const client = {
       resolveCard: async () => createAgentCard({ protocolVersion: '1.2', version: '1.2.0' }),
       sendMessage: async () => completedTask,
+      getTask: async () => completedTask,
     };
 
     await expect(
@@ -184,6 +193,7 @@ describe('conformance fixture runner', () => {
         sentMessages.push(params);
         return experimentalTask;
       },
+      getTask: async () => ({ ...experimentalTask, history: [] }),
     };
 
     const report = await runConformanceSuite({

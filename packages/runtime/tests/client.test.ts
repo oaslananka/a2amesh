@@ -162,6 +162,32 @@ describe('A2AClient', () => {
     ).rejects.toThrow('Set allowExperimentalProtocolVersions to true');
   });
 
+  it('sends historyLength with Get Task requests', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          result: {
+            id: 'task-1',
+            status: { state: 'COMPLETED', timestamp: '2026-08-10T00:00:00.000Z' },
+            history: [],
+          },
+          id: '1',
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const client = new A2AClient('http://localhost:3000');
+    await client.getTask('task-1', 0);
+
+    const [, init] = fetchSpy.mock.calls[0] ?? [];
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      method: 'tasks/get',
+      params: { taskId: 'task-1', historyLength: 0 },
+    });
+  });
+
   it('throws JSON-RPC errors returned by the server', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
