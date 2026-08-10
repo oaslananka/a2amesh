@@ -1,3 +1,4 @@
+import { releaseChannelForVersion } from './public-surface-policy.mjs';
 import { compareSemanticVersions } from './release-state-core.mjs';
 
 const REPOSITORY_EVIDENCE_START = '<!-- repository-evidence:start -->';
@@ -173,9 +174,15 @@ function validatePublishedReleaseState(release, failures) {
       `Latest canonical tag ${release.latest_canonical_tag?.name ?? '<missing>'} must match ${expectedTag ?? '<unknown>'}`,
     );
   }
-  if (release.npm?.alpha !== release.source_version) {
+  const releaseChannel = releaseChannelForVersion(release.source_version);
+  const expectedDistTag = releaseChannel === 'stable' ? 'latest' : releaseChannel;
+  if (!expectedDistTag) {
     failures.push(
-      `npm alpha version ${release.npm?.alpha ?? '<missing>'} must match source version ${release.source_version ?? '<missing>'}`,
+      `Release source version ${release.source_version ?? '<missing>'} must be valid SemVer`,
+    );
+  } else if (release.npm?.[expectedDistTag] !== release.source_version) {
+    failures.push(
+      `npm ${expectedDistTag} version ${release.npm?.[expectedDistTag] ?? '<missing>'} must match source version ${release.source_version ?? '<missing>'}`,
     );
   }
 }

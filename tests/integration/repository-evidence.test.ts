@@ -145,6 +145,50 @@ describe('repository evidence', () => {
     ).toEqual([]);
   });
 
+  it('accepts a stable release while preserving the previous alpha dist-tag', () => {
+    const evidence = snapshot();
+    evidence.release.source_version = '0.18.1';
+    evidence.release.latest_canonical_tag = {
+      name: '@a2amesh/runtime-v0.18.1',
+      commit: '261f2cdd8fb62aa4e21a5d47351edfbf1eee2b16',
+    };
+    evidence.release.npm.alpha = '0.18.0-alpha.1';
+    evidence.release.npm.latest = '0.18.1';
+    evidence.release.active_release_pr.proposed_version = '0.19.0-alpha.1';
+
+    const state = localState();
+    for (const path of packagePaths) {
+      state.manifest[path] = '0.18.1';
+      state.packageVersions[path] = '0.18.1';
+    }
+
+    expect(
+      validateRepositoryEvidence(evidence, state, new Date('2026-07-30T00:00:00.000Z')),
+    ).toEqual([]);
+  });
+
+  it('rejects stable evidence when latest does not match the source version', () => {
+    const evidence = snapshot();
+    evidence.release.source_version = '0.18.1';
+    evidence.release.latest_canonical_tag = {
+      name: '@a2amesh/runtime-v0.18.1',
+      commit: '261f2cdd8fb62aa4e21a5d47351edfbf1eee2b16',
+    };
+    evidence.release.npm.alpha = '0.18.0-alpha.1';
+    evidence.release.npm.latest = '0.1.0-alpha.1';
+    evidence.release.active_release_pr.proposed_version = '0.19.0-alpha.1';
+
+    const state = localState();
+    for (const path of packagePaths) {
+      state.manifest[path] = '0.18.1';
+      state.packageVersions[path] = '0.18.1';
+    }
+
+    expect(
+      validateRepositoryEvidence(evidence, state, new Date('2026-07-30T00:00:00.000Z')),
+    ).toContain('npm latest version 0.1.0-alpha.1 must match source version 0.18.1');
+  });
+
   it('accepts a staged Release Please version while evidence still reflects the published release', () => {
     const state = localState();
     for (const path of packagePaths) {
