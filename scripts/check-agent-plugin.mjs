@@ -4,6 +4,7 @@ import { cp, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { expectedDistTag } from './release-state-core.mjs';
 
 const expectedSkills = ['a2a-endpoint-validation', 'a2a-task-operations', 'a2a-mcp-consumption'];
 const runtimeConfigPaths = [
@@ -12,14 +13,21 @@ const runtimeConfigPaths = [
   '.vscode/mcp.example.json',
   'opencode.example.jsonc',
 ];
-const expectedServerArgs = [
-  '-y',
-  '-p',
-  '@a2amesh/mcp@alpha',
-  'a2amesh-mcp',
-  '--transport',
-  'stdio',
-];
+function expectedPackageSelector(packageName, version) {
+  const channel = expectedDistTag(version);
+  return channel === 'latest' ? packageName : `${packageName}@${channel}`;
+}
+
+function expectedServerArgs(version) {
+  return [
+    '-y',
+    '-p',
+    expectedPackageSelector('@a2amesh/mcp', version),
+    'a2amesh-mcp',
+    '--transport',
+    'stdio',
+  ];
+}
 
 const args = process.argv.slice(2);
 const rootIndex = args.indexOf('--root');
@@ -100,10 +108,10 @@ async function replaceDirectory(source, destination) {
   await rm(temporary, { force: true, recursive: true });
 }
 
-function validateServerCommand(path, entry, errors) {
+function validateServerCommand(path, entry, errors, expectedVersion) {
   if (entry?.command !== 'npx') errors.push(`${path}: command must be npx`);
-  if (JSON.stringify(entry?.args) !== JSON.stringify(expectedServerArgs)) {
-    errors.push(`${path}: args must use the supported a2amesh-mcp alpha stdio command`);
+  if (JSON.stringify(entry?.args) !== JSON.stringify(expectedServerArgs(expectedVersion))) {
+    errors.push(`${path}: args must use the supported a2amesh-mcp npm stdio command`);
   }
   const env = entry?.env;
   if (!env || typeof env !== 'object' || Array.isArray(env)) {
@@ -130,24 +138,25 @@ function validateServerCommand(path, entry, errors) {
   }
 }
 
-async function validateRuntimeConfigs(bundleRoot) {
+async function validateRuntimeConfigs(bundleRoot, expectedVersion) {
   const errors = [];
   const claudePath = join(bundleRoot, '.mcp.json');
   const claude = JSON.parse(await readFile(claudePath, 'utf8'));
-  validateServerCommand('.mcp.json', claude?.mcpServers?.a2amesh, errors);
+  validateServerCommand('.mcp.json', claude?.mcpServers?.a2amesh, errors, expectedVersion);
 
   const vscodePath = join(bundleRoot, '.vscode/mcp.example.json');
   const vscode = JSON.parse(await readFile(vscodePath, 'utf8'));
   const vscodeEntry = vscode?.servers?.a2amesh;
-  validateServerCommand('.vscode/mcp.example.json', vscodeEntry, errors);
+  validateServerCommand('.vscode/mcp.example.json', vscodeEntry, errors, expectedVersion);
   if (vscodeEntry?.type !== 'stdio') {
     errors.push('.vscode/mcp.example.json: server type must be stdio');
   }
 
+  const expectedMcpSelector = expectedPackageSelector('@a2amesh/mcp', expectedVersion);
   for (const path of ['.codex/config.example.toml', 'opencode.example.jsonc']) {
     const text = await readFile(join(bundleRoot, path), 'utf8');
     for (const term of [
-      '@a2amesh/mcp@alpha',
+      `"${expectedMcpSelector}"`,
       'a2amesh-mcp',
       'A2AMESH_MCP_ALLOWED_TOOLS',
       'a2a_discover,a2a_get_task',
@@ -173,7 +182,7 @@ async function validateInstalledBundle(bundleRoot, expectedVersion) {
   for (const skill of expectedSkills) {
     await stat(join(bundleRoot, 'skills', skill, 'SKILL.md'));
   }
-  await validateRuntimeConfigs(bundleRoot);
+  await validateRuntimeConfigs(bundleRoot, expectedVersion);
 }
 
 async function copySourceBundle(destination) {
@@ -374,7 +383,7 @@ if (!mcpPackage.exports?.['./server']) {
   failures.push('packages/mcp/package.json must export the standalone server contract');
 }
 try {
-  await validateRuntimeConfigs(repoRoot);
+  await validateRuntimeConfigs(repoRoot, mcpPackage.version);
 } catch (error) {
   failures.push(`runtime configuration validation failed: ${String(error)}`);
 }
@@ -438,7 +447,7 @@ for (const heading of [
 for (const term of [
   'distribution-capable alpha bundle',
   'a2amesh-mcp',
-  '@a2amesh/mcp@alpha',
+  `npx -y -p ${expectedPackageSelector('@a2amesh/mcp', mcpPackage.version)} a2amesh-mcp --transport stdio`,
   '@a2amesh/cli',
   '.mcp.json',
   '.codex/config.example.toml',

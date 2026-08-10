@@ -33,7 +33,7 @@ Confirm:
 
 1. Reuse recent endpoint-validation evidence or run the `a2a-endpoint-validation` skill first.
 2. For a send, restate the endpoint and bounded message purpose, then obtain explicit approval.
-3. Run `pnpm dlx @a2amesh/cli@alpha send <endpoint> <message>` with only documented options.
+3. Run `pnpm dlx @a2amesh/cli send <endpoint> <message>` with only documented options.
 4. Do not retry a non-idempotent send automatically. Use an `Idempotency-Key` only when the caller and endpoint contract support it.
 5. Inspect a task with `task status` or monitor it with a bounded cycle count.
 6. Retrieve and summarize artifacts without writing binary or secret-bearing content into chat.

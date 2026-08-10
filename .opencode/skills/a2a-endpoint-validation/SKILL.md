@@ -33,8 +33,8 @@ Never request concrete secret values in chat. Refer to credential variable names
 
 ## Workflow
 
-1. Start with local CLI diagnostics: `pnpm dlx @a2amesh/cli@alpha doctor --json`.
-2. Validate a file-backed Agent Card with `pnpm dlx @a2amesh/cli@alpha validate <path>` or inspect an endpoint with `discover`.
+1. Start with local CLI diagnostics: `pnpm dlx @a2amesh/cli doctor --json`.
+2. Validate a file-backed Agent Card with `pnpm dlx @a2amesh/cli validate <path>` or inspect an endpoint with `discover`.
 3. Run `health` before a broader conformance check.
 4. Use `conformance` only against an endpoint the user is authorized to test.
 5. Keep private-network access disabled unless the user explicitly authorizes the destination and `--allow-private-network` is necessary.

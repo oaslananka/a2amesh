@@ -3,7 +3,7 @@
     "a2amesh": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "-p", "@a2amesh/mcp@alpha", "a2amesh-mcp", "--transport", "stdio"],
+      "args": ["-y", "-p", "@a2amesh/mcp", "a2amesh-mcp", "--transport", "stdio"],
       "env": {
         "A2AMESH_MCP_TENANT_ID": "example-tenant",
         "A2AMESH_MCP_AUDIENCE": "urn:mcp:a2amesh",

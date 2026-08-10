@@ -6,7 +6,7 @@
   "mcp": {
     "a2amesh": {
       "type": "local",
-      "command": ["npx", "-y", "-p", "@a2amesh/mcp@alpha", "a2amesh-mcp", "--transport", "stdio"],
+      "command": ["npx", "-y", "-p", "@a2amesh/mcp", "a2amesh-mcp", "--transport", "stdio"],
       "enabled": true,
       "environment": {
         "A2AMESH_MCP_TENANT_ID": "example-tenant",
