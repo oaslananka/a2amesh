@@ -1,0 +1,40 @@
+merge_queue:
+  mode: serial
+  max_parallel_checks: 2
+  checking_label: null
+  queued_label: null
+  dequeued_label: null
+  queue_controls_comment: false
+  status_comments: outcomes
+
+queue_rules:
+  - name: default
+    batch_size: 1
+    branch_protection_injection_mode: queue
+    checks_timeout: 90 min
+    merge_method: squash
+
+merge_protections_settings:
+  reporting_method: check-runs
+  post_comment: false
+
+merge_protections:
+  - name: Conventional pull request title
+    description: Keep squash-merged commits compatible with the repository Conventional Commit release policy.
+    if:
+      - base = main
+    success_conditions:
+      - 'title ~= ^(fix|feat|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?: .+'
+
+pull_request_rules:
+  - name: Classify Release Please pull requests
+    description: Keep release automation visible in the existing repository taxonomy.
+    conditions:
+      - base = main
+      - author = github-actions[bot]
+      - 'title = chore: release main'
+    actions:
+      label:
+        add:
+          - area:release
+          - type:release
