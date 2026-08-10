@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/cli-v0.18.0-alpha.1...@a2amesh/cli-v0.18.1) (2026-08-10)
+
+
+### Bug Fixes
+
+* **release:** align prerelease install channel ([f766165](https://github.com/oaslananka/a2amesh/commit/f766165291a533c7d61ac5d00df64b3ffecd08f6))
+* **release:** defer stable registry parity ([#315](https://github.com/oaslananka/a2amesh/issues/315)) ([86e7dc5](https://github.com/oaslananka/a2amesh/commit/86e7dc57a973ab77caa519d236fdce7fcab9bcf2))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/runtime bumped to 0.18.1
+    * @a2amesh/registry bumped to 0.18.1
+
 ## [0.18.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/cli-v0.17.0-alpha.1...@a2amesh/cli-v0.18.0-alpha.1) (2026-08-02)
 
 

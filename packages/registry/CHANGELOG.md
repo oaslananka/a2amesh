@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/registry-v0.18.0-alpha.1...@a2amesh/registry-v0.18.1) (2026-08-10)
+
+
+### Bug Fixes
+
+* **dx:** make workspace bin linking deterministic ([ff005ea](https://github.com/oaslananka/a2amesh/commit/ff005ea915766abd4a916934ec0a3c08e9614bdf))
+* **release:** align prerelease install channel ([f766165](https://github.com/oaslananka/a2amesh/commit/f766165291a533c7d61ac5d00df64b3ffecd08f6))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/runtime bumped to 0.18.1
+
 ## [0.18.0-alpha.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/registry-v0.17.0-alpha.1...@a2amesh/registry-v0.18.0-alpha.1) (2026-08-02)
 
 
