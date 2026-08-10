@@ -1,4 +1,6 @@
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 interface PackageEntryFixture {
@@ -28,6 +30,13 @@ interface CheckNpmPackModule {
   createImportSmokeSource(packages: PackageEntryFixture[]): string;
   createTypecheckSmokeSource(packages: PackageEntryFixture[]): string;
   getBinarySmokeCommand(packageJson: PackageEntryFixture['packageJson'], binName: string): string[];
+  packPackage(
+    entry: {
+      dir: string;
+      packageJson: PackageEntryFixture['packageJson'] & { scripts?: Record<string, string> };
+    },
+    packDestination: string,
+  ): string;
 }
 
 async function loadCheckNpmPackModule(): Promise<CheckNpmPackModule> {
@@ -37,6 +46,48 @@ async function loadCheckNpmPackModule(): Promise<CheckNpmPackModule> {
 }
 
 describe('check-npm-pack consumer smoke helpers', () => {
+  it('builds a publishable package before creating its tarball', async () => {
+    const { packPackage } = await loadCheckNpmPackModule();
+    const fixtureDir = await mkdtemp(path.join(tmpdir(), 'a2amesh-pack-build-'));
+    const tarballDir = path.join(fixtureDir, 'tarballs');
+    await mkdir(tarballDir, { recursive: true });
+    await writeFile(
+      path.join(fixtureDir, 'package.json'),
+      `${JSON.stringify(
+        {
+          name: 'pack-build-fixture',
+          version: '1.0.0',
+          type: 'module',
+          scripts: {
+            build:
+              "node -e \"require('fs').mkdirSync('dist',{recursive:true});require('fs').writeFileSync('dist/index.js','export const ready = true;\\n')\"",
+          },
+          files: ['dist'],
+          exports: './dist/index.js',
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    try {
+      const tarball = packPackage(
+        {
+          dir: fixtureDir,
+          packageJson: {
+            name: 'pack-build-fixture',
+            scripts: { build: 'fixture-build' },
+          },
+        },
+        tarballDir,
+      );
+
+      await expect(stat(path.join(fixtureDir, 'dist/index.js'))).resolves.toMatchObject({});
+      await expect(stat(tarball)).resolves.toMatchObject({});
+    } finally {
+      await rm(fixtureDir, { recursive: true, force: true });
+    }
+  });
   it('keeps declared workspace binary targets available before build', async () => {
     const repoRoot = new URL('../..', import.meta.url);
     const packageDirs = ['docs-site'];

@@ -206,7 +206,11 @@ function validateDryRunOutput(entry, output) {
   }
 }
 
-function packPackage(entry, packDestination) {
+export function packPackage(entry, packDestination) {
+  if (typeof entry.packageJson.scripts?.build === 'string') {
+    runPnpm(['--dir', entry.dir, 'run', 'build']);
+  }
+
   const dryRunOutput = runPnpm(['--dir', entry.dir, 'pack', '--dry-run']);
   validateDryRunOutput(entry, dryRunOutput);
 
