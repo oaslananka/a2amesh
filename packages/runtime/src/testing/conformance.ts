@@ -36,6 +36,7 @@ export type ConformanceCapability = keyof Pick<
 export interface ConformanceClient {
   resolveCard(): Promise<AgentCard>;
   sendMessage(params: MessageSendParams): Promise<Task>;
+  getTask(taskId: string, historyLength?: number): Promise<Task>;
 }
 
 export interface ConformanceRunOptions {
@@ -360,6 +361,7 @@ export async function runConformanceSuite({
   const cases: ConformanceCaseResult[] = [];
   const skippedCapabilities: SkippedConformanceCapability[] = [];
   let agentCard: AgentCard | undefined;
+  let sentTask: Task | undefined;
 
   cases.push(
     await runCase('agent-card', 'Resolve the public agent card', true, async () => {
@@ -392,9 +394,40 @@ export async function runConformanceSuite({
       const task = await client.sendMessage(
         createConformanceMessageParams(resolvedProtocolVersion),
       );
+      sentTask = task;
       return assertTaskShape(task);
     }),
   );
+
+  if (sentTask) {
+    const taskToRetrieve = sentTask;
+    cases.push(
+      await runCase(
+        'task-get',
+        'Retrieve the created task with historyLength=0',
+        true,
+        async () => {
+          const retrievedTask = await client.getTask(taskToRetrieve.id, 0);
+          if (retrievedTask.id !== taskToRetrieve.id) {
+            throw new Error('Get Task returned a different task id');
+          }
+          if (retrievedTask.history.length > 0) {
+            throw new Error('Get Task ignored historyLength=0');
+          }
+          return { taskId: retrievedTask.id, historyCount: retrievedTask.history.length };
+        },
+      ),
+    );
+  } else {
+    cases.push({
+      ...skippedCase(
+        'task-get',
+        'Retrieve the created task with historyLength=0',
+        'message/send did not produce a task to retrieve',
+      ),
+      required: true,
+    });
+  }
 
   for (const capability of capabilityChecks) {
     if (!agentCard) {

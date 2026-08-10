@@ -201,8 +201,11 @@ export class A2AClient {
     return this.subscribeToTask(taskId);
   }
 
-  async getTask(taskId: string): Promise<Task> {
-    return this.rpcTransport.rpc<Task, { taskId: string }>('tasks/get', { taskId });
+  async getTask(taskId: string, historyLength?: number): Promise<Task> {
+    return this.rpcTransport.rpc<Task, { taskId: string; historyLength?: number }>('tasks/get', {
+      taskId,
+      ...(historyLength !== undefined ? { historyLength } : {}),
+    });
   }
 
   async listTasks(params: TaskListParams = {}): Promise<TaskListResult> {

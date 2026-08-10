@@ -46,11 +46,14 @@ export async function dispatchJsonRpcMethod(
       );
 
     case 'tasks/get':
-      return getTaskOrThrow(
-        params['taskId'],
-        deps.taskManager,
-        context.requestContext,
-        (task, requestContext) => canAccessTask(task, requestContext, deps.authMiddleware),
+      return trimTaskHistory(
+        getTaskOrThrow(
+          params['taskId'],
+          deps.taskManager,
+          context.requestContext,
+          (task, requestContext) => canAccessTask(task, requestContext, deps.authMiddleware),
+        ),
+        selectHistoryLength(params),
       );
 
     case 'tasks/cancel': {
@@ -178,6 +181,26 @@ async function setPushNotificationConfig(
     configId,
     normalizedPushNotificationConfig,
   );
+}
+
+function selectHistoryLength(params: Record<string, unknown>): number | undefined {
+  const raw = params['historyLength'] ?? params['history_length'];
+  if (raw === undefined) return undefined;
+  if (typeof raw !== 'number' || !Number.isInteger(raw) || raw < 0) {
+    throw new JsonRpcError(
+      ErrorCodes.InvalidParams,
+      'historyLength must be a non-negative integer',
+    );
+  }
+  return raw;
+}
+
+function trimTaskHistory(task: Task, historyLength: number | undefined): Task {
+  if (historyLength === undefined) return task;
+  return {
+    ...task,
+    history: historyLength === 0 ? [] : task.history.slice(-historyLength),
+  };
 }
 
 export function getTaskOrThrow(
