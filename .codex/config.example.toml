@@ -4,7 +4,7 @@
 [[mcp_servers]]
 name = "a2amesh"
 command = "npx"
-args = ["-y", "-p", "@a2amesh/mcp@alpha", "a2amesh-mcp", "--transport", "stdio"]
+args = ["-y", "-p", "@a2amesh/mcp", "a2amesh-mcp", "--transport", "stdio"]
 
 [mcp_servers.env]
 A2AMESH_MCP_TENANT_ID = "example-tenant"

@@ -5,7 +5,7 @@ type PublicInstallValidator = (
   documents: Record<string, string>,
   activeVersion?: string,
 ) => string[];
-type PublicInstallRewriter = (text: string, activeVersion: string) => string;
+type PublicInstallRewriter = (text: string, activeVersion: string, documentPath?: string) => string;
 
 describe('public prerelease install channel policy', () => {
   it('exposes a reusable validator from the docs command checker', async () => {
@@ -26,6 +26,12 @@ describe('public prerelease install channel policy', () => {
       'validatePublicInstallPolicy(publicInstallDocuments, activeVersion)',
     );
     expect(checkerSource).toContain("'docs-site/guide/quick-start.md'");
+    expect(checkerSource).toContain("'docs/agent-plugin.md'");
+    expect(checkerSource).toContain("'.mcp.json'");
+    expect(checkerSource).toContain("'skills/a2a-endpoint-validation/SKILL.md'");
+    expect(checkerSource).toContain("'examples/openclaw-mcp/README.md'");
+    expect(checkerSource).toContain("'docs/migrating/security-upgrades.md'");
+    expect(checkerSource).toContain("'docs-site/security/security-upgrades.md'");
     expect(checkerSource).toContain("'docs-site/public/screenshots/quick-demo-flow.svg'");
   });
 
@@ -39,6 +45,17 @@ describe('public prerelease install channel policy', () => {
       'docs/quickstart.md',
       'docs/faq.md',
       'docs/distribution.md',
+      'docs/agent-plugin.md',
+      '.mcp.json',
+      '.codex/config.example.toml',
+      '.vscode/mcp.example.json',
+      'opencode.example.jsonc',
+      'skills/a2a-endpoint-validation/SKILL.md',
+      'skills/a2a-task-operations/SKILL.md',
+      '.opencode/skills/a2a-endpoint-validation/SKILL.md',
+      '.opencode/skills/a2a-task-operations/SKILL.md',
+      'examples/openclaw-mcp/README.md',
+      'docs/migrating/security-upgrades.md',
       'docs/packages/runtime.md',
       'docs/packages/protocol.md',
       'docs/packages/registry.md',
@@ -60,6 +77,7 @@ describe('public prerelease install channel policy', () => {
       'docs-site/packages/cli.md',
       'docs-site/packages/mcp.md',
       'docs-site/packages/create-a2amesh.md',
+      'docs-site/security/security-upgrades.md',
       'docs-site/public/screenshots/quick-demo-flow.svg',
     ];
     const documents = Object.fromEntries(
@@ -104,6 +122,52 @@ describe('public prerelease install channel policy', () => {
         'Narrative @a2amesh/runtime@alpha remains untouched.',
       ].join('\n'),
     );
+    const configLine = '  "args": ["-y", "-p", "@a2amesh/mcp@alpha", "a2amesh-mcp"]';
+    expect(rewrite(configLine, '0.18.1', '.mcp.json')).toContain('"@a2amesh/mcp"');
+    expect(rewrite(configLine, '0.19.0-beta.1', '.mcp.json')).toContain('"@a2amesh/mcp@beta"');
+    expect(rewrite(configLine, '0.18.1')).toBe(configLine);
+  });
+
+  it('validates and rewrites OpenClaw multiline install arguments', async () => {
+    const moduleUrl = new URL('../../scripts/check-docs-commands.mjs', import.meta.url);
+    const checker = (await import(moduleUrl.href)) as Record<string, unknown>;
+    const validate = checker['validatePublicInstallPolicy'] as PublicInstallValidator;
+    const rewrite = checker['rewritePublicInstallPolicy'] as PublicInstallRewriter;
+    const source = [
+      'openclaw mcp add a2amesh \\',
+      '  --command npx \\',
+      '  --arg -y \\',
+      '  --arg -p \\',
+      '  --arg @a2amesh/mcp@alpha \\',
+      '  --arg a2amesh-mcp',
+    ].join('\n');
+
+    expect(validate({ 'examples/openclaw-mcp/README.md': source }, '0.18.1')).toEqual([
+      'examples/openclaw-mcp/README.md: stable public command must resolve latest or exact active version: --arg @a2amesh/mcp@alpha',
+    ]);
+    expect(rewrite(source, '0.18.1')).toContain('--arg @a2amesh/mcp \\');
+    expect(rewrite(source, '0.19.0-beta.1')).toContain('--arg @a2amesh/mcp@beta \\');
+  });
+
+  it('validates and rewrites multiline install command continuations', async () => {
+    const moduleUrl = new URL('../../scripts/check-docs-commands.mjs', import.meta.url);
+    const checker = (await import(moduleUrl.href)) as Record<string, unknown>;
+    const validate = checker['validatePublicInstallPolicy'] as PublicInstallValidator;
+    const rewrite = checker['rewritePublicInstallPolicy'] as PublicInstallRewriter;
+    const source = ['pnpm add \\', '  @a2amesh/protocol@alpha \\', '  @a2amesh/runtime@alpha'].join(
+      '\n',
+    );
+
+    expect(validate({ 'docs/security-upgrades.md': source }, '0.18.1')).toEqual([
+      'docs/security-upgrades.md: stable public command must resolve latest or exact active version: @a2amesh/protocol@alpha',
+      'docs/security-upgrades.md: stable public command must resolve latest or exact active version: @a2amesh/runtime@alpha',
+    ]);
+    expect(rewrite(source, '0.18.1')).toBe(
+      ['pnpm add \\', '  @a2amesh/protocol \\', '  @a2amesh/runtime'].join('\n'),
+    );
+    expect(rewrite(source, '0.19.0-beta.1')).toBe(
+      ['pnpm add \\', '  @a2amesh/protocol@beta \\', '  @a2amesh/runtime@beta'].join('\n'),
+    );
   });
 
   it('requires stable docs to resolve latest or the exact active stable version', async () => {
@@ -126,6 +190,24 @@ describe('public prerelease install channel policy', () => {
         '1.0.0',
       ),
     ).toEqual([]);
+  });
+
+  it('rejects stale prerelease-channel prose for stable releases', async () => {
+    const moduleUrl = new URL('../../scripts/check-docs-commands.mjs', import.meta.url);
+    const checker = (await import(moduleUrl.href)) as Record<string, unknown>;
+    const validate = checker['validatePublicInstallPolicy'] as PublicInstallValidator;
+    const stale = [
+      'A2A Mesh is currently published on the `alpha` npm dist-tag.',
+      'The supported prerelease channel is `alpha`.',
+      'An installed alpha CLI can also run `a2amesh init`.',
+    ].join('\n');
+
+    expect(validate({ 'README.md': stale }, '0.18.1')).toEqual([
+      'README.md: stable public docs contain stale prerelease-channel guidance: A2A Mesh is currently published on the `alpha` npm dist-tag.',
+      'README.md: stable public docs contain stale prerelease-channel guidance: The supported prerelease channel is `alpha`.',
+      'README.md: stable public docs contain stale prerelease-channel guidance: An installed alpha CLI can also run `a2amesh init`.',
+    ]);
+    expect(validate({ 'README.md': stale }, '0.19.0-alpha.1')).toEqual([]);
   });
 
   it('rejects unqualified prerelease package and scaffolder commands', async () => {

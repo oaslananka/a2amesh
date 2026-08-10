@@ -15,9 +15,9 @@ Run the initialization wizard directly via:
 npm exec @a2amesh/create-a2amesh -- my-agent
 ```
 
-With pnpm, use `pnpm dlx @a2amesh/create-a2amesh my-agent`; an installed alpha CLI can also run `a2amesh init`.
+With pnpm, use `pnpm dlx @a2amesh/create-a2amesh my-agent`; an installed CLI can also run `a2amesh init`.
 
 ## Release State
 
-- **Channel**: Public Alpha
+- **Channel**: Public Stable
 - **Initial Version**: `0.1.0-alpha.0`

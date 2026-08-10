@@ -12,8 +12,18 @@ const PUBLIC_PACKAGE_PATTERN = new RegExp(
   'g',
 );
 const INSTALL_COMMAND_PATTERN =
-  /\b(?:pnpm\s+(?:add|dlx)|npm\s+(?:install|exec)|yarn\s+(?:add|dlx)|npx\b)/;
+  /\b(?:pnpm\s+(?:add|dlx)|npm\s+(?:install|exec)|yarn\s+(?:add|dlx)|npx\b|openclaw\s+mcp\s+add)/;
 const UNSCOPED_CREATE_PATTERN = /\b(?:npm|pnpm|yarn)\s+create\s+a2amesh(?:\s|$)/;
+const STALE_STABLE_CHANNEL_GUIDANCE = [
+  /currently published on the `(?:alpha|beta|rc)` npm dist-tag/i,
+  /supported prerelease channel is `(?:alpha|beta|rc)`/i,
+  /installed (?:alpha|beta|rc) CLI/i,
+];
+const STRUCTURED_PUBLIC_INSTALL_CONFIG_PATHS = new Set([
+  '.mcp.json',
+  '.codex/config.example.toml',
+  '.vscode/mcp.example.json',
+]);
 
 export const PUBLIC_INSTALL_DOC_PATHS = [
   'README.md',
@@ -21,6 +31,17 @@ export const PUBLIC_INSTALL_DOC_PATHS = [
   'docs/quickstart.md',
   'docs/faq.md',
   'docs/distribution.md',
+  'docs/agent-plugin.md',
+  '.mcp.json',
+  '.codex/config.example.toml',
+  '.vscode/mcp.example.json',
+  'opencode.example.jsonc',
+  'skills/a2a-endpoint-validation/SKILL.md',
+  'skills/a2a-task-operations/SKILL.md',
+  '.opencode/skills/a2a-endpoint-validation/SKILL.md',
+  '.opencode/skills/a2a-task-operations/SKILL.md',
+  'examples/openclaw-mcp/README.md',
+  'docs/migrating/security-upgrades.md',
   'docs/packages/runtime.md',
   'docs/packages/protocol.md',
   'docs/packages/registry.md',
@@ -42,6 +63,7 @@ export const PUBLIC_INSTALL_DOC_PATHS = [
   'docs-site/packages/cli.md',
   'docs-site/packages/mcp.md',
   'docs-site/packages/create-a2amesh.md',
+  'docs-site/security/security-upgrades.md',
   'docs-site/public/screenshots/quick-demo-flow.svg',
 ];
 
@@ -50,18 +72,32 @@ export function validatePublicInstallPolicy(documents, activeVersion = '0.0.0-al
   const prerelease = channel !== 'latest';
   const failures = [];
   for (const [path, text] of Object.entries(documents)) {
+    let continuedInstallCommand = false;
     for (const rawLine of text.split(/\r?\n/)) {
       const line = rawLine.trim();
       if (!line) continue;
+      if (!prerelease && STALE_STABLE_CHANNEL_GUIDANCE.some((pattern) => pattern.test(line))) {
+        failures.push(
+          `${path}: stable public docs contain stale prerelease-channel guidance: ${line}`,
+        );
+        continue;
+      }
       if (UNSCOPED_CREATE_PATTERN.test(line)) {
         failures.push(
           `${path}: unscoped create shorthand cannot select the supported @a2amesh alpha package: ${line}`,
         );
+        continuedInstallCommand = false;
         continue;
       }
+
       const commandMatch = INSTALL_COMMAND_PATTERN.exec(line);
-      if (!commandMatch) continue;
-      const command = line.slice(commandMatch.index);
+      PUBLIC_PACKAGE_PATTERN.lastIndex = 0;
+      const structuredSelectorLine =
+        STRUCTURED_PUBLIC_INSTALL_CONFIG_PATHS.has(path) && PUBLIC_PACKAGE_PATTERN.test(line);
+      PUBLIC_PACKAGE_PATTERN.lastIndex = 0;
+      if (!commandMatch && !continuedInstallCommand && !structuredSelectorLine) continue;
+      const command = commandMatch ? line.slice(commandMatch.index) : line;
+      const displayCommand = command.replace(/\s*\\$/, '').trim();
 
       PUBLIC_PACKAGE_PATTERN.lastIndex = 0;
       for (const match of command.matchAll(PUBLIC_PACKAGE_PATTERN)) {
@@ -72,26 +108,37 @@ export function validatePublicInstallPolicy(documents, activeVersion = '0.0.0-al
         if (supported) continue;
         failures.push(
           prerelease
-            ? `${path}: public prerelease command must select @${channel} or an exact version: ${line}`
-            : `${path}: stable public command must resolve latest or exact active version: ${line}`,
+            ? `${path}: public prerelease command must select @${channel} or an exact version: ${displayCommand}`
+            : `${path}: stable public command must resolve latest or exact active version: ${displayCommand}`,
         );
         break;
       }
+      continuedInstallCommand = line.endsWith('\\');
     }
   }
   return failures;
 }
 
-export function rewritePublicInstallPolicy(text, activeVersion) {
+export function rewritePublicInstallPolicy(text, activeVersion, documentPath = '') {
   const channel = expectedDistTag(activeVersion);
   const selector = channel === 'latest' ? '' : `@${channel}`;
+  let continuedInstallCommand = false;
 
   return text
     .split('\n')
     .map((rawLine) => {
       const hasCarriageReturn = rawLine.endsWith('\r');
       const line = hasCarriageReturn ? rawLine.slice(0, -1) : rawLine;
-      if (!INSTALL_COMMAND_PATTERN.test(line)) return rawLine;
+      const commandMatch = INSTALL_COMMAND_PATTERN.exec(line);
+      PUBLIC_PACKAGE_PATTERN.lastIndex = 0;
+      const structuredSelectorLine =
+        STRUCTURED_PUBLIC_INSTALL_CONFIG_PATHS.has(documentPath) &&
+        PUBLIC_PACKAGE_PATTERN.test(line);
+      PUBLIC_PACKAGE_PATTERN.lastIndex = 0;
+      const inInstallCommand =
+        Boolean(commandMatch) || continuedInstallCommand || structuredSelectorLine;
+      continuedInstallCommand = inInstallCommand && line.trimEnd().endsWith('\\');
+      if (!inInstallCommand) return rawLine;
 
       PUBLIC_PACKAGE_PATTERN.lastIndex = 0;
       const rewritten = line.replace(PUBLIC_PACKAGE_PATTERN, (_match, packageName) => {

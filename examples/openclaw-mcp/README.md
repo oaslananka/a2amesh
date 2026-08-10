@@ -56,7 +56,7 @@ openclaw mcp add a2amesh \
   --command npx \
   --arg -y \
   --arg -p \
-  --arg @a2amesh/mcp@alpha \
+  --arg @a2amesh/mcp \
   --arg a2amesh-mcp \
   --arg --transport \
   --arg stdio \

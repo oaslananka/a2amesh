@@ -101,7 +101,7 @@ export async function syncReleasePrPolicy(repoRoot, options = {}) {
     for (const documentPath of installDocumentPaths) {
       const absolutePath = resolve(repoRoot, documentPath);
       const original = await readFile(absolutePath, 'utf8');
-      const rewritten = rewritePublicInstallPolicy(original, activeVersion);
+      const rewritten = rewritePublicInstallPolicy(original, activeVersion, documentPath);
       if (rewritten === original) continue;
       await writeFile(absolutePath, rewritten);
       updatedInstallDocs.push(documentPath);

@@ -6,7 +6,7 @@ Zero runtime dependencies.
 
 ## Installation
 
-The supported prerelease channel is `alpha`.
+The supported stable channel is `latest`.
 
 ```bash
 npm install @a2amesh/protocol
