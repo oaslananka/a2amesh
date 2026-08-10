@@ -1,5 +1,5 @@
 {
-  "status": "alpha",
+  "status": "stable",
   "exports": [".", "./server"],
   "bins": ["a2amesh-mcp"]
 }

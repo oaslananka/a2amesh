@@ -9,7 +9,7 @@ See [Compatibility](../../docs/compatibility.md) for supported Node.js, protocol
 The supported prerelease channel is `alpha`.
 
 ```bash
-npm install @a2amesh/registry@alpha
+npm install @a2amesh/registry
 ```
 
 Start the installed registry with the default in-memory backend, or inspect its supported environment

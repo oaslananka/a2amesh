@@ -13,20 +13,20 @@ No. Normal CI performs dry-run and pack checks only.
 pnpm is the repository package manager. Workspace scripts and lockfile consistency require pnpm `>=11 <12`. Individual packages can be installed with npm or yarn when consumed from the npm registry.
 
 ```bash
-npm install @a2amesh/runtime@alpha
-yarn add @a2amesh/runtime@alpha
+npm install @a2amesh/runtime
+yarn add @a2amesh/runtime
 ```
 
 ## How do I install the CLI globally?
 
 ```bash
-pnpm add --global @a2amesh/cli@alpha
+pnpm add --global @a2amesh/cli
 ```
 
 or via npm:
 
 ```bash
-npm install --global @a2amesh/cli@alpha
+npm install --global @a2amesh/cli
 ```
 
 After install, run `a2amesh --help` to see available commands.

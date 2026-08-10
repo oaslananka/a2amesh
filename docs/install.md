@@ -15,31 +15,31 @@ prerelease. For repeatable automation, replace `@alpha` with the exact version r
 pnpm (recommended):
 
 ```bash
-pnpm add @a2amesh/runtime@alpha
+pnpm add @a2amesh/runtime
 ```
 
 npm:
 
 ```bash
-npm install @a2amesh/runtime@alpha
+npm install @a2amesh/runtime
 ```
 
 yarn:
 
 ```bash
-yarn add @a2amesh/runtime@alpha
+yarn add @a2amesh/runtime
 ```
 
 PowerShell:
 
 ```powershell
-pnpm add @a2amesh/runtime@alpha
+pnpm add @a2amesh/runtime
 ```
 
 ## Install the CLI globally
 
 ```bash
-pnpm add --global @a2amesh/cli@alpha
+pnpm add --global @a2amesh/cli
 ```
 
 After install, run `a2amesh --help` to list commands.
@@ -48,12 +48,12 @@ After install, run `a2amesh --help` to list commands.
 
 The following public packages are part of the A2A Mesh ecosystem:
 
-| Package                   | Description                                       | Install Command                                       |
-| ------------------------- | ------------------------------------------------- | ----------------------------------------------------- |
-| `@a2amesh/protocol`       | Protocol types and validators (zero dependencies) | `npm install @a2amesh/protocol@alpha`                 |
-| `@a2amesh/registry`       | Registry server for agent capability discovery    | `npm install @a2amesh/registry@alpha`                 |
-| `@a2amesh/mcp`            | Bridge helpers and `a2amesh-mcp` stdio server     | `npm install @a2amesh/mcp@alpha`                      |
-| `@a2amesh/create-a2amesh` | Scaffolding tool to bootstrap new projects        | `npm exec @a2amesh/create-a2amesh@alpha -- <project>` |
+| Package                   | Description                                       | Install Command                                 |
+| ------------------------- | ------------------------------------------------- | ----------------------------------------------- |
+| `@a2amesh/protocol`       | Protocol types and validators (zero dependencies) | `npm install @a2amesh/protocol`                 |
+| `@a2amesh/registry`       | Registry server for agent capability discovery    | `npm install @a2amesh/registry`                 |
+| `@a2amesh/mcp`            | Bridge helpers and `a2amesh-mcp` stdio server     | `npm install @a2amesh/mcp`                      |
+| `@a2amesh/create-a2amesh` | Scaffolding tool to bootstrap new projects        | `npm exec @a2amesh/create-a2amesh -- <project>` |
 
 ## Run the standalone MCP server
 
@@ -61,7 +61,7 @@ For local MCP clients, use the product-owned runtime examples and the published
 stdio command:
 
 ```bash
-npx -y -p @a2amesh/mcp@alpha a2amesh-mcp --transport stdio
+npx -y -p @a2amesh/mcp a2amesh-mcp --transport stdio
 ```
 
 The checked-in `.mcp.json`, Codex, VS Code, and OpenCode examples are read-only by

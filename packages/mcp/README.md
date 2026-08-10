@@ -19,7 +19,7 @@ A caller context accepted for an MCP resource does not automatically approve eve
 The supported prerelease channel is `alpha`:
 
 ```bash
-npm install @a2amesh/mcp@alpha
+npm install @a2amesh/mcp
 ```
 
 The installed binary can print help without runtime credentials:
@@ -36,7 +36,7 @@ launcher directly from a source checkout.
 The package publishes a local MCP server command in addition to the library API:
 
 ```bash
-npx -y -p @a2amesh/mcp@alpha a2amesh-mcp --transport stdio
+npx -y -p @a2amesh/mcp a2amesh-mcp --transport stdio
 ```
 
 The command reads only `A2AMESH_MCP_*` environment variables. The supported client

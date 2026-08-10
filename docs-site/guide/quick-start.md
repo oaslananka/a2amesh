@@ -1,7 +1,7 @@
 # Quick Start
 
 ```bash
-pnpm dlx @a2amesh/create-a2amesh@alpha demo
+pnpm dlx @a2amesh/create-a2amesh demo
 cd demo
 pnpm install
 pnpm run dev

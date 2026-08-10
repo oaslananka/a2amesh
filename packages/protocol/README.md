@@ -9,7 +9,7 @@ Zero runtime dependencies.
 The supported prerelease channel is `alpha`.
 
 ```bash
-npm install @a2amesh/protocol@alpha
+npm install @a2amesh/protocol
 ```
 
 ## Exports

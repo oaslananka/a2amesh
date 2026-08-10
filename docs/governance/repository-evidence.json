@@ -41,7 +41,12 @@
       "alpha": "0.18.0-alpha.1",
       "latest": "0.1.0-alpha.1"
     },
-    "active_release_pr": null
+    "active_release_pr": {
+      "number": 297,
+      "title": "chore: release main",
+      "url": "https://github.com/oaslananka/a2amesh/pull/297",
+      "proposed_version": "0.18.1"
+    }
   },
   "settings": [
     {

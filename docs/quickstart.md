@@ -5,7 +5,7 @@
 pnpm:
 
 ```bash
-pnpm dlx @a2amesh/create-a2amesh@alpha demo
+pnpm dlx @a2amesh/create-a2amesh demo
 cd demo
 pnpm install
 pnpm run dev
@@ -14,7 +14,7 @@ pnpm run dev
 npm:
 
 ```bash
-npm exec @a2amesh/create-a2amesh@alpha -- demo
+npm exec @a2amesh/create-a2amesh -- demo
 cd demo
 npm install
 npm run dev
@@ -23,7 +23,7 @@ npm run dev
 yarn:
 
 ```bash
-yarn dlx @a2amesh/create-a2amesh@alpha demo
+yarn dlx @a2amesh/create-a2amesh demo
 cd demo
 yarn install
 yarn run dev
@@ -32,7 +32,7 @@ yarn run dev
 PowerShell:
 
 ```powershell
-pnpm dlx @a2amesh/create-a2amesh@alpha demo
+pnpm dlx @a2amesh/create-a2amesh demo
 Set-Location demo
 pnpm install
 pnpm run dev
@@ -45,7 +45,7 @@ The generated project uses `@a2amesh/runtime` and optional adapters when templat
 Install the CLI globally:
 
 ```bash
-pnpm add --global @a2amesh/cli@alpha
+pnpm add --global @a2amesh/cli
 ```
 
 After you have an agent running, check its health:

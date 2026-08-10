@@ -11,7 +11,7 @@
 ## Installation
 
 ```bash
-npm install @a2amesh/protocol@alpha
+npm install @a2amesh/protocol
 ```
 
 ## Usage Example

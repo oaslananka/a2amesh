@@ -57,19 +57,19 @@ installs and scaffolding while the project is prerelease. Unqualified package re
 the exact version currently reported by `npm view @a2amesh/runtime@alpha version`.
 
 ```bash
-pnpm add @a2amesh/runtime@alpha
+pnpm add @a2amesh/runtime
 ```
 
 PowerShell:
 
 ```powershell
-pnpm add @a2amesh/runtime@alpha
+pnpm add @a2amesh/runtime
 ```
 
 ## Quickstart
 
 ```bash
-pnpm dlx @a2amesh/create-a2amesh@alpha demo
+pnpm dlx @a2amesh/create-a2amesh demo
 cd demo
 pnpm install
 pnpm run dev
@@ -78,7 +78,7 @@ pnpm run dev
 PowerShell:
 
 ```powershell
-pnpm dlx @a2amesh/create-a2amesh@alpha demo
+pnpm dlx @a2amesh/create-a2amesh demo
 Set-Location demo
 pnpm install
 pnpm run dev

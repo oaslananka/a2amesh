@@ -12,7 +12,7 @@
 ## Installation
 
 ```bash
-npm install @a2amesh/mcp@alpha
+npm install @a2amesh/mcp
 ```
 
 ## Standalone MCP server
@@ -20,7 +20,7 @@ npm install @a2amesh/mcp@alpha
 Start the published alpha package without a global install:
 
 ```bash
-npx -y -p @a2amesh/mcp@alpha a2amesh-mcp --transport stdio
+npx -y -p @a2amesh/mcp a2amesh-mcp --transport stdio
 ```
 
 Use one of the product-owned runtime examples in the repository root. The examples
