@@ -19,10 +19,10 @@
   <a href="https://github.com/oaslananka/a2amesh/actions/workflows/security.yml"><img src="https://github.com/oaslananka/a2amesh/actions/workflows/security.yml/badge.svg" alt="Security" /></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/oaslananka/a2amesh"><img src="https://api.securityscorecards.dev/projects/github.com/oaslananka/a2amesh/badge" alt="OpenSSF Scorecard" /></a>
   <a href="docs/openssf-silver-readiness.md"><img src="https://img.shields.io/badge/OpenSSF%20readiness-silver-c0c0c0?style=flat-square" alt="OpenSSF silver readiness" /></a>
+  <a href="https://deepwiki.com/oaslananka/a2amesh"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki" /></a>
 </p>
 
 <p>
-  <a href="https://deepwiki.com/oaslananka/a2amesh">Ask DeepWiki</a> ·
   <a href="ROADMAP.md">Roadmap</a> ·
   <a href="docs/repo-maturity-report.md">Maturity report</a> ·
   <a href="docs/openssf-evidence.md">OpenSSF evidence</a> ·
@@ -40,7 +40,7 @@ A2A Mesh is an independent TypeScript runtime and toolkit for the Agent2Agent (A
 
 ## Trust and Supply Chain
 
-A2A Mesh keeps public trust evidence in [`docs/security/trust-evidence.md`](docs/security/trust-evidence.md) and release package verification evidence in [`docs/release/package-verification.md`](docs/release/package-verification.md). The README badges link to workflow-backed signals only: CI, docs, security, OpenSSF Scorecard, OpenSSF readiness, npm package metadata, license, and package-manager constraints.
+A2A Mesh keeps public trust evidence in [`docs/security/trust-evidence.md`](docs/security/trust-evidence.md) and release package verification evidence in [`docs/release/package-verification.md`](docs/release/package-verification.md). The trust-related README badges link to workflow-backed signals: CI, docs, security, OpenSSF Scorecard, OpenSSF readiness, npm package metadata, license, and package-manager constraints. The DeepWiki badge is a documentation navigation link, not a project trust signal.
 
 ## What It Provides
 
