@@ -21,7 +21,14 @@ describe('release workflow guards', () => {
     expect(workflow).toContain('--verify-only');
     expect(workflow).toContain('include-component-in-tag: true');
     expect(workflow).toContain('node scripts/sync-security-policy.mjs');
-    expect(workflow).toContain('SECURITY.md .github/SECURITY.md');
+    expect(workflow).toContain(
+      'node scripts/sync-release-pr-policy.mjs --clear-release-as --sync-install-docs',
+    );
+    expect(workflow).toContain('git status --porcelain');
+    expect(workflow).toContain('git ls-files --others --exclude-standard');
+    expect(workflow).toContain('git diff --check');
+    expect(workflow).toContain('git add -u');
+    expect(workflow).toContain('git diff --cached --check');
   });
 
   it('checks out the requested tag and runs publish-mode validation', async () => {
@@ -96,7 +103,12 @@ describe('release workflow guards', () => {
     expect(checker).toContain('.release-recovery.json');
     expect(checker).toContain('--recovery-file');
     expect(checker).toContain('sync-security-policy.mjs');
-    expect(checker).toContain('SECURITY.md .github/SECURITY.md');
+    expect(checker).toContain('sync-release-pr-policy.mjs');
+    expect(checker).toContain('--sync-install-docs');
+    expect(checker).toContain('git status --porcelain');
+    expect(checker).toContain('git ls-files --others --exclude-standard');
+    expect(checker).toContain('git add -u');
+    expect(checker).toContain('git diff --cached --check');
     expect(checker).toContain('sync-release-component-tags.mjs');
     expect(checker).toContain('Synchronize Release Please component tags');
     expect(checker).toContain('Verify published component tags');
