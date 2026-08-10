@@ -21,7 +21,9 @@ export async function syncReleasePrPolicy(repoRoot, options = {}) {
   const updatedSurfaces = [];
   const updatedInstallDocs = [];
 
-  for (const packagePath of Object.keys(config.packages ?? {}).sort()) {
+  for (const packagePath of Object.keys(config.packages ?? {}).sort((left, right) =>
+    left.localeCompare(right),
+  )) {
     const packageJsonPath = resolve(repoRoot, packagePath, 'package.json');
     const inventoryPath = resolve(repoRoot, packagePath, 'public-surface.json');
     const packageJson = await readJson(packageJsonPath);
