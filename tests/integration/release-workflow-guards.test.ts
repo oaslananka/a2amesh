@@ -29,6 +29,9 @@ describe('release workflow guards', () => {
       /ref: \$\{\{ steps\.release_pr\.outputs\.branch \}\}[\s\S]*?fetch-depth: 0[\s\S]*?persist-credentials: false/,
     );
     expect(workflow).toContain('corepack pnpm install --frozen-lockfile');
+    expect(workflow).toMatch(
+      /corepack pnpm install --frozen-lockfile[\s\S]*?pnpm run build[\s\S]*?Sync generated files and release policies/,
+    );
     expect(workflow).toContain('git status --porcelain');
     expect(workflow).toContain('git ls-files --others --exclude-standard');
     expect(workflow).toContain('git diff --check');
@@ -114,6 +117,9 @@ describe('release workflow guards', () => {
     expect(checker).toContain('RELEASE_PR_JSON');
     expect(checker).toContain('corepack pnpm install --frozen-lockfile');
     expect(checker).toContain('release pull request branch with full history');
+    expect(checker).toContain(
+      'build the release pull request workspace before policy synchronization',
+    );
     expect(checker).toContain('git status --porcelain');
     expect(checker).toContain('git ls-files --others --exclude-standard');
     expect(checker).toContain('git add -u');

@@ -89,6 +89,9 @@ jobs:
       - name: Install release pull request dependencies
         if: steps.release.outputs.prs_created == 'true'
         run: corepack pnpm install --frozen-lockfile
+      - name: Build release pull request workspace
+        if: steps.release.outputs.prs_created == 'true'
+        run: corepack pnpm run build
       - name: Sync generated files and release policies
         if: steps.release.outputs.prs_created == 'true'
         env:

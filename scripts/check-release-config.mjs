@@ -205,6 +205,13 @@ const releasePrCheckout =
 if (!releasePrCheckout.test(releasePleaseWorkflow)) {
   failures.push('Release Please must check out the release pull request branch with full history');
 }
+const releasePrWorkspacePreparation =
+  /corepack pnpm install --frozen-lockfile[\s\S]*?corepack pnpm run build[\s\S]*?name: Sync generated files and release policies/;
+if (!releasePrWorkspacePreparation.test(releasePleaseWorkflow)) {
+  failures.push(
+    'Release Please must build the release pull request workspace before policy synchronization',
+  );
+}
 for (const releasePrSafetyFragment of [
   'git status --porcelain',
   'git ls-files --others --exclude-standard',
