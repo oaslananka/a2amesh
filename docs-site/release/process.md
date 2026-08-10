@@ -117,7 +117,8 @@ release workflow URL, and parity/state results with the release evidence.
 Do not create tags, GitHub Releases, npm publishes, or container pushes during
 rebuild work without owner instruction. A prerelease that passes this flow is not automatically
 a stable candidate; use the [Stable Release Criteria](./stable-release-criteria.md) and its
-fail-closed `release:stable-ready` gate before removing prerelease identifiers.
+fail-closed `release:stable-ready` gate on the exact generated stable candidate before merging it or
+creating the canonical stable tag.
 
 ## Local maintainer validation
 
