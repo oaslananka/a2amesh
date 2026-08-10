@@ -41,9 +41,11 @@ prerelease path and cannot authorize a stable tag.
 When a maintainer deliberately selects an exact next release version, use the one-shot top-level
 `release-as` setting in `release-please-config.json` rather than hand-editing generated package
 versions. The Release Please post-processing step derives each tracked `public-surface.json` status and
-user-facing package-install selector from the generated SemVer channel, then removes `release-as` in
-the release pull request. Merging that release therefore returns `main` to normal Conventional
-Commit version calculation without leaving prerelease install commands behind after stable promotion.
+user-facing package-install selector from the generated SemVer channel, stages the active release PR
+version in repository evidence while preserving the last published release facts, then removes
+`release-as` in the release pull request. Merging that release therefore returns `main` to normal
+Conventional Commit version calculation without leaving prerelease install commands or stale release
+candidate evidence behind after stable promotion.
 
 After any publish or approved dist-tag repair, run all three checks before announcing the channel:
 

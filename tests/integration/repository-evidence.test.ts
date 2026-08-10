@@ -215,6 +215,7 @@ describe('repository evidence', () => {
 
     expect(rendered).toContain('Observed at **2026-07-23T21:05:00.000Z**');
     expect(rendered).toContain('[#202](https://github.com/oaslananka/a2amesh/pull/202)');
+    expect(rendered).toContain('may be newer than the point-in-time snapshot');
     expect(rendered).toContain('15 issues and 1 pull request');
     expect(updated).not.toContain('\nold\n');
     expect(injectRepositoryEvidence(updated, rendered)).toBe(updated);

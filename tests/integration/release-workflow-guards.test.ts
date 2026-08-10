@@ -22,8 +22,10 @@ describe('release workflow guards', () => {
     expect(workflow).toContain('include-component-in-tag: true');
     expect(workflow).toContain('node scripts/sync-security-policy.mjs');
     expect(workflow).toContain(
-      'node scripts/sync-release-pr-policy.mjs --clear-release-as --sync-install-docs',
+      'node scripts/sync-release-pr-policy.mjs --clear-release-as --sync-install-docs --sync-repository-evidence',
     );
+    expect(workflow).toContain('RELEASE_PR_JSON: ${{ steps.release.outputs.pr }}');
+    expect(workflow).toContain('corepack pnpm install --frozen-lockfile');
     expect(workflow).toContain('git status --porcelain');
     expect(workflow).toContain('git ls-files --others --exclude-standard');
     expect(workflow).toContain('git diff --check');
@@ -105,6 +107,9 @@ describe('release workflow guards', () => {
     expect(checker).toContain('sync-security-policy.mjs');
     expect(checker).toContain('sync-release-pr-policy.mjs');
     expect(checker).toContain('--sync-install-docs');
+    expect(checker).toContain('--sync-repository-evidence');
+    expect(checker).toContain('RELEASE_PR_JSON');
+    expect(checker).toContain('corepack pnpm install --frozen-lockfile');
     expect(checker).toContain('git status --porcelain');
     expect(checker).toContain('git ls-files --others --exclude-standard');
     expect(checker).toContain('git add -u');

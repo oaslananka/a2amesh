@@ -85,10 +85,14 @@ jobs:
         with:
           ref: ${{ steps.release_pr.outputs.branch }}
           persist-credentials: false
+      - name: Install release pull request dependencies
+        if: steps.release.outputs.prs_created == 'true'
+        run: corepack pnpm install --frozen-lockfile
       - name: Sync generated files and release policies
         if: steps.release.outputs.prs_created == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_PR_JSON: ${{ steps.release.outputs.pr }}
         run: |
           set -euo pipefail
           if [ -n "$(git status --porcelain)" ]; then
@@ -99,7 +103,7 @@ jobs:
           (cd packages/cli && node ../../scripts/build-tsc-package.mjs --generated-only)
           node scripts/sync-compatibility-docs.mjs
           node scripts/sync-security-policy.mjs
-          node scripts/sync-release-pr-policy.mjs --clear-release-as --sync-install-docs
+          node scripts/sync-release-pr-policy.mjs --clear-release-as --sync-install-docs --sync-repository-evidence
           UNTRACKED="$(git ls-files --others --exclude-standard)"
           if [ -n "${UNTRACKED}" ]; then
             echo "Release-policy synchronization created unexpected untracked files."
