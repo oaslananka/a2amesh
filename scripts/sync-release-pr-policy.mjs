@@ -125,7 +125,9 @@ export async function commitReleasePrPolicySync(repoRoot, options = {}) {
     deletions: changes.deletions,
   });
   const query = `mutation($input: CreateCommitOnBranchInput!) {
-    createCommitOnBranch(input: $input) { commit { oid } }
+    createCommitOnBranch(input: $input) {
+      commit { oid signature { isValid wasSignedByGitHub state } }
+    }
   }`;
   const token = requireNonEmptyString(process.env.GH_TOKEN, 'GH_TOKEN');
   const headers = {
@@ -149,22 +151,15 @@ export async function commitReleasePrPolicySync(repoRoot, options = {}) {
   if (response.errors?.length) {
     throw new Error(`GitHub signed release-policy commit failed: ${response.errors[0].message}`);
   }
-  const commit = response.data?.createCommitOnBranch?.commit?.oid;
+  const createdCommit = response.data?.createCommitOnBranch?.commit;
+  const commit = createdCommit?.oid;
   requireNonEmptyString(commit, 'signed release-policy commit oid');
-
-  const verificationResponse = await fetch(
-    `${githubApiBase}/repos/${repository}/commits/${commit}`,
-    {
-      headers,
-    },
-  );
-  if (!verificationResponse.ok) {
-    throw new Error(
-      `GitHub release-policy verification failed with status ${verificationResponse.status}`,
-    );
-  }
-  const verification = await verificationResponse.json();
-  if (verification.commit?.verification?.verified !== true) {
+  const signature = createdCommit?.signature;
+  if (
+    signature?.isValid !== true ||
+    signature?.wasSignedByGitHub !== true ||
+    signature?.state !== 'VALID'
+  ) {
     throw new Error(`GitHub release-policy commit ${commit} is not verified-signed`);
   }
   return { changed: true, commit, verified: true };

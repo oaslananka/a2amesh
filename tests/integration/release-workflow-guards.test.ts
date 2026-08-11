@@ -91,6 +91,8 @@ describe('release workflow guards', () => {
     expect(source).toContain("const gitExecutable = '/usr/bin/git'");
     expect(source).not.toContain("spawnSync('gh'");
     expect(source).not.toContain("execFileSync('git'");
+    expect(source).not.toContain('repos/${repository}/commits/${commit}');
+    expect(source).toContain('signature { isValid wasSignedByGitHub state }');
   });
 
   it('checks out the requested tag and runs publish-mode validation', async () => {
