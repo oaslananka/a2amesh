@@ -114,6 +114,7 @@ async function validatePackageDirectory(root, expectedVersion) {
   }
   await stat(join(root, 'dist/server/cli.js'));
   await stat(join(root, 'dist/server/index.js'));
+  await stat(join(root, 'dist/client/index.js'));
 }
 
 function minimalProcessEnvironment(extra = {}) {
@@ -202,6 +203,15 @@ async function validateInstalledConsumer(consumer, expectedVersion) {
     env: minimalProcessEnvironment({ NO_COLOR: '1' }),
   }).trim();
   if (reportedVersion !== expectedVersion) throw new Error('installed binary version differs');
+  runCommand(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      "const m = await import('@a2amesh/mcp/client'); if (typeof m.invokeMcpTool !== 'function') process.exit(2);",
+    ],
+    { cwd: consumer, env: minimalProcessEnvironment() },
+  );
   await probeStdio(binary);
   return installedPackage;
 }
