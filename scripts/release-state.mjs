@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { compareSemanticVersions, evaluateReleaseState } from './release-state-core.mjs';
+import {
+  compareSemanticVersions,
+  evaluateReleaseState,
+  normalizeSingleNpmJsonResult,
+} from './release-state-core.mjs';
 
 const options = parseArgs(process.argv.slice(2));
 const observation = collectObservation(options);
@@ -303,9 +307,6 @@ function collectReleasePrs(repository, config, errors) {
   });
 }
 
-function normalizeSingleNpmJsonResult(value) {
-  return Array.isArray(value) && value.length === 1 ? value[0] : value;
-}
 
 function collectNpmPackage(source, errors) {
   let versionExists = false;

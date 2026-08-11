@@ -1,5 +1,9 @@
 const RELEASE_PLEASE_ALLOWED_STATES = new Set(['published', 'release-pr-open', 'superseded']);
 
+export function normalizeSingleNpmJsonResult(value) {
+  return Array.isArray(value) && value.length === 1 ? value[0] : value;
+}
+
 export function expectedDistTag(version) {
   const marker = version.indexOf('-');
   return marker === -1 ? 'latest' : version.slice(marker + 1).split('.')[0];
