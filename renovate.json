@@ -182,8 +182,7 @@
     }
   ],
   "vulnerabilityAlerts": {
-    "enabled": true,
-    "labels": ["priority:P1", "type:security", "area:deps"]
+    "enabled": false
   },
   "osvVulnerabilityAlerts": true,
   "baseBranchPatterns": ["main"]

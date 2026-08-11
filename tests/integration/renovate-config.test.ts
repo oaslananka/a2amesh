@@ -132,8 +132,7 @@ function validConfig() {
       },
     ],
     vulnerabilityAlerts: {
-      enabled: true,
-      labels: ['priority:P1', 'type:security', 'area:deps'],
+      enabled: false,
     },
     osvVulnerabilityAlerts: true,
   };
@@ -172,7 +171,7 @@ jobs:
       issues: write
       pull-requests: write
       actions: write
-      security-events: read
+      statuses: write
     steps:
       - uses: renovatebot/github-action@3064367f740a1a91cca218698a63902689cce200 # v46.1.20
         with:
@@ -334,7 +333,7 @@ describe('Renovate policy validation', () => {
   it('rejects missing pnpm dedupe and vulnerability alert ownership', () => {
     const config = validConfig();
     config.postUpdateOptions = [];
-    config.vulnerabilityAlerts.enabled = false;
+    config.vulnerabilityAlerts.enabled = true;
     config.osvVulnerabilityAlerts = false;
 
     expect(
@@ -350,7 +349,7 @@ describe('Renovate policy validation', () => {
     ).toEqual(
       expect.arrayContaining([
         'Renovate must keep pnpmDedupe enabled after lockfile updates',
-        'Renovate vulnerability alerts must remain enabled',
+        'Renovate GitHub vulnerability alerts must remain disabled when using GITHUB_TOKEN',
         'Renovate OSV vulnerability alerts must remain enabled',
       ]),
     );
@@ -400,7 +399,7 @@ run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
     globalConfig.allowedCommands = [];
     const workflow = validWorkflow
       .replace('      actions: write\n', '')
-      .replace('      security-events: read\n', '')
+      .replace('      statuses: write\n', '')
       .replace('      - run: node scripts/dispatch-renovate-checks.mjs\n', '');
 
     expect(
@@ -420,7 +419,7 @@ run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
         'Renovate pnpm updates must run the runtime-version synchronizer',
         'Repository-managed Renovate must allow only the reviewed policy synchronizer commands',
         'Renovate job missing permission: actions: write',
-        'Renovate job missing permission: security-events: read',
+        'Renovate job missing permission: statuses: write',
         'Renovate workflow must dispatch required checks after repository updates',
       ]),
     );
