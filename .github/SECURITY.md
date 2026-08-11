@@ -6,7 +6,7 @@
 
 | Installable release line                         | Status      | Maintenance policy                                                                 |
 | ------------------------------------------------ | ----------- | ---------------------------------------------------------------------------------- |
-| `0.18.1` (`latest` dist-tag)                     | Supported   | Current stable release. Security fixes ship in a supported patch or minor release. |
+| `0.18.2` (`latest` dist-tag)                     | Supported   | Current stable release. Security fixes ship in a supported patch or minor release. |
 | Earlier prereleases                              | Unsupported | Upgrade to the current linked release; routine backports are not provided.         |
 | Unreleased `main` revisions and source snapshots | Best effort | Development revisions are not installable supported releases.                      |
 
