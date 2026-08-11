@@ -2,7 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { expectedDistTag } from './release-state-core.mjs';
+import { expectedDistTag, normalizeSingleNpmJsonResult } from './release-state-core.mjs';
 
 const write = process.argv.includes('--write');
 const config = JSON.parse(readFileSync('release-please-config.json', 'utf8'));
@@ -23,11 +23,17 @@ for (const packagePath of Object.keys(config.packages ?? {})) {
   const packageJson = readJson(`${packagePath}/package.json`);
   const version = manifest[packagePath];
   const expectedTag = expectedDistTag(version);
-  const tags = JSON.parse(
-    execFileSync(npmExecutable, ['view', packageJson.name, viewField, '--json'], {
-      encoding: 'utf8',
-    }),
+  const observedTags = normalizeSingleNpmJsonResult(
+    JSON.parse(
+      execFileSync(npmExecutable, ['view', packageJson.name, viewField, '--json'], {
+        encoding: 'utf8',
+      }),
+    ),
   );
+  const tags =
+    observedTags && typeof observedTags === 'object' && !Array.isArray(observedTags)
+      ? observedTags
+      : {};
 
   if (tags[expectedTag] === version) {
     console.log(`ok ${packageJson.name} ${expectedTag} -> ${version}`);

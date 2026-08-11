@@ -3,6 +3,7 @@ import {
   compareSemanticVersions,
   evaluateReleaseState,
   expectedDistTag,
+  normalizeSingleNpmJsonResult,
 } from '../../scripts/release-state-core.mjs';
 
 type ObservationOverrides = {
@@ -80,6 +81,15 @@ function observation(overrides: ObservationOverrides = {}) {
 }
 
 describe('release-state core', () => {
+  it('normalizes npm 12 single-result JSON arrays', () => {
+    expect(normalizeSingleNpmJsonResult([{ latest: '0.18.2' }])).toEqual({ latest: '0.18.2' });
+    expect(normalizeSingleNpmJsonResult(['0.18.2'])).toBe('0.18.2');
+    expect(normalizeSingleNpmJsonResult([{ latest: '0.18.2' }, { latest: '0.18.1' }])).toEqual([
+      { latest: '0.18.2' },
+      { latest: '0.18.1' },
+    ]);
+  });
+
   it('derives stable and prerelease dist-tags', () => {
     expect(expectedDistTag('1.2.3')).toBe('latest');
     expect(expectedDistTag('0.11.0-alpha.1')).toBe('alpha');
