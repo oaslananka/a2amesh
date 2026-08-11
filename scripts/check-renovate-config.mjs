@@ -78,8 +78,10 @@ function validateRepositoryConfig(config, failures) {
   if (config.postUpdateOptions?.includes('pnpmDedupe') !== true) {
     failures.push('Renovate must keep pnpmDedupe enabled after lockfile updates');
   }
-  if (config.vulnerabilityAlerts?.enabled !== true) {
-    failures.push('Renovate vulnerability alerts must remain enabled');
+  if (config.vulnerabilityAlerts?.enabled !== false) {
+    failures.push(
+      'Renovate GitHub vulnerability alerts must remain disabled when using GITHUB_TOKEN',
+    );
   }
   if (config.osvVulnerabilityAlerts !== true) {
     failures.push('Renovate OSV vulnerability alerts must remain enabled');
@@ -320,7 +322,6 @@ function validateWorkflowPermissions(workflow, failures) {
     'pull-requests: write',
     'actions: write',
     'statuses: write',
-    'vulnerability-alerts: read',
   ]) {
     if (!renovateJobPermissions.includes(permission)) {
       failures.push(`Renovate job missing permission: ${permission}`);

@@ -11,9 +11,10 @@ The workflow uses the repository `GITHUB_TOKEN`. Write access remains scoped to 
 
 - repository contents;
 - issues and pull requests;
-- workflow dispatches for required checks.
+- workflow dispatches for required checks;
+- commit statuses used by Renovate’s three-day minimum-release-age gate.
 
-Read-only vulnerability-alert access lets Renovate inspect vulnerability alerts. The workflow does not mount the Docker socket and does not receive publishing or deployment credentials.
+The repository `GITHUB_TOKEN` does not expose GitHub’s fine-grained Dependabot-alert permission, so Renovate does not query GitHub Dependabot alerts directly. OSV vulnerability alerts remain enabled for vulnerability-driven dependency updates. The workflow does not mount the Docker socket and does not receive publishing or deployment credentials.
 
 GitHub intentionally suppresses `pull_request` workflow events for pull requests created with `GITHUB_TOKEN`. After Renovate finishes, `scripts/dispatch-renovate-checks.mjs` finds open `repository-managed-renovate/*` pull requests and dispatches the required CI, docs, security, CodeQL, Scorecard, and Dependency Review workflows on the exact head commit. The dispatcher verifies the head SHA before every dispatch and never deploys the documentation site.
 
@@ -24,7 +25,7 @@ Renovate maintains a **Dependency Dashboard** issue. Use it to:
 - approve major updates;
 - inspect updates held by the three-day release-age policy;
 - retry or rebase blocked updates;
-- review vulnerability alerts;
+- review vulnerability-driven updates;
 - start an update that is intentionally pending.
 
 Major updates are not created until a maintainer approves them in the Dashboard. No Renovate pull request is automerged. If `main` changes while a Renovate run is active, Renovate exits with `repository-changed`; rerun the workflow after `main` stabilizes so Dashboard and remaining branch updates can finish.
@@ -76,4 +77,4 @@ Configuration changes must also pass YAML, actionlint, zizmor, formatting, and t
 
 ## Vulnerability updates
 
-Vulnerability alerts use `priority:P1`, `type:security`, and `area:deps`. They remain visible independently of the routine update cadence. Review the advisory, affected dependency path, available fix, lockfile changes, and full CI evidence before merge.
+OSV vulnerability alerts remain enabled for vulnerability-driven dependency updates. Review the advisory, affected dependency path, available fix, lockfile changes, and full CI evidence before merge.

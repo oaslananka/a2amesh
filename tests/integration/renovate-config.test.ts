@@ -132,8 +132,7 @@ function validConfig() {
       },
     ],
     vulnerabilityAlerts: {
-      enabled: true,
-      labels: ['priority:P1', 'type:security', 'area:deps'],
+      enabled: false,
     },
     osvVulnerabilityAlerts: true,
   };
@@ -173,7 +172,6 @@ jobs:
       pull-requests: write
       actions: write
       statuses: write
-      vulnerability-alerts: read
     steps:
       - uses: renovatebot/github-action@3064367f740a1a91cca218698a63902689cce200 # v46.1.20
         with:
@@ -335,7 +333,7 @@ describe('Renovate policy validation', () => {
   it('rejects missing pnpm dedupe and vulnerability alert ownership', () => {
     const config = validConfig();
     config.postUpdateOptions = [];
-    config.vulnerabilityAlerts.enabled = false;
+    config.vulnerabilityAlerts.enabled = true;
     config.osvVulnerabilityAlerts = false;
 
     expect(
@@ -351,7 +349,7 @@ describe('Renovate policy validation', () => {
     ).toEqual(
       expect.arrayContaining([
         'Renovate must keep pnpmDedupe enabled after lockfile updates',
-        'Renovate vulnerability alerts must remain enabled',
+        'Renovate GitHub vulnerability alerts must remain disabled when using GITHUB_TOKEN',
         'Renovate OSV vulnerability alerts must remain enabled',
       ]),
     );
@@ -402,7 +400,6 @@ run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
     const workflow = validWorkflow
       .replace('      actions: write\n', '')
       .replace('      statuses: write\n', '')
-      .replace('      vulnerability-alerts: read\n', '')
       .replace('      - run: node scripts/dispatch-renovate-checks.mjs\n', '');
 
     expect(
@@ -423,7 +420,6 @@ run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
         'Repository-managed Renovate must allow only the reviewed policy synchronizer commands',
         'Renovate job missing permission: actions: write',
         'Renovate job missing permission: statuses: write',
-        'Renovate job missing permission: vulnerability-alerts: read',
         'Renovate workflow must dispatch required checks after repository updates',
       ]),
     );
