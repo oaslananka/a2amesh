@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const workflow = readFileSync('.github/workflows/interop-lab.yml', 'utf8');
+const readme = readFileSync('README.md', 'utf8');
 const officialDocs = readFileSync('docs/interop/official-sdks.md', 'utf8');
 const compatibility = readFileSync('docs/compatibility.md', 'utf8');
 const pythonRequirements = readFileSync('tests/interop/live/python/requirements.txt', 'utf8');
@@ -18,6 +19,14 @@ const manifest = JSON.parse(readFileSync('tests/interop/live/versions.json', 'ut
 };
 
 describe('live SDK interoperability workflow and documentation', () => {
+  it('surfaces production positioning and existing official SDK evidence in the README', () => {
+    expect(readme).toContain(
+      'TypeScript runtime and operational toolkit for building and operating A2A systems',
+    );
+    expect(readme).toContain('official A2A SDK');
+    expect(readme).toContain('docs/interop/official-sdks.md');
+  });
+
   it('keeps fixture replay and live execution guarantees distinct', () => {
     expect(workflow).toContain('Interop Lab / official SDK fixture replay');
     expect(workflow).toContain('Interop Lab / live official JavaScript SDK');
