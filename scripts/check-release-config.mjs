@@ -216,8 +216,8 @@ for (const releasePrSafetyFragment of [
   'git status --porcelain',
   'git ls-files --others --exclude-standard',
   'git diff --check',
-  'git add -u',
-  'git diff --cached --check',
+  'RELEASE_PR_BRANCH: ${{ steps.release_pr.outputs.branch }}',
+  'node scripts/sync-release-pr-policy.mjs --commit-signed',
 ]) {
   if (!releasePleaseWorkflow.includes(releasePrSafetyFragment)) {
     failures.push(
