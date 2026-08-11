@@ -85,6 +85,14 @@ describe('release workflow guards', () => {
     });
   });
 
+  it('avoids PATH-resolved executables in signed release policy commit plumbing', async () => {
+    const source = await readFile(new URL('scripts/sync-release-pr-policy.mjs', repoRoot), 'utf8');
+
+    expect(source).toContain("const gitExecutable = '/usr/bin/git'");
+    expect(source).not.toContain("spawnSync('gh'");
+    expect(source).not.toContain("execFileSync('git'");
+  });
+
   it('checks out the requested tag and runs publish-mode validation', async () => {
     const workflow = await readFile(new URL('.github/workflows/publish.yml', repoRoot), 'utf8');
 

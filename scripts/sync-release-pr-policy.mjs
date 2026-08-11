@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,8 @@ const scriptPath = fileURLToPath(import.meta.url);
 const supportedChannels = new Set(['alpha', 'beta', 'rc', 'stable']);
 const evidencePath = 'docs/governance/repository-evidence.json';
 const maturityReportPath = 'docs/repo-maturity-report.md';
+const gitExecutable = '/usr/bin/git';
+const githubApiBase = 'https://api.github.com';
 
 async function readJson(path) {
   return JSON.parse(await readFile(path, 'utf8'));
@@ -67,7 +69,7 @@ export function buildReleasePrPolicyCommitInput({
 }
 
 function collectTrackedPolicyChanges(repoRoot) {
-  const raw = execFileSync('git', ['diff', '--name-status', '-z', 'HEAD', '--'], {
+  const raw = execFileSync(gitExecutable, ['diff', '--name-status', '-z', 'HEAD', '--'], {
     cwd: repoRoot,
     encoding: 'utf8',
   });
@@ -98,15 +100,14 @@ export async function commitReleasePrPolicySync(repoRoot, options = {}) {
   const branch = options.branch ?? process.env.RELEASE_PR_BRANCH;
   requireNonEmptyString(repository, 'GITHUB_REPOSITORY');
   requireNonEmptyString(branch, 'RELEASE_PR_BRANCH');
-  requireNonEmptyString(process.env.GH_TOKEN, 'GH_TOKEN');
 
-  execFileSync('git', ['diff', '--check'], { cwd: repoRoot, stdio: 'inherit' });
+  execFileSync(gitExecutable, ['diff', '--check'], { cwd: repoRoot, stdio: 'inherit' });
   const changes = collectTrackedPolicyChanges(repoRoot);
   if (changes.additions.length === 0 && changes.deletions.length === 0) {
     return { changed: false, commit: null, verified: null };
   }
 
-  const expectedHeadOid = execFileSync('git', ['rev-parse', 'HEAD'], {
+  const expectedHeadOid = execFileSync(gitExecutable, ['rev-parse', 'HEAD'], {
     cwd: repoRoot,
     encoding: 'utf8',
   }).trim();
@@ -126,27 +127,44 @@ export async function commitReleasePrPolicySync(repoRoot, options = {}) {
   const query = `mutation($input: CreateCommitOnBranchInput!) {
     createCommitOnBranch(input: $input) { commit { oid } }
   }`;
-  const result = spawnSync('gh', ['api', 'graphql', '--input', '-'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    input: JSON.stringify({ query, variables: { input } }),
-    env: process.env,
+  const token = requireNonEmptyString(process.env.GH_TOKEN, 'GH_TOKEN');
+  const headers = {
+    accept: 'application/vnd.github+json',
+    authorization: `Bearer ${token}`,
+    'content-type': 'application/json',
+    'user-agent': 'a2amesh-release-policy-sync',
+    'x-github-api-version': '2022-11-28',
+  };
+  const mutationResponse = await fetch(`${githubApiBase}/graphql`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ query, variables: { input } }),
   });
-  if (result.status !== 0) {
-    throw new Error(`GitHub signed release-policy commit failed with status ${result.status}`);
+  if (!mutationResponse.ok) {
+    throw new Error(
+      `GitHub signed release-policy commit failed with status ${mutationResponse.status}`,
+    );
   }
-  const response = JSON.parse(result.stdout);
+  const response = await mutationResponse.json();
   if (response.errors?.length) {
     throw new Error(`GitHub signed release-policy commit failed: ${response.errors[0].message}`);
   }
   const commit = response.data?.createCommitOnBranch?.commit?.oid;
   requireNonEmptyString(commit, 'signed release-policy commit oid');
-  const verified = execFileSync(
-    'gh',
-    ['api', `repos/${repository}/commits/${commit}`, '--jq', '.commit.verification.verified'],
-    { cwd: repoRoot, encoding: 'utf8', env: process.env },
-  ).trim();
-  if (verified !== 'true') {
+
+  const verificationResponse = await fetch(
+    `${githubApiBase}/repos/${repository}/commits/${commit}`,
+    {
+      headers,
+    },
+  );
+  if (!verificationResponse.ok) {
+    throw new Error(
+      `GitHub release-policy verification failed with status ${verificationResponse.status}`,
+    );
+  }
+  const verification = await verificationResponse.json();
+  if (verification.commit?.verification?.verified !== true) {
     throw new Error(`GitHub release-policy commit ${commit} is not verified-signed`);
   }
   return { changed: true, commit, verified: true };
