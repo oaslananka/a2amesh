@@ -105,6 +105,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_PR_JSON: ${{ steps.release.outputs.pr }}
+          RELEASE_PR_BRANCH: ${{ steps.release_pr.outputs.branch }}
         run: |
           set -euo pipefail
           (cd packages/cli && node ../../scripts/build-tsc-package.mjs --generated-only)
@@ -121,10 +122,4 @@ jobs:
             exit 0
           fi
           git diff --check
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -u
-          git diff --cached --check
-          git commit -m "chore: sync generated files and release policy with release version"
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" \
-            "HEAD:${{ steps.release_pr.outputs.branch }}"
+          node scripts/sync-release-pr-policy.mjs --commit-signed

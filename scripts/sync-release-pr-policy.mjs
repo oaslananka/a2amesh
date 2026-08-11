@@ -1,3 +1,4 @@
+import { execFileSync, spawnSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,6 +31,125 @@ function requireReleasePullRequest(value) {
     throw new Error('release pull request URL must be non-empty');
   }
   return value;
+}
+
+const releasePolicyCommitHeadline =
+  'chore: sync generated files and release policy with release version';
+const releasePolicyCommitSignoff =
+  'Signed-off-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>';
+
+function requireNonEmptyString(value, name) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`${name} must be a non-empty string`);
+  }
+  return value;
+}
+
+export function buildReleasePrPolicyCommitInput({
+  repository,
+  branch,
+  expectedHeadOid,
+  additions = [],
+  deletions = [],
+}) {
+  return {
+    branch: {
+      repositoryNameWithOwner: requireNonEmptyString(repository, 'repository'),
+      branchName: requireNonEmptyString(branch, 'branch'),
+    },
+    expectedHeadOid: requireNonEmptyString(expectedHeadOid, 'expectedHeadOid'),
+    message: {
+      headline: releasePolicyCommitHeadline,
+      body: releasePolicyCommitSignoff,
+    },
+    fileChanges: { additions, deletions },
+  };
+}
+
+function collectTrackedPolicyChanges(repoRoot) {
+  const raw = execFileSync('git', ['diff', '--name-status', '-z', 'HEAD', '--'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  const fields = raw.split('\0');
+  if (fields.at(-1) === '') fields.pop();
+  const additions = [];
+  const deletions = [];
+
+  for (let index = 0; index < fields.length; ) {
+    const status = fields[index++];
+    const path = fields[index++];
+    if (!status || !path) throw new Error('unable to parse release policy git diff');
+    if (status === 'D') {
+      deletions.push({ path });
+      continue;
+    }
+    if (status === 'M' || status === 'T') {
+      additions.push(path);
+      continue;
+    }
+    throw new Error(`release policy sync produced unsupported tracked change ${status}: ${path}`);
+  }
+  return { additions, deletions };
+}
+
+export async function commitReleasePrPolicySync(repoRoot, options = {}) {
+  const repository = options.repository ?? process.env.GITHUB_REPOSITORY;
+  const branch = options.branch ?? process.env.RELEASE_PR_BRANCH;
+  requireNonEmptyString(repository, 'GITHUB_REPOSITORY');
+  requireNonEmptyString(branch, 'RELEASE_PR_BRANCH');
+  requireNonEmptyString(process.env.GH_TOKEN, 'GH_TOKEN');
+
+  execFileSync('git', ['diff', '--check'], { cwd: repoRoot, stdio: 'inherit' });
+  const changes = collectTrackedPolicyChanges(repoRoot);
+  if (changes.additions.length === 0 && changes.deletions.length === 0) {
+    return { changed: false, commit: null, verified: null };
+  }
+
+  const expectedHeadOid = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  }).trim();
+  const additions = await Promise.all(
+    changes.additions.map(async (path) => ({
+      path,
+      contents: (await readFile(resolve(repoRoot, path))).toString('base64'),
+    })),
+  );
+  const input = buildReleasePrPolicyCommitInput({
+    repository,
+    branch,
+    expectedHeadOid,
+    additions,
+    deletions: changes.deletions,
+  });
+  const query = `mutation($input: CreateCommitOnBranchInput!) {
+    createCommitOnBranch(input: $input) { commit { oid } }
+  }`;
+  const result = spawnSync('gh', ['api', 'graphql', '--input', '-'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    input: JSON.stringify({ query, variables: { input } }),
+    env: process.env,
+  });
+  if (result.status !== 0) {
+    throw new Error(`GitHub signed release-policy commit failed with status ${result.status}`);
+  }
+  const response = JSON.parse(result.stdout);
+  if (response.errors?.length) {
+    throw new Error(`GitHub signed release-policy commit failed: ${response.errors[0].message}`);
+  }
+  const commit = response.data?.createCommitOnBranch?.commit?.oid;
+  requireNonEmptyString(commit, 'signed release-policy commit oid');
+  const verified = execFileSync(
+    'gh',
+    ['api', `repos/${repository}/commits/${commit}`, '--jq', '.commit.verification.verified'],
+    { cwd: repoRoot, encoding: 'utf8', env: process.env },
+  ).trim();
+  if (verified !== 'true') {
+    throw new Error(`GitHub release-policy commit ${commit} is not verified-signed`);
+  }
+  return { changed: true, commit, verified: true };
 }
 
 async function syncRepositoryEvidence(repoRoot, releasePullRequest, proposedVersion) {
@@ -138,13 +258,16 @@ function releasePullRequestFromEnvironment() {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === scriptPath) {
+  const commitSigned = process.argv.includes('--commit-signed');
   const syncRepositoryEvidenceRequested = process.argv.includes('--sync-repository-evidence');
-  const result = await syncReleasePrPolicy(process.cwd(), {
-    clearReleaseAs: process.argv.includes('--clear-release-as'),
-    syncInstallDocs: process.argv.includes('--sync-install-docs'),
-    releasePullRequest: syncRepositoryEvidenceRequested
-      ? releasePullRequestFromEnvironment()
-      : undefined,
-  });
+  const result = commitSigned
+    ? await commitReleasePrPolicySync(process.cwd())
+    : await syncReleasePrPolicy(process.cwd(), {
+        clearReleaseAs: process.argv.includes('--clear-release-as'),
+        syncInstallDocs: process.argv.includes('--sync-install-docs'),
+        releasePullRequest: syncRepositoryEvidenceRequested
+          ? releasePullRequestFromEnvironment()
+          : undefined,
+      });
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }
