@@ -207,6 +207,9 @@ required_status_checks
 'codeql.yml': 'CodeQL / '
 'scorecard.yml': 'Scorecard / '
 'dependency-review.yml': 'Dependency Review / '
+action_required
+actions/runs/
+/approve
 gh workflow run
 `;
 

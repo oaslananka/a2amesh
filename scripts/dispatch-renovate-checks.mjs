@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 const CANONICAL_REPOSITORY = 'oaslananka/a2amesh';
 const RENOVATE_BRANCH_PREFIX = 'repository-managed-renovate/';
 const RENOVATE_AUTHORS = new Set(['app/github-actions', 'github-actions[bot]']);
+const APPROVAL_ONLY_WORKFLOWS = new Set(['scorecard.yml']);
 
 const WORKFLOW_CONTEXT_PREFIXES = Object.freeze({
   'ci.yml': 'CI / ',
@@ -52,13 +53,36 @@ export const REQUIRED_WORKFLOW_MARKERS = Object.freeze(
   ),
 );
 
-export function createDispatchPlan({ pullRequests, checkRunsBySha }) {
+export function createDispatchPlan({
+  pullRequests,
+  checkRunsBySha,
+  approvalRunIdsBySha = new Map(),
+}) {
   const plan = [];
   for (const pullRequest of pullRequests.filter(isRenovatePullRequest)) {
     const checkNames = checkRunsBySha.get(pullRequest.headRefOid) ?? new Set();
     for (const [workflow, markers] of Object.entries(REQUIRED_WORKFLOW_MARKERS)) {
       if (markers.every((marker) => checkNames.has(marker))) continue;
+      if (APPROVAL_ONLY_WORKFLOWS.has(workflow)) {
+        const runId = approvalRunIdsBySha.get(pullRequest.headRefOid)?.get(workflow);
+        if (!Number.isSafeInteger(runId) || runId <= 0) {
+          throw new Error(
+            `Approval-required pull_request run not found for ${workflow} on Renovate PR #${pullRequest.number} at ${pullRequest.headRefOid}`,
+          );
+        }
+        plan.push({
+          operation: 'approve',
+          runId,
+          prNumber: pullRequest.number,
+          workflow,
+          ref: pullRequest.headRefName,
+          headSha: pullRequest.headRefOid,
+          fields: {},
+        });
+        continue;
+      }
       plan.push({
+        operation: 'dispatch',
         prNumber: pullRequest.number,
         workflow,
         ref: pullRequest.headRefName,
@@ -135,6 +159,32 @@ function readCheckNames(repository, sha) {
   return new Set((response.check_runs ?? []).map(({ name }) => name).filter(Boolean));
 }
 
+function readApprovalRunIds(repository, sha) {
+  const response = runGhJson([
+    'api',
+    '-H',
+    'Accept: application/vnd.github+json',
+    `repos/${repository}/actions/runs?event=pull_request&head_sha=${sha}&per_page=100`,
+  ]);
+  const runIds = new Map();
+  for (const run of response.workflow_runs ?? []) {
+    if (
+      run.head_sha !== sha ||
+      run.event !== 'pull_request' ||
+      run.conclusion !== 'action_required' ||
+      !Number.isSafeInteger(run.id)
+    ) {
+      continue;
+    }
+    for (const workflow of APPROVAL_ONLY_WORKFLOWS) {
+      if (run.path === `.github/workflows/${workflow}` && !runIds.has(workflow)) {
+        runIds.set(workflow, run.id);
+      }
+    }
+  }
+  return runIds;
+}
+
 function assertStableHead(repository, dispatch) {
   const current = runGhJson([
     'api',
@@ -147,6 +197,16 @@ function assertStableHead(repository, dispatch) {
       `Renovate PR #${dispatch.prNumber} head changed before dispatch; expected ${dispatch.headSha}, found ${current.head?.sha ?? '<missing>'}`,
     );
   }
+}
+
+function approveWorkflowRun(repository, dispatch) {
+  assertStableHead(repository, dispatch);
+  runGh(['api', '--method', 'POST', `repos/${repository}/actions/runs/${dispatch.runId}/approve`], {
+    capture: false,
+  });
+  console.log(
+    `Approved ${dispatch.workflow} pull_request run ${dispatch.runId} for Renovate PR #${dispatch.prNumber} at ${dispatch.headSha}.`,
+  );
 }
 
 function dispatchWorkflow(repository, dispatch) {
@@ -173,7 +233,13 @@ function runCli() {
       readCheckNames(repository, pullRequest.headRefOid),
     ]),
   );
-  const plan = createDispatchPlan({ pullRequests, checkRunsBySha });
+  const approvalRunIdsBySha = new Map(
+    pullRequests.map((pullRequest) => [
+      pullRequest.headRefOid,
+      readApprovalRunIds(repository, pullRequest.headRefOid),
+    ]),
+  );
+  const plan = createDispatchPlan({ pullRequests, checkRunsBySha, approvalRunIdsBySha });
   if (process.argv.includes('--dry-run')) {
     console.log(JSON.stringify(plan, null, 2));
     return;
@@ -182,7 +248,10 @@ function runCli() {
     console.log('No missing required workflow checks for open Renovate pull requests.');
     return;
   }
-  for (const dispatch of plan) dispatchWorkflow(repository, dispatch);
+  for (const dispatch of plan) {
+    if (dispatch.operation === 'approve') approveWorkflowRun(repository, dispatch);
+    else dispatchWorkflow(repository, dispatch);
+  }
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) runCli();
