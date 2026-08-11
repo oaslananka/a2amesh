@@ -1,6 +1,6 @@
 # Roadmap
 
-A2A Mesh is an independent TypeScript runtime and operational toolkit for Agent2Agent (A2A) systems. The near-term roadmap prioritizes a clear production-oriented developer experience while preserving the repository's existing security, release-integrity, and conformance standards.
+A2A Mesh is an independent TypeScript runtime and operational toolkit for Agent2Agent (A2A) systems. The near-term roadmap prioritizes a clear production-oriented developer experience while preserving the repository's existing security, release-integrity, conformance, and interoperability standards.
 
 ## Product direction
 
@@ -12,10 +12,10 @@ The primary near-term audience is TypeScript developers building real A2A servic
 
 1. Deliver a credential-free production golden path that a new user can scaffold, start, and verify in five minutes or less.
 2. Add a small public, provider-neutral, bounded MCP tool-invocation surface that does not depend on Fleet or other internal packages.
-3. Verify interoperability with the official A2A JavaScript SDK in both client-to-server directions.
+3. Keep the existing live interoperability evidence with the official A2A JavaScript and Python SDKs current, pinned, and visible in the product onboarding story.
 4. Strengthen the registry as a production discovery primitive with clear health, trust, tenancy, and persistence guidance.
 5. Turn the existing telemetry surface into an easy-to-run observability experience with useful local output and optional OpenTelemetry export.
-6. Keep required CI, docs, security, CodeQL, Scorecard, release provenance, and package-verification controls green while product adoption work proceeds.
+6. Keep required CI, docs, security, CodeQL, Scorecard, release provenance, package-verification, and interoperability controls green while product adoption work proceeds.
 
 ## Production golden path
 
@@ -31,6 +31,12 @@ The golden path is a production-principles demonstration, not a security-relaxed
 
 Credential-free verification is the canonical CI path. Optional external providers must not become required release gates because third-party credentials and network availability are outside the project's release-integrity boundary.
 
+## Existing interoperability baseline
+
+A2A Mesh already maintains live, loopback-only interoperability tests against pinned official SDKs in both directions. The current baseline covers the official JavaScript SDK and official Python SDK, in addition to deterministic fixture replay.
+
+Product work should reuse and surface that evidence rather than create a second interoperability harness. Protocol or SDK version changes may extend the existing lab when they expose a real compatibility gap.
+
 ## Fleet boundary
 
 Fleet remains an experimental, post-1.0 control-plane layer above the provider-neutral public runtime. Worker routing, Mission Control, sandboxed provider execution, and other Fleet capabilities should not be required to understand or use the core public A2A Mesh product.
@@ -41,10 +47,9 @@ Fleet may reuse the same runtime, registry, policy, persistence, and observabili
 
 The intended implementation sequence is:
 
-1. Product positioning and roadmap alignment.
+1. Product positioning and roadmap alignment, including clearer visibility for existing official-SDK interoperability evidence.
 2. Public bounded MCP invocation.
 3. `production-demo` golden path.
-4. Official A2A JavaScript SDK interoperability evidence.
 
 Each step should remain independently reviewable, testable, and reversible rather than being combined into one large feature change.
 
