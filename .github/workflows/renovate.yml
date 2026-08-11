@@ -55,7 +55,8 @@ jobs:
       issues: write
       pull-requests: write
       actions: write
-      security-events: read
+      statuses: write
+      vulnerability-alerts: read
     if: github.repository == 'oaslananka/a2amesh'
     runs-on: ubuntu-24.04
     timeout-minutes: 30

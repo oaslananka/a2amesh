@@ -13,7 +13,7 @@ The workflow uses the repository `GITHUB_TOKEN`. Write access remains scoped to 
 - issues and pull requests;
 - workflow dispatches for required checks.
 
-Read-only security-event access lets Renovate inspect vulnerability alerts. The workflow does not mount the Docker socket and does not receive publishing or deployment credentials.
+Read-only vulnerability-alert access lets Renovate inspect vulnerability alerts. The workflow does not mount the Docker socket and does not receive publishing or deployment credentials.
 
 GitHub intentionally suppresses `pull_request` workflow events for pull requests created with `GITHUB_TOKEN`. After Renovate finishes, `scripts/dispatch-renovate-checks.mjs` finds open `repository-managed-renovate/*` pull requests and dispatches the required CI, docs, security, CodeQL, Scorecard, and Dependency Review workflows on the exact head commit. The dispatcher verifies the head SHA before every dispatch and never deploys the documentation site.
 

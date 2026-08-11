@@ -319,7 +319,8 @@ function validateWorkflowPermissions(workflow, failures) {
     'issues: write',
     'pull-requests: write',
     'actions: write',
-    'security-events: read',
+    'statuses: write',
+    'vulnerability-alerts: read',
   ]) {
     if (!renovateJobPermissions.includes(permission)) {
       failures.push(`Renovate job missing permission: ${permission}`);
