@@ -2,7 +2,7 @@
 
 <h1>A2A Mesh</h1>
 
-<p><strong>Production-grade TypeScript runtime and toolkit for Agent2Agent (A2A): agent cards, JSON-RPC tasks, registry discovery, transports, adapters, MCP bridge, and conformance fixtures.</strong></p>
+<p><strong>TypeScript runtime and operational toolkit for building and operating Agent2Agent (A2A) systems: runtime lifecycle, registry-backed discovery, persistence, observability, secure MCP interoperability, CLI workflows, and conformance tooling.</strong></p>
 
 <p>
   <a href="https://www.npmjs.com/package/@a2amesh/runtime"><img src="https://img.shields.io/npm/v/%40a2amesh%2Fruntime/latest?style=flat-square&logo=npm&label=npm&color=cb3837" alt="npm latest version" /></a>
@@ -34,6 +34,12 @@
 </div>
 
 A2A Mesh is an independent TypeScript runtime and toolkit for the Agent2Agent (A2A) protocol. It is not an official Google, Linux Foundation, or a2aproject package.
+
+## Why A2A Mesh?
+
+A2A Mesh is a TypeScript runtime and operational toolkit for building and operating A2A systems. It complements the official A2A SDKs with registry-backed discovery, task persistence, observability, security boundaries, MCP interoperability, CLI workflows, and conformance tooling.
+
+The repository already runs loopback-only live interoperability checks with the official JavaScript and Python SDKs in both client/server directions. See [Official SDK interoperability](docs/interop/official-sdks.md) for the pinned versions, verified flows, and CI evidence.
 
 ## Trust and Supply Chain
 
