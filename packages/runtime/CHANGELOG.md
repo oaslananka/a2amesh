@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.2](https://github.com/oaslananka/a2amesh/compare/@a2amesh/runtime-v0.18.1...@a2amesh/runtime-v0.18.2) (2026-08-11)
+
+
+### Bug Fixes
+
+* **conformance:** accept direct message responses ([#319](https://github.com/oaslananka/a2amesh/issues/319)) ([cc86304](https://github.com/oaslananka/a2amesh/commit/cc8630463120db4037453885ca2524fade9b73c8))
+* **release:** align stable install guidance ([#322](https://github.com/oaslananka/a2amesh/issues/322)) ([707fcb5](https://github.com/oaslananka/a2amesh/commit/707fcb54e0a4e9d550b6b90087d66930ee42ac8f))
+* **runtime:** expose canonical extended Agent Card ([#321](https://github.com/oaslananka/a2amesh/issues/321)) ([250f85a](https://github.com/oaslananka/a2amesh/commit/250f85ac9e39ed91b1a618b4b57a5e0bb72f21c9))
+* **runtime:** honor GetTask history limits ([#317](https://github.com/oaslananka/a2amesh/issues/317)) ([772734e](https://github.com/oaslananka/a2amesh/commit/772734ef5a065b5c12b26c1b10f510c3e2678868))
+* **runtime:** normalize official v1 errors ([#320](https://github.com/oaslananka/a2amesh/issues/320)) ([caa4455](https://github.com/oaslananka/a2amesh/commit/caa445586cddec881d90c6f7fb81bf45f9dcf109))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/protocol bumped to 0.18.2
+
 ## [0.18.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/runtime-v0.18.0-alpha.1...@a2amesh/runtime-v0.18.1) (2026-08-10)
 
 

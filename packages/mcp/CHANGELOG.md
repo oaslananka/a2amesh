@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.2](https://github.com/oaslananka/a2amesh/compare/@a2amesh/mcp-v0.18.1...@a2amesh/mcp-v0.18.2) (2026-08-11)
+
+
+### Bug Fixes
+
+* **release:** align stable install guidance ([#322](https://github.com/oaslananka/a2amesh/issues/322)) ([707fcb5](https://github.com/oaslananka/a2amesh/commit/707fcb54e0a4e9d550b6b90087d66930ee42ac8f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/runtime bumped to 0.18.2
+
 ## [0.18.1](https://github.com/oaslananka/a2amesh/compare/@a2amesh/mcp-v0.18.0-alpha.1...@a2amesh/mcp-v0.18.1) (2026-08-10)
 
 
