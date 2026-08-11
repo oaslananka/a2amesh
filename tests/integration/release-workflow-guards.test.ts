@@ -38,8 +38,61 @@ describe('release workflow guards', () => {
     expect(workflow).toContain('git status --porcelain');
     expect(workflow).toContain('git ls-files --others --exclude-standard');
     expect(workflow).toContain('git diff --check');
-    expect(workflow).toContain('git add -u');
-    expect(workflow).toContain('git diff --cached --check');
+    expect(workflow).toContain('node scripts/sync-release-pr-policy.mjs --commit-signed');
+  });
+
+  it('creates the release policy sync commit through GitHub signed commit plumbing', async () => {
+    const workflow = await readFile(
+      new URL('.github/workflows/release-please.yml', repoRoot),
+      'utf8',
+    );
+    const policyModuleUrl = new URL('../../scripts/sync-release-pr-policy.mjs', import.meta.url);
+    const policyModule = (await import(policyModuleUrl.href)) as Record<string, unknown>;
+    const buildInput = policyModule['buildReleasePrPolicyCommitInput'];
+
+    expect(buildInput).toBeTypeOf('function');
+    expect(workflow).toContain('RELEASE_PR_BRANCH: ${{ steps.release_pr.outputs.branch }}');
+    expect(workflow).toContain('node scripts/sync-release-pr-policy.mjs --commit-signed');
+    expect(workflow).not.toContain(
+      'git commit -m "chore: sync generated files and release policy with release version"',
+    );
+    expect(workflow).not.toContain(
+      'git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"',
+    );
+
+    if (typeof buildInput !== 'function') return;
+    const input = (buildInput as (value: unknown) => unknown)({
+      repository: 'oaslananka/a2amesh',
+      branch: 'release-please--branches--main',
+      expectedHeadOid: 'abc123',
+      additions: [{ path: 'README.md', contents: 'Ym9keQ==' }],
+      deletions: [{ path: 'old.md' }],
+    });
+    expect(input).toEqual({
+      branch: {
+        repositoryNameWithOwner: 'oaslananka/a2amesh',
+        branchName: 'release-please--branches--main',
+      },
+      expectedHeadOid: 'abc123',
+      message: {
+        headline: 'chore: sync generated files and release policy with release version',
+        body: 'Signed-off-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>',
+      },
+      fileChanges: {
+        additions: [{ path: 'README.md', contents: 'Ym9keQ==' }],
+        deletions: [{ path: 'old.md' }],
+      },
+    });
+  });
+
+  it('avoids PATH-resolved executables in signed release policy commit plumbing', async () => {
+    const source = await readFile(new URL('scripts/sync-release-pr-policy.mjs', repoRoot), 'utf8');
+
+    expect(source).toContain("const gitExecutable = '/usr/bin/git'");
+    expect(source).not.toContain("spawnSync('gh'");
+    expect(source).not.toContain("execFileSync('git'");
+    expect(source).not.toContain('repos/${repository}/commits/${commit}');
+    expect(source).toContain('signature { isValid wasSignedByGitHub state }');
   });
 
   it('checks out the requested tag and runs publish-mode validation', async () => {
@@ -125,8 +178,8 @@ describe('release workflow guards', () => {
     );
     expect(checker).toContain('git status --porcelain');
     expect(checker).toContain('git ls-files --others --exclude-standard');
-    expect(checker).toContain('git add -u');
-    expect(checker).toContain('git diff --cached --check');
+    expect(checker).toContain('RELEASE_PR_BRANCH: ${{ steps.release_pr.outputs.branch }}');
+    expect(checker).toContain('node scripts/sync-release-pr-policy.mjs --commit-signed');
     expect(checker).toContain('sync-release-component-tags.mjs');
     expect(checker).toContain('Synchronize Release Please component tags');
     expect(checker).toContain('Verify published component tags');
