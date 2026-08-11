@@ -5,6 +5,10 @@ import {
   groupRequiredContexts,
 } from '../../scripts/dispatch-renovate-checks.mjs';
 
+const scorecardApprovalRuns = new Map([
+  ['head-sha', new Map([['scorecard.yml', 424242]] as const)],
+]);
+
 const renovatePullRequest = {
   number: 169,
   author: { login: 'app/github-actions' },
@@ -47,6 +51,7 @@ describe('Renovate required-check dispatch planning', () => {
     const plan = createDispatchPlan({
       pullRequests: [renovatePullRequest],
       checkRunsBySha: new Map([['head-sha', new Set()]]),
+      approvalRunIdsBySha: scorecardApprovalRuns,
     });
 
     expect(plan.map(({ workflow }) => workflow)).toEqual([
@@ -57,6 +62,15 @@ describe('Renovate required-check dispatch planning', () => {
       'scorecard.yml',
       'dependency-review.yml',
     ]);
+    expect(plan.find(({ workflow }) => workflow === 'scorecard.yml')).toMatchObject({
+      operation: 'approve',
+      runId: 424242,
+    });
+    expect(
+      plan
+        .filter(({ workflow }) => workflow !== 'scorecard.yml')
+        .every(({ operation }) => operation === 'dispatch'),
+    ).toBe(true);
     expect(plan.find(({ workflow }) => workflow === 'docs.yml')?.fields).toEqual({
       deploy: 'false',
     });
@@ -64,6 +78,15 @@ describe('Renovate required-check dispatch planning', () => {
       base_ref: 'base-sha',
       head_ref: 'head-sha',
     });
+  });
+
+  it('fails closed when the Scorecard approval-required run is missing', () => {
+    expect(() =>
+      createDispatchPlan({
+        pullRequests: [renovatePullRequest],
+        checkRunsBySha: new Map([['head-sha', new Set()]]),
+      }),
+    ).toThrow('Approval-required pull_request run not found for scorecard.yml');
   });
 
   it('skips workflow markers already present on the exact head SHA', () => {
@@ -78,6 +101,7 @@ describe('Renovate required-check dispatch planning', () => {
           ]),
         ],
       ]),
+      approvalRunIdsBySha: scorecardApprovalRuns,
     });
 
     expect(plan.map(({ workflow }) => workflow)).not.toContain('ci.yml');
@@ -115,6 +139,7 @@ describe('Renovate required-check dispatch planning', () => {
         },
       ],
       checkRunsBySha: new Map([['head-sha', new Set()]]),
+      approvalRunIdsBySha: scorecardApprovalRuns,
     });
 
     expect(plan).toHaveLength(6);
@@ -131,6 +156,7 @@ describe('Renovate required-check dispatch planning', () => {
         },
       ],
       checkRunsBySha: new Map([['head-sha', new Set()]]),
+      approvalRunIdsBySha: scorecardApprovalRuns,
     });
 
     expect(new Set(plan.map(({ prNumber }) => prNumber))).toEqual(new Set([169]));

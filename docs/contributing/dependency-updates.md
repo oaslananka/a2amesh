@@ -11,12 +11,12 @@ The workflow uses the repository `GITHUB_TOKEN`. Write access remains scoped to 
 
 - repository contents;
 - issues and pull requests;
-- workflow dispatches for required checks;
+- workflow dispatches for required checks and approval of the genuine Scorecard pull-request run;
 - commit statuses used by Renovate’s three-day minimum-release-age gate.
 
 The repository `GITHUB_TOKEN` does not expose GitHub’s fine-grained Dependabot-alert permission, so Renovate does not query GitHub Dependabot alerts directly. OSV vulnerability alerts remain enabled for vulnerability-driven dependency updates. The workflow does not mount the Docker socket and does not receive publishing or deployment credentials.
 
-GitHub intentionally suppresses `pull_request` workflow events for pull requests created with `GITHUB_TOKEN`. After Renovate finishes, `scripts/dispatch-renovate-checks.mjs` finds open `repository-managed-renovate/*` pull requests and dispatches the required CI, docs, security, CodeQL, Scorecard, and Dependency Review workflows on the exact head commit. The dispatcher verifies the head SHA before every dispatch and never deploys the documentation site.
+GitHub creates `pull_request` workflow runs in an approval-required state for pull requests created with `GITHUB_TOKEN`. After Renovate finishes, `scripts/dispatch-renovate-checks.mjs` finds open `repository-managed-renovate/*` pull requests. It approves the genuine Scorecard pull-request run because Scorecard does not support branch-scoped `workflow_dispatch`, and it dispatches the remaining required CI, docs, security, CodeQL, and Dependency Review workflows on the exact head commit. The dispatcher verifies the head SHA before every approval or dispatch and never deploys the documentation site.
 
 ## Dependency Dashboard
 

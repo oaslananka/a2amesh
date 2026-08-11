@@ -7,6 +7,17 @@ export interface RenovatePullRequest {
 }
 
 export interface WorkflowDispatch {
+  operation: 'dispatch';
+  prNumber: number;
+  workflow: string;
+  ref: string;
+  headSha: string;
+  fields: Record<string, string>;
+}
+
+export interface WorkflowApproval {
+  operation: 'approve';
+  runId: number;
   prNumber: number;
   workflow: string;
   ref: string;
@@ -29,5 +40,6 @@ export const REQUIRED_WORKFLOW_MARKERS: Readonly<Record<string, readonly string[
 
 export function createDispatchPlan(input: {
   pullRequests: RenovatePullRequest[];
-  checkRunsBySha: Map<string, Set<string>>;
-}): WorkflowDispatch[];
+  checkRunsBySha: ReadonlyMap<string, ReadonlySet<string>>;
+  approvalRunIdsBySha?: ReadonlyMap<string, ReadonlyMap<string, number>>;
+}): Array<WorkflowDispatch | WorkflowApproval>;
