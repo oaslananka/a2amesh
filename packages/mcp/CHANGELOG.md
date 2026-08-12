@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.19.0](https://github.com/oaslananka/a2amesh/compare/@a2amesh/mcp-v0.18.2...@a2amesh/mcp-v0.19.0) (2026-08-12)
+
+
+### Features
+
+* **mcp:** add bounded tool invocation ([#333](https://github.com/oaslananka/a2amesh/issues/333)) ([e84ae03](https://github.com/oaslananka/a2amesh/commit/e84ae03b362f78ab38dc958de2392ff324373d20))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/runtime bumped to 0.19.0
+
 ## [0.18.2](https://github.com/oaslananka/a2amesh/compare/@a2amesh/mcp-v0.18.1...@a2amesh/mcp-v0.18.2) (2026-08-11)
 
 

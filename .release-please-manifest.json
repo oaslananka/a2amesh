@@ -1,8 +1,8 @@
 {
-  "packages/protocol": "0.18.2",
-  "packages/runtime": "0.18.2",
-  "packages/registry": "0.18.2",
-  "packages/mcp": "0.18.2",
-  "packages/cli": "0.18.2",
-  "packages/create-a2amesh": "0.18.2"
+  "packages/protocol": "0.19.0",
+  "packages/runtime": "0.19.0",
+  "packages/registry": "0.19.0",
+  "packages/mcp": "0.19.0",
+  "packages/cli": "0.19.0",
+  "packages/create-a2amesh": "0.19.0"
 }

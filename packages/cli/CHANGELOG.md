@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.19.0](https://github.com/oaslananka/a2amesh/compare/@a2amesh/cli-v0.18.2...@a2amesh/cli-v0.19.0) (2026-08-12)
+
+
+### Miscellaneous Chores
+
+* **@a2amesh/cli:** Synchronize A2A Mesh public packages versions
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/runtime bumped to 0.19.0
+    * @a2amesh/registry bumped to 0.19.0
+
 ## [0.18.2](https://github.com/oaslananka/a2amesh/compare/@a2amesh/cli-v0.18.1...@a2amesh/cli-v0.18.2) (2026-08-11)
 
 
