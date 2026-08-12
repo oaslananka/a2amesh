@@ -42,10 +42,10 @@
       "latest": "0.18.1"
     },
     "active_release_pr": {
-      "number": 318,
+      "number": 334,
       "title": "chore: release main",
-      "url": "https://github.com/oaslananka/a2amesh/pull/318",
-      "proposed_version": "0.18.2"
+      "url": "https://github.com/oaslananka/a2amesh/pull/334",
+      "proposed_version": "0.19.0"
     }
   },
   "settings": [
