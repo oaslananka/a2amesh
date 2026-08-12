@@ -30,7 +30,7 @@ overrides:
   form-data: 4.0.6
   langsmith: 0.7.10
   markdown-it: 14.2.0
-  postcss: 8.5.23
+  postcss: 8.5.26
   protobufjs: 7.6.5
   qs: 6.15.2
   smol-toml: 1.6.1
@@ -272,7 +272,7 @@ importers:
     devDependencies:
       vitepress:
         specifier: 1.6.4
-        version: 1.6.4(@algolia/client-search@5.53.0)(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(postcss@8.5.23)(search-insights@2.17.3)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
+        version: 1.6.4(@algolia/client-search@5.53.0)(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(postcss@8.5.26)(search-insights@2.17.3)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
 
   examples/adapter-template:
     dependencies:
@@ -4938,8 +4938,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  postcss@8.5.23:
-    resolution: {integrity: sha512-g50586zr4bZmwFiTlflMu8E0bDTb5I5gertgwAKmsdUlTQIhZtunzUlD1WSzwcVWPoAVpsrA6vlfCD7oXvRwgg==}
+  postcss@8.5.26:
+    resolution: {integrity: sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==}
     engines: {node: ^10 || ^12 || >=14}
 
   preact@10.29.2:
@@ -5644,7 +5644,7 @@ packages:
     hasBin: true
     peerDependencies:
       markdown-it-mathjax3: ^4
-      postcss: 8.5.23
+      postcss: 8.5.26
     peerDependenciesMeta:
       markdown-it-mathjax3:
         optional: true
@@ -8126,7 +8126,7 @@ snapshots:
       '@vue/shared': 3.5.35
       estree-walker: 2.0.2
       magic-string: 0.30.21
-      postcss: 8.5.23
+      postcss: 8.5.26
       source-map-js: 1.2.1
 
   '@vue/compiler-ssr@3.5.35':
@@ -10033,7 +10033,7 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.2
 
-  postcss@8.5.23:
+  postcss@8.5.26:
     dependencies:
       nanoid: 3.3.17
       picocolors: 1.1.1
@@ -10734,7 +10734,7 @@ snapshots:
       esbuild: 0.25.12
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
-      postcss: 8.5.23
+      postcss: 8.5.26
       rollup: 4.61.1
       tinyglobby: 0.2.17
     optionalDependencies:
@@ -10749,7 +10749,7 @@ snapshots:
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.4
-      postcss: 8.5.23
+      postcss: 8.5.26
       rolldown: 1.0.3
       tinyglobby: 0.2.17
     optionalDependencies:
@@ -10760,7 +10760,7 @@ snapshots:
       tsx: 4.22.4
       yaml: 2.9.0
 
-  vitepress@1.6.4(@algolia/client-search@5.53.0)(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(postcss@8.5.23)(search-insights@2.17.3)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0):
+  vitepress@1.6.4(@algolia/client-search@5.53.0)(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(postcss@8.5.26)(search-insights@2.17.3)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0):
     dependencies:
       '@docsearch/css': 3.8.2
       '@docsearch/js': 3.8.2(@algolia/client-search@5.53.0)(search-insights@2.17.3)
@@ -10781,7 +10781,7 @@ snapshots:
       vite: 6.4.3(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
       vue: 3.5.35(typescript@6.0.3)
     optionalDependencies:
-      postcss: 8.5.23
+      postcss: 8.5.26
     transitivePeerDependencies:
       - '@algolia/client-search'
       - '@types/node'
