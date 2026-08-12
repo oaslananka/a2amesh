@@ -31,6 +31,30 @@ a2amesh-mcp --help
 Repository contributors should run `corepack pnpm run build:clean` before executing the workspace
 launcher directly from a source checkout.
 
+## Bounded tool invocation
+
+`@a2amesh/mcp/client` wraps an already-connected official MCP SDK client with an
+explicit tool allowlist, cancellation and timeout handling, input/result size bounds,
+result validation, and hash-only audit evidence. Transport creation, connection
+lifecycle, authentication, and server selection remain caller-owned.
+
+```ts
+import { invokeMcpTool } from '@a2amesh/mcp/client';
+
+const result = await invokeMcpTool({
+  client: connectedClient,
+  tool: 'deployment.readiness',
+  input: { service: 'payment-api' },
+  allowedTools: ['deployment.readiness'],
+  timeoutMs: 5_000,
+});
+```
+
+The default limits are 32 KiB for serialized tool input, 64 KiB for the validated
+serialized result, and five seconds for execution. Audit callbacks receive hashes and
+bounded reason codes rather than raw tool arguments, results, credentials, or provider
+error text. An audit callback failure fails the invocation closed.
+
 ## Standalone server
 
 The package publishes a local MCP server command in addition to the library API:
