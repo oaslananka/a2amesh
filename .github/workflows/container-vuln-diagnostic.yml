@@ -1,0 +1,102 @@
+name: Container Vulnerability Diagnostic
+
+'on':
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: container-vuln-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  TRIVY_IMAGE: aquasec/trivy@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - name: Initialize BuildKit builder
+        run: |
+          set -euo pipefail
+          docker buildx create --name a2amesh-diagnostic --driver docker-container --use
+          docker buildx inspect --bootstrap
+      - name: Build and scan images
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          report='docs/superpowers/plans/2026-09-04-container-vuln-scan.txt'
+          : > "$report"
+          any_failure=0
+          created="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for spec in 'runtime apps/demo/Dockerfile' 'registry packages/registry/Dockerfile'; do
+            read -r component dockerfile <<< "$spec"
+            image="local/a2amesh-${component}:${GITHUB_SHA}"
+            docker buildx build \
+              --builder a2amesh-diagnostic \
+              --platform linux/amd64 \
+              --file "$dockerfile" \
+              --tag "$image" \
+              --build-arg VERSION=0.0.0-ci \
+              --build-arg REVISION="$GITHUB_SHA" \
+              --build-arg CREATED="$created" \
+              --provenance=false \
+              --sbom=false \
+              --load \
+              . >/tmp/${component}-build.log 2>&1
+
+            set +e
+            docker run --rm \
+              --volume /var/run/docker.sock:/var/run/docker.sock \
+              "$TRIVY_IMAGE" image \
+              --scanners vuln \
+              --exit-code 1 \
+              --severity HIGH,CRITICAL \
+              --ignore-unfixed \
+              --no-progress \
+              --format table \
+              "$image" >/tmp/${component}-trivy.txt 2>&1
+            status=$?
+            set -e
+            if [ "$status" -ne 0 ]; then any_failure=1; fi
+            {
+              printf '=== %s ===\n' "$component"
+              printf 'TRIVY_EXIT=%s\n' "$status"
+              head -c 50000 /tmp/${component}-trivy.txt
+              printf '\n\n'
+            } >> "$report"
+          done
+
+          sha=''
+          if gh api "repos/${GITHUB_REPOSITORY}/contents/${report}?ref=${GITHUB_REF_NAME}" >/tmp/existing.json 2>/dev/null; then
+            sha="$(jq -r .sha /tmp/existing.json)"
+          fi
+          REPORT_PATH="$report" REPORT_SHA="$sha" python3 - <<'PY'
+          import base64, json, os
+          from pathlib import Path
+          path = Path(os.environ['REPORT_PATH'])
+          payload = {
+              'message': 'docs: capture bounded container vulnerability evidence',
+              'content': base64.b64encode(path.read_bytes()).decode(),
+              'branch': os.environ['GITHUB_REF_NAME'],
+          }
+          if os.environ.get('REPORT_SHA'):
+              payload['sha'] = os.environ['REPORT_SHA']
+          Path('/tmp/container-report-payload.json').write_text(json.dumps(payload))
+          PY
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${report}" --input /tmp/container-report-payload.json >/dev/null
+          exit "$any_failure"
+      - name: Remove BuildKit builder
+        if: ${{ always() }}
+        run: docker buildx rm --force a2amesh-diagnostic || true
