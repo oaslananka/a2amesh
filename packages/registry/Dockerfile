@@ -33,7 +33,8 @@ ENV NODE_ENV=production \
   TMPDIR=/tmp \
   PORT=3099
 
-RUN addgroup -S -g 10001 a2amesh \
+RUN apk upgrade --no-cache libcrypto3 libssl3 \
+  && addgroup -S -g 10001 a2amesh \
   && adduser -S -D -H -u 10001 -G a2amesh a2amesh \
   && mkdir -p /home/a2amesh \
   && chown -R 10001:10001 /home/a2amesh \

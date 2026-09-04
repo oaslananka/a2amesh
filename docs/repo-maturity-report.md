@@ -8,21 +8,21 @@ Priority values: `Required now`, `Recommended`, `Optional`, `Future`, `Not appli
 
 ## Live repository evidence
 
-Observed at **2026-08-10T15:47:28.796Z**. This generated section must be refreshed within 14 days from the machine-readable snapshot in [`docs/governance/repository-evidence.json`](governance/repository-evidence.json).
+Observed at **2026-09-04T00:50:36.447Z**. This generated section must be refreshed within 14 days from the machine-readable snapshot in [`docs/governance/repository-evidence.json`](governance/repository-evidence.json).
 
 Refresh with `pnpm run repository:evidence:write`; CI validates freshness and local release parity through `pnpm run repository:evidence:check` in `docs:check`.
 
 The Active Release Please PR row is synchronized by release automation and may be newer than the point-in-time snapshot used for the other repository facts.
 
-| Fact                         | Observed value                                                                                                     | Authoritative source                                                                                                      |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| Repository                   | [`oaslananka/a2amesh`](https://github.com/oaslananka/a2amesh); public; default branch `main`; license `Apache-2.0` | GitHub REST API: GET /repos/oaslananka/a2amesh                                                                            |
-| Linked source version        | `0.18.1` across 6 public packages                                                                                  | .release-please-manifest.json and release-tracked package.json files                                                      |
-| npm publication              | `alpha` → `0.18.0-alpha.1`; `latest` → `0.18.1`                                                                    | npm registry metadata for @a2amesh/runtime                                                                                |
-| Latest canonical release tag | `@a2amesh/runtime-v0.18.1` at `261f2cdd8fb6`                                                                       | GitHub REST API: releases and tags for oaslananka/a2amesh                                                                 |
-| Latest GitHub Release        | [`@a2amesh/runtime-v0.18.1`](https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.18.1)        | GitHub REST API: releases and tags for oaslananka/a2amesh                                                                 |
-| Active Release Please PR     | [#318](https://github.com/oaslananka/a2amesh/pull/318) proposes `0.18.2`                                           | GitHub CLI: pr list --repo oaslananka/a2amesh --state open                                                                |
-| Open work                    | 0 issues and 0 pull requests (0 total)                                                                             | GitHub CLI: issue list --repo oaslananka/a2amesh --state open; GitHub CLI: pr list --repo oaslananka/a2amesh --state open |
+| Fact                         | Observed value                                                                                                     | Authoritative source                                                                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository                   | [`oaslananka/a2amesh`](https://github.com/oaslananka/a2amesh); public; default branch `main`; license `Apache-2.0` | GitHub REST API: GET /repos/oaslananka/a2amesh                                                                                            |
+| Linked source version        | `0.18.2` across 6 public packages                                                                                  | .release-please-manifest.json and release-tracked package.json files                                                                      |
+| npm publication              | `alpha` → `0.18.0-alpha.1`; `latest` → `0.18.2`                                                                    | npm registry metadata for @a2amesh/runtime                                                                                                |
+| Latest canonical release tag | `@a2amesh/runtime-v0.18.2` at `8c3188ee32a5`                                                                       | GitHub REST API: releases and tags for oaslananka/a2amesh                                                                                 |
+| Latest GitHub Release        | [`@a2amesh/runtime-v0.18.2`](https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.18.2)        | GitHub REST API: releases and tags for oaslananka/a2amesh                                                                                 |
+| Active Release Please PR     | [#334](https://github.com/oaslananka/a2amesh/pull/334) proposes `0.19.0`                                           | GitHub REST API via repository operations connector: open pull requests                                                                   |
+| Open work                    | 1 issues and 2 pull requests (3 total)                                                                             | GitHub REST API via repository operations connector: open issues; GitHub REST API via repository operations connector: open pull requests |
 
 ### Manually verified repository settings
 
@@ -117,17 +117,17 @@ A2A Mesh is a TypeScript/pnpm monorepo with CLI, runtime, registry, protocol, MC
 
 ## 9. OpenSSF Scorecard readiness
 
-| Area              | Current state                                                                     | Target state                                 | Status  | Risk   | Recommended action                        |
-| ----------------- | --------------------------------------------------------------------------------- | -------------------------------------------- | ------- | ------ | ----------------------------------------- |
-| Branch protection | Live required checks and review controls are generated above.                     | Contexts aligned with workflow names.        | Passed  | Low    | Re-check after workflow changes.          |
-| Code review       | Governance remains solo-maintainer; live review controls are generated above.     | Enable after independent reviewer exists.    | Partial | Medium | Track governance issue.                   |
-| Maintained        | Live open-work and release observations are generated above.                      | Sustained releases.                          | Partial | Low    | Keep changelog and releases current.      |
-| Security policy   | Policy exists and private vulnerability reporting is verified enabled.            | Keep policy and live setting aligned.        | Passed  | Medium | Refresh generated settings evidence.      |
-| License           | Canonical files, package metadata, REUSE, and GitHub all report Apache-2.0.       | Keep license signals aligned.                | Passed  | Low    | Retain license checks.                    |
-| CI tests          | Broad required jobs.                                                              | Passing and required.                        | Passed  | Low    | Keep required.                            |
-| Dependency update | Renovate policy and Dependabot security updates are enabled and validated.        | Keep one coherent update policy.             | Passed  | Medium | Review grouping and automerge changes.    |
-| SAST/secrets/deps | CodeQL, gitleaks, OSV, dependency review.                                         | Required security gates.                     | Passed  | Low    | Keep required.                            |
-| Fuzzing           | Committed malformed JSON-RPC fuzz cases and fast-check property suites run in CI. | Keep protocol and policy generators current. | Passed  | Medium | Extend when new parser boundaries appear. |
+| Area              | Current state                                                                                                                           | Target state                                 | Status  | Risk   | Recommended action                        |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ------- | ------ | ----------------------------------------- |
+| Branch protection | Live required checks and review controls are generated above.                                                                           | Contexts aligned with workflow names.        | Passed  | Low    | Re-check after workflow changes.          |
+| Code review       | Governance remains solo-maintainer; live review controls are generated above.                                                           | Enable after independent reviewer exists.    | Partial | Medium | Track governance issue.                   |
+| Maintained        | Live open-work and release observations are generated above.                                                                            | Sustained releases.                          | Partial | Low    | Keep changelog and releases current.      |
+| Security policy   | Policy exists and private vulnerability reporting is verified enabled.                                                                  | Keep policy and live setting aligned.        | Passed  | Medium | Refresh generated settings evidence.      |
+| License           | Canonical files, package metadata, REUSE, and GitHub all report Apache-2.0.                                                             | Keep license signals aligned.                | Passed  | Low    | Retain license checks.                    |
+| CI tests          | Broad required jobs.                                                                                                                    | Passing and required.                        | Passed  | Low    | Keep required.                            |
+| Dependency update | Renovate policy is primary; Dependabot security updates are currently disabled while audit/OSV/dependency-review gates remain enforced. | Keep one coherent update policy.             | Passed  | Medium | Review grouping and automerge changes.    |
+| SAST/secrets/deps | CodeQL, gitleaks, OSV, dependency review.                                                                                               | Required security gates.                     | Passed  | Low    | Keep required.                            |
+| Fuzzing           | Committed malformed JSON-RPC fuzz cases and fast-check property suites run in CI.                                                       | Keep protocol and policy generators current. | Passed  | Medium | Extend when new parser boundaries appear. |
 
 ## 10. Documentation maturity
 
@@ -172,13 +172,13 @@ A2A Mesh is a TypeScript/pnpm monorepo with CLI, runtime, registry, protocol, MC
 
 ## 14. Dependency management maturity
 
-| Area              | Current state                                                   | Target state                                 | Status  | Risk   | Recommended action                  |
-| ----------------- | --------------------------------------------------------------- | -------------------------------------------- | ------- | ------ | ----------------------------------- |
-| Renovate          | `renovate.json` exists.                                         | Primary version-update bot.                  | Partial | Medium | Audit grouping/automerge rules.     |
-| Dependabot        | Security updates enabled; no version config.                    | Security alerts ok; avoid conflicting bots.  | Partial | Low    | Do not add version updates blindly. |
-| Dependency review | Workflow exists; live required-check status is generated above. | Required on PRs.                             | Passed  | Low    | Keep required.                      |
-| Audit             | pnpm audit/security scripts.                                    | Required high-severity gate.                 | Passed  | Low    | Keep security workflow.             |
-| Update policy     | Dependency doc exists.                                          | Runtime/security-sensitive updates reviewed. | Passed  | Medium | Keep automerge conservative.        |
+| Area              | Current state                                                             | Target state                                 | Status  | Risk   | Recommended action                  |
+| ----------------- | ------------------------------------------------------------------------- | -------------------------------------------- | ------- | ------ | ----------------------------------- |
+| Renovate          | `renovate.json` exists.                                                   | Primary version-update bot.                  | Partial | Medium | Audit grouping/automerge rules.     |
+| Dependabot        | Security updates disabled; no version config; Renovate is the update bot. | Security alerts ok; avoid conflicting bots.  | Partial | Low    | Do not add version updates blindly. |
+| Dependency review | Workflow exists; live required-check status is generated above.           | Required on PRs.                             | Passed  | Low    | Keep required.                      |
+| Audit             | pnpm audit/security scripts.                                              | Required high-severity gate.                 | Passed  | Low    | Keep security workflow.             |
+| Update policy     | Dependency doc exists.                                                    | Runtime/security-sensitive updates reviewed. | Passed  | Medium | Keep automerge conservative.        |
 
 ## 15. Governance maturity
 
@@ -292,15 +292,15 @@ A2A Mesh is a TypeScript/pnpm monorepo with CLI, runtime, registry, protocol, MC
 
 ## 26. Manual GitHub settings required
 
-| Area                            | Current state                                                                 | Target state                                          | Status  | Risk   | Recommended action                         |
-| ------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------- | ------- | ------ | ------------------------------------------ |
-| Branch protection/rulesets      | Current branch protection is generated above.                                 | Required checks current.                              | Passed  | Medium | Refresh evidence after workflow changes.   |
-| Required PR review              | Current approval and review flags are generated above.                        | Enable independent approval after reviewer growth.    | Partial | Medium | Follow the governance transition policy.   |
-| Private vulnerability reporting | Current enabled state is generated above.                                     | Enabled.                                              | Passed  | Medium | Keep generated settings evidence current.  |
-| Dependabot alerts/security      | Current Dependabot security-update state is generated above.                  | Remain enabled.                                       | Passed  | Low    | Refresh generated settings evidence.       |
-| Secret scanning/push protection | Current secret-scanning and push-protection state is generated above.         | Remain enabled where available.                       | Passed  | Medium | Refresh generated settings evidence.       |
-| npm trusted publishing          | GitHub OIDC/environment controls and public npm SLSA provenance are verified. | OIDC/trusted publishing.                              | Passed  | High   | Repeat registry evidence for each release. |
-| OpenSSF BadgeApp                | Project `13402` has held Passing since 2026-07-03.                            | Keep Passing evidence current; Silver remains future. | Passed  | Low    | Review after material process changes.     |
+| Area                            | Current state                                                                 | Target state                                                     | Status  | Risk   | Recommended action                                               |
+| ------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------- | ------ | ---------------------------------------------------------------- |
+| Branch protection/rulesets      | Current branch protection is generated above.                                 | Required checks current.                                         | Passed  | Medium | Refresh evidence after workflow changes.                         |
+| Required PR review              | Current approval and review flags are generated above.                        | Enable independent approval after reviewer growth.               | Partial | Medium | Follow the governance transition policy.                         |
+| Private vulnerability reporting | Current enabled state is generated above.                                     | Enabled.                                                         | Passed  | Medium | Keep generated settings evidence current.                        |
+| Dependabot alerts/security      | Current Dependabot security-update state is generated above.                  | Keep the chosen bot policy explicit and security gates enforced. | Partial | Low    | Reassess enabling security updates without duplicating Renovate. |
+| Secret scanning/push protection | Current secret-scanning and push-protection state is generated above.         | Remain enabled where available.                                  | Passed  | Medium | Refresh generated settings evidence.                             |
+| npm trusted publishing          | GitHub OIDC/environment controls and public npm SLSA provenance are verified. | OIDC/trusted publishing.                                         | Passed  | High   | Repeat registry evidence for each release.                       |
+| OpenSSF BadgeApp                | Project `13402` has held Passing since 2026-07-03.                            | Keep Passing evidence current; Silver remains future.            | Passed  | Low    | Review after material process changes.                           |
 
 ## 27. Issue and follow-up disposition
 

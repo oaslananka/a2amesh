@@ -36,7 +36,9 @@ Current status: the repository is still recruiting an independent maintainer bef
 
 ## Review and release authority
 
-Normal changes are proposed through pull requests against `main`. Branch protection requires CI, docs, security, CodeQL, Scorecard, and conversation-resolution gates before merging. Release publication is a separate maintainer-controlled step and must not be treated as automatic after a version bump.
+Normal changes are proposed through pull requests against `main`. Branch protection currently requires CI, docs, security, dependency review, CodeQL, and Scorecard status gates before merging. Conversation resolution is not currently enforced by provider branch protection and remains an explicit governance gap to revisit when repository review controls are strengthened.
+
+Release publication is a separate maintainer-controlled step and must not be treated as automatic after a version bump.
 
 Release authority is intentionally separated into:
 

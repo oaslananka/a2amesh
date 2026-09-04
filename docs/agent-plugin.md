@@ -126,9 +126,9 @@ CLAUDE_BIN="$(command -v claude)" node scripts/check-agent-plugin.mjs --claude-l
 
 The distribution checker packs protocol, runtime, and MCP artifacts, installs them in a clean consumer, invokes the installed binary, negotiates stdio, verifies the read-only tool set, exercises a synthetic upgrade, and proves byte-identical rollback. The Claude lifecycle checker validates clean marketplace installation, upgrade, and rollback of the complete product bundle.
 
-### Optional OpenCode Zen skill evaluation
+### Bounded OpenCode Zen skill evaluation
 
-The manual `Provider Live Smoke` workflow evaluates the OpenCode mirrors with an isolated home, external plugins disabled, automatic sharing disabled, and every tool denied except `skill`. Hosted model availability and quotas make this non-gating. Bounded, secret-free evidence is retained for 14 days.
+The `Provider Live Smoke` workflow runs on a bounded weekly schedule and can also be dispatched manually. It evaluates the OpenCode mirrors with an isolated home, external plugins disabled, automatic sharing disabled, and every tool denied except `skill`. Hosted model availability and quotas make this non-gating. Bounded, secret-free evidence is retained for 14 days and records verified completion, tool-call and retry counts, elapsed time, plus provider token/cost accounting when OpenCode emits those fields; unavailable accounting remains explicitly `null`.
 
 ## Safety and privacy
 

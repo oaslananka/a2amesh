@@ -46,7 +46,59 @@ function parseEvents(raw, skill) {
   return events;
 }
 
-function validateEvents(events, skill) {
+function numeric(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function summarizeUsage(events) {
+  const stepFinishEvents = events.filter((event) => event?.type === 'step_finish');
+  const fields = {
+    costUsd: [],
+    total: [],
+    input: [],
+    output: [],
+    reasoning: [],
+    cacheRead: [],
+    cacheWrite: [],
+  };
+
+  for (const event of stepFinishEvents) {
+    const part = event?.part ?? {};
+    const tokens = part?.tokens ?? {};
+    const cache = tokens?.cache ?? {};
+    const values = {
+      costUsd: numeric(part?.cost),
+      total: numeric(tokens?.total),
+      input: numeric(tokens?.input),
+      output: numeric(tokens?.output),
+      reasoning: numeric(tokens?.reasoning),
+      cacheRead: numeric(cache?.read),
+      cacheWrite: numeric(cache?.write),
+    };
+    for (const [key, value] of Object.entries(values)) {
+      if (value !== null) fields[key].push(value);
+    }
+  }
+
+  const sumOrNull = (values) =>
+    values.length > 0 ? values.reduce((total, value) => total + value, 0) : null;
+  const available = Object.values(fields).some((values) => values.length > 0);
+
+  return {
+    available,
+    costUsd: sumOrNull(fields.costUsd),
+    tokens: {
+      total: sumOrNull(fields.total),
+      input: sumOrNull(fields.input),
+      output: sumOrNull(fields.output),
+      reasoning: sumOrNull(fields.reasoning),
+      cacheRead: sumOrNull(fields.cacheRead),
+      cacheWrite: sumOrNull(fields.cacheWrite),
+    },
+  };
+}
+
+function validateEvents(events, skill, durationMs) {
   const providerErrors = events.filter((event) => event?.type === 'error');
   if (providerErrors.length > 0) {
     throw new EvaluationError(`OpenCode reported a provider error for ${skill}.`);
@@ -82,6 +134,37 @@ function validateEvents(events, skill) {
     tool: toolPart.tool,
     toolStatus: toolPart.state.status,
     marker: expectedMarker,
+    verifiedCompletion: true,
+    toolCallCount: toolEvents.length,
+    retryCount: 0,
+    durationMs,
+    usage: summarizeUsage(events),
+  };
+}
+
+function addNullable(values) {
+  const present = values.filter((value) => typeof value === 'number' && Number.isFinite(value));
+  return present.length > 0 ? present.reduce((total, value) => total + value, 0) : null;
+}
+
+function summarizeResults(results) {
+  return {
+    verifiedSkills: results.filter((result) => result.verifiedCompletion).length,
+    toolCallCount: results.reduce((total, result) => total + result.toolCallCount, 0),
+    retryCount: results.reduce((total, result) => total + result.retryCount, 0),
+    durationMs: results.reduce((total, result) => total + result.durationMs, 0),
+    usage: {
+      available: results.some((result) => result.usage.available),
+      costUsd: addNullable(results.map((result) => result.usage.costUsd)),
+      tokens: {
+        total: addNullable(results.map((result) => result.usage.tokens.total)),
+        input: addNullable(results.map((result) => result.usage.tokens.input)),
+        output: addNullable(results.map((result) => result.usage.tokens.output)),
+        reasoning: addNullable(results.map((result) => result.usage.tokens.reasoning)),
+        cacheRead: addNullable(results.map((result) => result.usage.tokens.cacheRead)),
+        cacheWrite: addNullable(results.map((result) => result.usage.tokens.cacheWrite)),
+      },
+    },
   };
 }
 
@@ -140,6 +223,7 @@ async function main() {
         'Do not use any other tool and do not access the network.',
         `After reading the skill, return exactly: SKILL_OK ${skill}`,
       ].join(' ');
+      const startedAt = Date.now();
       const execution = spawnSync(
         opencodeBinary,
         [
@@ -176,6 +260,7 @@ async function main() {
           windowsHide: true,
         },
       );
+      const durationMs = Date.now() - startedAt;
 
       const stdout = redact(execution.stdout ?? '', apiKey);
       const stderr = redact(execution.stderr ?? '', apiKey);
@@ -193,17 +278,23 @@ async function main() {
       }
 
       const events = parseEvents(stdout, skill);
-      results.push(validateEvents(events, skill));
+      results.push(validateEvents(events, skill, durationMs));
       process.stdout.write(`Validated OpenCode skill: ${skill}\n`);
     }
 
     const summary = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       provider: 'opencode-zen',
       model,
       evaluatedAt: new Date().toISOString(),
       permissions: { default: 'deny', allowed: ['skill'] },
       results,
+      totals: summarizeResults(results),
+      usageAccounting: {
+        source: 'opencode step_finish events',
+        note:
+          'Usage and cost are reported only when OpenCode emits numeric step_finish accounting fields; unavailable fields remain null.',
+      },
     };
     await writeFile(
       path.join(outputDirectory, 'summary.json'),

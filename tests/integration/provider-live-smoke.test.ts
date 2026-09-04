@@ -34,6 +34,21 @@ process.stdout.write(JSON.stringify({
   type: 'text',
   part: { text: 'SKILL_OK ' + skill },
 }) + '\\n');
+process.stdout.write(JSON.stringify({
+  type: 'step_finish',
+  part: {
+    type: 'step-finish',
+    reason: 'stop',
+    cost: 0.001,
+    tokens: {
+      total: 15,
+      input: 10,
+      output: 5,
+      reasoning: 0,
+      cache: { read: 2, write: 1 },
+    },
+  },
+}) + '\\n');
 `,
   );
   await chmod(binary, 0o755);
@@ -87,7 +102,38 @@ describe.skipIf(process.platform === 'win32')('manual provider live smoke evalua
       await readFile(path.join(outputDirectory, 'summary.json'), 'utf8'),
     ) as {
       permissions: { default: string; allowed: string[] };
-      results: Array<{ skill: string; tool: string; toolStatus: string }>;
+      results: Array<{
+        skill: string;
+        tool: string;
+        toolStatus: string;
+        verifiedCompletion: boolean;
+        toolCallCount: number;
+        retryCount: number;
+        durationMs: number;
+        usage: {
+          available: boolean;
+          costUsd: number | null;
+          tokens: {
+            total: number | null;
+            input: number | null;
+            output: number | null;
+            reasoning: number | null;
+            cacheRead: number | null;
+            cacheWrite: number | null;
+          };
+        };
+      }>;
+      totals: {
+        verifiedSkills: number;
+        toolCallCount: number;
+        retryCount: number;
+        durationMs: number;
+        usage: {
+          available: boolean;
+          costUsd: number | null;
+          tokens: { total: number | null };
+        };
+      };
     };
     expect(summary.permissions).toEqual({ default: 'deny', allowed: ['skill'] });
     expect(summary.results).toEqual([
@@ -95,18 +141,40 @@ describe.skipIf(process.platform === 'win32')('manual provider live smoke evalua
         skill: 'a2a-endpoint-validation',
         tool: 'skill',
         toolStatus: 'completed',
+        verifiedCompletion: true,
+        toolCallCount: 1,
+        retryCount: 0,
+        usage: expect.objectContaining({ available: true, costUsd: 0.001 }),
       }),
       expect.objectContaining({
         skill: 'a2a-task-operations',
         tool: 'skill',
         toolStatus: 'completed',
+        verifiedCompletion: true,
+        toolCallCount: 1,
+        retryCount: 0,
+        usage: expect.objectContaining({ available: true, costUsd: 0.001 }),
       }),
       expect.objectContaining({
         skill: 'a2a-mcp-consumption',
         tool: 'skill',
         toolStatus: 'completed',
+        verifiedCompletion: true,
+        toolCallCount: 1,
+        retryCount: 0,
+        usage: expect.objectContaining({ available: true, costUsd: 0.001 }),
       }),
     ]);
+    expect(summary.results.every((item) => item.durationMs >= 0)).toBe(true);
+    expect(summary.totals).toEqual(
+      expect.objectContaining({
+        verifiedSkills: 3,
+        toolCallCount: 3,
+        retryCount: 0,
+        usage: expect.objectContaining({ available: true, costUsd: 0.003 }),
+      }),
+    );
+    expect(summary.totals.usage.tokens.total).toBe(45);
     expect(JSON.stringify(summary)).not.toContain('synthetic-provider-secret');
   });
 
