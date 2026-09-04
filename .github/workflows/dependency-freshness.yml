@@ -53,11 +53,35 @@ jobs:
       - name: Observe pnpm audit
         run: |
           mkdir -p .artifacts/dependency-freshness
-          set +e
-          corepack pnpm audit --audit-level high --json > .artifacts/dependency-freshness/audit.json
-          status=$?
-          set -e
-          printf '%s\n' "${status}" > .artifacts/dependency-freshness/audit.status
+          audit_status=1
+          for attempt in 1 2 3; do
+            set +e
+            corepack pnpm audit --audit-level high --json \
+              > .artifacts/dependency-freshness/audit.json \
+              2> .artifacts/dependency-freshness/audit.stderr
+            audit_status=$?
+            set -e
+
+            if [[ "$audit_status" -eq 0 ]]; then
+              break
+            fi
+
+            if jq -e '
+              ((.metadata.vulnerabilities.high // 0) + (.metadata.vulnerabilities.critical // 0)) > 0
+              or ((.advisories // {}) | to_entries | any(
+                ((.value.severity // "") | ascii_downcase) == "high"
+                or ((.value.severity // "") | ascii_downcase) == "critical"
+              ))
+            ' .artifacts/dependency-freshness/audit.json >/dev/null 2>&1; then
+              break
+            fi
+
+            if [[ "$attempt" -lt 3 ]]; then
+              printf 'pnpm audit attempt %s ended without a blocking advisory; retrying transient registry failure.\n' "$attempt" >&2
+              sleep "$((attempt * 10))"
+            fi
+          done
+          printf '%s\n' "${audit_status}" > .artifacts/dependency-freshness/audit.status
       - name: Observe OSV lockfile scan
         run: |
           set +e
