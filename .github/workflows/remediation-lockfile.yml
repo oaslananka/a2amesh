@@ -1,4 +1,4 @@
-name: Remediation Lockfile
+name: Remediation Artifacts
 
 'on':
   push:
@@ -10,8 +10,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: remediation-lockfile-${{ github.ref }}
-  cancel-in-progress: false
+  group: remediation-artifacts-${{ github.ref }}
+  cancel-in-progress: true
 
 defaults:
   run:
@@ -33,21 +33,43 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           install: 'false'
-      - name: Regenerate and verify lockfile
+      - name: Regenerate dependency and evidence artifacts
         run: |
           pnpm install --lockfile-only
-          pnpm audit --audit-level high
-          git diff --check
-          git diff --exit-code -- pnpm-workspace.yaml
-          git status --short
-      - name: Commit lockfile
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('docs/repo-maturity-report.md')
+          text = path.read_text()
+          text = text.replace(
+              'Renovate policy and Dependabot security updates are enabled and validated.',
+              'Renovate policy is primary; Dependabot security updates are currently disabled while audit/OSV/dependency-review gates remain enforced.',
+          )
+          text = text.replace(
+              'Security updates enabled; no version config.',
+              'Security updates disabled; no version config; Renovate is the update bot.',
+          )
+          text = text.replace(
+              '| Dependabot alerts/security      | Current Dependabot security-update state is generated above.                  | Remain enabled.                                       | Passed  | Low    | Refresh generated settings evidence.       |',
+              '| Dependabot alerts/security      | Current Dependabot security-update state is generated above.                  | Keep the chosen bot policy explicit and security gates enforced.             | Partial | Low    | Reassess enabling security updates without duplicating Renovate. |',
+          )
+          path.write_text(text)
+          PY
+          node scripts/repository-evidence.mjs --write --input docs/governance/repository-evidence.json
+      - name: Verify remediation artifacts
         run: |
-          if git diff --quiet -- pnpm-lock.yaml; then
-            echo 'Lockfile already canonical.'
+          pnpm audit --audit-level high
+          pnpm run repository:evidence:check
+          git diff --check
+          git diff --exit-code -- pnpm-workspace.yaml docs/governance/repository-evidence.json docs/agent-plugin.md
+          git status --short
+      - name: Commit generated artifacts
+        run: |
+          if git diff --quiet -- pnpm-lock.yaml docs/repo-maturity-report.md; then
+            echo 'Generated artifacts already canonical.'
             exit 0
           fi
           git config user.name 'oaslananka-ops[bot]'
           git config user.email 'oaslananka-ops[bot]@users.noreply.github.com'
-          git add pnpm-lock.yaml
-          git commit -m 'fix: regenerate patched dependency lockfile'
+          git add pnpm-lock.yaml docs/repo-maturity-report.md
+          git commit -m 'fix: regenerate patched dependency and evidence artifacts'
           git push origin HEAD:${GITHUB_REF_NAME}
