@@ -68,6 +68,10 @@ jobs:
           persist_file pnpm-lock.yaml
           persist_file docs/governance/repository-evidence.json
           persist_file docs/repo-maturity-report.md
+      - name: Restore clean source tree for security scans
+        run: |
+          git clean -fdX
+          git status --short
       - name: Install OSV Scanner
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
         with:
@@ -99,12 +103,12 @@ jobs:
           content="$(base64 -w0 "$report")"
           python3 - "$content" <<'PY'
           import json, os, sys
+          from pathlib import Path
           payload = {
               'message': 'docs: capture bounded dependency scan evidence',
               'content': sys.argv[1],
               'branch': os.environ['GITHUB_REF_NAME'],
           }
-          from pathlib import Path
           Path('/tmp/scan-payload.json').write_text(json.dumps(payload))
           PY
           gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${report}" --input /tmp/scan-payload.json >/dev/null
