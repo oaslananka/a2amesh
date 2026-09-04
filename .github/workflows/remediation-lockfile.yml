@@ -32,6 +32,7 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ env.NODE_VERSION }}
+          install: 'false'
       - name: Regenerate and verify lockfile
         run: |
           pnpm install --lockfile-only
