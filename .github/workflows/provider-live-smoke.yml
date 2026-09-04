@@ -1,6 +1,8 @@
 name: Provider Live Smoke
 
 'on':
+  schedule:
+    - cron: '17 3 * * 2'
   workflow_dispatch:
     inputs:
       provider:
@@ -42,7 +44,7 @@ env:
 jobs:
   nvidia:
     name: Provider Live Smoke / NVIDIA NIM
-    if: inputs.provider == 'both' || inputs.provider == 'nvidia'
+    if: github.event_name == 'schedule' || inputs.provider == 'both' || inputs.provider == 'nvidia'
     environment: dev
     permissions:
       contents: read
@@ -61,7 +63,7 @@ jobs:
           A2AMESH_OPENAI_COMPAT_PROFILE: nvidia-hosted
           A2AMESH_OPENAI_COMPAT_BASE_URL: https://integrate.api.nvidia.com/v1
           A2AMESH_OPENAI_COMPAT_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-          A2AMESH_OPENAI_COMPAT_MODEL: ${{ inputs.nvidia_model }}
+          A2AMESH_OPENAI_COMPAT_MODEL: ${{ inputs.nvidia_model || 'meta/llama-3.1-8b-instruct' }}
           A2AMESH_OPENAI_COMPAT_TIMEOUT_MS: '60000'
           A2AMESH_OPENAI_COMPAT_MAX_TOKENS: '128'
           A2AMESH_OPENAI_COMPAT_TEMPERATURE: '0.2'
@@ -73,7 +75,7 @@ jobs:
 
   opencode-zen:
     name: Provider Live Smoke / OpenCode Zen
-    if: inputs.provider == 'both' || inputs.provider == 'opencode-zen'
+    if: github.event_name == 'schedule' || inputs.provider == 'both' || inputs.provider == 'opencode-zen'
     environment: dev
     permissions:
       contents: read
@@ -92,7 +94,7 @@ jobs:
           A2AMESH_OPENAI_COMPAT_PROFILE: opencode-zen
           A2AMESH_OPENAI_COMPAT_BASE_URL: https://opencode.ai/zen/v1
           A2AMESH_OPENAI_COMPAT_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
-          A2AMESH_OPENAI_COMPAT_MODEL: ${{ inputs.opencode_model }}
+          A2AMESH_OPENAI_COMPAT_MODEL: ${{ inputs.opencode_model || 'nemotron-3-ultra-free' }}
           A2AMESH_OPENAI_COMPAT_TIMEOUT_MS: '60000'
           A2AMESH_OPENAI_COMPAT_MAX_TOKENS: '128'
           A2AMESH_OPENAI_COMPAT_SUPPORTS_STREAMING: 'true'
@@ -116,7 +118,7 @@ jobs:
       - name: Evaluate repository-owned OpenCode skills
         env:
           OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
-          OPENCODE_ZEN_MODEL: ${{ inputs.opencode_model }}
+          OPENCODE_ZEN_MODEL: ${{ inputs.opencode_model || 'nemotron-3-ultra-free' }}
           OPENCODE_EVALUATION_OUTPUT: artifacts/provider-live-smoke/opencode
         run: node scripts/run-opencode-skill-evaluation.mjs
       - name: Upload bounded OpenCode evaluation evidence
