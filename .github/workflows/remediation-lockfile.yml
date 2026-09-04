@@ -1,16 +1,13 @@
-name: Remediation Artifacts
+name: Remediation Lockfile
 
 'on':
-  push:
-    branches:
-      - chore/audit-remediation-20260904
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: remediation-artifacts-${{ github.ref }}
+  group: remediation-lockfile-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
@@ -20,57 +17,59 @@ defaults:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   NODE_VERSION: '24.16.0'
+  GO_VERSION: '1.26.2'
+  OSV_SCANNER_VERSION: 'v2.3.8'
 
 jobs:
-  regenerate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+  regenerate-and-scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
-          persist-credentials: true
+          persist-credentials: false
       - uses: ./.github/actions/setup-pnpm
         with:
           node-version: ${{ env.NODE_VERSION }}
           install: 'false'
-      - name: Regenerate dependency and evidence artifacts
+          cache: 'false'
+      - name: Regenerate canonical lockfile
         run: |
           pnpm install --lockfile-only
+          node scripts/check-workspace-declarations.mjs
           pnpm install --frozen-lockfile
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('docs/repo-maturity-report.md')
-          text = path.read_text()
-          text = text.replace(
-              'Renovate policy and Dependabot security updates are enabled and validated.',
-              'Renovate policy is primary; Dependabot security updates are currently disabled while audit/OSV/dependency-review gates remain enforced.',
-          )
-          text = text.replace(
-              'Security updates enabled; no version config.',
-              'Security updates disabled; no version config; Renovate is the update bot.',
-          )
-          text = text.replace(
-              '| Dependabot alerts/security      | Current Dependabot security-update state is generated above.                  | Remain enabled.                                       | Passed  | Low    | Refresh generated settings evidence.       |',
-              '| Dependabot alerts/security      | Current Dependabot security-update state is generated above.                  | Keep the chosen bot policy explicit and security gates enforced.             | Partial | Low    | Reassess enabling security updates without duplicating Renovate. |',
-          )
-          path.write_text(text)
-          PY
-          node scripts/repository-evidence.mjs --write --input docs/governance/repository-evidence.json
-      - name: Verify remediation artifacts
-        run: |
-          pnpm audit --audit-level high
-          pnpm run repository:evidence:check
           git diff --check
-          git diff --exit-code -- pnpm-workspace.yaml docs/governance/repository-evidence.json docs/agent-plugin.md
-          git status --short
-      - name: Commit generated artifacts
+      - name: Persist lockfile through GitHub Contents API
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if git diff --quiet -- pnpm-lock.yaml docs/repo-maturity-report.md; then
-            echo 'Generated artifacts already canonical.'
+          if git diff --quiet -- pnpm-lock.yaml; then
+            echo 'Lockfile already canonical.'
             exit 0
           fi
-          git config user.name 'oaslananka-ops[bot]'
-          git config user.email 'oaslananka-ops[bot]@users.noreply.github.com'
-          git add pnpm-lock.yaml docs/repo-maturity-report.md
-          git commit -m 'fix: regenerate patched dependency and evidence artifacts'
-          git push origin HEAD:${GITHUB_REF_NAME}
+          sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/pnpm-lock.yaml?ref=${GITHUB_REF_NAME}" --jq .sha)"
+          python3 - <<'PY'
+          import base64, json, os
+          from pathlib import Path
+          payload = {
+              'message': 'fix: regenerate patched dependency lockfile',
+              'content': base64.b64encode(Path('pnpm-lock.yaml').read_bytes()).decode(),
+              'branch': os.environ['GITHUB_REF_NAME'],
+              'sha': os.environ['LOCKFILE_SHA'],
+          }
+          Path('/tmp/lockfile-payload.json').write_text(json.dumps(payload))
+          PY
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/pnpm-lock.yaml" --input /tmp/lockfile-payload.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LOCKFILE_SHA: ${{ steps.lockfile-sha.outputs.sha }}
+      - name: Install OSV Scanner
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+      - run: go install "github.com/google/osv-scanner/v2/cmd/osv-scanner@${OSV_SCANNER_VERSION}"
+      - name: Run OSV Scanner
+        run: osv-scanner scan source --lockfile=pnpm-lock.yaml .
+      - name: Run pnpm audit
+        run: pnpm audit --audit-level high
