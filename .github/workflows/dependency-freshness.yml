@@ -68,9 +68,19 @@ jobs:
       - name: Observe open Dependabot alerts
         env:
           GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          gh api --paginate "repos/${GITHUB_REPOSITORY}/dependabot/alerts?state=open&per_page=100" --jq '.[]' \
-            | jq -s '.' > .artifacts/dependency-freshness/dependabot.json
+          if [[ "${GITHUB_REF_NAME}" == "${DEFAULT_BRANCH}" ]]; then
+            gh api --paginate "repos/${GITHUB_REPOSITORY}/dependabot/alerts?state=open&per_page=100" --jq '.[]' \
+              | jq -s '.' > .artifacts/dependency-freshness/dependabot.json
+          else
+            printf '%s\n' '[]' > .artifacts/dependency-freshness/dependabot.json
+            {
+              echo '### Dependabot alert scope'
+              echo
+              echo "Dependabot repository alerts describe the default branch \`${DEFAULT_BRANCH}\`; branch \`${GITHUB_REF_NAME}\` is evaluated by its own pnpm audit and OSV lockfile scan."
+            } >> "${GITHUB_STEP_SUMMARY}"
+          fi
       - name: Evaluate dependency freshness
         run: |
           node scripts/check-dependency-freshness.mjs \
