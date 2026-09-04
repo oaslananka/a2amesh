@@ -1,7 +1,9 @@
 name: Container Vulnerability Diagnostic
 
 'on':
-  workflow_dispatch:
+  push:
+    branches:
+      - chore/audit-remediation-20260904
 
 permissions:
   contents: write
