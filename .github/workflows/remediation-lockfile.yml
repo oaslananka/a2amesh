@@ -48,7 +48,7 @@ jobs:
             exit 0
           fi
           sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/pnpm-lock.yaml?ref=${GITHUB_REF_NAME}" --jq .sha)"
-          python3 - <<'PY'
+          LOCKFILE_SHA="$sha" python3 - <<'PY'
           import base64, json, os
           from pathlib import Path
           payload = {
@@ -60,9 +60,6 @@ jobs:
           Path('/tmp/lockfile-payload.json').write_text(json.dumps(payload))
           PY
           gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/pnpm-lock.yaml" --input /tmp/lockfile-payload.json
-        env:
-          GH_TOKEN: ${{ github.token }}
-          LOCKFILE_SHA: ${{ steps.lockfile-sha.outputs.sha }}
       - name: Install OSV Scanner
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
         with:
