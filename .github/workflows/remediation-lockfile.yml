@@ -36,6 +36,7 @@ jobs:
       - name: Regenerate dependency and evidence artifacts
         run: |
           pnpm install --lockfile-only
+          pnpm install --frozen-lockfile
           python3 - <<'PY'
           from pathlib import Path
           path = Path('docs/repo-maturity-report.md')
