@@ -23,7 +23,7 @@ name: Provider Live Smoke
         description: OpenCode Zen chat-completions model identifier
         type: string
         required: true
-        default: nemotron-3-ultra-free
+        default: deepseek-v4-flash-free
 
 permissions: {}
 
@@ -94,7 +94,7 @@ jobs:
           A2AMESH_OPENAI_COMPAT_PROFILE: opencode-zen
           A2AMESH_OPENAI_COMPAT_BASE_URL: https://opencode.ai/zen/v1
           A2AMESH_OPENAI_COMPAT_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
-          A2AMESH_OPENAI_COMPAT_MODEL: ${{ inputs.opencode_model || 'nemotron-3-ultra-free' }}
+          A2AMESH_OPENAI_COMPAT_MODEL: ${{ inputs.opencode_model || 'deepseek-v4-flash-free' }}
           A2AMESH_OPENAI_COMPAT_TIMEOUT_MS: '60000'
           A2AMESH_OPENAI_COMPAT_MAX_TOKENS: '128'
           A2AMESH_OPENAI_COMPAT_SUPPORTS_STREAMING: 'true'
@@ -118,7 +118,7 @@ jobs:
       - name: Evaluate repository-owned OpenCode skills
         env:
           OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
-          OPENCODE_ZEN_MODEL: ${{ inputs.opencode_model || 'nemotron-3-ultra-free' }}
+          OPENCODE_ZEN_MODEL: ${{ inputs.opencode_model || 'deepseek-v4-flash-free' }}
           OPENCODE_EVALUATION_OUTPUT: artifacts/provider-live-smoke/opencode
         run: node scripts/run-opencode-skill-evaluation.mjs
       - name: Upload bounded OpenCode evaluation evidence
