@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-08-10T15:47:28.796Z",
+  "observed_at": "2026-09-04T00:50:36.447Z",
   "refresh_cadence_days": 14,
   "repository": {
     "name": "oaslananka/a2amesh",
@@ -10,13 +10,13 @@
     "archived": false,
     "license": "Apache-2.0",
     "open_work": {
-      "issues": 0,
-      "pull_requests": 0,
-      "total": 0
+      "issues": 1,
+      "pull_requests": 2,
+      "total": 3
     }
   },
   "release": {
-    "source_version": "0.18.1",
+    "source_version": "0.18.2",
     "package_paths": [
       "packages/cli",
       "packages/create-a2amesh",
@@ -26,26 +26,26 @@
       "packages/runtime"
     ],
     "latest_github_release": {
-      "tag": "@a2amesh/runtime-v0.18.1",
-      "name": "A2A Mesh 0.18.1",
-      "url": "https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.18.1",
-      "published_at": "2026-08-10T14:50:31Z",
+      "tag": "@a2amesh/runtime-v0.18.2",
+      "name": "A2A Mesh 0.18.2",
+      "url": "https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.18.2",
+      "published_at": "2026-08-11T08:59:33Z",
       "prerelease": false
     },
     "latest_canonical_tag": {
-      "name": "@a2amesh/runtime-v0.18.1",
-      "commit": "261f2cdd8fb62aa4e21a5d47351edfbf1eee2b16"
+      "name": "@a2amesh/runtime-v0.18.2",
+      "commit": "8c3188ee32a56d0b890cd5483c4bf4c36d8c4be6"
     },
     "npm": {
       "package": "@a2amesh/runtime",
       "alpha": "0.18.0-alpha.1",
-      "latest": "0.18.1"
+      "latest": "0.18.2"
     },
     "active_release_pr": {
-      "number": 318,
+      "number": 334,
       "title": "chore: release main",
-      "url": "https://github.com/oaslananka/a2amesh/pull/318",
-      "proposed_version": "0.18.2"
+      "url": "https://github.com/oaslananka/a2amesh/pull/334",
+      "proposed_version": "0.19.0"
     }
   },
   "settings": [
@@ -84,8 +84,8 @@
   ],
   "provenance": {
     "repository": "GitHub REST API: GET /repos/oaslananka/a2amesh",
-    "issues": "GitHub CLI: issue list --repo oaslananka/a2amesh --state open",
-    "pull_requests": "GitHub CLI: pr list --repo oaslananka/a2amesh --state open",
+    "issues": "GitHub REST API via repository operations connector: open issues",
+    "pull_requests": "GitHub REST API via repository operations connector: open pull requests",
     "releases": "GitHub REST API: releases and tags for oaslananka/a2amesh",
     "npm": "npm registry metadata for @a2amesh/runtime",
     "source_versions": ".release-please-manifest.json and release-tracked package.json files"
