@@ -1,6 +1,9 @@
 name: Remediation Lockfile
 
 'on':
+  push:
+    branches:
+      - chore/audit-remediation-20260904
   workflow_dispatch:
 
 permissions:
