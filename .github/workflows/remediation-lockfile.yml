@@ -1,0 +1,49 @@
+name: Remediation Lockfile
+
+'on':
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: remediation-lockfile-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  NODE_VERSION: '24.16.0'
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: true
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Regenerate and verify lockfile
+        run: |
+          pnpm install --lockfile-only
+          pnpm audit --audit-level high
+          git diff --check
+          git diff --exit-code -- pnpm-workspace.yaml
+          git status --short
+      - name: Commit lockfile
+        run: |
+          if git diff --quiet -- pnpm-lock.yaml; then
+            echo 'Lockfile already canonical.'
+            exit 0
+          fi
+          git config user.name 'oaslananka-ops[bot]'
+          git config user.email 'oaslananka-ops[bot]@users.noreply.github.com'
+          git add pnpm-lock.yaml
+          git commit -m 'fix: regenerate patched dependency lockfile'
+          git push origin HEAD:${GITHUB_REF_NAME}
