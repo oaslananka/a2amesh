@@ -14,30 +14,72 @@ defaults:
   run:
     shell: bash
 
+env:
+  NODE_VERSION: '24.16.0'
+  OSV_IMAGE: ghcr.io/google/osv-scanner-action@sha256:48406c58197201fe55e56615ad9d414f85063da320e204d0b0ed460fb3908dba
+
 jobs:
-  osv-evidence:
+  regenerate-and-verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
-      - name: Run pinned OSV Scanner and persist bounded evidence
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          install: 'false'
+          cache: 'false'
+      - name: Regenerate and validate lockfile
+        run: |
+          pnpm install --lockfile-only
+          node scripts/check-workspace-declarations.mjs
+          pnpm install --frozen-lockfile
+          git diff --check
+      - name: Persist canonical lockfile
         env:
           GH_TOKEN: ${{ github.token }}
-          OSV_IMAGE: ghcr.io/google/osv-scanner-action@sha256:48406c58197201fe55e56615ad9d414f85063da320e204d0b0ed460fb3908dba
+        run: |
+          if git diff --quiet -- pnpm-lock.yaml; then
+            echo 'pnpm-lock.yaml already canonical.'
+          else
+            sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/pnpm-lock.yaml?ref=${GITHUB_REF_NAME}" --jq .sha)"
+            FILE_SHA="$sha" python3 - <<'PY'
+          import base64, json, os
+          from pathlib import Path
+          payload = {
+              'message': 'fix: regenerate qs security lockfile',
+              'content': base64.b64encode(Path('pnpm-lock.yaml').read_bytes()).decode(),
+              'branch': os.environ['GITHUB_REF_NAME'],
+              'sha': os.environ['FILE_SHA'],
+          }
+          Path('/tmp/lockfile-payload.json').write_text(json.dumps(payload))
+          PY
+            gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/pnpm-lock.yaml" --input /tmp/lockfile-payload.json >/dev/null
+          fi
+      - name: Restore clean source tree for scans
+        run: git clean -fdX
+      - name: Run OSV Scanner and pnpm audit
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set +e
           docker run --rm -v "$PWD:/src" -w /src "$OSV_IMAGE" scan source --lockfile=pnpm-lock.yaml . > /tmp/osv-scan.txt 2>&1
           osv_status=$?
+          timeout 120s pnpm audit --audit-level high > /tmp/pnpm-audit.txt 2>&1
+          audit_status=$?
           set -e
 
           report='docs/superpowers/plans/2026-09-04-security-scan.txt'
           {
             printf 'OSV_IMAGE=%s\n' "$OSV_IMAGE"
             printf 'OSV_EXIT=%s\n' "$osv_status"
+            printf 'PNPM_AUDIT_EXIT=%s\n' "$audit_status"
             printf '\n=== OSV Scanner (bounded) ===\n'
             head -c 60000 /tmp/osv-scan.txt
+            printf '\n\n=== pnpm audit (bounded) ===\n'
+            head -c 60000 /tmp/pnpm-audit.txt
           } > "$report"
 
           content="$(base64 -w0 "$report")"
@@ -46,7 +88,7 @@ jobs:
           import json, os
           from pathlib import Path
           payload = {
-              'message': 'docs: capture bounded OSV scan evidence',
+              'message': 'docs: refresh bounded dependency scan evidence',
               'content': os.environ['REPORT_CONTENT'],
               'branch': os.environ['GITHUB_REF_NAME'],
           }
@@ -55,4 +97,8 @@ jobs:
           Path('/tmp/scan-payload.json').write_text(json.dumps(payload))
           PY
           gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${report}" --input /tmp/scan-payload.json >/dev/null
-          exit "$osv_status"
+
+          if [ "$osv_status" -ne 0 ] || [ "$audit_status" -ne 0 ]; then
+            echo "Security verification failed: osv=$osv_status audit=$audit_status" >&2
+            exit 1
+          fi
