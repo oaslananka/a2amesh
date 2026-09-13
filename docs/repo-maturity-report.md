@@ -21,7 +21,7 @@ The Active Release Please PR row is synchronized by release automation and may b
 | npm publication              | `alpha` → `0.18.0-alpha.1`; `latest` → `0.18.1`                                                                    | npm registry metadata for @a2amesh/runtime                                                                                |
 | Latest canonical release tag | `@a2amesh/runtime-v0.18.1` at `261f2cdd8fb6`                                                                       | GitHub REST API: releases and tags for oaslananka/a2amesh                                                                 |
 | Latest GitHub Release        | [`@a2amesh/runtime-v0.18.1`](https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.18.1)        | GitHub REST API: releases and tags for oaslananka/a2amesh                                                                 |
-| Active Release Please PR     | [#318](https://github.com/oaslananka/a2amesh/pull/318) proposes `0.18.2`                                           | GitHub CLI: pr list --repo oaslananka/a2amesh --state open                                                                |
+| Active Release Please PR     | [#334](https://github.com/oaslananka/a2amesh/pull/334) proposes `0.19.0`                                           | GitHub CLI: pr list --repo oaslananka/a2amesh --state open                                                                |
 | Open work                    | 0 issues and 0 pull requests (0 total)                                                                             | GitHub CLI: issue list --repo oaslananka/a2amesh --state open; GitHub CLI: pr list --repo oaslananka/a2amesh --state open |
 
 ### Manually verified repository settings
