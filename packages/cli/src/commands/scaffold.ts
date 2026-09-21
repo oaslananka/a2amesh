@@ -180,7 +180,7 @@ function renderIndexSource(name: string): string {
 const agent = createAgent();
 agent.start(3000);
 
-process.stdout.write('Agent ${name} listening on port 3000\n');
+process.stdout.write('Agent ${name} listening on port 3000\\n');
 `;
 }
 
@@ -396,7 +396,7 @@ async function main() {
   await registryClient.register('${DEMO_ORCHESTRATOR_URL}', orchestrator.getAgentCard());
 
   logger.info('Production Demo services running on loopback', { registry: '${DEMO_REGISTRY_URL}', researcher: '${DEMO_RESEARCHER_URL}', orchestrator: '${DEMO_ORCHESTRATOR_URL}' });
-  process.stdout.write('A2A Mesh Production Demo listening on loopback (3099, 3001, 3002)\n');
+  process.stdout.write('A2A Mesh Production Demo listening on loopback (3099, 3001, 3002)\\n');
 }
 
 if (process.argv[1]?.endsWith('index.ts') || process.argv[1]?.endsWith('index.js')) {
