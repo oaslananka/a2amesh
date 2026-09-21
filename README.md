@@ -73,26 +73,20 @@ pnpm add @a2amesh/runtime
 
 ## Quickstart
 
-Scaffold a credential-free, loopback-only production golden path (2 A2A agents, Registry-backed discovery, SQLite task persistence, bounded MCP tool execution, and a single fail-closed verification pipeline):
-
 ```bash
-pnpm dlx @a2amesh/create-a2amesh my-demo --template production-demo
-cd my-demo
+pnpm dlx @a2amesh/create-a2amesh demo
+cd demo
 pnpm install
 pnpm run dev
-# In another terminal:
-pnpm verify
 ```
 
 PowerShell:
 
 ```powershell
-pnpm dlx @a2amesh/create-a2amesh my-demo --template production-demo
-Set-Location my-demo
+pnpm dlx @a2amesh/create-a2amesh demo
+Set-Location demo
 pnpm install
 pnpm run dev
-# In another terminal:
-pnpm verify
 ```
 
 ## CLI Examples

@@ -207,9 +207,6 @@ async function resolveAddresses(
   policy: OutboundPolicyOptions,
   signal: AbortSignal,
 ): Promise<string[]> {
-  if (policy.allowLocalhost && isExplicitLoopbackHostname(hostname)) {
-    return ['127.0.0.1', '::1'];
-  }
   const resolver = policy.resolveHostname ?? dns.resolve;
   const ttlMs = policy.dnsCacheTtlMs ?? 0;
   let addresses: string[];

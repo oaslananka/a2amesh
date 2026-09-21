@@ -10,7 +10,7 @@ The primary near-term audience is TypeScript developers building real A2A servic
 
 ## Near-term priorities
 
-1. Deliver a credential-free production golden path (`--template production-demo` in `@a2amesh/create-a2amesh` with 9-layer `pnpm verify`) (completed).
+1. Deliver a credential-free production golden path that a new user can scaffold, start, and verify in five minutes or less.
 2. Add a small public, provider-neutral, bounded MCP tool-invocation surface that does not depend on Fleet or other internal packages.
 3. Keep the existing live interoperability evidence with the official A2A JavaScript and Python SDKs current, pinned, and visible in the product onboarding story.
 4. Strengthen the registry as a production discovery primitive with clear health, trust, tenancy, and persistence guidance.
@@ -49,7 +49,7 @@ The intended implementation sequence is:
 
 1. Product positioning and roadmap alignment, including clearer visibility for existing official-SDK interoperability evidence.
 2. Public bounded MCP invocation.
-3. `production-demo` golden path (completed).
+3. `production-demo` golden path.
 
 Each step should remain independently reviewable, testable, and reversible rather than being combined into one large feature change.
 
