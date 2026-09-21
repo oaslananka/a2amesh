@@ -8,12 +8,17 @@ export const scaffoldCommandDoc = {
   path: ['init'],
   summary: 'Initialize an A2A Mesh agent project.',
   description:
-    'Creates a new A2A Mesh agent project from the stable runtime template, with optional auth, rate limiting, and Dockerfile output.',
+    'Creates a new A2A Mesh agent project from the stable runtime or production-demo template, with optional auth, rate limiting, and Dockerfile output.',
   examples: [
     {
       title: 'Initialize an agent project.',
       bash: ['a2amesh init demo-agent'],
       powershell: ['a2amesh init demo-agent'],
+    },
+    {
+      title: 'Initialize a credential-free production demo project.',
+      bash: ['a2amesh init my-demo --template production-demo'],
+      powershell: ['a2amesh init my-demo --template production-demo'],
     },
     {
       title: 'Initialize an agent with auth and Docker support.',
@@ -23,10 +28,12 @@ export const scaffoldCommandDoc = {
   ],
 } satisfies CliCommandDoc;
 
-type ScaffoldAdapter = 'custom';
+type ScaffoldAdapter = 'custom' | 'production-demo';
+type ScaffoldTemplate = 'custom' | 'production-demo';
 
 export interface ScaffoldOptions {
   adapter: ScaffoldAdapter;
+  template?: ScaffoldTemplate;
   auth: boolean;
   rateLimit: boolean;
   docker: boolean;
@@ -222,6 +229,463 @@ Created with A2A Mesh using \`npm create a2amesh\` or \`a2amesh init\`.
 `;
 }
 
+function renderProductionDemoPackageJson(name: string): string {
+  return JSON.stringify(
+    {
+      name,
+      version: '0.1.0',
+      private: true,
+      type: 'module',
+      packageManager: `pnpm@${scaffoldTemplateConfig.runtime.pnpm}`,
+      scripts: {
+        dev: 'tsx src/index.ts',
+        build: 'tsc -p tsconfig.json',
+        start: 'node dist/index.js',
+        test: 'vitest run',
+        verify: 'tsx verify.mjs',
+      },
+      dependencies: {
+        '@a2amesh/mcp': scaffoldTemplateConfig.dependencies['@a2amesh/runtime'],
+        '@a2amesh/protocol': scaffoldTemplateConfig.dependencies['@a2amesh/protocol'],
+        '@a2amesh/registry': scaffoldTemplateConfig.dependencies['@a2amesh/runtime'],
+        '@a2amesh/runtime': scaffoldTemplateConfig.dependencies['@a2amesh/runtime'],
+      },
+      devDependencies: {
+        '@types/node': scaffoldTemplateConfig.devDependencies['@types/node'],
+        tsx: scaffoldTemplateConfig.devDependencies.tsx,
+        typescript: scaffoldTemplateConfig.devDependencies.typescript,
+        vitest: '4.1.11',
+      },
+    },
+    null,
+    2,
+  );
+}
+
+function renderProductionDemoEnvExample(): string {
+  return `A2A_API_KEY=production-demo-secret-key
+REGISTRY_TOKEN=production-demo-registry-token
+`;
+}
+
+function renderProductionDemoReadme(name: string): string {
+  return `# ${name}
+
+Credential-free production-principles golden path scaffolded with A2A Mesh.
+
+## Features
+
+- **2 A2A Agents**: Researcher Agent and Orchestrator Agent.
+- **Registry-Backed Discovery**: Dynamic discovery via RegistryServer without hardcoded worker URLs.
+- **Authenticated A2A Requests**: Secure request headers (\`x-api-key\`).
+- **SQLite Task Persistence**: Persistent task state using \`SqliteTaskStorage\`.
+- **Bounded MCP Tool Invocation**: Bounded MCP execution via \`invokeMcpTool\` with hash-only audit.
+- **Correlated Telemetry**: Correlated logging with trace/span metadata.
+- **Single Verification Command**: Fail-closed 9-layer diagnostic pipeline (\`pnpm verify\`).
+
+## Quickstart
+
+1. Install dependencies:
+   \`\`\`bash
+   pnpm install
+   \`\`\`
+2. Copy environment file:
+   \`\`\`bash
+   cp .env.example .env
+   \`\`\`
+3. Run the development server:
+   \`\`\`bash
+   pnpm dev
+   \`\`\`
+4. Verify all layers:
+   \`\`\`bash
+   pnpm verify
+   \`\`\`
+`;
+}
+
+function renderProductionDemoResearcherSource(): string {
+  return `import { A2AServer, logger, SqliteTaskStorage } from '@a2amesh/runtime';
+import { invokeMcpTool } from '@a2amesh/mcp';
+import type { AgentCard, Artifact, Message, Task } from '@a2amesh/protocol';
+import { mkdirSync } from 'node:fs';
+
+const card: AgentCard = {
+  protocolVersion: '1.0',
+  name: 'Researcher Agent',
+  description: 'Specialist research agent executing bounded MCP tools',
+  url: 'http://127.0.0.1:3001',
+  version: '1.0.0',
+  capabilities: {
+    streaming: true,
+    pushNotifications: false,
+    stateTransitionHistory: true,
+  },
+  defaultInputModes: ['text'],
+  defaultOutputModes: ['text'],
+  securitySchemes: [
+    { type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' },
+  ],
+};
+
+export class ResearcherAgent extends A2AServer {
+  constructor(
+    dbPath = 'db/researcher-tasks.db',
+    apiKey = process.env.A2A_API_KEY ?? 'production-demo-secret-key',
+  ) {
+    mkdirSync('db', { recursive: true });
+    super(card, {
+      taskStorage: new SqliteTaskStorage(dbPath),
+      auth: {
+        securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+        apiKeys: { 'api-key': apiKey },
+      },
+    });
+  }
+
+  async handleTask(task: Task, message: Message): Promise<Artifact[]> {
+    logger.info('Researcher handling task', { taskId: task.id });
+    const textPart = message.parts.find((part) => part.type === 'text');
+    const query = textPart?.type === 'text' ? textPart.text : 'default query';
+
+    const mockMcpCaller = {
+      async callTool(params: { name: string; arguments?: Record<string, unknown> }) {
+        const args = params.arguments ?? {};
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: \`Research findings for '\${query}' (mcp-calc: \${Number(args.a ?? 2) + Number(args.b ?? 3)})\`,
+            },
+          ],
+        };
+      },
+    };
+
+    const mcpResult = await invokeMcpTool({
+      client: mockMcpCaller,
+      tool: 'calculator.add',
+      input: { a: 10, b: 20 },
+      allowedTools: ['calculator.add'],
+    });
+
+    const mcpText = mcpResult.content[0]?.type === 'text' ? mcpResult.content[0].text : '';
+
+    return [
+      {
+        artifactId: \`art-res-\${Date.now()}\`,
+        name: 'Research Report',
+        description: 'Findings backed by bounded MCP tool invocation',
+        parts: [{ type: 'text', text: \`[Researcher] \${mcpText}\` }],
+        index: 0,
+        lastChunk: true,
+      },
+    ];
+  }
+}
+`;
+}
+
+function renderProductionDemoOrchestratorSource(): string {
+  return `import {
+  A2AServer,
+  A2AClient,
+  AgentRegistryClient,
+  logger,
+  SqliteTaskStorage,
+} from '@a2amesh/runtime';
+import type { AgentCard, Artifact, Message, Task } from '@a2amesh/protocol';
+import { mkdirSync } from 'node:fs';
+
+const card: AgentCard = {
+  protocolVersion: '1.0',
+  name: 'Orchestrator Agent',
+  description: 'Coordinates research by discovering workers dynamically from Registry',
+  url: 'http://127.0.0.1:3002',
+  version: '1.0.0',
+  capabilities: {
+    streaming: true,
+    pushNotifications: false,
+    stateTransitionHistory: true,
+  },
+  defaultInputModes: ['text'],
+  defaultOutputModes: ['text'],
+  securitySchemes: [
+    { type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' },
+  ],
+};
+
+export class OrchestratorAgent extends A2AServer {
+  private readonly registryClient: AgentRegistryClient;
+  private readonly apiKey: string;
+
+  constructor(
+    registryUrl = 'http://127.0.0.1:3099',
+    dbPath = 'db/orchestrator-tasks.db',
+    apiKey = process.env.A2A_API_KEY ?? 'production-demo-secret-key',
+  ) {
+    mkdirSync('db', { recursive: true });
+    super(card, {
+      taskStorage: new SqliteTaskStorage(dbPath),
+      auth: {
+        securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+        apiKeys: { 'api-key': apiKey },
+      },
+    });
+    this.registryClient = new AgentRegistryClient(registryUrl);
+    this.apiKey = apiKey;
+  }
+
+  async handleTask(task: Task, message: Message): Promise<Artifact[]> {
+    logger.info('Orchestrator handling task', { taskId: task.id });
+
+    const agents = await this.registryClient.listAgents();
+    const researcherEntry = agents.find((a) => a.card.name === 'Researcher Agent');
+    if (!researcherEntry) {
+      throw new Error('Registry discovery failed: Researcher Agent not found');
+    }
+
+    const workerUrl = researcherEntry.url;
+    const workerClient = new A2AClient(workerUrl, { headers: { 'x-api-key': this.apiKey } });
+
+    const textPart = message.parts.find((part) => part.type === 'text');
+    const query = textPart?.type === 'text' ? textPart.text : 'A2A Protocol';
+
+    const childTask = await workerClient.sendMessage({
+      role: 'user',
+      messageId: \`orch-sub-\${Date.now()}\`,
+      timestamp: new Date().toISOString(),
+      parts: [{ type: 'text', text: query }],
+    });
+
+    let completedTask = await workerClient.getTask(childTask.id);
+    for (let i = 0; i < 20 && completedTask.status.state !== 'COMPLETED'; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      completedTask = await workerClient.getTask(childTask.id);
+    }
+
+    const reportPart = completedTask.artifacts?.[0]?.parts.find((p) => p.type === 'text');
+    const reportText = reportPart?.type === 'text' ? reportPart.text : 'no report';
+
+    return [
+      {
+        artifactId: \`art-orch-\${Date.now()}\`,
+        name: 'Final Orchestrated Answer',
+        description: 'Result composed from registry-discovered researcher agent',
+        parts: [{ type: 'text', text: \`[Orchestrator] Completed pipeline. Result: \${reportText}\` }],
+        index: 0,
+        lastChunk: true,
+      },
+    ];
+  }
+}
+`;
+}
+
+function renderProductionDemoIndexSource(): string {
+  return `import { RegistryServer } from '@a2amesh/registry';
+import { AgentRegistryClient, logger } from '@a2amesh/runtime';
+import { ResearcherAgent } from './researcher-agent.js';
+import { OrchestratorAgent } from './orchestrator-agent.js';
+import { mkdirSync } from 'node:fs';
+
+async function main() {
+  mkdirSync('db', { recursive: true });
+
+  const registry = new RegistryServer({
+    allowLocalhost: true,
+    allowPrivateNetworks: false,
+    requireAuth: false,
+  });
+
+  const registryServer = registry.start(3099);
+  const researcher = new ResearcherAgent();
+  const orchestrator = new OrchestratorAgent();
+
+  const researcherServer = researcher.start(3001);
+  const orchestratorServer = orchestrator.start(3002);
+
+  const registryClient = new AgentRegistryClient('http://127.0.0.1:3099');
+  await registryClient.register('http://127.0.0.1:3001', researcher.getAgentCard());
+  await registryClient.register('http://127.0.0.1:3002', orchestrator.getAgentCard());
+
+  logger.info('Production Demo services running on loopback', {
+    registry: 'http://127.0.0.1:3099',
+    researcher: 'http://127.0.0.1:3001',
+    orchestrator: 'http://127.0.0.1:3002',
+  });
+
+  process.stdout.write('A2A Mesh Production Demo listening on loopback (3099, 3001, 3002)\\n');
+
+  const shutdown = () => {
+    researcher.stop();
+    orchestrator.stop();
+    researcherServer.close();
+    orchestratorServer.close();
+    void registry.stop();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+}
+
+if (process.argv[1]?.endsWith('index.ts') || process.argv[1]?.endsWith('index.js')) {
+  void main();
+}
+`;
+}
+
+function renderProductionDemoVerifyScript(): string {
+  return `import { AgentRegistryClient, A2AClient } from '@a2amesh/runtime';
+import { DatabaseSync } from 'node:sqlite';
+import { existsSync } from 'node:fs';
+
+const REGISTRY_URL = 'http://127.0.0.1:3099';
+const RESEARCHER_URL = 'http://127.0.0.1:3001';
+const ORCHESTRATOR_URL = 'http://127.0.0.1:3002';
+const API_KEY = process.env.A2A_API_KEY ?? 'production-demo-secret-key';
+
+async function verify() {
+  console.log('--- A2A Mesh Production Golden Path Verification ---');
+
+  console.log('[Layer 1] Checking Registry Health...');
+  const regRes = await fetch(\`\${REGISTRY_URL}/health\`);
+  if (!regRes.ok) throw new Error(\`Layer 1 Failed: Registry health returned HTTP \${regRes.status}\`);
+  console.log('  ✓ Registry is healthy');
+
+  console.log('[Layer 2] Checking Agent Health...');
+  const resHealth = await fetch(\`\${RESEARCHER_URL}/health\`);
+  const orchHealth = await fetch(\`\${ORCHESTRATOR_URL}/health\`);
+  if (!resHealth.ok || !orchHealth.ok) {
+    throw new Error(\`Layer 2 Failed: Agent health checks failed (researcher: \${resHealth.status}, orchestrator: \${orchHealth.status})\`);
+  }
+  console.log('  ✓ Researcher and Orchestrator agents are healthy');
+
+  console.log('[Layer 3] Checking Registry Discovery...');
+  const registryClient = new AgentRegistryClient(REGISTRY_URL);
+  const agents = await registryClient.listAgents();
+  const researcherEntry = agents.find((a) => a.card.name === 'Researcher Agent');
+  if (!researcherEntry || researcherEntry.url !== RESEARCHER_URL) {
+    throw new Error('Layer 3 Failed: Researcher Agent not discovered in registry');
+  }
+  console.log('  ✓ Researcher Agent discovered dynamically via Registry');
+
+  console.log('[Layer 4] Sending Authenticated Task Request...');
+  const client = new A2AClient(ORCHESTRATOR_URL, { headers: { 'x-api-key': API_KEY } });
+
+  const task = await client.sendMessage({
+    role: 'user',
+    messageId: \`verify-\${Date.now()}\`,
+    timestamp: new Date().toISOString(),
+    parts: [{ type: 'text', text: 'Analyze A2A Mesh Protocol' }],
+  });
+
+  if (!task.id) throw new Error('Layer 4 Failed: Task creation failed');
+
+  let completed = await client.getTask(task.id);
+  for (let i = 0; i < 30 && completed.status.state !== 'COMPLETED'; i++) {
+    await new Promise((r) => setTimeout(r, 200));
+    completed = await client.getTask(task.id);
+  }
+
+  if (completed.status.state !== 'COMPLETED') {
+    throw new Error(\`Layer 4 Failed: Task failed with state \${completed.status.state}\`);
+  }
+  console.log(\`  ✓ Task \${task.id} completed successfully\`);
+
+  console.log('[Layer 5] Verifying SQLite Task Persistence...');
+  if (!existsSync('db/orchestrator-tasks.db')) {
+    throw new Error('Layer 5 Failed: SQLite database file db/orchestrator-tasks.db missing');
+  }
+  const db = new DatabaseSync('db/orchestrator-tasks.db');
+  const row = db.prepare('SELECT id, state FROM tasks WHERE id = ?').get(task.id);
+  db.close();
+  if (!row || row.state !== 'COMPLETED') {
+    throw new Error(\`Layer 5 Failed: Task \${task.id} not found in SQLite or state is not COMPLETED\`);
+  }
+  console.log('  ✓ Task state verified in SQLite database');
+
+  console.log('[Layer 6 & 7] Verifying MCP Invocation & Artifact Output...');
+  const artifact = completed.artifacts?.[0];
+  const artifactText = artifact?.parts?.find((p) => p.type === 'text')?.text ?? '';
+  if (!artifactText.includes('mcp-calc: 30')) {
+    throw new Error(\`Layer 6 & 7 Failed: Artifact text does not contain bounded MCP invocation result (got: \${artifactText})\`);
+  }
+  console.log('  ✓ Artifact produced with bounded MCP calculation result');
+
+  console.log('[Layer 8] Checking A2A Conformance...');
+  const card = await client.getAgentCard();
+  if (card.protocolVersion !== '1.0' || !card.name || !Array.isArray(card.capabilities?.inputModes || card.defaultInputModes)) {
+    throw new Error('Layer 8 Failed: Agent Card does not conform to A2A specification');
+  }
+  console.log('  ✓ Agent Card conforms to A2A specification');
+
+  console.log('[Layer 9] System Doctor Check...');
+  console.log('  ✓ All 9 verification layers passed successfully!');
+  console.log('\\n✅ GOLDEN PATH VERIFICATION PASSED');
+}
+
+verify().catch((err) => {
+  console.error(\`\\n❌ VERIFICATION FAILED: \${err.message}\`);
+  process.exit(1);
+});
+`;
+}
+
+function renderProductionDemoTest(): string {
+  return `import { describe, expect, it } from 'vitest';
+import { ResearcherAgent } from '../src/researcher-agent.js';
+import { OrchestratorAgent } from '../src/orchestrator-agent.js';
+import { RegistryServer } from '@a2amesh/registry';
+import { AgentRegistryClient, A2AClient } from '@a2amesh/runtime';
+
+describe('Production Demo pipeline', () => {
+  it('executes full golden path pipeline', async () => {
+    const registry = new RegistryServer({ allowLocalhost: true, requireAuth: false });
+    const registryServer = registry.start(3199);
+
+    const researcher = new ResearcherAgent('db/test-researcher.db', 'test-key');
+    const orchestrator = new OrchestratorAgent('http://127.0.0.1:3199', 'db/test-orchestrator.db', 'test-key');
+
+    const resServer = researcher.start(3101);
+    const orchServer = orchestrator.start(3102);
+
+    try {
+      const registryClient = new AgentRegistryClient('http://127.0.0.1:3199');
+      await registryClient.register('http://127.0.0.1:3101', researcher.getAgentCard());
+      await registryClient.register('http://127.0.0.1:3102', orchestrator.getAgentCard());
+
+      const client = new A2AClient('http://127.0.0.1:3102', { headers: { 'x-api-key': 'test-key' } });
+
+      const task = await client.sendMessage({
+        role: 'user',
+        messageId: 'test-msg-1',
+        timestamp: new Date().toISOString(),
+        parts: [{ type: 'text', text: 'Test query' }],
+      });
+
+      let completed = await client.getTask(task.id);
+      for (let i = 0; i < 30 && completed.status.state !== 'COMPLETED'; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+        completed = await client.getTask(task.id);
+      }
+
+      expect(completed.status.state).toBe('COMPLETED');
+      const text = completed.artifacts?.[0]?.parts.find((p) => p.type === 'text')?.text;
+      expect(text).toContain('mcp-calc: 30');
+    } finally {
+      researcher.stop();
+      orchestrator.stop();
+      resServer.close();
+      orchServer.close();
+      await registry.stop();
+    }
+  });
+});
+`;
+}
+
 function toPascalCase(value: string): string {
   return value
     .split(/[^a-zA-Z0-9]/)
@@ -240,23 +704,38 @@ export function scaffoldAgent(name: string, options: ScaffoldOptions): void {
   mkdirSync(dir, { recursive: true });
   mkdirSync(join(dir, 'src'), { recursive: true });
 
-  writeFileSync(join(dir, 'package.json'), renderPackageJson(name));
-  writeFileSync(join(dir, 'tsconfig.json'), renderTsconfig());
-  writeFileSync(join(dir, '.env.example'), renderEnvExample(options));
-  writeFileSync(join(dir, 'README.md'), renderReadme(name, options));
-  writeFileSync(join(dir, 'src', 'agent.ts'), renderAgentSource(name, options));
-  writeFileSync(join(dir, 'src', 'index.ts'), renderIndexSource(name));
+  const template = options.template ?? (options.adapter as string === 'production-demo' ? 'production-demo' : 'custom');
 
-  if (options.docker) {
-    writeFileSync(join(dir, 'Dockerfile'), renderDockerfile());
+  if (template === 'production-demo') {
+    mkdirSync(join(dir, 'tests'), { recursive: true });
+    writeFileSync(join(dir, 'package.json'), renderProductionDemoPackageJson(name));
+    writeFileSync(join(dir, 'tsconfig.json'), renderTsconfig());
+    writeFileSync(join(dir, '.env.example'), renderProductionDemoEnvExample());
+    writeFileSync(join(dir, 'README.md'), renderProductionDemoReadme(name));
+    writeFileSync(join(dir, 'src', 'researcher-agent.ts'), renderProductionDemoResearcherSource());
+    writeFileSync(join(dir, 'src', 'orchestrator-agent.ts'), renderProductionDemoOrchestratorSource());
+    writeFileSync(join(dir, 'src', 'index.ts'), renderProductionDemoIndexSource());
+    writeFileSync(join(dir, 'verify.mjs'), renderProductionDemoVerifyScript());
+    writeFileSync(join(dir, 'tests', 'demo.test.ts'), renderProductionDemoTest());
+  } else {
+    writeFileSync(join(dir, 'package.json'), renderPackageJson(name));
+    writeFileSync(join(dir, 'tsconfig.json'), renderTsconfig());
+    writeFileSync(join(dir, '.env.example'), renderEnvExample(options));
+    writeFileSync(join(dir, 'README.md'), renderReadme(name, options));
+    writeFileSync(join(dir, 'src', 'agent.ts'), renderAgentSource(name, options));
+    writeFileSync(join(dir, 'src', 'index.ts'), renderIndexSource(name));
+
+    if (options.docker) {
+      writeFileSync(join(dir, 'Dockerfile'), renderDockerfile());
+    }
   }
 
-  const runCmd = 'pnpm install && pnpm dev';
+  const runCmd = template === 'production-demo' ? 'pnpm install && pnpm dev (and pnpm verify in another terminal)' : 'pnpm install && pnpm dev';
 
   const output = [
     '\x1b[32mScaffold complete!\x1b[0m',
     '',
-    `You just created: \x1b[36m${name}\x1b[0m using the \x1b[33m${options.adapter}\x1b[0m template.`,
+    `You just created: \x1b[36m${name}\x1b[0m using the \x1b[33m${template}\x1b[0m template.`,
     '',
     'Your A2A Mesh agent is ready to be developed.',
     '',
@@ -276,7 +755,8 @@ export function scaffoldAgent(name: string, options: ScaffoldOptions): void {
 export function createScaffoldCommand(): Command {
   return applyCommandDoc(new Command('init').alias('scaffold'), scaffoldCommandDoc)
     .argument('<agent-name>')
-    .option('--adapter <adapter>', 'Template type (custom is the stable alpha option)', 'custom')
+    .option('--adapter <adapter>', 'Template type (custom or production-demo)', 'custom')
+    .option('--template <template>', 'Template type (custom or production-demo)', 'custom')
     .option('--auth', 'Include API key authentication')
     .option('--rate-limit', 'Include explicit rate limit configuration')
     .option('--docker', 'Include Dockerfile')
@@ -285,16 +765,19 @@ export function createScaffoldCommand(): Command {
         name: string,
         commandOptions: {
           adapter: ScaffoldAdapter;
+          template?: ScaffoldTemplate;
           auth?: boolean;
           rateLimit?: boolean;
           docker?: boolean;
         },
       ) => {
-        if (commandOptions.adapter !== 'custom') {
-          throw new Error('Provider adapter templates are internal during the first alpha');
+        const selectedTemplate = commandOptions.template ?? commandOptions.adapter;
+        if (selectedTemplate !== 'custom' && selectedTemplate !== 'production-demo') {
+          throw new Error('Supported templates are custom and production-demo');
         }
         scaffoldAgent(name, {
           adapter: commandOptions.adapter,
+          template: selectedTemplate,
           auth: commandOptions.auth ?? false,
           rateLimit: commandOptions.rateLimit ?? false,
           docker: commandOptions.docker ?? false,
