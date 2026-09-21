@@ -267,60 +267,46 @@ function renderProductionDemoPackageJson(name: string): string {
   );
 }
 
-function renderAuthServerInitCode(dbPath: string): string {
-  return `mkdirSync('db', { recursive: true });
-    super(card, {
-      taskStorage: new SqliteTaskStorage(dbPath),
-      auth: {
-        securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
-        apiKeys: { 'api-key': apiKey },
-      },
-    });`;
-}
-
-function renderPollCompletionCode(): string {
-  return `let completed = await client.getTask(task.id);
-  for (let i = 0; i < 30 && completed.status.state !== 'COMPLETED'; i++) {
-    await new Promise((r) => setTimeout(r, 100));
-    completed = await client.getTask(task.id);
-  }`;
-}
-
 function renderProductionDemoResearcherSource(): string {
   return `import { A2AServer, logger, SqliteTaskStorage } from '@a2amesh/runtime';
 import { invokeMcpTool } from '@a2amesh/mcp';
 import type { AgentCard, Artifact, Message, Task } from '@a2amesh/protocol';
 import { mkdirSync } from 'node:fs';
 
-const card: AgentCard = {
-  protocolVersion: '1.0',
-  name: 'Researcher Agent',
-  description: 'Specialist research agent executing bounded MCP tools',
-  url: '${DEMO_RESEARCHER_URL}',
-  version: '1.0.0',
-  capabilities: { streaming: true, pushNotifications: false, stateTransitionHistory: true },
-  defaultInputModes: ['text'],
-  defaultOutputModes: ['text'],
-  securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
-};
-
 export class ResearcherAgent extends A2AServer {
   constructor(dbPath = 'db/researcher-tasks.db', apiKey = process.env.A2A_API_KEY ?? '${DEMO_SECRET_KEY}') {
-    ${renderAuthServerInitCode('db/researcher-tasks.db')}
+    mkdirSync('db', { recursive: true });
+    super(
+      {
+        protocolVersion: '1.0',
+        name: 'Researcher Agent',
+        description: 'Specialist research worker',
+        url: '${DEMO_RESEARCHER_URL}',
+        version: '1.0.0',
+        capabilities: { streaming: true, pushNotifications: false, stateTransitionHistory: true },
+        defaultInputModes: ['text'],
+        defaultOutputModes: ['text'],
+        securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+      },
+      {
+        taskStorage: new SqliteTaskStorage(dbPath),
+        auth: { securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }], apiKeys: { 'api-key': apiKey } },
+      },
+    );
   }
 
   async handleTask(task: Task, message: Message): Promise<Artifact[]> {
     logger.info('Researcher handling task', { taskId: task.id });
     const query = message.parts.find((p) => p.type === 'text')?.text ?? 'default query';
-    const mockMcpCaller = {
-      async callTool(params: { name: string; arguments?: Record<string, unknown> }) {
-        const args = params.arguments ?? {};
-        return { content: [{ type: 'text' as const, text: \`Research findings for '\${query}' (mcp-calc: \${Number(args.a ?? 2) + Number(args.b ?? 3)})\` }] };
+    const caller = {
+      async callTool(p: { arguments?: Record<string, unknown> }) {
+        const a = p.arguments ?? {};
+        return { content: [{ type: 'text' as const, text: \`Research findings for '\${query}' (mcp-calc: \${Number(a.a ?? 2) + Number(a.b ?? 3)})\` }] };
       },
     };
-    const mcpResult = await invokeMcpTool({ client: mockMcpCaller, tool: 'calculator.add', input: { a: 10, b: 20 }, allowedTools: ['calculator.add'] });
-    const mcpText = mcpResult.content[0]?.type === 'text' ? mcpResult.content[0].text : '';
-    return [{ artifactId: \`art-res-\${Date.now()}\`, name: 'Research Report', description: 'Findings backed by bounded MCP tool invocation', parts: [{ type: 'text', text: \`[Researcher] \${mcpText}\` }], index: 0, lastChunk: true }];
+    const res = await invokeMcpTool({ client: caller, tool: 'calculator.add', input: { a: 10, b: 20 }, allowedTools: ['calculator.add'] });
+    const text = res.content[0]?.type === 'text' ? res.content[0].text : '';
+    return [{ artifactId: \`art-res-\${Date.now()}\`, name: 'Research Report', description: 'MCP-backed report', parts: [{ type: 'text', text: \`[Researcher] \${text}\` }], index: 0, lastChunk: true }];
   }
 }
 `;
@@ -331,41 +317,51 @@ function renderProductionDemoOrchestratorSource(): string {
 import type { AgentCard, Artifact, Message, Task } from '@a2amesh/protocol';
 import { mkdirSync } from 'node:fs';
 
-const card: AgentCard = {
-  protocolVersion: '1.0',
-  name: 'Orchestrator Agent',
-  description: 'Coordinates research by discovering workers dynamically from Registry',
-  url: '${DEMO_ORCHESTRATOR_URL}',
-  version: '1.0.0',
-  capabilities: { streaming: true, pushNotifications: false, stateTransitionHistory: true },
-  defaultInputModes: ['text'],
-  defaultOutputModes: ['text'],
-  securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
-};
-
 export class OrchestratorAgent extends A2AServer {
   private readonly registryClient: AgentRegistryClient;
   private readonly apiKey: string;
 
   constructor(registryUrl = '${DEMO_REGISTRY_URL}', dbPath = 'db/orchestrator-tasks.db', apiKey = process.env.A2A_API_KEY ?? '${DEMO_SECRET_KEY}') {
-    ${renderAuthServerInitCode('db/orchestrator-tasks.db')}
+    mkdirSync('db', { recursive: true });
+    super(
+      {
+        protocolVersion: '1.0',
+        name: 'Orchestrator Agent',
+        description: 'Coordinator discovering workers via Registry',
+        url: '${DEMO_ORCHESTRATOR_URL}',
+        version: '1.0.0',
+        capabilities: { streaming: true, pushNotifications: false, stateTransitionHistory: true },
+        defaultInputModes: ['text'],
+        defaultOutputModes: ['text'],
+        securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+      },
+      {
+        taskStorage: new SqliteTaskStorage(dbPath),
+        auth: { securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }], apiKeys: { 'api-key': apiKey } },
+      },
+    );
     this.registryClient = new AgentRegistryClient(registryUrl);
     this.apiKey = apiKey;
   }
 
   async handleTask(task: Task, message: Message): Promise<Artifact[]> {
     logger.info('Orchestrator handling task', { taskId: task.id });
-    const agents = await this.registryClient.listAgents();
-    const researcherEntry = agents.find((a) => a.card.name === 'Researcher Agent');
-    if (!researcherEntry) throw new Error('Registry discovery failed: Researcher Agent not found');
+    const list = await this.registryClient.listAgents();
+    const worker = list.find((a) => a.card.name === 'Researcher Agent');
+    if (!worker) throw new Error('Researcher Agent not found in registry');
 
-    const workerClient = new A2AClient(researcherEntry.url, { headers: { 'x-api-key': this.apiKey } });
-    const query = message.parts.find((p) => p.type === 'text')?.text ?? 'A2A Protocol';
-    const childTask = await workerClient.sendMessage({ role: 'user', messageId: \`orch-sub-\${Date.now()}\`, timestamp: new Date().toISOString(), parts: [{ type: 'text', text: query }] });
+    const client = new A2AClient(worker.url, { headers: { 'x-api-key': this.apiKey } });
+    const text = message.parts.find((p) => p.type === 'text')?.text ?? 'A2A Protocol';
+    const sub = await client.sendMessage({ role: 'user', messageId: \`orch-sub-\${Date.now()}\`, timestamp: new Date().toISOString(), parts: [{ type: 'text', text }] });
 
-    ${renderPollCompletionCode()}
-    const reportText = completed.artifacts?.[0]?.parts.find((p) => p.type === 'text')?.text ?? 'no report';
-    return [{ artifactId: \`art-orch-\${Date.now()}\`, name: 'Final Orchestrated Answer', description: 'Result composed from registry-discovered researcher agent', parts: [{ type: 'text', text: \`[Orchestrator] Completed pipeline. Result: \${reportText}\` }], index: 0, lastChunk: true }];
+    let completedTask = await client.getTask(sub.id);
+    for (let i = 0; i < 20 && completedTask.status.state !== 'COMPLETED'; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      completedTask = await client.getTask(sub.id);
+    }
+
+    const reportText = completedTask.artifacts?.[0]?.parts.find((p) => p.type === 'text')?.text ?? 'no report';
+    return [{ artifactId: \`art-orch-\${Date.now()}\`, name: 'Final Orchestrated Answer', description: 'Result composed from worker', parts: [{ type: 'text', text: \`[Orchestrator] Completed pipeline. Result: \${reportText}\` }], index: 0, lastChunk: true }];
   }
 }
 `;
@@ -382,6 +378,7 @@ async function main() {
   mkdirSync('db', { recursive: true });
   const registry = new RegistryServer({ allowLocalhost: true, allowPrivateNetworks: false, requireAuth: false });
   registry.start(3099);
+
   const researcher = new ResearcherAgent();
   const orchestrator = new OrchestratorAgent();
   researcher.start(3001);
@@ -446,7 +443,11 @@ async function verify() {
 
   if (!task.id) throw new Error('Layer 4 Failed: Task creation failed');
 
-  ${renderPollCompletionCode()}
+  let completed = await client.getTask(task.id);
+  for (let i = 0; i < 30 && completed.status.state !== 'COMPLETED'; i++) {
+    await new Promise((r) => setTimeout(r, 200));
+    completed = await client.getTask(task.id);
+  }
 
   if (completed.status.state !== 'COMPLETED') {
     throw new Error(\`Layer 4 Failed: Task failed with state \${completed.status.state}\`);
@@ -522,7 +523,11 @@ describe('Production Demo pipeline', () => {
         parts: [{ type: 'text', text: 'Test query' }],
       });
 
-      ${renderPollCompletionCode()}
+      let completed = await client.getTask(task.id);
+      for (let i = 0; i < 30 && completed.status.state !== 'COMPLETED'; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+        completed = await client.getTask(task.id);
+      }
 
       expect(completed.status.state).toBe('COMPLETED');
       const text = completed.artifacts?.[0]?.parts.find((p) => p.type === 'text')?.text;
