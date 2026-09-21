@@ -180,7 +180,7 @@ function renderIndexSource(name: string): string {
 const agent = createAgent();
 agent.start(3000);
 
-process.stdout.write('Agent ${name} listening on port 3000\\n');
+process.stdout.write('Agent ${name} listening on port 3000\n');
 `;
 }
 
@@ -360,19 +360,14 @@ export class OrchestratorAgent extends A2AServer {
     logger.info('Orchestrator handling task', { taskId: task.id });
     const list = await this.registryClient.listAgents();
     const worker = list.find((a) => a.card.name === 'Researcher Agent');
-    if (!worker) throw new Error('Researcher Agent not found in registry');
+    if (!worker) throw new Error('Registry discovery failed: Researcher Agent not found');
 
     const workerClient = new A2AClient(worker.url, { headers: { 'x-api-key': this.apiKey } });
     const query = message.parts.find((p) => p.type === 'text')?.text ?? 'A2A Protocol';
     const childTask = await workerClient.sendMessage({ role: 'user', messageId: \`orch-sub-\${Date.now()}\`, timestamp: new Date().toISOString(), parts: [{ type: 'text', text: query }] });
 
-    let completedTask = await workerClient.getTask(childTask.id);
-    for (let i = 0; i < 20 && completedTask.status.state !== 'COMPLETED'; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      completedTask = await workerClient.getTask(childTask.id);
-    }
-
-    const reportText = completedTask.artifacts?.[0]?.parts.find((p) => p.type === 'text')?.text ?? 'no report';
+    ${renderPollCompletionCode()}
+    const reportText = completed.artifacts?.[0]?.parts.find((p) => p.type === 'text')?.text ?? 'no report';
     return [{ artifactId: \`art-orch-\${Date.now()}\`, name: 'Final Orchestrated Answer', description: 'Result composed from worker', parts: [{ type: 'text', text: \`[Orchestrator] Completed pipeline. Result: \${reportText}\` }], index: 0, lastChunk: true }];
   }
 }
@@ -484,11 +479,11 @@ async function verify() {
   }
   console.log('  ✓ Agent Card conforms to A2A specification');
   console.log('  ✓ All verification layers passed successfully!');
-  console.log('\n✅ GOLDEN PATH VERIFICATION PASSED');
+  console.log('\n\u2705 GOLDEN PATH VERIFICATION PASSED');
 }
 
 verify().catch((err) => {
-  console.error(\`\n❌ VERIFICATION FAILED: \${err.message}\`);
+  console.error('\n\u274c VERIFICATION FAILED: ' + err.message);
   process.exit(1);
 });
 `;
