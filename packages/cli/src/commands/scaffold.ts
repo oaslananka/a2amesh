@@ -267,31 +267,15 @@ function renderProductionDemoPackageJson(name: string): string {
   );
 }
 
-function renderDemoAgentCardCode(agentName: string, url: string, description: string): string {
-  return `const card: AgentCard = {
-  protocolVersion: '1.0',
-  name: '${agentName}',
-  description: '${description}',
-  url: '${url}',
-  version: '1.0.0',
-  capabilities: { streaming: true, pushNotifications: false, stateTransitionHistory: true },
-  defaultInputModes: ['text'],
-  defaultOutputModes: ['text'],
-  securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
-};`;
-}
-
-function renderDemoServerConstructorCode(dbFile: string): string {
-  return `constructor(dbPath = '${dbFile}', apiKey = process.env.A2A_API_KEY ?? '${DEMO_SECRET_KEY}') {
-    mkdirSync('db', { recursive: true });
+function renderAuthServerInitCode(dbPath: string): string {
+  return `mkdirSync('db', { recursive: true });
     super(card, {
       taskStorage: new SqliteTaskStorage(dbPath),
       auth: {
         securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
         apiKeys: { 'api-key': apiKey },
       },
-    });
-  }`;
+    });`;
 }
 
 function renderPollCompletionCode(): string {
@@ -308,129 +292,80 @@ import { invokeMcpTool } from '@a2amesh/mcp';
 import type { AgentCard, Artifact, Message, Task } from '@a2amesh/protocol';
 import { mkdirSync } from 'node:fs';
 
-${renderDemoAgentCardCode('Researcher Agent', DEMO_RESEARCHER_URL, 'Specialist research agent executing bounded MCP tools')}
+const card: AgentCard = {
+  protocolVersion: '1.0',
+  name: 'Researcher Agent',
+  description: 'Specialist research agent executing bounded MCP tools',
+  url: '${DEMO_RESEARCHER_URL}',
+  version: '1.0.0',
+  capabilities: { streaming: true, pushNotifications: false, stateTransitionHistory: true },
+  defaultInputModes: ['text'],
+  defaultOutputModes: ['text'],
+  securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+};
 
 export class ResearcherAgent extends A2AServer {
-  ${renderDemoServerConstructorCode('db/researcher-tasks.db')}
+  constructor(dbPath = 'db/researcher-tasks.db', apiKey = process.env.A2A_API_KEY ?? '${DEMO_SECRET_KEY}') {
+    ${renderAuthServerInitCode('db/researcher-tasks.db')}
+  }
 
   async handleTask(task: Task, message: Message): Promise<Artifact[]> {
     logger.info('Researcher handling task', { taskId: task.id });
-    const textPart = message.parts.find((part) => part.type === 'text');
-    const query = textPart?.type === 'text' ? textPart.text : 'default query';
-
+    const query = message.parts.find((p) => p.type === 'text')?.text ?? 'default query';
     const mockMcpCaller = {
       async callTool(params: { name: string; arguments?: Record<string, unknown> }) {
         const args = params.arguments ?? {};
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: \`Research findings for '\${query}' (mcp-calc: \${Number(args.a ?? 2) + Number(args.b ?? 3)})\`,
-            },
-          ],
-        };
+        return { content: [{ type: 'text' as const, text: \`Research findings for '\${query}' (mcp-calc: \${Number(args.a ?? 2) + Number(args.b ?? 3)})\` }] };
       },
     };
-
-    const mcpResult = await invokeMcpTool({
-      client: mockMcpCaller,
-      tool: 'calculator.add',
-      input: { a: 10, b: 20 },
-      allowedTools: ['calculator.add'],
-    });
-
+    const mcpResult = await invokeMcpTool({ client: mockMcpCaller, tool: 'calculator.add', input: { a: 10, b: 20 }, allowedTools: ['calculator.add'] });
     const mcpText = mcpResult.content[0]?.type === 'text' ? mcpResult.content[0].text : '';
-
-    return [
-      {
-        artifactId: \`art-res-\${Date.now()}\`,
-        name: 'Research Report',
-        description: 'Findings backed by bounded MCP tool invocation',
-        parts: [{ type: 'text', text: \`[Researcher] \${mcpText}\` }],
-        index: 0,
-        lastChunk: true,
-      },
-    ];
+    return [{ artifactId: \`art-res-\${Date.now()}\`, name: 'Research Report', description: 'Findings backed by bounded MCP tool invocation', parts: [{ type: 'text', text: \`[Researcher] \${mcpText}\` }], index: 0, lastChunk: true }];
   }
 }
 `;
 }
 
 function renderProductionDemoOrchestratorSource(): string {
-  return `import {
-  A2AServer,
-  A2AClient,
-  AgentRegistryClient,
-  logger,
-  SqliteTaskStorage,
-} from '@a2amesh/runtime';
+  return `import { A2AServer, A2AClient, AgentRegistryClient, logger, SqliteTaskStorage } from '@a2amesh/runtime';
 import type { AgentCard, Artifact, Message, Task } from '@a2amesh/protocol';
 import { mkdirSync } from 'node:fs';
 
-${renderDemoAgentCardCode('Orchestrator Agent', DEMO_ORCHESTRATOR_URL, 'Coordinates research by discovering workers dynamically from Registry')}
+const card: AgentCard = {
+  protocolVersion: '1.0',
+  name: 'Orchestrator Agent',
+  description: 'Coordinates research by discovering workers dynamically from Registry',
+  url: '${DEMO_ORCHESTRATOR_URL}',
+  version: '1.0.0',
+  capabilities: { streaming: true, pushNotifications: false, stateTransitionHistory: true },
+  defaultInputModes: ['text'],
+  defaultOutputModes: ['text'],
+  securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+};
 
 export class OrchestratorAgent extends A2AServer {
   private readonly registryClient: AgentRegistryClient;
   private readonly apiKey: string;
 
-  constructor(
-    registryUrl = '${DEMO_REGISTRY_URL}',
-    dbPath = 'db/orchestrator-tasks.db',
-    apiKey = process.env.A2A_API_KEY ?? '${DEMO_SECRET_KEY}',
-  ) {
-    mkdirSync('db', { recursive: true });
-    super(card, {
-      taskStorage: new SqliteTaskStorage(dbPath),
-      auth: {
-        securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
-        apiKeys: { 'api-key': apiKey },
-      },
-    });
+  constructor(registryUrl = '${DEMO_REGISTRY_URL}', dbPath = 'db/orchestrator-tasks.db', apiKey = process.env.A2A_API_KEY ?? '${DEMO_SECRET_KEY}') {
+    ${renderAuthServerInitCode('db/orchestrator-tasks.db')}
     this.registryClient = new AgentRegistryClient(registryUrl);
     this.apiKey = apiKey;
   }
 
   async handleTask(task: Task, message: Message): Promise<Artifact[]> {
     logger.info('Orchestrator handling task', { taskId: task.id });
-
     const agents = await this.registryClient.listAgents();
     const researcherEntry = agents.find((a) => a.card.name === 'Researcher Agent');
-    if (!researcherEntry) {
-      throw new Error('Registry discovery failed: Researcher Agent not found');
-    }
+    if (!researcherEntry) throw new Error('Registry discovery failed: Researcher Agent not found');
 
-    const workerUrl = researcherEntry.url;
-    const workerClient = new A2AClient(workerUrl, { headers: { 'x-api-key': this.apiKey } });
+    const workerClient = new A2AClient(researcherEntry.url, { headers: { 'x-api-key': this.apiKey } });
+    const query = message.parts.find((p) => p.type === 'text')?.text ?? 'A2A Protocol';
+    const childTask = await workerClient.sendMessage({ role: 'user', messageId: \`orch-sub-\${Date.now()}\`, timestamp: new Date().toISOString(), parts: [{ type: 'text', text: query }] });
 
-    const textPart = message.parts.find((part) => part.type === 'text');
-    const query = textPart?.type === 'text' ? textPart.text : 'A2A Protocol';
-
-    const childTask = await workerClient.sendMessage({
-      role: 'user',
-      messageId: \`orch-sub-\${Date.now()}\`,
-      timestamp: new Date().toISOString(),
-      parts: [{ type: 'text', text: query }],
-    });
-
-    let completedTask = await workerClient.getTask(childTask.id);
-    for (let i = 0; i < 20 && completedTask.status.state !== 'COMPLETED'; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      completedTask = await workerClient.getTask(childTask.id);
-    }
-
-    const reportPart = completedTask.artifacts?.[0]?.parts.find((p) => p.type === 'text');
-    const reportText = reportPart?.type === 'text' ? reportPart.text : 'no report';
-
-    return [
-      {
-        artifactId: \`art-orch-\${Date.now()}\`,
-        name: 'Final Orchestrated Answer',
-        description: 'Result composed from registry-discovered researcher agent',
-        parts: [{ type: 'text', text: \`[Orchestrator] Completed pipeline. Result: \${reportText}\` }],
-        index: 0,
-        lastChunk: true,
-      },
-    ];
+    ${renderPollCompletionCode()}
+    const reportText = completed.artifacts?.[0]?.parts.find((p) => p.type === 'text')?.text ?? 'no report';
+    return [{ artifactId: \`art-orch-\${Date.now()}\`, name: 'Final Orchestrated Answer', description: 'Result composed from registry-discovered researcher agent', parts: [{ type: 'text', text: \`[Orchestrator] Completed pipeline. Result: \${reportText}\` }], index: 0, lastChunk: true }];
   }
 }
 `;
@@ -445,43 +380,19 @@ import { mkdirSync } from 'node:fs';
 
 async function main() {
   mkdirSync('db', { recursive: true });
-
-  const registry = new RegistryServer({
-    allowLocalhost: true,
-    allowPrivateNetworks: false,
-    requireAuth: false,
-  });
-
-  const registryServer = registry.start(3099);
+  const registry = new RegistryServer({ allowLocalhost: true, allowPrivateNetworks: false, requireAuth: false });
+  registry.start(3099);
   const researcher = new ResearcherAgent();
   const orchestrator = new OrchestratorAgent();
-
-  const researcherServer = researcher.start(3001);
-  const orchestratorServer = orchestrator.start(3002);
+  researcher.start(3001);
+  orchestrator.start(3002);
 
   const registryClient = new AgentRegistryClient('${DEMO_REGISTRY_URL}');
   await registryClient.register('${DEMO_RESEARCHER_URL}', researcher.getAgentCard());
   await registryClient.register('${DEMO_ORCHESTRATOR_URL}', orchestrator.getAgentCard());
 
-  logger.info('Production Demo services running on loopback', {
-    registry: '${DEMO_REGISTRY_URL}',
-    researcher: '${DEMO_RESEARCHER_URL}',
-    orchestrator: '${DEMO_ORCHESTRATOR_URL}',
-  });
-
+  logger.info('Production Demo services running on loopback', { registry: '${DEMO_REGISTRY_URL}', researcher: '${DEMO_RESEARCHER_URL}', orchestrator: '${DEMO_ORCHESTRATOR_URL}' });
   process.stdout.write('A2A Mesh Production Demo listening on loopback (3099, 3001, 3002)\\n');
-
-  const shutdown = () => {
-    researcher.stop();
-    orchestrator.stop();
-    researcherServer.close();
-    orchestratorServer.close();
-    void registry.stop();
-    process.exit(0);
-  };
-
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
 }
 
 if (process.argv[1]?.endsWith('index.ts') || process.argv[1]?.endsWith('index.js')) {
