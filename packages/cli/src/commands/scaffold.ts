@@ -267,32 +267,59 @@ function renderProductionDemoPackageJson(name: string): string {
   );
 }
 
+function renderAuthServerInitCode(dbPath: string): string {
+  return `mkdirSync('db', { recursive: true });
+    super(card, {
+      taskStorage: new SqliteTaskStorage('${dbPath}'),
+      auth: {
+        securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+        apiKeys: { 'api-key': apiKey },
+      },
+    });`;
+}
+
+function renderAgentCardObject(agentName: string, description: string, url: string): string {
+  return `const card: AgentCard = {
+  protocolVersion: '1.0',
+  name: '${agentName}',
+  description: '${description}',
+  url: '${url}',
+  version: '1.0.0',
+  capabilities: { streaming: true, pushNotifications: false, stateTransitionHistory: true },
+  defaultInputModes: ['text'],
+  defaultOutputModes: ['text'],
+  securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+};`;
+}
+
+function renderPollCompletionCode(): string {
+  return `let completed = await client.getTask(task.id);
+  for (let i = 0; i < 30 && completed.status.state !== 'COMPLETED'; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    completed = await client.getTask(task.id);
+  }`;
+}
+
+function renderSendMessageSnippet(msgId: string, text: string): string {
+  return `await client.sendMessage({
+      role: 'user',
+      messageId: \`${msgId}-\${Date.now()}\`,
+      timestamp: new Date().toISOString(),
+      parts: [{ type: 'text', text: '${text}' }],
+    });`;
+}
+
 function renderProductionDemoResearcherSource(): string {
   return `import { A2AServer, logger, SqliteTaskStorage } from '@a2amesh/runtime';
 import { invokeMcpTool } from '@a2amesh/mcp';
 import type { AgentCard, Artifact, Message, Task } from '@a2amesh/protocol';
 import { mkdirSync } from 'node:fs';
 
+${renderAgentCardObject('Researcher Agent', 'Specialist research worker', DEMO_RESEARCHER_URL)}
+
 export class ResearcherAgent extends A2AServer {
   constructor(dbPath = 'db/researcher-tasks.db', apiKey = process.env.A2A_API_KEY ?? '${DEMO_SECRET_KEY}') {
-    mkdirSync('db', { recursive: true });
-    super(
-      {
-        protocolVersion: '1.0',
-        name: 'Researcher Agent',
-        description: 'Specialist research worker',
-        url: '${DEMO_RESEARCHER_URL}',
-        version: '1.0.0',
-        capabilities: { streaming: true, pushNotifications: false, stateTransitionHistory: true },
-        defaultInputModes: ['text'],
-        defaultOutputModes: ['text'],
-        securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
-      },
-      {
-        taskStorage: new SqliteTaskStorage(dbPath),
-        auth: { securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }], apiKeys: { 'api-key': apiKey } },
-      },
-    );
+    ${renderAuthServerInitCode('db/researcher-tasks.db')}
   }
 
   async handleTask(task: Task, message: Message): Promise<Artifact[]> {
@@ -300,8 +327,8 @@ export class ResearcherAgent extends A2AServer {
     const query = message.parts.find((p) => p.type === 'text')?.text ?? 'default query';
     const caller = {
       async callTool(p: { arguments?: Record<string, unknown> }) {
-        const a = p.arguments ?? {};
-        return { content: [{ type: 'text' as const, text: \`Research findings for '\${query}' (mcp-calc: \${Number(a.a ?? 2) + Number(a.b ?? 3)})\` }] };
+        const args = p.arguments ?? {};
+        return { content: [{ type: 'text' as const, text: \`Research findings for '\${query}' (mcp-calc: \${Number(args.a ?? 2) + Number(args.b ?? 3)})\` }] };
       },
     };
     const res = await invokeMcpTool({ client: caller, tool: 'calculator.add', input: { a: 10, b: 20 }, allowedTools: ['calculator.add'] });
@@ -317,29 +344,14 @@ function renderProductionDemoOrchestratorSource(): string {
 import type { AgentCard, Artifact, Message, Task } from '@a2amesh/protocol';
 import { mkdirSync } from 'node:fs';
 
+${renderAgentCardObject('Orchestrator Agent', 'Coordinator discovering workers via Registry', DEMO_ORCHESTRATOR_URL)}
+
 export class OrchestratorAgent extends A2AServer {
   private readonly registryClient: AgentRegistryClient;
   private readonly apiKey: string;
 
   constructor(registryUrl = '${DEMO_REGISTRY_URL}', dbPath = 'db/orchestrator-tasks.db', apiKey = process.env.A2A_API_KEY ?? '${DEMO_SECRET_KEY}') {
-    mkdirSync('db', { recursive: true });
-    super(
-      {
-        protocolVersion: '1.0',
-        name: 'Orchestrator Agent',
-        description: 'Coordinator discovering workers via Registry',
-        url: '${DEMO_ORCHESTRATOR_URL}',
-        version: '1.0.0',
-        capabilities: { streaming: true, pushNotifications: false, stateTransitionHistory: true },
-        defaultInputModes: ['text'],
-        defaultOutputModes: ['text'],
-        securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
-      },
-      {
-        taskStorage: new SqliteTaskStorage(dbPath),
-        auth: { securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }], apiKeys: { 'api-key': apiKey } },
-      },
-    );
+    ${renderAuthServerInitCode('db/orchestrator-tasks.db')}
     this.registryClient = new AgentRegistryClient(registryUrl);
     this.apiKey = apiKey;
   }
@@ -350,14 +362,14 @@ export class OrchestratorAgent extends A2AServer {
     const worker = list.find((a) => a.card.name === 'Researcher Agent');
     if (!worker) throw new Error('Researcher Agent not found in registry');
 
-    const client = new A2AClient(worker.url, { headers: { 'x-api-key': this.apiKey } });
-    const text = message.parts.find((p) => p.type === 'text')?.text ?? 'A2A Protocol';
-    const sub = await client.sendMessage({ role: 'user', messageId: \`orch-sub-\${Date.now()}\`, timestamp: new Date().toISOString(), parts: [{ type: 'text', text }] });
+    const workerClient = new A2AClient(worker.url, { headers: { 'x-api-key': this.apiKey } });
+    const query = message.parts.find((p) => p.type === 'text')?.text ?? 'A2A Protocol';
+    const childTask = await workerClient.sendMessage({ role: 'user', messageId: \`orch-sub-\${Date.now()}\`, timestamp: new Date().toISOString(), parts: [{ type: 'text', text: query }] });
 
-    let completedTask = await client.getTask(sub.id);
+    let completedTask = await workerClient.getTask(childTask.id);
     for (let i = 0; i < 20 && completedTask.status.state !== 'COMPLETED'; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
-      completedTask = await client.getTask(sub.id);
+      completedTask = await workerClient.getTask(childTask.id);
     }
 
     const reportText = completedTask.artifacts?.[0]?.parts.find((p) => p.type === 'text')?.text ?? 'no report';
@@ -389,7 +401,7 @@ async function main() {
   await registryClient.register('${DEMO_ORCHESTRATOR_URL}', orchestrator.getAgentCard());
 
   logger.info('Production Demo services running on loopback', { registry: '${DEMO_REGISTRY_URL}', researcher: '${DEMO_RESEARCHER_URL}', orchestrator: '${DEMO_ORCHESTRATOR_URL}' });
-  process.stdout.write('A2A Mesh Production Demo listening on loopback (3099, 3001, 3002)\\n');
+  process.stdout.write('A2A Mesh Production Demo listening on loopback (3099, 3001, 3002)\n');
 }
 
 if (process.argv[1]?.endsWith('index.ts') || process.argv[1]?.endsWith('index.js')) {
@@ -434,20 +446,11 @@ async function verify() {
   console.log('[Layer 4] Sending Authenticated Task Request...');
   const client = new A2AClient(ORCHESTRATOR_URL, { headers: { 'x-api-key': API_KEY } });
 
-  const task = await client.sendMessage({
-    role: 'user',
-    messageId: \`verify-\${Date.now()}\`,
-    timestamp: new Date().toISOString(),
-    parts: [{ type: 'text', text: 'Analyze A2A Mesh Protocol' }],
-  });
+  const task = ${renderSendMessageSnippet('verify', 'Analyze A2A Mesh Protocol')}
 
   if (!task.id) throw new Error('Layer 4 Failed: Task creation failed');
 
-  let completed = await client.getTask(task.id);
-  for (let i = 0; i < 30 && completed.status.state !== 'COMPLETED'; i++) {
-    await new Promise((r) => setTimeout(r, 200));
-    completed = await client.getTask(task.id);
-  }
+  ${renderPollCompletionCode()}
 
   if (completed.status.state !== 'COMPLETED') {
     throw new Error(\`Layer 4 Failed: Task failed with state \${completed.status.state}\`);
@@ -481,11 +484,11 @@ async function verify() {
   }
   console.log('  ✓ Agent Card conforms to A2A specification');
   console.log('  ✓ All verification layers passed successfully!');
-  console.log('\\n✅ GOLDEN PATH VERIFICATION PASSED');
+  console.log('\n✅ GOLDEN PATH VERIFICATION PASSED');
 }
 
 verify().catch((err) => {
-  console.error(\`\\n❌ VERIFICATION FAILED: \${err.message}\`);
+  console.error(\`\n❌ VERIFICATION FAILED: \${err.message}\`);
   process.exit(1);
 });
 `;
@@ -516,18 +519,9 @@ describe('Production Demo pipeline', () => {
 
       const client = new A2AClient('http://127.0.0.1:3102', { headers: { 'x-api-key': 'test-key' } });
 
-      const task = await client.sendMessage({
-        role: 'user',
-        messageId: 'test-msg-1',
-        timestamp: new Date().toISOString(),
-        parts: [{ type: 'text', text: 'Test query' }],
-      });
+      const task = ${renderSendMessageSnippet('test-msg-1', 'Test query')}
 
-      let completed = await client.getTask(task.id);
-      for (let i = 0; i < 30 && completed.status.state !== 'COMPLETED'; i++) {
-        await new Promise((r) => setTimeout(r, 100));
-        completed = await client.getTask(task.id);
-      }
+      ${renderPollCompletionCode()}
 
       expect(completed.status.state).toBe('COMPLETED');
       const text = completed.artifacts?.[0]?.parts.find((p) => p.type === 'text')?.text;
