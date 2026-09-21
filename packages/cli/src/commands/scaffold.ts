@@ -39,6 +39,11 @@ export interface ScaffoldOptions {
   docker: boolean;
 }
 
+const DEMO_SECRET_KEY = 'production-demo-secret-key';
+const DEMO_REGISTRY_URL = 'http://127.0.0.1:3099';
+const DEMO_RESEARCHER_URL = 'http://127.0.0.1:3001';
+const DEMO_ORCHESTRATOR_URL = 'http://127.0.0.1:3002';
+
 function renderPackageJson(name: string): string {
   const dependencies: Record<string, string> = {
     '@a2amesh/protocol': scaffoldTemplateConfig.dependencies['@a2amesh/protocol'],
@@ -262,77 +267,22 @@ function renderProductionDemoPackageJson(name: string): string {
   );
 }
 
-function renderProductionDemoEnvExample(): string {
-  return `A2A_API_KEY=production-demo-secret-key
-REGISTRY_TOKEN=production-demo-registry-token
-`;
-}
-
-function renderProductionDemoReadme(name: string): string {
-  return `# ${name}
-
-Credential-free production-principles golden path scaffolded with A2A Mesh.
-
-## Features
-
-- **2 A2A Agents**: Researcher Agent and Orchestrator Agent.
-- **Registry-Backed Discovery**: Dynamic discovery via RegistryServer without hardcoded worker URLs.
-- **Authenticated A2A Requests**: Secure request headers (\`x-api-key\`).
-- **SQLite Task Persistence**: Persistent task state using \`SqliteTaskStorage\`.
-- **Bounded MCP Tool Invocation**: Bounded MCP execution via \`invokeMcpTool\` with hash-only audit.
-- **Correlated Telemetry**: Correlated logging with trace/span metadata.
-- **Single Verification Command**: Fail-closed 9-layer diagnostic pipeline (\`pnpm verify\`).
-
-## Quickstart
-
-1. Install dependencies:
-   \`\`\`bash
-   pnpm install
-   \`\`\`
-2. Copy environment file:
-   \`\`\`bash
-   cp .env.example .env
-   \`\`\`
-3. Run the development server:
-   \`\`\`bash
-   pnpm dev
-   \`\`\`
-4. Verify all layers:
-   \`\`\`bash
-   pnpm verify
-   \`\`\`
-`;
-}
-
-function renderProductionDemoResearcherSource(): string {
-  return `import { A2AServer, logger, SqliteTaskStorage } from '@a2amesh/runtime';
-import { invokeMcpTool } from '@a2amesh/mcp';
-import type { AgentCard, Artifact, Message, Task } from '@a2amesh/protocol';
-import { mkdirSync } from 'node:fs';
-
-const card: AgentCard = {
+function renderDemoAgentCardCode(agentName: string, url: string, description: string): string {
+  return `const card: AgentCard = {
   protocolVersion: '1.0',
-  name: 'Researcher Agent',
-  description: 'Specialist research agent executing bounded MCP tools',
-  url: 'http://127.0.0.1:3001',
+  name: '${agentName}',
+  description: '${description}',
+  url: '${url}',
   version: '1.0.0',
-  capabilities: {
-    streaming: true,
-    pushNotifications: false,
-    stateTransitionHistory: true,
-  },
+  capabilities: { streaming: true, pushNotifications: false, stateTransitionHistory: true },
   defaultInputModes: ['text'],
   defaultOutputModes: ['text'],
-  securitySchemes: [
-    { type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' },
-  ],
-};
+  securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
+};`;
+}
 
-export class ResearcherAgent extends A2AServer {
-  constructor(
-    dbPath = 'db/researcher-tasks.db',
-    apiKey = process.env.A2A_API_KEY ?? 'production-demo-secret-key',
-  ) {
+function renderDemoServerConstructorCode(dbFile: string): string {
+  return `constructor(dbPath = '${dbFile}', apiKey = process.env.A2A_API_KEY ?? '${DEMO_SECRET_KEY}') {
     mkdirSync('db', { recursive: true });
     super(card, {
       taskStorage: new SqliteTaskStorage(dbPath),
@@ -341,7 +291,19 @@ export class ResearcherAgent extends A2AServer {
         apiKeys: { 'api-key': apiKey },
       },
     });
-  }
+  }`;
+}
+
+function renderProductionDemoResearcherSource(): string {
+  return `import { A2AServer, logger, SqliteTaskStorage } from '@a2amesh/runtime';
+import { invokeMcpTool } from '@a2amesh/mcp';
+import type { AgentCard, Artifact, Message, Task } from '@a2amesh/protocol';
+import { mkdirSync } from 'node:fs';
+
+${renderDemoAgentCardCode('Researcher Agent', DEMO_RESEARCHER_URL, 'Specialist research agent executing bounded MCP tools')}
+
+export class ResearcherAgent extends A2AServer {
+  ${renderDemoServerConstructorCode('db/researcher-tasks.db')}
 
   async handleTask(task: Task, message: Message): Promise<Artifact[]> {
     logger.info('Researcher handling task', { taskId: task.id });
@@ -397,32 +359,16 @@ function renderProductionDemoOrchestratorSource(): string {
 import type { AgentCard, Artifact, Message, Task } from '@a2amesh/protocol';
 import { mkdirSync } from 'node:fs';
 
-const card: AgentCard = {
-  protocolVersion: '1.0',
-  name: 'Orchestrator Agent',
-  description: 'Coordinates research by discovering workers dynamically from Registry',
-  url: 'http://127.0.0.1:3002',
-  version: '1.0.0',
-  capabilities: {
-    streaming: true,
-    pushNotifications: false,
-    stateTransitionHistory: true,
-  },
-  defaultInputModes: ['text'],
-  defaultOutputModes: ['text'],
-  securitySchemes: [
-    { type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' },
-  ],
-};
+${renderDemoAgentCardCode('Orchestrator Agent', DEMO_ORCHESTRATOR_URL, 'Coordinates research by discovering workers dynamically from Registry')}
 
 export class OrchestratorAgent extends A2AServer {
   private readonly registryClient: AgentRegistryClient;
   private readonly apiKey: string;
 
   constructor(
-    registryUrl = 'http://127.0.0.1:3099',
+    registryUrl = '${DEMO_REGISTRY_URL}',
     dbPath = 'db/orchestrator-tasks.db',
-    apiKey = process.env.A2A_API_KEY ?? 'production-demo-secret-key',
+    apiKey = process.env.A2A_API_KEY ?? '${DEMO_SECRET_KEY}',
   ) {
     mkdirSync('db', { recursive: true });
     super(card, {
@@ -505,14 +451,14 @@ async function main() {
   const researcherServer = researcher.start(3001);
   const orchestratorServer = orchestrator.start(3002);
 
-  const registryClient = new AgentRegistryClient('http://127.0.0.1:3099');
-  await registryClient.register('http://127.0.0.1:3001', researcher.getAgentCard());
-  await registryClient.register('http://127.0.0.1:3002', orchestrator.getAgentCard());
+  const registryClient = new AgentRegistryClient('${DEMO_REGISTRY_URL}');
+  await registryClient.register('${DEMO_RESEARCHER_URL}', researcher.getAgentCard());
+  await registryClient.register('${DEMO_ORCHESTRATOR_URL}', orchestrator.getAgentCard());
 
   logger.info('Production Demo services running on loopback', {
-    registry: 'http://127.0.0.1:3099',
-    researcher: 'http://127.0.0.1:3001',
-    orchestrator: 'http://127.0.0.1:3002',
+    registry: '${DEMO_REGISTRY_URL}',
+    researcher: '${DEMO_RESEARCHER_URL}',
+    orchestrator: '${DEMO_ORCHESTRATOR_URL}',
   });
 
   process.stdout.write('A2A Mesh Production Demo listening on loopback (3099, 3001, 3002)\\n');
@@ -541,10 +487,10 @@ function renderProductionDemoVerifyScript(): string {
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync } from 'node:fs';
 
-const REGISTRY_URL = 'http://127.0.0.1:3099';
-const RESEARCHER_URL = 'http://127.0.0.1:3001';
-const ORCHESTRATOR_URL = 'http://127.0.0.1:3002';
-const API_KEY = process.env.A2A_API_KEY ?? 'production-demo-secret-key';
+const REGISTRY_URL = '${DEMO_REGISTRY_URL}';
+const RESEARCHER_URL = '${DEMO_RESEARCHER_URL}';
+const ORCHESTRATOR_URL = '${DEMO_ORCHESTRATOR_URL}';
+const API_KEY = process.env.A2A_API_KEY ?? '${DEMO_SECRET_KEY}';
 
 async function verify() {
   console.log('--- A2A Mesh Production Golden Path Verification ---');
@@ -710,8 +656,11 @@ export function scaffoldAgent(name: string, options: ScaffoldOptions): void {
     mkdirSync(join(dir, 'tests'), { recursive: true });
     writeFileSync(join(dir, 'package.json'), renderProductionDemoPackageJson(name));
     writeFileSync(join(dir, 'tsconfig.json'), renderTsconfig());
-    writeFileSync(join(dir, '.env.example'), renderProductionDemoEnvExample());
-    writeFileSync(join(dir, 'README.md'), renderProductionDemoReadme(name));
+    writeFileSync(join(dir, '.env.example'), `A2A_API_KEY=${DEMO_SECRET_KEY}\nREGISTRY_TOKEN=production-demo-registry-token\n`);
+    writeFileSync(
+      join(dir, 'README.md'),
+      `# ${name}\n\nCredential-free production-principles golden path scaffolded with A2A Mesh.\n\n## Quickstart\n\n1. \`pnpm install\`\n2. \`cp .env.example .env\`\n3. \`pnpm dev\`\n4. \`pnpm verify\`\n`,
+    );
     writeFileSync(join(dir, 'src', 'researcher-agent.ts'), renderProductionDemoResearcherSource());
     writeFileSync(join(dir, 'src', 'orchestrator-agent.ts'), renderProductionDemoOrchestratorSource());
     writeFileSync(join(dir, 'src', 'index.ts'), renderProductionDemoIndexSource());
