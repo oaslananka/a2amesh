@@ -10,7 +10,7 @@ merge_queue:
 queue_rules:
   - name: default
     batch_size: 1
-    branch_protection_injection_mode: inplace
+    branch_protection_injection_mode: queue
     checks_timeout: 90 min
     merge_method: squash
 
