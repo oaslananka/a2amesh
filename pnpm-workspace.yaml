@@ -55,33 +55,3 @@ allowBuilds:
   protobufjs: true
   tree-sitter: true
 
-minimumReleaseAgeExclude:
-  - tsx@4.22.3
-  - hono@4.12.21
-  - postcss@8.5.23
-  - protobufjs@7.6.0
-  - protobufjs@7.6.3
-  - '@opentelemetry/core@2.8.0'
-  - '@opentelemetry/core@2.9.0'
-  - '@opentelemetry/propagator-jaeger@2.9.0'
-  - '@hono/node-server@2.0.11'
-  - hono@4.12.34
-  - ip-address@10.3.1
-  - fast-uri@3.1.5
-  - linkify-it@5.0.2
-  - markdown-it@14.2.0
-  - brace-expansion@5.0.9
-  - js-yaml@4.3.1
-  - form-data@4.0.6
-  - undici@7.29.0
-  - hono@4.13.5
-  - fast-uri@3.1.6
-  - js-yaml@4.3.2
-  - qs@6.16.0
-  - smol-toml@1.7.1
-  - browserslist@4.28.7
-  - baseline-browser-mapping@2.11.0
-  - vitest@4.1.11
-  - '@vitest/coverage-v8@4.1.11'
-  - '@vitest/mocker@4.1.11'
-  - nanoid@3.3.18

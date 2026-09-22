@@ -1,6 +1,6 @@
 merge_queue:
   mode: serial
-  max_parallel_checks: 2
+  max_parallel_checks: 1
   checking_label: null
   queued_label: null
   dequeued_label: null
@@ -10,7 +10,7 @@ merge_queue:
 queue_rules:
   - name: default
     batch_size: 1
-    branch_protection_injection_mode: queue
+    branch_protection_injection_mode: inplace
     checks_timeout: 90 min
     merge_method: squash
 

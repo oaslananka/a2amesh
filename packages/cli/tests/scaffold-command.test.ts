@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { existsSync, rmSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createScaffoldCommand, scaffoldAgent } from '../src/commands/scaffold.js';
@@ -20,6 +20,62 @@ describe('init command', () => {
     ]);
   });
 
+  it('exits with error when target directory already exists', () => {
+    const targetDir = join(process.cwd(), 'test-scaffold-exists');
+    if (!existsSync(targetDir)) {
+      scaffoldAgent('test-scaffold-exists', {
+        adapter: 'custom',
+        template: 'custom',
+        auth: false,
+        rateLimit: false,
+        docker: false,
+      });
+    }
+
+    const spyExit = vi.spyOn(process, 'exit').mockImplementation((code) => {
+      throw new Error('process.exit(' + code + ')');
+    });
+
+    try {
+      expect(() =>
+        scaffoldAgent('test-scaffold-exists', {
+          adapter: 'custom',
+          template: 'custom',
+          auth: false,
+          rateLimit: false,
+          docker: false,
+        }),
+      ).toThrow('process.exit(1)');
+    } finally {
+      spyExit.mockRestore();
+      if (existsSync(targetDir)) {
+        rmSync(targetDir, { recursive: true, force: true });
+      }
+    }
+  });
+
+  it('scaffolds production-demo when adapter is set to production-demo', () => {
+    const targetDir = join(process.cwd(), 'test-adapter-demo');
+    if (existsSync(targetDir)) {
+      rmSync(targetDir, { recursive: true, force: true });
+    }
+
+    try {
+      scaffoldAgent('test-adapter-demo', {
+        adapter: 'production-demo',
+        auth: false,
+        rateLimit: false,
+        docker: false,
+      });
+
+      expect(existsSync(join(targetDir, 'verify.ts'))).toBe(true);
+    } finally {
+      if (existsSync(targetDir)) {
+        rmSync(targetDir, { recursive: true, force: true });
+      }
+    }
+  });
+
   it('scaffolds a production-demo project with expected files and scripts', () => {
     const targetDir = join(process.cwd(), 'test-scaffold-demo');
     if (existsSync(targetDir)) {
@@ -39,14 +95,19 @@ describe('init command', () => {
       expect(existsSync(join(targetDir, 'src/researcher-agent.ts'))).toBe(true);
       expect(existsSync(join(targetDir, 'src/orchestrator-agent.ts'))).toBe(true);
       expect(existsSync(join(targetDir, 'src/index.ts'))).toBe(true);
-      expect(existsSync(join(targetDir, 'verify.mjs'))).toBe(true);
+      expect(existsSync(join(targetDir, 'verify.ts'))).toBe(true);
       expect(existsSync(join(targetDir, 'tests/demo.test.ts'))).toBe(true);
 
       const pkg = JSON.parse(readFileSync(join(targetDir, 'package.json'), 'utf8'));
-      expect(pkg.scripts.verify).toBe('tsx verify.mjs');
+      expect(pkg.scripts.verify).toBe('tsx verify.ts');
       expect(pkg.dependencies['@a2amesh/runtime']).toBeDefined();
       expect(pkg.dependencies['@a2amesh/registry']).toBeDefined();
       expect(pkg.dependencies['@a2amesh/mcp']).toBeDefined();
+
+      const researcherSrc = readFileSync(join(targetDir, 'src/researcher-agent.ts'), 'utf8');
+      const orchestratorSrc = readFileSync(join(targetDir, 'src/orchestrator-agent.ts'), 'utf8');
+      expect(researcherSrc).toContain('new SqliteTaskStorage(dbPath)');
+      expect(orchestratorSrc).toContain('new SqliteTaskStorage(dbPath)');
     } finally {
       if (existsSync(targetDir)) {
         rmSync(targetDir, { recursive: true, force: true });

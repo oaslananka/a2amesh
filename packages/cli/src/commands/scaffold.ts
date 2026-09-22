@@ -247,12 +247,12 @@ function renderProductionDemoPackageJson(name: string): string {
         build: 'tsc -p tsconfig.json',
         start: 'node dist/index.js',
         test: 'vitest run',
-        verify: 'tsx verify.mjs',
+        verify: 'tsx verify.ts',
       },
       dependencies: {
-        '@a2amesh/mcp': scaffoldTemplateConfig.dependencies['@a2amesh/runtime'],
+        '@a2amesh/mcp': scaffoldTemplateConfig.dependencies['@a2amesh/mcp'],
         '@a2amesh/protocol': scaffoldTemplateConfig.dependencies['@a2amesh/protocol'],
-        '@a2amesh/registry': scaffoldTemplateConfig.dependencies['@a2amesh/runtime'],
+        '@a2amesh/registry': scaffoldTemplateConfig.dependencies['@a2amesh/registry'],
         '@a2amesh/runtime': scaffoldTemplateConfig.dependencies['@a2amesh/runtime'],
       },
       devDependencies: {
@@ -267,10 +267,10 @@ function renderProductionDemoPackageJson(name: string): string {
   );
 }
 
-function renderAuthServerInitCode(dbPath: string): string {
+function renderAuthServerInitCode(dbPathVar = 'dbPath'): string {
   return `mkdirSync('db', { recursive: true });
     super(card, {
-      taskStorage: new SqliteTaskStorage('${dbPath}'),
+      taskStorage: new SqliteTaskStorage(${dbPathVar}),
       auth: {
         securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
         apiKeys: { 'api-key': apiKey },
@@ -292,11 +292,11 @@ function renderAgentCardObject(agentName: string, description: string, url: stri
 };`;
 }
 
-function renderPollCompletionCode(): string {
-  return `let completed = await client.getTask(task.id);
+function renderPollCompletionCode(clientVar = 'client', taskIdVar = 'task.id'): string {
+  return `let completed = await ${clientVar}.getTask(${taskIdVar});
   for (let i = 0; i < 30 && completed.status.state !== 'COMPLETED'; i++) {
     await new Promise((r) => setTimeout(r, 100));
-    completed = await client.getTask(task.id);
+    completed = await ${clientVar}.getTask(${taskIdVar});
   }`;
 }
 
@@ -319,7 +319,7 @@ ${renderAgentCardObject('Researcher Agent', 'Specialist research worker', DEMO_R
 
 export class ResearcherAgent extends A2AServer {
   constructor(dbPath = 'db/researcher-tasks.db', apiKey = process.env.A2A_API_KEY ?? '${DEMO_SECRET_KEY}') {
-    ${renderAuthServerInitCode('db/researcher-tasks.db')}
+    ${renderAuthServerInitCode('dbPath')}
   }
 
   async handleTask(task: Task, message: Message): Promise<Artifact[]> {
@@ -351,7 +351,7 @@ export class OrchestratorAgent extends A2AServer {
   private readonly apiKey: string;
 
   constructor(registryUrl = '${DEMO_REGISTRY_URL}', dbPath = 'db/orchestrator-tasks.db', apiKey = process.env.A2A_API_KEY ?? '${DEMO_SECRET_KEY}') {
-    ${renderAuthServerInitCode('db/orchestrator-tasks.db')}
+    ${renderAuthServerInitCode('dbPath')}
     this.registryClient = new AgentRegistryClient(registryUrl);
     this.apiKey = apiKey;
   }
@@ -366,7 +366,7 @@ export class OrchestratorAgent extends A2AServer {
     const query = message.parts.find((p) => p.type === 'text')?.text ?? 'A2A Protocol';
     const childTask = await workerClient.sendMessage({ role: 'user', messageId: \`orch-sub-\${Date.now()}\`, timestamp: new Date().toISOString(), parts: [{ type: 'text', text: query }] });
 
-    ${renderPollCompletionCode()}
+    ${renderPollCompletionCode('workerClient', 'childTask.id')}
     const reportText = completed.artifacts?.[0]?.parts.find((p) => p.type === 'text')?.text ?? 'no report';
     return [{ artifactId: \`art-orch-\${Date.now()}\`, name: 'Final Orchestrated Answer', description: 'Result composed from worker', parts: [{ type: 'text', text: \`[Orchestrator] Completed pipeline. Result: \${reportText}\` }], index: 0, lastChunk: true }];
   }
@@ -407,6 +407,7 @@ if (process.argv[1]?.endsWith('index.ts') || process.argv[1]?.endsWith('index.js
 
 function renderProductionDemoVerifyScript(): string {
   return `import { AgentRegistryClient, A2AClient } from '@a2amesh/runtime';
+import { runConformanceSuite, hasRequiredConformanceFailures } from '@a2amesh/runtime/testing';
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync } from 'node:fs';
 
@@ -457,9 +458,10 @@ async function verify() {
     throw new Error('Layer 5 Failed: SQLite database file db/orchestrator-tasks.db missing');
   }
   const db = new DatabaseSync('db/orchestrator-tasks.db');
-  const row = db.prepare('SELECT id, state FROM tasks WHERE id = ?').get(task.id);
+  const row = db.prepare('SELECT id, status, task_json FROM tasks WHERE id = ?').get(task.id) as { id: string; status: string; task_json: string } | undefined;
+  const state = row?.status ?? (row ? JSON.parse(row.task_json).status?.state : undefined);
   db.close();
-  if (!row || row.state !== 'COMPLETED') {
+  if (!row || state !== 'COMPLETED') {
     throw new Error(\`Layer 5 Failed: Task \${task.id} not found in SQLite or state is not COMPLETED\`);
   }
   console.log('  ✓ Task state verified in SQLite database');
@@ -472,18 +474,33 @@ async function verify() {
   }
   console.log('  ✓ Artifact produced with bounded MCP calculation result');
 
-  console.log('[Layer 8 & 9] Checking A2A Conformance & Doctor...');
-  const card = await client.getAgentCard();
-  if (card.protocolVersion !== '1.0' || !card.name) {
-    throw new Error('Layer 8 Failed: Agent Card does not conform to A2A specification');
+  console.log('[Layer 8] Executing A2A Protocol Conformance Suite...');
+  const conformanceReport = await runConformanceSuite({
+    client,
+    endpointUrl: ORCHESTRATOR_URL,
+    packageVersion: '0.1.0',
+    protocolVersion: '1.0',
+    strict: true,
+  });
+  if (hasRequiredConformanceFailures(conformanceReport)) {
+    throw new Error('Layer 8 Failed: A2A protocol conformance suite failed required test cases');
   }
-  console.log('  ✓ Agent Card conforms to A2A specification');
-  console.log('  ✓ All verification layers passed successfully!');
-  console.log('\n\u2705 GOLDEN PATH VERIFICATION PASSED');
+  console.log('  ✓ Orchestrator Agent passed A2A protocol conformance suite');
+
+  console.log('[Layer 9] Running Local Runtime & Environment Doctor Diagnostics...');
+  const nodeMajor = Number(process.versions.node.split('.')[0]);
+  if (nodeMajor < 22 || nodeMajor >= 25) {
+    throw new Error('Layer 9 Failed: Node.js version ' + process.version + ' is outside the supported range (>=22.22.1 <25)');
+  }
+  if (!existsSync('package.json')) {
+    throw new Error('Layer 9 Failed: package.json not found in working directory');
+  }
+  console.log('  ✓ Local runtime & environment doctor diagnostics passed');
+  console.log('\\n✅ GOLDEN PATH VERIFICATION PASSED');
 }
 
 verify().catch((err) => {
-  console.error('\n\u274c VERIFICATION FAILED: ' + err.message);
+  console.error('\\n❌ VERIFICATION FAILED: ' + err.message);
   process.exit(1);
 });
 `;
@@ -565,7 +582,7 @@ export function scaffoldAgent(name: string, options: ScaffoldOptions): void {
     writeFileSync(join(dir, 'src', 'researcher-agent.ts'), renderProductionDemoResearcherSource());
     writeFileSync(join(dir, 'src', 'orchestrator-agent.ts'), renderProductionDemoOrchestratorSource());
     writeFileSync(join(dir, 'src', 'index.ts'), renderProductionDemoIndexSource());
-    writeFileSync(join(dir, 'verify.mjs'), renderProductionDemoVerifyScript());
+    writeFileSync(join(dir, 'verify.ts'), renderProductionDemoVerifyScript());
     writeFileSync(join(dir, 'tests', 'demo.test.ts'), renderProductionDemoTest());
   } else {
     writeFileSync(join(dir, 'package.json'), renderPackageJson(name));
