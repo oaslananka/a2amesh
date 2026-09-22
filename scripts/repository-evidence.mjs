@@ -8,6 +8,7 @@ import {
   renderRepositoryEvidence,
   selectLatestPublishedRelease,
   validateMaturityReport,
+  computeRepositoryEvidenceFactsDigest,
   validateRepositoryEvidence,
 } from './repository-evidence-core.mjs';
 
@@ -146,7 +147,7 @@ function collectLiveSnapshot() {
     repository,
   });
 
-  return {
+  const snapshot = {
     schema_version: 1,
     observed_at: new Date().toISOString(),
     refresh_cadence_days: 14,
@@ -188,6 +189,8 @@ function collectLiveSnapshot() {
       source_versions: '.release-please-manifest.json and release-tracked package.json files',
     },
   };
+  snapshot.facts_digest = computeRepositoryEvidenceFactsDigest(snapshot);
+  return snapshot;
 }
 
 function collectReleasePullRequest(repositoryName, pullRequest) {

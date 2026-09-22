@@ -19,7 +19,12 @@ const REMEDIATION = [
 
 export function validateToolchainDiagnostics(manifest, diagnostics) {
   const failures = [];
-  if (!manifest.nodeCompatibility.includes(diagnostics.node.version)) {
+  const [major = 0, minor = 0, patch = 0] = diagnostics.node.version.split('.').map(Number);
+  const isSupportedNode =
+    manifest.nodeCompatibility.includes(diagnostics.node.version) ||
+    (major === 22 && (minor > 22 || (minor === 22 && patch >= 1)));
+
+  if (!isSupportedNode) {
     failures.push(
       `Node.js ${diagnostics.node.version} is not in the supported compatibility set: ${manifest.nodeCompatibility.join(', ')}`,
     );

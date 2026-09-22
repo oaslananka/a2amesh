@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { releaseChannelForVersion } from './public-surface-policy.mjs';
 import { compareSemanticVersions } from './release-state-core.mjs';
 
@@ -33,6 +34,12 @@ export function validateRepositoryEvidence(snapshot, localState, now = new Date(
   validateRelease(snapshot.release, localState, failures);
   validateSettings(snapshot.settings, now, failures);
   validateProvenance(snapshot.provenance, failures);
+  if (snapshot.facts_digest) {
+    const expectedDigest = computeRepositoryEvidenceFactsDigest(snapshot);
+    if (snapshot.facts_digest !== expectedDigest) {
+      failures.push('Repository evidence facts_digest does not match snapshot payload facts');
+    }
+  }
   return failures;
 }
 
@@ -385,4 +392,65 @@ function escapeTable(value) {
   return String(value)
     .replaceAll('|', String.raw`\|`)
     .replaceAll('\n', ' ');
+}
+
+export function computeRepositoryEvidenceFactsDigest(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return '';
+  const facts = {
+    repository: snapshot.repository,
+    release: snapshot.release,
+    settings: snapshot.settings?.map((s) => ({
+      name: s.name,
+      value: s.value,
+      owner: s.owner,
+      refresh_cadence_days: s.refresh_cadence_days,
+      source: s.source,
+    })),
+  };
+  return createHash('sha256').update(JSON.stringify(facts)).digest('hex');
+}
+
+export function validateLiveRepositoryEvidence(snapshot, liveFacts) {
+  const failures = [];
+  if (!snapshot || !liveFacts) {
+    return ['Both snapshot and liveFacts are required for live evidence validation'];
+  }
+
+  if (snapshot.release?.source_version !== liveFacts.release?.source_version) {
+    failures.push(
+      `Snapshot source version ${snapshot.release?.source_version ?? '<missing>'} does not match live source version ${liveFacts.release?.source_version ?? '<missing>'}`,
+    );
+  }
+
+  if (snapshot.repository?.open_work?.issues !== liveFacts.repository?.open_work?.issues) {
+    failures.push(
+      `Snapshot open issues ${snapshot.repository?.open_work?.issues ?? '<missing>'} does not match live open issues ${liveFacts.repository?.open_work?.issues ?? '<missing>'}`,
+    );
+  }
+
+  if (
+    snapshot.repository?.open_work?.pull_requests !==
+    liveFacts.repository?.open_work?.pull_requests
+  ) {
+    failures.push(
+      `Snapshot open pull requests ${snapshot.repository?.open_work?.pull_requests ?? '<missing>'} does not match live open pull requests ${liveFacts.repository?.open_work?.pull_requests ?? '<missing>'}`,
+    );
+  }
+
+  if (
+    snapshot.release?.latest_canonical_tag?.name !==
+    liveFacts.release?.latest_canonical_tag?.name
+  ) {
+    failures.push(
+      `Snapshot canonical tag ${snapshot.release?.latest_canonical_tag?.name ?? '<missing>'} does not match live canonical tag ${liveFacts.release?.latest_canonical_tag?.name ?? '<missing>'}`,
+    );
+  }
+
+  if (snapshot.release?.npm?.latest !== liveFacts.release?.npm?.latest) {
+    failures.push(
+      `Snapshot npm latest ${snapshot.release?.npm?.latest ?? '<missing>'} does not match live npm latest ${liveFacts.release?.npm?.latest ?? '<missing>'}`,
+    );
+  }
+
+  return failures;
 }

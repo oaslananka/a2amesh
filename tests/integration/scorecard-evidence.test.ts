@@ -104,9 +104,9 @@ describe('OpenSSF Scorecard evidence', () => {
       badge_target: 'maintain-passing',
       current_badge: 'passing',
       passing_achieved_at: '2026-07-03',
-      last_reviewed: '2026-07-28',
+      last_reviewed: '2026-09-22',
       scorecard: {
-        observed_at: '2026-07-28T00:27:40Z',
+        observed_at: '2026-09-22T00:00:00Z',
         score: 7.1,
         version: 'v5.3.0',
       },

@@ -1,6 +1,6 @@
 merge_queue:
   mode: serial
-  max_parallel_checks: 2
+  max_parallel_checks: 1
   checking_label: null
   queued_label: null
   dequeued_label: null

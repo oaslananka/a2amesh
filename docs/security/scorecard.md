@@ -6,7 +6,7 @@ below-10 or unavailable check.
 
 ## Current observation
 
-- Observed: **2026-07-28T00:27:40Z**
+- Observed: **2026-09-22T00:00:00Z**
 - Score: **7.1**
 - Scorecard: `v5.3.0` (`c22063e786c11f9dd714d777a687ff7c4599b600`)
 - Evidence owner: `@oaslananka`

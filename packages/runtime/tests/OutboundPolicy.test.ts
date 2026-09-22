@@ -319,3 +319,65 @@ describe('OutboundPolicy total deadline', () => {
     expect((init as RequestInit & { dispatcher?: unknown })?.dispatcher).toBeDefined();
   });
 });
+
+describe('OutboundPolicy loopback and private network security boundaries', () => {
+  it('rejects loopback hostnames when allowLocalhost is false', async () => {
+    await expect(
+      validateAndFetch('http://localhost:3000/health', undefined, { allowLocalhost: false }),
+    ).rejects.toThrow(/SSRF Prevention/i);
+
+    await expect(
+      validateAndFetch('http://127.0.0.1:3000/health', undefined, { allowLocalhost: false }),
+    ).rejects.toThrow(/SSRF Prevention/i);
+  });
+
+  it('permits explicit loopback hostnames when allowLocalhost is true', async () => {
+    const server = createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok' }));
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+    const port = (server.address() as AddressInfo).port;
+
+    try {
+      const res1 = await validateAndFetch(`http://localhost:${port}/health`, undefined, {
+        allowLocalhost: true,
+      });
+      expect(res1.status).toBe(200);
+
+      const res2 = await validateAndFetch(`http://127.0.0.1:${port}/health`, undefined, {
+        allowLocalhost: true,
+      });
+      expect(res2.status).toBe(200);
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it('does not treat deceptive hostnames such as localhost.example.com as loopback', async () => {
+    const resolveSpy = vi.spyOn(dns, 'resolve').mockResolvedValue(['93.184.216.34']);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok'));
+
+    const response = await validateAndFetch('https://localhost.example.com/test', undefined, {
+      allowLocalhost: true,
+    });
+    await response.text();
+
+    expect(resolveSpy).toHaveBeenCalledWith('localhost.example.com');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks private network IP addresses when allowPrivateNetworks is false even if allowLocalhost is true', async () => {
+    const resolveSpy = vi.spyOn(dns, 'resolve').mockResolvedValue(['10.0.0.1']);
+
+    await expect(
+      validateAndFetch('http://private-host.invalid/resource', undefined, {
+        allowLocalhost: true,
+        allowPrivateNetworks: false,
+      }),
+    ).rejects.toThrow(/private/i);
+
+    expect(resolveSpy).toHaveBeenCalledWith('private-host.invalid');
+  });
+});

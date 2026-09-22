@@ -4,6 +4,7 @@ import {
   renderRepositoryEvidence,
   selectLatestPublishedRelease,
   validateMaturityReport,
+  validateLiveRepositoryEvidence,
   validateRepositoryEvidence,
 } from '../../scripts/repository-evidence-core.mjs';
 
@@ -250,6 +251,35 @@ describe('repository evidence', () => {
         'Active release PR version 0.12.0-alpha.1 must advance source version 0.13.0-alpha.1',
       ]),
     );
+  });
+
+
+  it('detects timestamp fresh but facts stale during live evidence verification', () => {
+    const liveFacts = snapshot();
+    liveFacts.release.source_version = '0.18.2';
+    liveFacts.repository.open_work.issues = 2;
+
+    const staleSnapshot = snapshot();
+    staleSnapshot.observed_at = new Date().toISOString(); // timestamp is fresh (now)
+    staleSnapshot.release.source_version = '0.13.0-alpha.1'; // facts are stale
+    staleSnapshot.repository.open_work.issues = 15; // facts are stale
+
+    const failures = validateLiveRepositoryEvidence(staleSnapshot, liveFacts);
+    expect(failures).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/Snapshot source version 0.13.0-alpha.1 does not match live source version 0.18.2/),
+        expect.stringMatching(/Snapshot open issues 15 does not match live open issues 2/),
+      ]),
+    );
+  });
+
+  it('rejects evidence when facts_digest does not match snapshot payload facts', () => {
+    const freshSnapshot = snapshot();
+    (freshSnapshot as Record<string, unknown>)['facts_digest'] = 'invalid_tampered_digest';
+
+    expect(
+      validateRepositoryEvidence(freshSnapshot, localState(), new Date('2026-07-30T00:00:00.000Z')),
+    ).toContain('Repository evidence facts_digest does not match snapshot payload facts');
   });
 
   it('renders and replaces a generated maturity-report section deterministically', () => {

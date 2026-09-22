@@ -64,6 +64,7 @@ export interface RepositoryEvidenceSnapshot {
   release: ReleaseEvidence;
   settings: RepositorySettingEvidence[];
   provenance: Record<string, string>;
+  facts_digest?: string;
 }
 
 export interface RepositoryEvidenceLocalState {
@@ -96,3 +97,10 @@ export function validateRepositoryEvidence(
 export function renderRepositoryEvidence(snapshot: RepositoryEvidenceSnapshot): string;
 export function injectRepositoryEvidence(report: string, renderedSection: string): string;
 export function validateMaturityReport(report: string): string[];
+
+export function computeRepositoryEvidenceFactsDigest(snapshot: RepositoryEvidenceSnapshot): string;
+
+export function validateLiveRepositoryEvidence(
+  snapshot: RepositoryEvidenceSnapshot,
+  liveFacts: RepositoryEvidenceSnapshot,
+): string[];

@@ -456,22 +456,6 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
-  examples/reputation-passport:
-    dependencies:
-      '@a2amesh/protocol':
-        specifier: workspace:*
-        version: link:../../packages/protocol
-      '@a2amesh/runtime':
-        specifier: workspace:*
-        version: link:../../packages/runtime
-    devDependencies:
-      '@types/node':
-        specifier: ^22.19.21
-        version: 22.19.21
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
   examples/streaming:
     dependencies:
       '@a2amesh/runtime':

@@ -45,7 +45,9 @@ function renderScaffoldTemplateConfig(config) {
   return `// This file is written by scripts/build-tsc-package.mjs from workspace manifests and tools/runtime-versions.json.
 export const scaffoldTemplateConfig = {
   dependencies: {
+    '@a2amesh/mcp': ${quoteTsString(config.dependencies['@a2amesh/mcp'])},
     '@a2amesh/protocol': ${quoteTsString(config.dependencies['@a2amesh/protocol'])},
+    '@a2amesh/registry': ${quoteTsString(config.dependencies['@a2amesh/registry'])},
     '@a2amesh/runtime': ${quoteTsString(config.dependencies['@a2amesh/runtime'])},
   },
   devDependencies: {
@@ -71,14 +73,21 @@ function generateCliGeneratedModules() {
   const rootPackage = readJson(resolve(repoRoot, 'package.json'));
   const runtimeVersions = readJson(resolve(repoRoot, 'tools/runtime-versions.json'));
   const protocolPackage = readJson(resolve(repoRoot, 'packages/protocol/package.json'));
+  const mcpPackage = readJson(resolve(repoRoot, 'packages/mcp/package.json'));
+  const registryPackage = readJson(resolve(repoRoot, 'packages/registry/package.json'));
   const runtimePackage = readJson(resolve(repoRoot, 'packages/runtime/package.json'));
   const demoPackage = readJson(resolve(repoRoot, 'apps/demo/package.json'));
   const version = readPackageVersion(cliPackage, 'packages/cli/package.json');
   const scaffoldTemplateConfig = {
     dependencies: {
+      '@a2amesh/mcp': `^${readPackageVersion(mcpPackage, 'packages/mcp/package.json')}`,
       '@a2amesh/protocol': `^${readPackageVersion(
         protocolPackage,
         'packages/protocol/package.json',
+      )}`,
+      '@a2amesh/registry': `^${readPackageVersion(
+        registryPackage,
+        'packages/registry/package.json',
       )}`,
       '@a2amesh/runtime': `^${readPackageVersion(runtimePackage, 'packages/runtime/package.json')}`,
     },
