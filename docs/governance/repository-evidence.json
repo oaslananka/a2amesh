@@ -84,5 +84,6 @@
     "releases": "GitHub REST API: releases and tags for oaslananka/a2amesh",
     "npm": "npm registry metadata for @a2amesh/runtime",
     "source_versions": ".release-please-manifest.json and release-tracked package.json files"
-  }
+  },
+  "facts_digest": "89734b68bb3ffc8f87e2adb7bc82214e81a4a5e4a7ede8107af437168d9a7b51"
 }
