@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.19.0](https://github.com/oaslananka/a2amesh/compare/@a2amesh/cli-v0.18.2...@a2amesh/cli-v0.19.0) (2026-09-22)
+
+
+### Features
+
+* **scaffold:** implement production-demo golden path and governance pass ([#340](https://github.com/oaslananka/a2amesh/issues/340)) ([9663771](https://github.com/oaslananka/a2amesh/commit/9663771bb136bffa291a503b24381e82bacfd7a1))
+
+
+### Bug Fixes
+
+* **scaffold:** harden production-demo and repository governance evidence ([#342](https://github.com/oaslananka/a2amesh/issues/342)) ([db5a104](https://github.com/oaslananka/a2amesh/commit/db5a1040c5cb3cc4976c0d8b2c70d9b9106178d1))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/runtime bumped to 0.19.0
+    * @a2amesh/registry bumped to 0.19.0
+
 ## [0.18.2](https://github.com/oaslananka/a2amesh/compare/@a2amesh/cli-v0.18.1...@a2amesh/cli-v0.18.2) (2026-08-11)
 
 
