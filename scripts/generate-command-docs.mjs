@@ -10,7 +10,7 @@ const repoRoot = process.cwd();
 const cliDocsHelpWidth = 100;
 
 function buildCliPackage() {
-  runPnpmSync(['--filter', '@a2amesh/cli', 'run', 'build'], {
+  runPnpmSync(['--filter', '@a2amesh/cli...', 'run', 'build'], {
     cwd: repoRoot,
     stdio: 'inherit',
   });
