@@ -65,7 +65,7 @@
     "docs:generate": "node scripts/generate-api-docs.mjs && pnpm run docs:commands:generate && pnpm run openapi:generate",
     "repository:evidence:write": "node scripts/repository-evidence.mjs --write",
     "repository:evidence:check": "node scripts/repository-evidence.mjs --check",
-    "docs:check": "pnpm --filter @a2amesh/registry run build && pnpm run docs:check:no-build",
+    "docs:check": "pnpm --filter @a2amesh/protocol run build && pnpm --filter @a2amesh/runtime run build && pnpm --filter @a2amesh/registry run build && pnpm run docs:check:no-build",
     "dev:smoke": "node scripts/dev-smoke.mjs",
     "examples:smoke": "pnpm run build && pnpm run examples:smoke:no-build",
     "schemas:generate": "pnpm --filter @a2amesh/runtime run build && pnpm run schemas:generate:no-build",

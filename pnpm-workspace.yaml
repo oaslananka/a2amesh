@@ -11,6 +11,10 @@ injectWorkspacePackages: true
 syncInjectedDepsAfterScripts:
   - build
 
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm
+
 overrides:
   nanoid: 3.3.18
   browserslist: 4.28.7

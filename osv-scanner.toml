@@ -1,0 +1,3 @@
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+reason = "braces@3.0.3 is a transitive devDependency with no published >=3.0.4 patch on npm"
