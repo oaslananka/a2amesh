@@ -21,27 +21,27 @@ overrides:
   '@typescript-eslint/utils': 8.61.1
   '@typescript-eslint/visitor-keys': 8.61.1
   '@hono/node-server': 2.0.11
-  '@grpc/grpc-js': ^1.14.5
+  '@grpc/grpc-js': 1.14.5
   '@opentelemetry/sdk-node>@opentelemetry/propagator-jaeger': 2.9.0
   '@opentelemetry/propagator-jaeger>@opentelemetry/core': 2.9.0
   hono: 4.13.7
-  ip-address: ^10.7.1
-  fast-uri: ^3.1.8
+  ip-address: 10.7.1
+  fast-uri: 3.1.8
   linkify-it: 5.0.2
-  brace-expansion: ^5.0.12
+  brace-expansion: 5.0.12
   braces: 3.0.3
   body-parser: 2.3.0
   js-yaml: 4.3.2
   tsx>esbuild: 0.28.1
   form-data: 4.0.6
   langsmith: 0.7.10
-  markdown-it: ^14.3.1
+  markdown-it: 14.3.1
   postcss: 8.5.23
   protobufjs: 7.6.5
   qs: 6.16.0
   smol-toml: 1.7.1
   typescript-eslint: 8.61.1
-  undici: ^7.29.1
+  undici: 7.29.1
   uuid: 14.0.0
   vitepress>vite: 6.4.3
 
@@ -769,8 +769,8 @@ importers:
         specifier: ^6.2.3
         version: 6.2.3
       undici:
-        specifier: ^7.29.1
-        version: 7.30.0
+        specifier: 7.29.1
+        version: 7.29.1
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -813,7 +813,7 @@ importers:
         specifier: workspace:*
         version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
       '@grpc/grpc-js':
-        specifier: ^1.14.5
+        specifier: 1.14.5
         version: 1.14.5
       '@grpc/proto-loader':
         specifier: ^0.8.1
@@ -4270,8 +4270,8 @@ packages:
     resolution: {integrity: sha512-IBTdIkzZNOpqm7q3dRqJvMaldXjDHWkEDfrwGEQTs5eaQMWV+djAhR+wahyNNMAa+qpbDUhBMVt4ZKNwpPm7xQ==}
     engines: {node: ^20.17.0 || >=22.9.0}
 
-  ip-address@10.7.3:
-    resolution: {integrity: sha512-A1kdq/tSb5QjvKvAMgIoEvDBIgL7qaqVP/jkvSwYYRZ9iEzvPpopxp2wQfu3SuZRHtpHNxMn8Fs0bS+gf5Xmwg==}
+  ip-address@10.7.1:
+    resolution: {integrity: sha512-4OUAqU9Z1i3vCnS05hzGiFnEMDpQ+62pAD/MVQOp83fYyNC8GleCqaS0QikQBmcWCrKFiUs/B8ztRRiYOAXuCA==}
     engines: {node: '>= 12'}
 
   ipaddr.js@1.9.1:
@@ -4713,8 +4713,8 @@ packages:
   mark.js@8.11.1:
     resolution: {integrity: sha512-1I+1qpDt4idfgLQG+BNWmrqku+7/2bi5nLf4YwF8y8zXvmfiTBY3PV3ZibfrjBueCByROpuBjLLFCajqkgYoLQ==}
 
-  markdown-it@14.3.2:
-    resolution: {integrity: sha512-sHHjZ5fJKlgrG4qns2YwVcdNep35h5fERrfkD2YNsb9UFk0UIHarbiTaHKVMlPuWAoiilyK8Fv/jAm11slsY7Q==}
+  markdown-it@14.3.1:
+    resolution: {integrity: sha512-4Ej49aYTDFIQ+uBkfX8GBvJGccoARxxPep+7aWTs55ozbjQJpW9M26Fe53vnGgvLeVzva/amzjQQaQu9w0vMhA==}
     hasBin: true
 
   markdown-table@2.0.0:
@@ -5676,8 +5676,8 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
-  undici@7.30.0:
-    resolution: {integrity: sha512-dkrQXeHSaoamnItlYbmzG0wFYrM0ZwDxCIg0A7aKjTyyhh9svRzCNFEzV+Vm05/yehjCzjDZ31KXfGEjYSztDQ==}
+  undici@7.29.1:
+    resolution: {integrity: sha512-RYONW2MeafgYlkVOKYKkA/Ag7BmXqgIWCa8t1m0JcxrQg9pI9lEqRhAOruOBCbAohOa/gkCF+iPi9hrgvTzu6Q==}
     engines: {node: '>=20.18.1'}
 
   unicode-emoji-modifier-base@1.0.0:
@@ -6198,7 +6198,7 @@ snapshots:
       express: 5.2.1
       express-rate-limit: 8.7.0(express@5.2.1)
       jose: 6.2.12
-      undici: 7.30.0
+      undici: 7.29.1
       zod: 4.6.5
     optionalDependencies:
       '@opentelemetry/exporter-metrics-otlp-http': 0.219.0(@opentelemetry/api@1.9.1)
@@ -6228,19 +6228,19 @@ snapshots:
       '@octokit/plugin-rest-endpoint-methods': 17.0.0(@octokit/core@7.0.6)
       '@octokit/request': 10.0.11
       '@octokit/request-error': 7.1.0
-      undici: 7.30.0
+      undici: 7.29.1
     optional: true
 
   '@actions/http-client@3.0.2':
     dependencies:
       tunnel: 0.0.6
-      undici: 7.30.0
+      undici: 7.29.1
     optional: true
 
   '@actions/http-client@4.0.1':
     dependencies:
       tunnel: 0.0.6
-      undici: 7.30.0
+      undici: 7.29.1
     optional: true
 
   '@actions/io@3.0.2':
@@ -9200,7 +9200,7 @@ snapshots:
     dependencies:
       debug: 4.4.3
       express: 5.2.1
-      ip-address: 10.7.3
+      ip-address: 10.7.1
     transitivePeerDependencies:
       - supports-color
 
@@ -9520,7 +9520,7 @@ snapshots:
 
   ini@6.0.0: {}
 
-  ip-address@10.7.3: {}
+  ip-address@10.7.1: {}
 
   ipaddr.js@1.9.1: {}
 
@@ -9659,7 +9659,7 @@ snapshots:
       saxes: 6.0.0
       symbol-tree: 3.2.4
       tough-cookie: 6.0.2
-      undici: 7.30.0
+      undici: 7.29.1
       w3c-xmlserializer: 5.0.0
       webidl-conversions: 8.0.1
       whatwg-mimetype: 5.0.0
@@ -9914,7 +9914,7 @@ snapshots:
 
   mark.js@8.11.1: {}
 
-  markdown-it@14.3.2:
+  markdown-it@14.3.1:
     dependencies:
       argparse: 2.0.1
       entities: 4.5.0
@@ -9937,7 +9937,7 @@ snapshots:
       js-yaml: 4.3.2
       jsonc-parser: 3.3.1
       jsonpointer: 5.0.1
-      markdown-it: 14.3.2
+      markdown-it: 14.3.1
       markdownlint: 0.40.0
       markdownlint-cli2-formatter-default: 0.0.6(markdownlint-cli2@0.22.1)
       micromatch: 4.0.8
@@ -11066,7 +11066,7 @@ snapshots:
     dependencies:
       '@gerrit0/mini-shiki': 3.23.0
       lunr: 2.3.9
-      markdown-it: 14.3.2
+      markdown-it: 14.3.1
       minimatch: 10.2.5
       typescript: 6.0.3
       yaml: 2.9.0
@@ -11094,7 +11094,7 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici@7.30.0: {}
+  undici@7.29.1: {}
 
   unicode-emoji-modifier-base@1.0.0: {}
 
