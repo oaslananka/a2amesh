@@ -50,7 +50,7 @@ overrides:
   vitepress>vite: 6.4.3
   katex: 0.18.2
   '@grpc/grpc-js@>=1.14.0 <1.14.5': ^1.14.5
-  '@vue/server-renderer@<3.5.42': ^3.5.42
+  '@vue/server-renderer@<3.5.43': ^3.5.43
   proxy-addr@>=1.1.0 <2.0.8: ^2.0.8
   source-map-js@>=1.0.0 <1.2.2: ^1.2.2
 
@@ -75,4 +75,4 @@ minimumReleaseAgeExclude:
   - katex@0.18.2
   - source-map-js@1.2.2
   - proxy-addr@2.0.8
-  - '@vue/server-renderer@3.5.42'
+  - '@vue/server-renderer@3.5.43'

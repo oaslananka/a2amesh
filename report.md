@@ -16,11 +16,10 @@ Updated `pnpm-workspace.yaml` with security fixes for the following vulnerabilit
 | `braces`               | 3.0.3            | (no fix available) | GHSA-vfj7-8cjw-p6xm                      |
 | `fast-uri`             | 3.1.6            | 3.1.8              | GHSA-qw65-cvwx-89v3, GHSA-58mr-gqgx-xq4g |
 | `hono`                 | 4.13.5           | 4.13.7             | GHSA-238p-pmpm-9mq7                      |
-| `ip-address`           | 10.3.1           | 10.7.1             | GHSA-238p-pmpm-9mq7                      |
-| `katex`                | 0.16.47          | 0.18.2             | GHSA-238p-pmpm-9mq7                      |
-| `markdown-it`          | 14.2.0           | 14.3.1             | GHSA-238p-pmpm-9mq7                      |
-| `proxy-addr`           | 2.0.7            | 2.0.8              | GHSA-jqcg-44mw-7w3h                      |
-| `smol-toml`            | 1.7.1            | 1.9.0              | GHSA-238p-pmpm-9mq7                      |
+| `ip-address`           | 10.3.1           | 10.7.1             | GHSA-mwp4-54f8-5fhr                      |
+| `katex`                | 0.16.47          | 0.18.2             | No GHSA assigned (prototype pollution fix in 0.18.2) |
+| `markdown-it`          | 14.2.0           | 14.3.1             | GHSA-253c-mchw-3w2r                      |
+| `smol-toml`            | 1.7.1            | 1.9.0              | GHSA-r4xh-jqrq-34v2                      |
 | `source-map-js`        | 1.2.1            | 1.2.2              | GHSA-68fv-2mgg-jv7q                      |
 | `undici`               | 7.29.0           | 7.29.1             | GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3 |
 
