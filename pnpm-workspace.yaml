@@ -60,6 +60,9 @@ allowBuilds:
   protobufjs: true
   tree-sitter: true
 
+patchedDependencies:
+  braces@3.0.3: patches/braces@3.0.3.patch
+
 minimumReleaseAgeExclude:
   - undici@7.29.1
   - fast-uri@3.1.8

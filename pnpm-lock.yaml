@@ -48,6 +48,9 @@ overrides:
   proxy-addr@>=1.1.0 <2.0.8: ^2.0.8
   source-map-js@>=1.0.0 <1.2.2: ^1.2.2
 
+patchedDependencies:
+  braces@3.0.3: b7f86b7235ae5c25237309da1c17621ae0f2d0823f7ac9006f960b20cf884acc
+
 importers:
 
   .:
@@ -8430,7 +8433,7 @@ snapshots:
     dependencies:
       balanced-match: 4.0.4
 
-  braces@3.0.3:
+  braces@3.0.3(patch_hash=b7f86b7235ae5c25237309da1c17621ae0f2d0823f7ac9006f960b20cf884acc):
     dependencies:
       fill-range: 7.1.1
 
@@ -9852,7 +9855,7 @@ snapshots:
 
   micromatch@4.0.8:
     dependencies:
-      braces: 3.0.3
+      braces: 3.0.3(patch_hash=b7f86b7235ae5c25237309da1c17621ae0f2d0823f7ac9006f960b20cf884acc)
       picomatch: 2.3.2
 
   mime-db@1.52.0: {}
