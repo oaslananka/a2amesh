@@ -27,17 +27,17 @@ overrides:
   ip-address: 10.7.1
   fast-uri: 3.1.8
   linkify-it: 5.0.2
-  brace-expansion: 5.0.11
+  brace-expansion: 5.0.12
   body-parser: 2.3.0
   js-yaml: 4.3.2
   tsx>esbuild: 0.28.1
   form-data: 4.0.6
   langsmith: 0.7.10
-  markdown-it: 14.2.0
+  markdown-it: 14.3.1
   postcss: 8.5.23
   protobufjs: 7.6.5
   qs: 6.16.0
-  smol-toml: 1.7.1
+  smol-toml: 1.9.0
   typescript-eslint: 8.61.1
   undici: 7.29.1
   uuid: 14.0.0
@@ -3446,8 +3446,8 @@ packages:
     resolution: {integrity: sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==}
     engines: {node: '>=18'}
 
-  brace-expansion@5.0.11:
-    resolution: {integrity: sha512-awigjhi6cLTh90bdw6+QJ9CtmJmyYhEIi70iCbc8Rozn04Fw9FeQIBjv/E22FFGuCGx1bLJyUfB64x/szUSXUg==}
+  brace-expansion@5.0.12:
+    resolution: {integrity: sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==}
     engines: {node: 20 || >=22}
 
   braces@3.0.3:
@@ -4643,8 +4643,8 @@ packages:
   mark.js@8.11.1:
     resolution: {integrity: sha512-1I+1qpDt4idfgLQG+BNWmrqku+7/2bi5nLf4YwF8y8zXvmfiTBY3PV3ZibfrjBueCByROpuBjLLFCajqkgYoLQ==}
 
-  markdown-it@14.2.0:
-    resolution: {integrity: sha512-1TGiQiJVRQ3NPmZH6sx5Cfnmg6GQm9jvC1ch4TK511NjSJvjzKLzn5pPfZRNZkRPZP0HqCioSndqH8v2nRaWVQ==}
+  markdown-it@14.3.1:
+    resolution: {integrity: sha512-4Ej49aYTDFIQ+uBkfX8GBvJGccoARxxPep+7aWTs55ozbjQJpW9M26Fe53vnGgvLeVzva/amzjQQaQu9w0vMhA==}
     hasBin: true
 
   markdown-table@2.0.0:
@@ -5337,8 +5337,8 @@ packages:
     resolution: {integrity: sha512-stxByr12oeeOyY2BlviTNQlYV5xOj47GirPr4yA1hE9JCtxfQN0+tVbkxwCtYDQWhEKWFHsEK48ORg5jrouCAg==}
     engines: {node: '>=20'}
 
-  smol-toml@1.7.1:
-    resolution: {integrity: sha512-PPlsspAZ4jbMBu5DMFhfUGDQLu/vrL4SyBROVS37x8ynnVmFIs1VPBz1Co8Xks3TvpIaZXmU85y4DrQ+UyVFoQ==}
+  smol-toml@1.9.0:
+    resolution: {integrity: sha512-hpd+HLON7HdZXqYchMM/+LaTTbdK0AU3NngIJ4KVyWbY9bfQqdL9cD+4yf6dUoU2Ap4VsU0JkQi6FxAI1B2mXQ==}
     engines: {node: '>= 18'}
 
   source-map-js@1.2.2:
@@ -8485,7 +8485,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  brace-expansion@5.0.11:
+  brace-expansion@5.0.12:
     dependencies:
       balanced-match: 4.0.4
 
@@ -9504,7 +9504,7 @@ snapshots:
       oxc-parser: 0.135.0
       oxc-resolver: 11.24.2
       picomatch: 4.0.7
-      smol-toml: 1.7.1
+      smol-toml: 1.9.0
       strip-json-comments: 5.0.3
       tinyglobby: 0.2.17
       unbash: 4.0.12
@@ -9692,7 +9692,7 @@ snapshots:
 
   mark.js@8.11.1: {}
 
-  markdown-it@14.2.0:
+  markdown-it@14.3.1:
     dependencies:
       argparse: 2.0.1
       entities: 4.5.0
@@ -9715,11 +9715,11 @@ snapshots:
       js-yaml: 4.3.2
       jsonc-parser: 3.3.1
       jsonpointer: 5.0.1
-      markdown-it: 14.2.0
+      markdown-it: 14.3.1
       markdownlint: 0.40.0
       markdownlint-cli2-formatter-default: 0.0.6(markdownlint-cli2@0.22.1)
       micromatch: 4.0.8
-      smol-toml: 1.7.1
+      smol-toml: 1.9.0
     transitivePeerDependencies:
       - supports-color
 
@@ -9977,7 +9977,7 @@ snapshots:
 
   minimatch@10.2.6:
     dependencies:
-      brace-expansion: 5.0.11
+      brace-expansion: 5.0.12
 
   minisearch@7.2.0: {}
 
@@ -10617,7 +10617,7 @@ snapshots:
       ansi-styles: 6.2.3
       is-fullwidth-code-point: 5.1.0
 
-  smol-toml@1.7.1: {}
+  smol-toml@1.9.0: {}
 
   source-map-js@1.2.2: {}
 
@@ -10819,7 +10819,7 @@ snapshots:
     dependencies:
       '@gerrit0/mini-shiki': 3.23.0
       lunr: 2.3.9
-      markdown-it: 14.2.0
+      markdown-it: 14.3.1
       minimatch: 10.2.6
       typescript: 6.0.3
       yaml: 2.9.1
