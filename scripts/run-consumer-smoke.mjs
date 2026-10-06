@@ -72,6 +72,19 @@ function run(cmd, args, opts = {}) {
   return execFileSync(cmd, args, { stdio: 'pipe', encoding: 'utf-8', ...opts });
 }
 
+function runStream(cmd, args, opts = {}) {
+  // Like run() but streams stdio directly to parent process to avoid
+  // ENOBUFS when child produces large output (e.g., pnpm build).
+  if (process.platform === 'win32') {
+    return execFileSync('cmd', ['/c', cmd, ...args], {
+      stdio: 'inherit',
+      encoding: 'utf-8',
+      ...opts,
+    });
+  }
+  return execFileSync(cmd, args, { stdio: 'inherit', encoding: 'utf-8', ...opts });
+}
+
 function runNode(args, opts = {}) {
   // process.execPath is always a real .exe — no cmd /c needed
   return execFileSync(process.execPath, args, { stdio: 'pipe', encoding: 'utf-8', ...opts });
@@ -79,6 +92,10 @@ function runNode(args, opts = {}) {
 
 function runPnpm(args, opts = {}) {
   return run('pnpm', args, opts);
+}
+
+function runPnpmStream(args, opts = {}) {
+  return runStream('pnpm', args, opts);
 }
 
 function formatInstallDiagnostics(result) {
@@ -180,7 +197,7 @@ const PACKAGES = [
 /* ───────── step 1: build monorepo ───────── */
 
 console.log(`[${now()}] === [consumer-smoke] Build monorepo ===`);
-runPnpm(['run', 'build'], { cwd: root });
+runPnpmStream(['run', 'build'], { cwd: root });
 
 /* ───────── step 2: pack all packages ───────── */
 
@@ -190,7 +207,7 @@ const packDir = mkdtempSync(join(tmpdir(), 'a2a-consumer-pack-'));
 const tarballs = {};
 for (const { name, dir } of PACKAGES) {
   const pkgDir = join(root, dir);
-  runPnpm(['pack', '--pack-destination', packDir], { cwd: pkgDir });
+  runPnpmStream(['pack', '--pack-destination', packDir], { cwd: pkgDir });
   const pkgJson = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf-8'));
   const version = pkgJson.version;
   // pnpm pack produces: <scope-without-@>-<name>-<version>.tgz
