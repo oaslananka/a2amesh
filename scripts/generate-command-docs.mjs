@@ -199,16 +199,28 @@ async function renderDocs(program, commandDocKey, docs) {
 
   const files = new Map();
   const rootPage = renderRootPage(program, commandDocKey, docByKey);
-  files.set('docs/cli/index.md', await format(rootPage, { parser: 'markdown' }));
-  files.set('docs-site/cli/index.md', await format(rootPage, { parser: 'markdown' }));
+  const [rootFormatted, rootSiteFormatted] = await Promise.all([
+    format(rootPage, { parser: 'markdown' }),
+    format(rootPage, { parser: 'markdown' }),
+  ]);
+  files.set('docs/cli/index.md', rootFormatted);
+  files.set('docs-site/cli/index.md', rootSiteFormatted);
 
-  for (const command of [...program.commands].sort((left, right) =>
+  const commands = [...program.commands].sort((left, right) =>
     left.name().localeCompare(right.name()),
-  )) {
+  );
+  const commandPages = commands.map((command) => {
     const path = commandPath(command);
     const page = renderCommandPage(command, commandDocKey, docByKey);
     const fileName = commandFileName(path);
-    const formattedPage = await format(page, { parser: 'markdown' });
+    return { path, page, fileName };
+  });
+  const formattedPages = await Promise.all(
+    commandPages.map(({ page }) => format(page, { parser: 'markdown' })),
+  );
+  for (let index = 0; index < commandPages.length; index += 1) {
+    const { fileName } = commandPages[index];
+    const formattedPage = formattedPages[index];
     files.set(`docs/cli/${fileName}`, formattedPage);
     files.set(`docs-site/cli/${fileName}`, formattedPage);
   }

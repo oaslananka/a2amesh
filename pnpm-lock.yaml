@@ -148,7 +148,7 @@ importers:
         version: link:../../packages/registry
       '@a2amesh/runtime':
         specifier: workspace:*
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../../packages/runtime
       '@anthropic-ai/sdk':
         specifier: ^0.104.0
         version: 0.104.2(zod@4.4.3)
@@ -284,10 +284,10 @@ importers:
     dependencies:
       '@a2amesh/internal-adapters':
         specifier: workspace:*
-        version: file:packages/adapters(@anthropic-ai/sdk@0.104.2(zod@4.6.5))(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))(openai@6.44.0(ws@8.21.0)(zod@4.6.5))
+        version: link:../../packages/adapters
       '@a2amesh/runtime':
         specifier: workspace:*
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../../packages/runtime
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
@@ -303,7 +303,7 @@ importers:
         version: link:../../packages/registry
       '@a2amesh/runtime':
         specifier: workspace:*
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../../packages/runtime
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
@@ -316,7 +316,7 @@ importers:
     dependencies:
       '@a2amesh/runtime':
         specifier: workspace:*
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../../packages/runtime
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
@@ -332,7 +332,7 @@ importers:
         version: link:../../packages/transport-grpc
       '@a2amesh/runtime':
         specifier: workspace:*
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../../packages/runtime
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
@@ -398,7 +398,7 @@ importers:
         version: link:../../packages/worker-runtime
       '@a2amesh/runtime':
         specifier: workspace:*
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../../packages/runtime
       openai:
         specifier: 6.44.0
         version: 6.44.0(ws@8.21.0)(zod@4.4.3)
@@ -433,7 +433,7 @@ importers:
     dependencies:
       '@a2amesh/runtime':
         specifier: workspace:*
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../../packages/runtime
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
@@ -449,7 +449,7 @@ importers:
         version: link:../../packages/registry
       '@a2amesh/runtime':
         specifier: workspace:*
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../../packages/runtime
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
@@ -462,7 +462,7 @@ importers:
     dependencies:
       '@a2amesh/runtime':
         specifier: workspace:*
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../../packages/runtime
     devDependencies:
       '@types/node':
         specifier: ^22.19.19
@@ -478,7 +478,7 @@ importers:
         version: link:../../packages/transport-ws
       '@a2amesh/runtime':
         specifier: workspace:*
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../../packages/runtime
       ws:
         specifier: ^8.20.1
         version: 8.21.0
@@ -497,7 +497,7 @@ importers:
         version: link:../adapter-base
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
     devDependencies:
       typescript:
         specifier: 6.0.3
@@ -507,7 +507,7 @@ importers:
     dependencies:
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
     devDependencies:
       typescript:
         specifier: 6.0.3
@@ -520,7 +520,7 @@ importers:
         version: link:../adapter-base
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
     devDependencies:
       typescript:
         specifier: 6.0.3
@@ -533,7 +533,7 @@ importers:
         version: link:../adapter-base
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
     devDependencies:
       typescript:
         specifier: 6.0.3
@@ -546,7 +546,7 @@ importers:
         version: link:../adapter-base
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
     devDependencies:
       typescript:
         specifier: 6.0.3
@@ -559,7 +559,7 @@ importers:
         version: link:../adapter-base
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
     devDependencies:
       typescript:
         specifier: 6.0.3
@@ -572,7 +572,7 @@ importers:
         version: link:../adapter-base
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
     devDependencies:
       openai:
         specifier: 6.44.0
@@ -606,7 +606,7 @@ importers:
         version: link:../adapter-openai
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
     devDependencies:
       openai:
         specifier: 6.44.0
@@ -622,7 +622,7 @@ importers:
     dependencies:
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
     devDependencies:
       typescript:
         specifier: 6.0.3
@@ -635,7 +635,7 @@ importers:
         version: link:../registry
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
       chalk:
         specifier: ^5.6.2
         version: 5.6.2
@@ -657,7 +657,7 @@ importers:
     dependencies:
       '@a2amesh/cli':
         specifier: workspace:^
-        version: file:packages/cli(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../cli
     devDependencies:
       '@types/node':
         specifier: 22.19.21
@@ -680,7 +680,7 @@ importers:
         version: link:../fleet
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
       cors:
         specifier: ^2.8.6
         version: 2.8.6
@@ -702,7 +702,7 @@ importers:
     dependencies:
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
@@ -727,7 +727,7 @@ importers:
     dependencies:
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
       cors:
         specifier: ^2.8.6
         version: 2.8.6
@@ -801,7 +801,7 @@ importers:
     dependencies:
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
     devDependencies:
       typescript:
         specifier: 6.0.3
@@ -811,7 +811,7 @@ importers:
     dependencies:
       '@a2amesh/runtime':
         specifier: workspace:*
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
       '@grpc/grpc-js':
         specifier: 1.14.5
         version: 1.14.5
@@ -827,7 +827,7 @@ importers:
     dependencies:
       '@a2amesh/runtime':
         specifier: workspace:^
-        version: file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
+        version: link:../runtime
     devDependencies:
       '@types/ws':
         specifier: 8.18.1
@@ -899,11 +899,6 @@ importers:
 
 packages:
 
-  '@a2amesh/cli@file:packages/cli':
-    resolution: {directory: packages/cli, type: directory}
-    engines: {node: '>=22.22.1 <25'}
-    hasBin: true
-
   '@a2amesh/internal-adapter-anthropic@file:packages/adapter-anthropic':
     resolution: {directory: packages/adapter-anthropic, type: directory}
     engines: {node: '>=22.22.1 <25'}
@@ -917,68 +912,9 @@ packages:
     resolution: {directory: packages/adapter-base, type: directory}
     engines: {node: '>=22.22.1 <25'}
 
-  '@a2amesh/internal-adapter-crewai@file:packages/adapter-crewai':
-    resolution: {directory: packages/adapter-crewai, type: directory}
-    engines: {node: '>=22.22.1 <25'}
-
-  '@a2amesh/internal-adapter-google-adk@file:packages/adapter-google-adk':
-    resolution: {directory: packages/adapter-google-adk, type: directory}
-    engines: {node: '>=22.22.1 <25'}
-
-  '@a2amesh/internal-adapter-langchain@file:packages/adapter-langchain':
-    resolution: {directory: packages/adapter-langchain, type: directory}
-    engines: {node: '>=22.22.1 <25'}
-    peerDependencies:
-      langchain: ^0.3.37 || ^1.0.0
-    peerDependenciesMeta:
-      langchain:
-        optional: true
-
-  '@a2amesh/internal-adapter-llamaindex@file:packages/adapter-llamaindex':
-    resolution: {directory: packages/adapter-llamaindex, type: directory}
-    engines: {node: '>=22.22.1 <25'}
-    peerDependencies:
-      llamaindex: ^0.9.11 || ^0.12.0
-    peerDependenciesMeta:
-      llamaindex:
-        optional: true
-
-  '@a2amesh/internal-adapter-openai@file:packages/adapter-openai':
-    resolution: {directory: packages/adapter-openai, type: directory}
-    engines: {node: '>=22.22.1 <25'}
-    peerDependencies:
-      openai: ^4.20.0 || ^6.0.0
-    peerDependenciesMeta:
-      openai:
-        optional: true
-
-  '@a2amesh/internal-adapters@file:packages/adapters':
-    resolution: {directory: packages/adapters, type: directory}
-    engines: {node: '>=22.22.1 <25'}
-    deprecated: 'This package is deprecated. Install individual adapters: @a2amesh/internal-adapter-openai, @a2amesh/internal-adapter-anthropic, @a2amesh/internal-adapter-langchain, @a2amesh/internal-adapter-google-adk, @a2amesh/internal-adapter-llamaindex, @a2amesh/internal-adapter-crewai'
-    peerDependencies:
-      '@anthropic-ai/sdk': ^0.39.0 || ^0.95.0 || ^0.96.0 || ^0.99.0 || ^0.100.0 || ^0.102.0 || ^0.103.0 || ^0.104.0
-      langchain: ^0.3.37 || ^1.0.0
-      llamaindex: ^0.9.11 || ^0.12.0
-      openai: ^4.20.0 || ^6.0.0
-    peerDependenciesMeta:
-      '@anthropic-ai/sdk':
-        optional: true
-      langchain:
-        optional: true
-      llamaindex:
-        optional: true
-      openai:
-        optional: true
-
   '@a2amesh/protocol@file:packages/protocol':
     resolution: {directory: packages/protocol, type: directory}
     engines: {node: '>=22.22.1 <25'}
-
-  '@a2amesh/registry@file:packages/registry':
-    resolution: {directory: packages/registry, type: directory}
-    engines: {node: '>=22.22.1 <25'}
-    hasBin: true
 
   '@a2amesh/runtime@file:packages/runtime':
     resolution: {directory: packages/runtime, type: directory}
@@ -3953,20 +3889,12 @@ packages:
     resolution: {integrity: sha512-kJezFj9YFAMLeORyi7aCLxLbD5/qWMQnoMVlVPyHIll7lgRJCc3JVln9Vgl9nwQi0YkMnhdGTMNn7CkRRAptMg==}
     engines: {node: '>=18.0.0'}
 
-  eventsource-parser@3.1.1:
-    resolution: {integrity: sha512-EKN1vKAMcZ8MlYMpaNuxN6R9yakzH6uajHcHVTqWJzvu5pWw9DyhbP35HH8MVBQ+dZjAfDxk+A8NiR9KWaXiyQ==}
-    engines: {node: '>=18.0.0'}
-
   eventsource@3.0.7:
     resolution: {integrity: sha512-CRT1WTyuQoD771GW56XEZFQ/ZoSfWid1alKGDYMmkt2yl8UXrVR4pspqWNEcqKvVIzg6PAltWjxcSSPrboA4iA==}
     engines: {node: '>=18.0.0'}
 
   eventsource@4.1.0:
     resolution: {integrity: sha512-2GuF51iuHX6A9xdTccMTsNb7VO0lHZihApxhvQzJB5A03DvHDd2FQepodbMaztPBmBcE/ox7o2gqaxGhYB9LhQ==}
-    engines: {node: '>=20.0.0'}
-
-  eventsource@4.1.1:
-    resolution: {integrity: sha512-D6bTRWh6KahHTK/m4WnjPQyEinNPf9eFLEZSEoj7d6fTibspnAVYfzHvirL7u/aoX5d9YYfIkBVAhmigUELk9w==}
     engines: {node: '>=20.0.0'}
 
   execa@4.1.0:
@@ -4387,9 +4315,6 @@ packages:
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
-
-  jose@6.2.12:
-    resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
 
   jose@6.2.3:
     resolution: {integrity: sha512-YYVDInQKFJfR/xa3ojUTl8c2KoTwiL1R5Wg9YCydwH0x0B9grbzlg5HC7mMjCtUJjbQ/YnGEZIhI5tCgfTb4Hw==}
@@ -5013,10 +4938,6 @@ packages:
     resolution: {integrity: sha512-84cglkRILFxdtA8hAvLNdMrtBpPNBTrQ9/ulg0FA7xLMnD6mifv+enAIeRmvtv+WgdCE+LPGOfQmtJRrVaIVhQ==}
     engines: {node: '>=20'}
 
-  ora@9.4.1:
-    resolution: {integrity: sha512-6VlU9MLXbjVQD04AZCMX28hVtA5bUoadvUqO76MUCVA0ilwJbMiHsITRPfyVm6p/BC0Av/BXMujx39WCe1LEqw==}
-    engines: {node: '>=20'}
-
   oxc-parser@0.135.0:
     resolution: {integrity: sha512-/DaPStu0s2zzNSRRniKyTPM6Z/o+DapOp2JYNKDL8AsgaBGPK2IdZyB87SQjVH+xeQPz+Qr9mrjglfkYgtbVRA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -5475,10 +5396,6 @@ packages:
 
   string-width@8.2.1:
     resolution: {integrity: sha512-IIaP0g3iy9Cyy18w3M9YcaDudujEAVHKt3a3QJg1+sr/oX96TbaGUubG0hJyCjCBThFH+tFpcIyoUHUn1ogaLA==}
-    engines: {node: '>=20'}
-
-  string-width@8.3.0:
-    resolution: {integrity: sha512-ZbmZM0JCihQN91dWnxoipT2KOEyHqEyfRXUyjuRhW8b/xnqPDoq4gWEVApTVa9db2wN8mmoikgFBbjh71+cGeQ==}
     engines: {node: '>=20'}
 
   stringify-entities@4.0.4:
@@ -6025,30 +5942,10 @@ packages:
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
-  zod@4.6.5:
-    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
-
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
-
-  '@a2amesh/cli@file:packages/cli(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))':
-    dependencies:
-      '@a2amesh/registry': file:packages/registry(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      '@a2amesh/runtime': file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      chalk: 5.6.2
-      commander: 14.0.3
-      ora: 9.4.1
-    transitivePeerDependencies:
-      - '@node-rs/xxhash'
-      - '@opentelemetry/api'
-      - '@opentelemetry/exporter-metrics-otlp-http'
-      - '@opentelemetry/exporter-trace-otlp-http'
-      - '@opentelemetry/resources'
-      - '@opentelemetry/sdk-metrics'
-      - '@opentelemetry/sdk-node'
-      - supports-color
 
   '@a2amesh/internal-adapter-anthropic@file:packages/adapter-anthropic(@anthropic-ai/sdk@0.104.2(zod@4.4.3))(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))':
     dependencies:
@@ -6056,20 +5953,6 @@ snapshots:
       '@a2amesh/runtime': file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
     optionalDependencies:
       '@anthropic-ai/sdk': 0.104.2(zod@4.4.3)
-    transitivePeerDependencies:
-      - '@opentelemetry/exporter-metrics-otlp-http'
-      - '@opentelemetry/exporter-trace-otlp-http'
-      - '@opentelemetry/resources'
-      - '@opentelemetry/sdk-metrics'
-      - '@opentelemetry/sdk-node'
-      - supports-color
-
-  '@a2amesh/internal-adapter-anthropic@file:packages/adapter-anthropic(@anthropic-ai/sdk@0.104.2(zod@4.6.5))(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))':
-    dependencies:
-      '@a2amesh/internal-adapter-base': file:packages/adapter-base(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      '@a2amesh/runtime': file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-    optionalDependencies:
-      '@anthropic-ai/sdk': 0.104.2(zod@4.6.5)
     transitivePeerDependencies:
       - '@opentelemetry/exporter-metrics-otlp-http'
       - '@opentelemetry/exporter-trace-otlp-http'
@@ -6089,117 +5972,18 @@ snapshots:
       - '@opentelemetry/sdk-node'
       - supports-color
 
-  '@a2amesh/internal-adapter-crewai@file:packages/adapter-crewai(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))':
-    dependencies:
-      '@a2amesh/internal-adapter-base': file:packages/adapter-base(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      '@a2amesh/runtime': file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-    transitivePeerDependencies:
-      - '@opentelemetry/exporter-metrics-otlp-http'
-      - '@opentelemetry/exporter-trace-otlp-http'
-      - '@opentelemetry/resources'
-      - '@opentelemetry/sdk-metrics'
-      - '@opentelemetry/sdk-node'
-      - supports-color
-
-  '@a2amesh/internal-adapter-google-adk@file:packages/adapter-google-adk(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))':
-    dependencies:
-      '@a2amesh/internal-adapter-base': file:packages/adapter-base(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      '@a2amesh/runtime': file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-    transitivePeerDependencies:
-      - '@opentelemetry/exporter-metrics-otlp-http'
-      - '@opentelemetry/exporter-trace-otlp-http'
-      - '@opentelemetry/resources'
-      - '@opentelemetry/sdk-metrics'
-      - '@opentelemetry/sdk-node'
-      - supports-color
-
-  '@a2amesh/internal-adapter-langchain@file:packages/adapter-langchain(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))':
-    dependencies:
-      '@a2amesh/internal-adapter-base': file:packages/adapter-base(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      '@a2amesh/runtime': file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-    transitivePeerDependencies:
-      - '@opentelemetry/exporter-metrics-otlp-http'
-      - '@opentelemetry/exporter-trace-otlp-http'
-      - '@opentelemetry/resources'
-      - '@opentelemetry/sdk-metrics'
-      - '@opentelemetry/sdk-node'
-      - supports-color
-
-  '@a2amesh/internal-adapter-llamaindex@file:packages/adapter-llamaindex(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))':
-    dependencies:
-      '@a2amesh/internal-adapter-base': file:packages/adapter-base(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      '@a2amesh/runtime': file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-    transitivePeerDependencies:
-      - '@opentelemetry/exporter-metrics-otlp-http'
-      - '@opentelemetry/exporter-trace-otlp-http'
-      - '@opentelemetry/resources'
-      - '@opentelemetry/sdk-metrics'
-      - '@opentelemetry/sdk-node'
-      - supports-color
-
-  '@a2amesh/internal-adapter-openai@file:packages/adapter-openai(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))(openai@6.44.0(ws@8.21.0)(zod@4.6.5))':
-    dependencies:
-      '@a2amesh/internal-adapter-base': file:packages/adapter-base(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      '@a2amesh/runtime': file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-    optionalDependencies:
-      openai: 6.44.0(ws@8.21.0)(zod@4.6.5)
-    transitivePeerDependencies:
-      - '@opentelemetry/exporter-metrics-otlp-http'
-      - '@opentelemetry/exporter-trace-otlp-http'
-      - '@opentelemetry/resources'
-      - '@opentelemetry/sdk-metrics'
-      - '@opentelemetry/sdk-node'
-      - supports-color
-
-  '@a2amesh/internal-adapters@file:packages/adapters(@anthropic-ai/sdk@0.104.2(zod@4.6.5))(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))(openai@6.44.0(ws@8.21.0)(zod@4.6.5))':
-    dependencies:
-      '@a2amesh/internal-adapter-anthropic': file:packages/adapter-anthropic(@anthropic-ai/sdk@0.104.2(zod@4.6.5))(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      '@a2amesh/internal-adapter-base': file:packages/adapter-base(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      '@a2amesh/internal-adapter-crewai': file:packages/adapter-crewai(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      '@a2amesh/internal-adapter-google-adk': file:packages/adapter-google-adk(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      '@a2amesh/internal-adapter-langchain': file:packages/adapter-langchain(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      '@a2amesh/internal-adapter-llamaindex': file:packages/adapter-llamaindex(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      '@a2amesh/internal-adapter-openai': file:packages/adapter-openai(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))(openai@6.44.0(ws@8.21.0)(zod@4.6.5))
-      '@a2amesh/runtime': file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-    optionalDependencies:
-      '@anthropic-ai/sdk': 0.104.2(zod@4.6.5)
-      openai: 6.44.0(ws@8.21.0)(zod@4.6.5)
-    transitivePeerDependencies:
-      - '@opentelemetry/exporter-metrics-otlp-http'
-      - '@opentelemetry/exporter-trace-otlp-http'
-      - '@opentelemetry/resources'
-      - '@opentelemetry/sdk-metrics'
-      - '@opentelemetry/sdk-node'
-      - supports-color
-
   '@a2amesh/protocol@file:packages/protocol': {}
-
-  '@a2amesh/registry@file:packages/registry(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))':
-    dependencies:
-      '@a2amesh/runtime': file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))
-      cors: 2.8.6
-      express: 5.2.1
-      redis: 6.1.0(@opentelemetry/api@1.9.1)
-    transitivePeerDependencies:
-      - '@node-rs/xxhash'
-      - '@opentelemetry/api'
-      - '@opentelemetry/exporter-metrics-otlp-http'
-      - '@opentelemetry/exporter-trace-otlp-http'
-      - '@opentelemetry/resources'
-      - '@opentelemetry/sdk-metrics'
-      - '@opentelemetry/sdk-node'
-      - supports-color
 
   '@a2amesh/runtime@file:packages/runtime(@opentelemetry/exporter-metrics-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.219.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-metrics@2.8.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-node@0.219.0(@opentelemetry/api@1.9.1))':
     dependencies:
       '@a2amesh/protocol': file:packages/protocol
       '@opentelemetry/api': 1.9.1
-      eventsource: 4.1.1
+      eventsource: 4.1.0
       express: 5.2.1
       express-rate-limit: 8.7.0(express@5.2.1)
-      jose: 6.2.12
+      jose: 6.2.3
       undici: 7.29.1
-      zod: 4.6.5
+      zod: 4.4.3
     optionalDependencies:
       '@opentelemetry/exporter-metrics-otlp-http': 0.219.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/exporter-trace-otlp-http': 0.219.0(@opentelemetry/api@1.9.1)
@@ -6366,14 +6150,6 @@ snapshots:
       standardwebhooks: 1.0.0
     optionalDependencies:
       zod: 4.4.3
-
-  '@anthropic-ai/sdk@0.104.2(zod@4.6.5)':
-    dependencies:
-      json-schema-to-ts: 3.1.1
-      standardwebhooks: 1.0.0
-    optionalDependencies:
-      zod: 4.6.5
-    optional: true
 
   '@arethetypeswrong/cli@0.18.5':
     dependencies:
@@ -9153,8 +8929,6 @@ snapshots:
 
   eventsource-parser@3.1.0: {}
 
-  eventsource-parser@3.1.1: {}
-
   eventsource@3.0.7:
     dependencies:
       eventsource-parser: 3.1.0
@@ -9162,10 +8936,6 @@ snapshots:
   eventsource@4.1.0:
     dependencies:
       eventsource-parser: 3.1.0
-
-  eventsource@4.1.1:
-    dependencies:
-      eventsource-parser: 3.1.1
 
   execa@4.1.0:
     dependencies:
@@ -9607,8 +9377,6 @@ snapshots:
   jiti@2.6.1: {}
 
   jiti@2.7.0: {}
-
-  jose@6.2.12: {}
 
   jose@6.2.3: {}
 
@@ -10295,12 +10063,6 @@ snapshots:
       ws: 8.21.0
       zod: 4.4.3
 
-  openai@6.44.0(ws@8.21.0)(zod@4.6.5):
-    optionalDependencies:
-      ws: 8.21.0
-      zod: 4.6.5
-    optional: true
-
   optionator@0.9.4:
     dependencies:
       deep-is: 0.1.4
@@ -10320,17 +10082,6 @@ snapshots:
       log-symbols: 7.0.1
       stdin-discarder: 0.3.2
       string-width: 8.2.1
-
-  ora@9.4.1:
-    dependencies:
-      chalk: 5.6.2
-      cli-cursor: 5.0.0
-      cli-spinners: 3.4.0
-      is-interactive: 2.0.0
-      is-unicode-supported: 2.1.0
-      log-symbols: 7.0.1
-      stdin-discarder: 0.3.2
-      string-width: 8.3.0
 
   oxc-parser@0.135.0:
     dependencies:
@@ -10908,11 +10659,6 @@ snapshots:
       get-east-asian-width: 1.6.0
       strip-ansi: 7.2.0
 
-  string-width@8.3.0:
-    dependencies:
-      get-east-asian-width: 1.7.0
-      strip-ansi: 7.2.0
-
   stringify-entities@4.0.4:
     dependencies:
       character-entities-html4: 2.1.0
@@ -11418,7 +11164,5 @@ snapshots:
     optional: true
 
   zod@4.4.3: {}
-
-  zod@4.6.5: {}
 
   zwitch@2.0.4: {}
