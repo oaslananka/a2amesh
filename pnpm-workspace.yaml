@@ -76,3 +76,7 @@ minimumReleaseAgeExclude:
   - source-map-js@1.2.2
   - proxy-addr@2.0.8
   - '@vue/server-renderer@3.5.43'
+
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm

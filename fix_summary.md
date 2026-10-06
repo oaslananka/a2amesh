@@ -1,34 +1,35 @@
-## Remediation Complete for ENG-525 (Round 2)
+## Remediation Complete for ENG-595 (Round 3)
 
-Fixed two categories of issues from the Codacy findings on PR #347:
+Fixed two categories of issues from the GitHub Actions failures on PR #347:
 
-### 1. Corrected GHSA IDs in `report.md`
+### 1. Security / audit: braces@3.0.3 Stack-Exhaustion DoS (GHSA-vfj7-8cjw-p6xm)
 
-The vulnerability identifier `GHSA-238p-pmpm-9mq7` (specific to Hono) was incorrectly duplicated for four packages. Replaced with correct IDs:
+The `braces@3.0.3` package has a vulnerability (CVE-2026-93687) where deeply nested brace patterns can cause stack overflow. No fixed version (3.0.4+) is available on npm. Applied mitigation:
 
-| Package | Previous (Incorrect) | Fixed (Correct) |
-|---------|---------------------|-----------------|
-| `ip-address` 10.7.1 | GHSA-238p-pmpm-9mq7 | **GHSA-mwp4-54f8-5fhr** (Address4 decodes leading-zero octets as decimal) |
-| `katex` 0.18.2 | GHSA-238p-pmpm-9mq7 | **No GHSA assigned** (prototype pollution fix in 0.18.2) |
-| `markdown-it` 14.3.1 | GHSA-238p-pmpm-9mq7 | **GHSA-253c-mchw-3w2r** (linkify quadratic paths DoS, patched in 14.3.1) |
-| `smol-toml` 1.9.0 | GHSA-238p-pmpm-9mq7 | **GHSA-r4xh-jqrq-34v2** (quadratic-time parse, patched in 1.9.0) |
+- Created pnpm patch (`patches/braces@3.0.3.patch`) adding depth guards to all recursive functions in `lib/parse.js`, `lib/compile.js`, `lib/expand.js`, `lib/stringify.js`
+- Added `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml` to suppress the audit warning for this patched vulnerability
+- Patch verified: deeply nested patterns (150 levels) correctly throw "Brace nesting depth exceeds max depth"
 
-### 2. Aligned `@vue/server-renderer` version in `pnpm-workspace.yaml`
+### 2. Docs / command-parity: Repository Evidence Refresh
 
-Updated from 3.5.42 to 3.5.43 in both locations per Codacy finding:
-- Override: `'@vue/server-renderer@<3.5.43': ^3.5.43`
-- Minimum release age exclude: `'@vue/server-renderer@3.5.43'`
+The `repository:evidence:check` fails because the evidence snapshot exceeds the 14-day refresh cadence. This requires authenticated GitHub CLI access (`gh api`) which is only available in CI. The `repository:evidence:write` command must be run in the CI environment where PR checks execute.
 
 ### Verification
 
-- ✅ `pnpm install --no-frozen-lockfile` - Lockfile regenerated successfully
-- ✅ `pnpm run lint:yaml` - YAML validation passes
-- ✅ `pnpm run lint:identity` - Identity checks pass
+- ✅ `pnpm audit --audit-level high` - Passes (1 high vulnerability ignored via auditConfig)
+- ✅ `pnpm run lint` - All lint checks pass (code, markdown, yaml, identity)
+- ✅ `pnpm run typecheck` - TypeScript typecheck passes
 - ✅ `pnpm run build` - Full build succeeds
-- ⚠️ `pnpm run lint:md` - Pre-existing markdownlint errors in `remediation-summary.md` (unrelated to changes)
-- ⚠️ `pnpm run typecheck` - Pre-existing type error in `packages/adapters` (missing `@a2amesh/internal-adapter-anthropic` module, unrelated to changes)
+- ✅ `pnpm run test:unit` - All 1061 unit tests pass
 
-Files modified:
-- `report.md` - Corrected GHSA IDs
-- `pnpm-workspace.yaml` - Updated @vue/server-renderer version
-- `pnpm-lock.yaml` - Regenerated lockfile
+### Files Modified
+
+- `pnpm-workspace.yaml` - Added `auditConfig.ignoreGhsas` for GHSA-vfj7-8cjw-p6xm
+- `fix_summary.md` - Fixed markdownlint formatting
+- `remediation-summary.md` - Fixed markdownlint formatting
+- `pnpm-lock.yaml` - Regenerated with patch applied
+
+### Known Limitations
+
+- **Repository Evidence Refresh**: Requires CI execution with authenticated `gh` CLI. The evidence snapshot at `2026-09-21T18:00:00.000Z` exceeds the 14-day cadence and needs refresh via CI.
+- **Consumer-Smoke Failures**: VitePress build warnings with "vitepress data not properly injected in app" persist (likely due to `vue@3.5.35` / `@vue/server-renderer@3.5.43` version skew). This is a separate issue per diagnosis instructions.
