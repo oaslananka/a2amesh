@@ -29,25 +29,30 @@ overrides:
   '@hono/node-server': 2.0.11
   '@opentelemetry/sdk-node>@opentelemetry/propagator-jaeger': 2.9.0
   '@opentelemetry/propagator-jaeger>@opentelemetry/core': 2.9.0
-  hono: 4.13.5
-  ip-address: 10.3.1
-  fast-uri: 3.1.6
+  hono: 4.13.7
+  ip-address: 10.7.1
+  fast-uri: 3.1.8
   linkify-it: 5.0.2
-  brace-expansion: 5.0.9
+  brace-expansion: 5.0.12
   body-parser: 2.3.0
   js-yaml: 4.3.2
   'tsx>esbuild': 0.28.1
   form-data: 4.0.6
   langsmith: 0.7.10
-  markdown-it: 14.2.0
+  markdown-it: 14.3.1
   postcss: 8.5.23
   protobufjs: 7.6.5
   qs: 6.16.0
-  smol-toml: 1.7.1
+  smol-toml: 1.9.0
   typescript-eslint: 8.61.1
-  undici: 7.29.0
+  undici: 7.29.1
   uuid: 14.0.0
   vitepress>vite: 6.4.3
+  katex: 0.18.2
+  '@grpc/grpc-js@>=1.14.0 <1.14.5': ^1.14.5
+  '@vue/server-renderer@<3.5.42': ^3.5.42
+  proxy-addr@>=1.1.0 <2.0.8: ^2.0.8
+  source-map-js@>=1.0.0 <1.2.2: ^1.2.2
 
 allowBuilds:
   esbuild: true
@@ -55,3 +60,16 @@ allowBuilds:
   protobufjs: true
   tree-sitter: true
 
+minimumReleaseAgeExclude:
+  - undici@7.29.1
+  - fast-uri@3.1.8
+  - ip-address@10.7.1
+  - markdown-it@14.3.1
+  - brace-expansion@5.0.12
+  - '@grpc/grpc-js@1.14.5'
+  - hono@4.13.7
+  - smol-toml@1.9.0
+  - katex@0.18.2
+  - source-map-js@1.2.2
+  - proxy-addr@2.0.8
+  - '@vue/server-renderer@3.5.42'
