@@ -8,7 +8,7 @@ Priority values: `Required now`, `Recommended`, `Optional`, `Future`, `Not appli
 
 ## Live repository evidence
 
-Observed at **2026-09-21T18:00:00.000Z**. This generated section must be refreshed within 14 days from the machine-readable snapshot in [`docs/governance/repository-evidence.json`](governance/repository-evidence.json).
+Observed at **2026-10-06T15:38:45.000Z**. This generated section must be refreshed within 14 days from the machine-readable snapshot in [`docs/governance/repository-evidence.json`](governance/repository-evidence.json).
 
 Refresh with `pnpm run repository:evidence:write`; CI validates freshness and local release parity through `pnpm run repository:evidence:check` in `docs:check`.
 
