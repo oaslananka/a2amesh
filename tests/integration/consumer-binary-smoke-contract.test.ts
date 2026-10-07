@@ -47,7 +47,8 @@ describe('run-consumer-smoke behavioral regression', () => {
     ], { encoding: 'utf-8', timeout: 30000, stdio: 'inherit' });
 
     // Should not crash with ENOBUFS
-    expect(result.error?.code).not.toBe('ENOBUFS');
+    const errorCode = (result.error as NodeJS.ErrnoException | undefined)?.code;
+    expect(errorCode).not.toBe('ENOBUFS');
     // Exit code should be 0 (success)
     expect(result.status).toBe(0);
   });
