@@ -28,11 +28,6 @@
     "enabled": true,
     "schedule": [
       "before 7am on the first day of the month"
-    ],
-    "automerge": false,
-    "addLabels": [
-      "automerge:enabled",
-      "risk:low"
     ]
   },
   "customManagers": [
@@ -119,19 +114,6 @@
     }
   ],
   "packageRules": [
-    {
-      "description": "Delegate low-risk dependency merging to Mergify.",
-      "matchUpdateTypes": [
-        "patch",
-        "digest",
-        "pin"
-      ],
-      "automerge": false,
-      "addLabels": [
-        "automerge:enabled",
-        "risk:low"
-      ]
-    },
     {
       "description": "Keep routine upgrades review-required.",
       "matchUpdateTypes": [
@@ -294,7 +276,7 @@
     }
   ],
   "vulnerabilityAlerts": {
-    "enabled": true,
+    "enabled": false,
     "labels": [
       "area:deps",
       "area:security",
@@ -305,10 +287,8 @@
     "prCreation": "immediate",
     "vulnerabilityFixStrategy": "highest"
   },
-  "osvVulnerabilityAlerts": false,
+  "osvVulnerabilityAlerts": true,
   "baseBranchPatterns": [
     "main"
-  ],
-  "automergeType": "pr",
-  "platformAutomerge": false
+  ]
 }
