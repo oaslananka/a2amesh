@@ -15,14 +15,13 @@ const paths = [
 
 const jscpdArgs = [
   'jscpd',
-  '--gitignore',
   '--ignore',
   '**/node_modules/**,**/dist/**,**/coverage/**,**/test-results/**,**/tests/**,**/*.test.ts,**/*.test.tsx,**/*.spec.ts',
   '--threshold',
   '2',
   '--reporters',
   'console',
-  '--noTips',
+  '--no-tips',
   ...paths,
 ];
 
