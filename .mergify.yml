@@ -17,6 +17,89 @@ queue_rules:
 merge_protections_settings:
   reporting_method: check-runs
   post_comment: false
+  auto_merge_conditions:
+    - author = renovate[bot]
+    - base = main
+    - label = automerge:enabled
+    - -draft
+    - -closed
+    - -label = automerge:disabled
+    - -label = do-not-merge
+    - -label = hold
+    - -label = requires-review
+    - -label = status/needs-review
+    - -label = risk:high
+    - -label = runtime-risk
+    - -label = needs:decision
+    - -label = security
+    - -label = type:security
+    - '-files ~= ^\\.github/'
+    - '-files ~= ^Dockerfile
+merge_protections:
+  - name: Conventional pull request title
+    description: Keep squash-merged commits compatible with the repository Conventional Commit release policy.
+    if:
+      - base = main
+    success_conditions:
+      - 'title ~= ^(fix|feat|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?: .+'
+
+pull_request_rules:
+  - name: Classify Release Please pull requests
+    description: Keep release automation visible in the existing repository taxonomy.
+    conditions:
+      - base = main
+      - author = github-actions[bot]
+      - 'title = chore: release main'
+    actions:
+      label:
+        add:
+          - area:release
+          - type:release
+
+    - '-files ~= (^|/)docker-compose(?:\\.[^.]+)?\\.ya?ml
+merge_protections:
+  - name: Conventional pull request title
+    description: Keep squash-merged commits compatible with the repository Conventional Commit release policy.
+    if:
+      - base = main
+    success_conditions:
+      - 'title ~= ^(fix|feat|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?: .+'
+
+pull_request_rules:
+  - name: Classify Release Please pull requests
+    description: Keep release automation visible in the existing repository taxonomy.
+    conditions:
+      - base = main
+      - author = github-actions[bot]
+      - 'title = chore: release main'
+    actions:
+      label:
+        add:
+          - area:release
+          - type:release
+
+    - '-files ~= ^\\.mergify\\.ya?ml
+merge_protections:
+  - name: Conventional pull request title
+    description: Keep squash-merged commits compatible with the repository Conventional Commit release policy.
+    if:
+      - base = main
+    success_conditions:
+      - 'title ~= ^(fix|feat|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?: .+'
+
+pull_request_rules:
+  - name: Classify Release Please pull requests
+    description: Keep release automation visible in the existing repository taxonomy.
+    conditions:
+      - base = main
+      - author = github-actions[bot]
+      - 'title = chore: release main'
+    actions:
+      label:
+        add:
+          - area:release
+          - type:release
+
 
 merge_protections:
   - name: Conventional pull request title
