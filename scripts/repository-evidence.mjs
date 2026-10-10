@@ -11,6 +11,7 @@ import {
   computeRepositoryEvidenceFactsDigest,
   validateRepositoryEvidence,
 } from './repository-evidence-core.mjs';
+import { compareSemanticVersions } from './release-state-core.mjs';
 
 const SNAPSHOT_PATH = 'docs/governance/repository-evidence.json';
 const REPORT_PATH = 'docs/repo-maturity-report.md';
@@ -118,10 +119,7 @@ function collectLiveSnapshot() {
     );
   }
   const sourceVersion = sourceVersions[0];
-  const expectedTag = `@a2amesh/runtime-v${sourceVersion}`;
   const tags = ghJson(['api', `repos/${repositoryName}/tags?per_page=100`]);
-  const canonicalTag = tags.find((tag) => tag.name === expectedTag);
-  if (!canonicalTag?.commit?.sha) throw new Error(`Canonical tag ${expectedTag} was not found`);
 
   const releasePrs = pullRequests.filter(
     (pullRequest) => pullRequest.headRefName === 'release-please--branches--main',
@@ -136,6 +134,28 @@ function collectLiveSnapshot() {
     : null;
   const latestGithubRelease = collectLatestGithubRelease(repositoryName);
   const npmMetadata = fetchJson('https://registry.npmjs.org/%40a2amesh%2Fruntime');
+  const distTag = sourceVersion.includes('-')
+    ? sourceVersion.split('-')[1].split('.')[0]
+    : 'latest';
+  const publishedVersion = npmMetadata['dist-tags']?.[distTag];
+  if (typeof publishedVersion !== 'string' || !publishedVersion) {
+    throw new Error(`npm ${distTag} dist-tag is unavailable`);
+  }
+  const expectedTag = `@a2amesh/runtime-v${publishedVersion}`;
+  const canonicalTag = tags.find((tag) => tag.name === expectedTag);
+  if (!canonicalTag?.commit?.sha)
+    throw new Error(`Published canonical tag ${expectedTag} was not found`);
+  const comparison = compareSemanticVersions(sourceVersion, publishedVersion);
+  if (comparison == null || comparison < 0) {
+    throw new Error('Source version is behind or incompatible with published npm version');
+  }
+  const publicationState = comparison === 0 ? 'published' : 'prepared-unpublished';
+  if (
+    publicationState === 'prepared-unpublished' &&
+    tags.some((tag) => tag.name === `@a2amesh/runtime-v${sourceVersion}`)
+  ) {
+    throw new Error('Source release tag exists while linked npm publication is incomplete');
+  }
   const today = new Date().toISOString().slice(0, 10);
   const accessInventory = readJson('docs/security/github-actions-access-inventory.json');
   const settingsOwner = accessInventory.settings_owner;
@@ -166,6 +186,7 @@ function collectLiveSnapshot() {
     },
     release: {
       source_version: sourceVersion,
+      publication_state: publicationState,
       package_paths: Object.keys(localState.releaseConfig.packages ?? {}).sort(compareStrings),
       latest_github_release: latestGithubRelease,
       latest_canonical_tag: {

@@ -36,6 +36,7 @@ export interface ActiveReleasePullRequestEvidence {
 
 export interface ReleaseEvidence {
   source_version: string;
+  publication_state?: 'published' | 'prepared-unpublished';
   package_paths: string[];
   latest_github_release: GithubReleaseEvidence | null;
   latest_canonical_tag: CanonicalTagEvidence;
