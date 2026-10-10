@@ -91,7 +91,7 @@ function writeSummary(result) {
     '',
     `- Status: **${result.status}**`,
     '- Stable package path: `@modelcontextprotocol/sdk ^1.29.0` (unchanged)',
-    '- Candidate package set: split SDK `2.0.0` (isolated harness)',
+    '- Candidate package set: split SDK `2.2.0` with node adapter `2.0.0` (isolated harness)',
     `- Evidence: ${result.summary.replaceAll('\n', ' ')}`,
     '',
     result.status === 'compatible'

@@ -179,10 +179,21 @@
       "matchDatasources": ["docker"],
       "matchPackageNames": ["/^ghcr\\.io\\/oaslananka\\/a2amesh-/"],
       "enabled": false
+    },
+    {
+      "description": "Allow Mergify to integrate verified patch updates of stable npm development dependencies.",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch"],
+      "matchCurrentVersion": "!/^0\\./",
+      "addLabels": ["automerge:enabled"]
     }
   ],
   "vulnerabilityAlerts": {
-    "enabled": false
+    "enabled": false,
+    "labels": ["area:deps", "area:security", "type:security", "priority:P0", "risk:high"],
+    "prCreation": "immediate",
+    "vulnerabilityFixStrategy": "highest"
   },
   "osvVulnerabilityAlerts": true,
   "baseBranchPatterns": ["main"]

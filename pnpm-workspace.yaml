@@ -29,23 +29,30 @@ overrides:
   '@hono/node-server': 2.0.11
   '@opentelemetry/sdk-node>@opentelemetry/propagator-jaeger': 2.9.0
   '@opentelemetry/propagator-jaeger>@opentelemetry/core': 2.9.0
-  hono: 4.13.5
-  ip-address: 10.3.1
-  fast-uri: 3.1.6
+  hono: 4.13.7
+  ip-address: 10.7.1
+  fast-uri: 3.1.8
   linkify-it: 5.0.2
-  brace-expansion: 5.0.9
+  brace-expansion: 5.0.12
   body-parser: 2.3.0
   js-yaml: 4.3.2
   'tsx>esbuild': 0.28.1
   form-data: 4.0.6
   langsmith: 0.7.10
-  markdown-it: 14.2.0
+  markdown-it: 14.3.1
   postcss: 8.5.23
   protobufjs: 7.6.5
   qs: 6.16.0
-  smol-toml: 1.7.1
+  smol-toml: 1.9.0
   typescript-eslint: 8.61.1
-  undici: 7.29.0
+  undici: 7.29.1
+  proxy-addr: 2.0.8
+  source-map-js: 1.2.2
+  '@grpc/grpc-js': 1.14.5
+  '@modelcontextprotocol/sdk': 1.31.0
+  vue: 3.5.42
+  '@vue/server-renderer': 3.5.42
+  katex: 0.18.2
   uuid: 14.0.0
   vitepress>vite: 6.4.3
 
@@ -55,3 +62,12 @@ allowBuilds:
   protobufjs: true
   tree-sitter: true
 
+# Upstream braces has no published patched release as of 2026-10-10.
+# Local depth guards address GHSA-vfj7-8cjw-p6xm in dev-only micromatch use.
+# Keep both audit exceptions scoped to this advisory; remove after upstream fix.
+patchedDependencies:
+  braces@3.0.3: patches/braces@3.0.3.patch
+
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm

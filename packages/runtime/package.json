@@ -1,6 +1,6 @@
 {
   "name": "@a2amesh/runtime",
-  "version": "0.18.2",
+  "version": "0.19.0",
   "description": "A2A Mesh runtime, client, server, storage, auth, telemetry, and testing infrastructure for A2A-native agents.",
   "keywords": [
     "a2a",
@@ -38,7 +38,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "8.5.2",
     "jose": "^6.2.3",
-    "undici": "7.29.0",
+    "undici": "7.29.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
