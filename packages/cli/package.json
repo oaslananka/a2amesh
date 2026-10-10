@@ -1,6 +1,6 @@
 {
   "name": "@a2amesh/cli",
-  "version": "0.18.2",
+  "version": "0.19.0",
   "description": "A2A Mesh command-line interface for initialization, validation, conformance, registry operations, and release checks.",
   "keywords": [
     "a2a",
