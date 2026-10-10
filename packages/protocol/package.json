@@ -1,6 +1,6 @@
 {
   "name": "@a2amesh/protocol",
-  "version": "0.18.2",
+  "version": "0.19.0",
   "description": "A2A Mesh protocol types, Agent Card models, lifecycle definitions, and compatibility contracts.",
   "keywords": [
     "a2a",
