@@ -450,6 +450,39 @@ run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
     );
   });
 
+  it('routes supported Renovate patch PRs to Mergify with the actual repository bot identity', async () => {
+    const [mergify, renovateText] = await Promise.all([
+      readFile(new URL('../../.mergify.yml', import.meta.url), 'utf8'),
+      readFile(new URL('../../renovate.json', import.meta.url), 'utf8'),
+    ]);
+    const renovate = JSON.parse(renovateText) as {
+      automerge: boolean;
+      packageRules: Array<{
+        matchManagers?: string[];
+        matchDepTypes?: string[];
+        matchUpdateTypes?: string[];
+        matchCurrentVersion?: string;
+        addLabels?: string[];
+      }>;
+    };
+    const eligible = renovate.packageRules.filter((rule) =>
+      rule.addLabels?.includes('automerge:enabled'),
+    );
+
+    expect(mergify).toContain('author = github-actions[bot]');
+    expect(mergify).toContain('label = area:deps');
+    expect(mergify).toContain('head ~= ^repository-managed-renovate/');
+    expect(mergify).toContain('label = automerge:enabled');
+    expect(renovate.automerge).toBe(false);
+    expect(eligible).toHaveLength(1);
+    expect(eligible[0]).toMatchObject({
+      matchManagers: ['npm'],
+      matchDepTypes: ['devDependencies'],
+      matchUpdateTypes: ['patch'],
+      matchCurrentVersion: '!/^0\\./',
+    });
+  });
+
   it('validates the checked-in Renovate configuration and workflow', async () => {
     const [
       configText,
