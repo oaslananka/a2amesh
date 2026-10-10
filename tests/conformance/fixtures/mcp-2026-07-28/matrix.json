@@ -3,10 +3,10 @@
   "supportStatus": "pre-adoption",
   "stableSdkRange": "^1.29.0",
   "candidateSdk": {
-    "client": "2.0.0",
-    "core": "2.0.0",
+    "client": "2.2.0",
+    "core": "2.2.0",
     "node": "2.0.0",
-    "server": "2.0.0"
+    "server": "2.2.0"
   },
   "surfaces": [
     {

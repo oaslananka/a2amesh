@@ -6,10 +6,10 @@ test('runs an explicit modern SDK v2 tool discovery and call without legacy init
   const result = await runProbe();
 
   assert.deepEqual(result.sdk, {
-    client: '2.0.0',
-    core: '2.0.0',
+    client: '2.2.0',
+    core: '2.2.0',
     node: '2.0.0',
-    server: '2.0.0',
+    server: '2.2.0',
   });
   assert.equal(result.protocolVersion, '2026-07-28');
   assert.equal(result.unauthorizedStatus, 401);

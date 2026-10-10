@@ -76,7 +76,7 @@ function validateContractIdentity(contract, failures) {
     failures.push('stableSdkRange must remain ^1.29.0 during the compatibility phase');
   }
   if (!sameJson(contract.candidateSdk, expectedCandidateSdk())) {
-    failures.push('candidateSdk must pin the exact split SDK 2.0.0 package set');
+    failures.push('candidateSdk must pin the reviewed split SDK package versions');
   }
 }
 
@@ -116,7 +116,7 @@ function validateContractFixtures(fixtureValue, failures) {
 
 function validateProbeIdentity(payload, failures) {
   if (!sameJson(payload?.sdk, expectedCandidateSdk())) {
-    failures.push('candidate probe must use the exact split SDK 2.0.0 package set');
+    failures.push('candidate probe must use the reviewed split SDK package versions');
   }
   if (payload?.protocolVersion !== PROTOCOL_VERSION) {
     failures.push(`candidate probe must negotiate ${PROTOCOL_VERSION}`);
@@ -172,7 +172,7 @@ function validateProbeRedaction(payload, failures) {
 }
 
 function expectedCandidateSdk() {
-  return { client: '2.0.0', core: '2.0.0', node: '2.0.0', server: '2.0.0' };
+  return { client: '2.2.0', core: '2.2.0', node: '2.0.0', server: '2.2.0' };
 }
 
 function sameJson(left, right) {
