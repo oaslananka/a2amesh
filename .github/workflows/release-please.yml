@@ -41,10 +41,23 @@ jobs:
       - name: Validate release config
         run: node scripts/check-release-config.mjs
       - name: Verify current release is reconciled
+        id: release_gate
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/release-state.mjs --mode release-please --json
+        run: |
+          set +e
+          node scripts/release-state.mjs --mode release-please --json > "${RUNNER_TEMP}/release-state.json"
+          state_exit=$?
+          set -e
+          cat "${RUNNER_TEMP}/release-state.json"
+          if [[ "${state_exit}" -eq 0 ]]; then
+            echo "resume=true" >> "${GITHUB_OUTPUT}"
+          else
+            node scripts/check-release-please-pending.mjs "${RUNNER_TEMP}/release-state.json"
+            echo "resume=false" >> "${GITHUB_OUTPUT}"
+          fi
       - name: Verify published component tags
+        if: steps.release_gate.outputs.resume == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -62,6 +75,7 @@ jobs:
             --commit "${RELEASE_COMMIT}" \
             --verify-only
       - name: Create or update release pull request
+        if: steps.release_gate.outputs.resume == 'true'
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
         with:

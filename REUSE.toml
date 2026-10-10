@@ -101,6 +101,7 @@ path = [
   "scripts/dispatch-renovate-checks.d.mts",
   "scripts/repository-evidence-core.d.mts",
   "scripts/release-state-core.d.mts",
+  "scripts/check-release-please-pending.d.mts",
   "scripts/sync-security-policy.d.mts",
   "scripts/sync-release-component-tags.d.mts",
   "scripts/public-surface-policy.d.mts",
