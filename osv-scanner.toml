@@ -1,0 +1,6 @@
+# Upstream braces@3.0.3 has no patched npm release (2026-10-10).
+# pnpm patchedDependencies applies recursive-depth limits to parse/expand/compile/stringify.
+# Affected usage is dev-tool micromatch; revisit once an upstream fix is published.
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+reason = "braces@3.0.3 dev-only patched in pnpm-workspace.yaml with recursion depth guards; no upstream patched npm release"

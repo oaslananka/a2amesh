@@ -154,7 +154,10 @@ describe('registry import and export routes', () => {
   });
 
   it('imports idempotently by agent id or URL and emits only persisted changes', async () => {
-    const { app, context } = createHarness({ allowUnresolvedHostnames: true });
+    const { app, context } = createHarness({
+      allowUnresolvedHostnames: true,
+      outboundPolicy: { resolveHostname: async () => ['203.0.113.10'] },
+    });
     const agent = registeredAgent('source-id', 'https://source.example/a2a');
     const events: unknown[] = [];
     context.events.on('registry_update', (event) => events.push(event));
@@ -182,6 +185,7 @@ describe('registry import and export routes', () => {
     const { app, context } = createHarness({
       registrationToken: 'token',
       allowUnresolvedHostnames: true,
+      outboundPolicy: { resolveHostname: async () => ['203.0.113.10'] },
       tenantTrustPolicies: {
         'tenant-required': { requireSignedAgentCards: true, trustedAgentCardKeys: [] },
       },
