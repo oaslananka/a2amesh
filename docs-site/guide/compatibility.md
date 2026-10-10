@@ -36,14 +36,19 @@ range and is already EOL in the Node.js project schedule checked for this policy
 
 All public packages in the `0.19.0` release line share the same Node engine range: `>=22.22.1 <25`.
 
-| Package                   | Current version | Node range      | Compatibility notes                                                         |
-| ------------------------- | --------------- | --------------- | --------------------------------------------------------------------------- |
-| `@a2amesh/cli`            | `0.19.0`        | `>=22.22.1 <25` | Published `a2amesh` command-line interface.                                 |
-| `@a2amesh/mcp`            | `0.19.0`        | `>=22.22.1 <25` | Bridge helpers, `@a2amesh/mcp/server`, and `a2amesh-mcp` stdio command.     |
-| `@a2amesh/protocol`       | `0.19.0`        | `>=22.22.1 <25` | Protocol types, interfaces, constants, and validators.                      |
-| `@a2amesh/registry`       | `0.19.0`        | `>=22.22.1 <25` | Registry server, discovery, health, and storage helpers.                    |
-| `@a2amesh/runtime`        | `0.19.0`        | `>=22.22.1 <25` | Core runtime, client/server APIs, task lifecycle, and telemetry/auth hooks. |
-| `@a2amesh/create-a2amesh` | `0.19.0`        | `>=22.22.1 <25` | Project scaffolder.                                                         |
+The table records the linked **source** package versions, which may be prepared before
+publication. For the installable stable version, use
+`npm view @a2amesh/runtime@latest version` and verify the same version exists for all six
+public packages; do not assume a checked-in version is already available on npm.
+
+| Package                   | Source version | Node range      | Compatibility notes                                                         |
+| ------------------------- | -------------- | --------------- | --------------------------------------------------------------------------- |
+| `@a2amesh/cli`            | `0.19.0`       | `>=22.22.1 <25` | `a2amesh` command-line interface source.                                    |
+| `@a2amesh/mcp`            | `0.19.0`       | `>=22.22.1 <25` | Bridge helpers, `@a2amesh/mcp/server`, and `a2amesh-mcp` stdio command.     |
+| `@a2amesh/protocol`       | `0.19.0`       | `>=22.22.1 <25` | Protocol types, interfaces, constants, and validators.                      |
+| `@a2amesh/registry`       | `0.19.0`       | `>=22.22.1 <25` | Registry server, discovery, health, and storage helpers.                    |
+| `@a2amesh/runtime`        | `0.19.0`       | `>=22.22.1 <25` | Core runtime, client/server APIs, task lifecycle, and telemetry/auth hooks. |
+| `@a2amesh/create-a2amesh` | `0.19.0`       | `>=22.22.1 <25` | Project scaffolder.                                                         |
 
 Patch releases may add compatible bug fixes, tests, and docs. New public package
 surfaces must update `public-surface.json`, package docs, and this matrix before
@@ -67,13 +72,13 @@ The published `@a2amesh/mcp` package remains on
 `@modelcontextprotocol/sdk ^1.29.0`. MCP `2026-07-28` is **pre-adoption evidence**,
 not a supported production profile. The required conformance suite validates the
 versioned contract, while a separate report-only CI lane runs an isolated exact
-split-SDK `2.0.0` harness.
+split-SDK `2.2.0` harness with `node` adapter `2.0.0`.
 
 | Surface                 | Stable supported path                                                                       | `2026-07-28` evidence                                                                              | Adoption posture                             |
 | ----------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | Connection bootstrap    | 2025-era `initialize` / `initialized`                                                       | Explicit `server/discover`; no legacy initialization in the SDK probe                              | Isolated until the final adoption gate       |
 | Request state           | Connection-scoped stable SDK behavior                                                       | Stateless requests with protocol, client, capability, and trace metadata per request               | Evaluate without changing public behavior    |
-| Tool discovery and call | Existing deterministic Agent Card mapping and fail-closed bridge policy                     | Exact SDK `2.0.0` list/call probe with method and tool-name header binding                         | Retain all authorization and outbound checks |
+| Tool discovery and call | Existing deterministic Agent Card mapping and fail-closed bridge policy                     | Exact SDK `2.2.0` list/call probe with method and tool-name header binding                         | Retain all authorization and outbound checks |
 | Cache behavior          | No MCP cache support claim                                                                  | Golden and live evidence for `ttlMs` and `cacheScope`                                              | Evaluate before adoption                     |
 | Authentication          | Existing audience, principal, tenant, scope, consent, guardrail, audit, and outbound policy | Synthetic unauthenticated request returns HTTP `401`; credential values are excluded from evidence | Stable bridge boundary remains authoritative |
 | Tasks extension         | Unsupported                                                                                 | Matrix-only evaluation                                                                             | Separate future decision                     |

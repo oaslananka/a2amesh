@@ -25,6 +25,23 @@ export function extractLinkedVersion(manifest) {
   return versions[0];
 }
 
+export function publishedSupportVersion(manifest, evidence) {
+  const sourceVersion = extractLinkedVersion(manifest);
+  const channel = sourceVersion.includes('-')
+    ? sourceVersion.split('-')[1].split('.')[0]
+    : 'latest';
+  const published = evidence?.release?.npm?.[channel];
+  if (
+    evidence?.release?.npm?.package !== '@a2amesh/runtime' ||
+    typeof published !== 'string' ||
+    !/^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(published) ||
+    evidence.release.latest_canonical_tag?.name !== '@a2amesh/runtime-v' + published
+  ) {
+    throw new Error('Published security-support evidence has no verified matching npm tag');
+  }
+  return published;
+}
+
 export function renderSupportBlock(version) {
   const prerelease = version.includes('-') ? version.split('-', 2)[1]?.split('.', 1)[0] : null;
   const distTag = prerelease ?? 'latest';
@@ -98,7 +115,8 @@ export function validatePolicyFiles({ version, rootPolicy, githubPolicy }) {
 
 function runCli() {
   const manifest = JSON.parse(readFileSync('.release-please-manifest.json', 'utf8'));
-  const version = extractLinkedVersion(manifest);
+  const evidence = JSON.parse(readFileSync('docs/governance/repository-evidence.json', 'utf8'));
+  const version = publishedSupportVersion(manifest, evidence);
   const rootPolicy = readFileSync(ROOT_POLICY, 'utf8');
   const githubPolicy = readFileSync(GITHUB_POLICY, 'utf8');
   const checkOnly = process.argv.slice(2).includes('--check');

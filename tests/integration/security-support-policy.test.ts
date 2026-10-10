@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   extractLinkedVersion,
+  publishedSupportVersion,
   renderSupportBlock,
   syncPolicyText,
   validatePolicyFiles,
@@ -32,6 +33,26 @@ describe('security support policy', () => {
         'packages/protocol': '0.13.0-alpha.1',
       }),
     ).toThrow('one linked version');
+  });
+
+  it('supports the installed npm version while a newer source release awaits publication', () => {
+    const manifest = { 'packages/runtime': '0.19.0', 'packages/protocol': '0.19.0' };
+    const evidence = {
+      release: {
+        npm: { package: '@a2amesh/runtime', latest: '0.18.2' },
+        latest_canonical_tag: { name: '@a2amesh/runtime-v0.18.2' },
+      },
+    };
+    expect(publishedSupportVersion(manifest, evidence)).toBe('0.18.2');
+    expect(renderSupportBlock(publishedSupportVersion(manifest, evidence))).toContain('0.18.2');
+    expect(() =>
+      publishedSupportVersion(manifest, {
+        release: {
+          ...evidence.release,
+          latest_canonical_tag: { name: '@a2amesh/runtime-v0.19.0' },
+        },
+      }),
+    ).toThrow('matching npm tag');
   });
 
   it('renders the latest-alpha-only support window', () => {

@@ -175,21 +175,38 @@ function validatePackageVersions(configuredPaths, packageVersions, expected, fai
 }
 
 function validatePublishedReleaseState(release, failures) {
-  const expectedTag = release.source_version ? `@a2amesh/runtime-v${release.source_version}` : null;
-  if (release.latest_canonical_tag?.name !== expectedTag) {
-    failures.push(
-      `Latest canonical tag ${release.latest_canonical_tag?.name ?? '<missing>'} must match ${expectedTag ?? '<unknown>'}`,
-    );
-  }
   const releaseChannel = releaseChannelForVersion(release.source_version);
   const expectedDistTag = releaseChannel === 'stable' ? 'latest' : releaseChannel;
   if (!expectedDistTag) {
     failures.push(
       `Release source version ${release.source_version ?? '<missing>'} must be valid SemVer`,
     );
-  } else if (release.npm?.[expectedDistTag] !== release.source_version) {
+    return;
+  }
+  const publishedVersion = release.npm?.[expectedDistTag];
+  const pending = release.publication_state === 'prepared-unpublished';
+  const expectedTagVersion = pending ? publishedVersion : release.source_version;
+  const expectedTag = expectedTagVersion ? `@a2amesh/runtime-v${expectedTagVersion}` : null;
+  if (release.latest_canonical_tag?.name !== expectedTag) {
     failures.push(
-      `npm ${expectedDistTag} version ${release.npm?.[expectedDistTag] ?? '<missing>'} must match source version ${release.source_version ?? '<missing>'}`,
+      `Latest canonical tag ${release.latest_canonical_tag?.name ?? '<missing>'} must match ${expectedTag ?? '<unknown>'}`,
+    );
+  }
+  if (pending) {
+    const comparison = compareSemanticVersions(release.source_version, publishedVersion);
+    if (comparison == null || comparison <= 0 || release.active_release_pr != null) {
+      failures.push(
+        'Prepared-unpublished source must advance npm publication and have no active release PR',
+      );
+    }
+    if (release.latest_github_release?.tag !== expectedTag) {
+      failures.push('Prepared-unpublished latest GitHub Release must match published npm tag');
+    }
+  } else if (release.publication_state != null && release.publication_state !== 'published') {
+    failures.push('Unknown release publication_state');
+  } else if (publishedVersion !== release.source_version) {
+    failures.push(
+      `npm ${expectedDistTag} version ${publishedVersion ?? '<missing>'} must match source version ${release.source_version ?? '<missing>'}`,
     );
   }
 }
@@ -274,6 +291,10 @@ export function selectLatestPublishedRelease(releases) {
 export function renderRepositoryEvidence(snapshot) {
   const releasePr = snapshot.release.active_release_pr;
   const githubRelease = snapshot.release.latest_github_release;
+  const publicationLabel =
+    snapshot.release.publication_state === 'prepared-unpublished'
+      ? ' (prepared; not yet on npm)'
+      : '';
   const openWork = snapshot.repository.open_work;
   const githubReleaseDisplay = githubRelease
     ? `[\`${githubRelease.tag}\`](${githubRelease.url})`
@@ -295,7 +316,7 @@ export function renderRepositoryEvidence(snapshot) {
     '| Fact | Observed value | Authoritative source |',
     '| ---- | -------------- | -------------------- |',
     `| Repository | [\`${snapshot.repository.name}\`](${snapshot.repository.url}); ${snapshot.repository.visibility}; default branch \`${snapshot.repository.default_branch}\`; license \`${snapshot.repository.license}\` | ${snapshot.provenance.repository} |`,
-    `| Linked source version | \`${snapshot.release.source_version}\` across ${snapshot.release.package_paths.length} public packages | ${snapshot.provenance.source_versions} |`,
+    `| Linked source version | \`${snapshot.release.source_version}\`${publicationLabel} across ${snapshot.release.package_paths.length} public packages | ${snapshot.provenance.source_versions} |`,
     `| npm publication | \`alpha\` → \`${snapshot.release.npm.alpha}\`; \`latest\` → \`${snapshot.release.npm.latest}\` | ${snapshot.provenance.npm} |`,
     `| Latest canonical release tag | \`${snapshot.release.latest_canonical_tag.name}\` at \`${shortCommit(snapshot.release.latest_canonical_tag.commit)}\` | ${snapshot.provenance.releases} |`,
     `| Latest GitHub Release | ${githubReleaseDisplay} | ${snapshot.provenance.releases} |`,
@@ -429,8 +450,7 @@ export function validateLiveRepositoryEvidence(snapshot, liveFacts) {
   }
 
   if (
-    snapshot.repository?.open_work?.pull_requests !==
-    liveFacts.repository?.open_work?.pull_requests
+    snapshot.repository?.open_work?.pull_requests !== liveFacts.repository?.open_work?.pull_requests
   ) {
     failures.push(
       `Snapshot open pull requests ${snapshot.repository?.open_work?.pull_requests ?? '<missing>'} does not match live open pull requests ${liveFacts.repository?.open_work?.pull_requests ?? '<missing>'}`,
@@ -438,8 +458,7 @@ export function validateLiveRepositoryEvidence(snapshot, liveFacts) {
   }
 
   if (
-    snapshot.release?.latest_canonical_tag?.name !==
-    liveFacts.release?.latest_canonical_tag?.name
+    snapshot.release?.latest_canonical_tag?.name !== liveFacts.release?.latest_canonical_tag?.name
   ) {
     failures.push(
       `Snapshot canonical tag ${snapshot.release?.latest_canonical_tag?.name ?? '<missing>'} does not match live canonical tag ${liveFacts.release?.latest_canonical_tag?.name ?? '<missing>'}`,

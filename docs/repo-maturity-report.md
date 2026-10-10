@@ -8,7 +8,7 @@ Priority values: `Required now`, `Recommended`, `Optional`, `Future`, `Not appli
 
 ## Live repository evidence
 
-Observed at **2026-10-10T05:06:58.227Z**. This generated section must be refreshed within 14 days from the machine-readable snapshot in [`docs/governance/repository-evidence.json`](governance/repository-evidence.json).
+Observed at **2026-10-10T07:46:03.736Z**. This generated section must be refreshed within 14 days from the machine-readable snapshot in [`docs/governance/repository-evidence.json`](governance/repository-evidence.json).
 
 Refresh with `pnpm run repository:evidence:write`; CI validates freshness and local release parity through `pnpm run repository:evidence:check` in `docs:check`.
 
@@ -17,12 +17,12 @@ The Active Release Please PR row is synchronized by release automation and may b
 | Fact                         | Observed value                                                                                                     | Authoritative source                                                                                                      |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
 | Repository                   | [`oaslananka/a2amesh`](https://github.com/oaslananka/a2amesh); public; default branch `main`; license `Apache-2.0` | GitHub REST API: GET /repos/oaslananka/a2amesh                                                                            |
-| Linked source version        | `0.18.2` across 6 public packages                                                                                  | .release-please-manifest.json and release-tracked package.json files                                                      |
+| Linked source version        | `0.19.0` (prepared; not yet on npm) across 6 public packages                                                       | .release-please-manifest.json and release-tracked package.json files                                                      |
 | npm publication              | `alpha` → `0.18.0-alpha.1`; `latest` → `0.18.2`                                                                    | npm registry metadata for @a2amesh/runtime                                                                                |
 | Latest canonical release tag | `@a2amesh/runtime-v0.18.2` at `8c3188ee32a5`                                                                       | GitHub REST API: releases and tags for oaslananka/a2amesh                                                                 |
 | Latest GitHub Release        | [`@a2amesh/runtime-v0.18.2`](https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.18.2)        | GitHub REST API: releases and tags for oaslananka/a2amesh                                                                 |
-| Active Release Please PR     | [#334](https://github.com/oaslananka/a2amesh/pull/334) proposes `0.19.0`                                           | GitHub CLI: pr list --repo oaslananka/a2amesh --state open                                                                |
-| Open work                    | 3 issues and 8 pull requests (11 total)                                                                            | GitHub CLI: issue list --repo oaslananka/a2amesh --state open; GitHub CLI: pr list --repo oaslananka/a2amesh --state open |
+| Active Release Please PR     | None                                                                                                               | GitHub CLI: pr list --repo oaslananka/a2amesh --state open                                                                |
+| Open work                    | 3 issues and 0 pull requests (3 total)                                                                             | GitHub CLI: issue list --repo oaslananka/a2amesh --state open; GitHub CLI: pr list --repo oaslananka/a2amesh --state open |
 
 ### Manually verified repository settings
 
