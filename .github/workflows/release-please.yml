@@ -53,7 +53,7 @@ jobs:
           if [[ "${state_exit}" -eq 0 ]]; then
             echo "resume=true" >> "${GITHUB_OUTPUT}"
           else
-            node scripts/check-release-please-pending.mjs "${RUNNER_TEMP}/release-state.json"
+            node scripts/check-release-please-pending.mjs < "${RUNNER_TEMP}/release-state.json"
             echo "resume=false" >> "${GITHUB_OUTPUT}"
           fi
       - name: Verify published component tags

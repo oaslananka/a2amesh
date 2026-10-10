@@ -2,6 +2,7 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignore": [
     "scripts/check-codecov-config.d.mts",
+    "scripts/check-release-please-pending.d.mts",
     "scripts/check-coverage-policy.d.mts",
     "scripts/check-renovate-config.d.mts",
     "scripts/check-dependency-freshness.d.mts",
