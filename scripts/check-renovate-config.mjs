@@ -64,8 +64,10 @@ function validateRepositoryConfig(config, failures) {
     failures.push('Renovate timezone must be Europe/Istanbul');
   }
   if (config.automerge !== false) failures.push('Renovate automerge must remain disabled');
-  if (config.prHourlyLimit !== 3) failures.push('Renovate prHourlyLimit must be 3');
-  if (config.prConcurrentLimit !== 6) failures.push('Renovate prConcurrentLimit must be 6');
+  if (config.prHourlyLimit !== 2) failures.push('Renovate prHourlyLimit must be 2');
+  if (config.prConcurrentLimit !== 2) failures.push('Renovate prConcurrentLimit must be 2');
+  if (config.branchConcurrentLimit !== 2) failures.push('Renovate branchConcurrentLimit must be 2');
+  if (config.commitHourlyLimit !== 2) failures.push('Renovate commitHourlyLimit must be 2');
   if (config.minimumReleaseAge !== '3 days') {
     failures.push('Renovate minimumReleaseAge must be 3 days');
   }

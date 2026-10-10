@@ -19,8 +19,10 @@ function validConfig() {
     timezone: 'Europe/Istanbul',
     labels: ['area:deps', 'type:task'],
     automerge: false,
-    prHourlyLimit: 3,
-    prConcurrentLimit: 6,
+    prHourlyLimit: 2,
+    prConcurrentLimit: 2,
+    branchConcurrentLimit: 2,
+    commitHourlyLimit: 2,
     minimumReleaseAge: '3 days',
     internalChecksFilter: 'strict',
     prCreation: 'not-pending',
@@ -446,6 +448,32 @@ run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
       expect.arrayContaining([
         'Repository-managed Renovate must target only oaslananka/a2amesh',
         'Renovate GitHub Action must be pinned to a full commit SHA',
+      ]),
+    );
+  });
+
+  it('rejects unbounded or oversized update queues', () => {
+    const config = validConfig();
+    config.prHourlyLimit = 6;
+    config.prConcurrentLimit = 6;
+    config.branchConcurrentLimit = 6;
+    config.commitHourlyLimit = 0;
+    expect(
+      validateRenovatePolicy({
+        config,
+        globalConfig: validGlobalConfig(),
+        workflow: validWorkflow,
+        repositoryLabels: labels,
+        docsWorkflow: validDocsWorkflow,
+        dependencyReviewWorkflow: validDependencyReviewWorkflow,
+        dispatchScript: validDispatchScript,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        'Renovate prHourlyLimit must be 2',
+        'Renovate prConcurrentLimit must be 2',
+        'Renovate branchConcurrentLimit must be 2',
+        'Renovate commitHourlyLimit must be 2',
       ]),
     );
   });

@@ -7,6 +7,10 @@ The workflow defaults to read-only repository access; write access to contents, 
 
 Renovate runs every Monday, Wednesday, and Friday at `03:23 UTC` (`06:23 Europe/Istanbul`) and can also be started through **Actions → Renovate → Run workflow**.
 
+To avoid six pending branches or a burst of CI runs, routine updates are restricted to **two concurrent branches**, **two open PRs**, **two new PRs per hour**, and **two commits per hour**. Renovate's minimum release age remains three days, and major updates still require Dashboard approval. Security fixes can bypass general Renovate rate limits according to upstream behavior; separate security gates and manual risk review remain authoritative. Existing bot branches are **not removed automatically** when lowering the limit; clean up old unreviewed branches before the next Renovate run.
+
+The repository-managed workflow is the **canonical update producer**, including its allowlisted post-upgrade sync scripts and exact-commit CI dispatch. A separately installed hosted Renovate GitHub App must not also manage this repository: exclude this repository from that App's GitHub installation settings while keeping its access to any unrelated repositories. The App-hosted Dashboard is not the repository-managed Dashboard. The repository config must remain enabled for the Actions runner, so do not set `enabled: false` in shared `renovate.json` merely to disable the hosted App.
+
 The workflow uses the repository `GITHUB_TOKEN`. Write access remains scoped to the Renovate job and is limited to:
 
 - repository contents;
