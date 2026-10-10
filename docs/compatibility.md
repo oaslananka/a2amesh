@@ -105,8 +105,8 @@ local, version-pinned official SDK processes against A2A Mesh.
 
 | Protocol | Ecosystem  | Official SDK        | Runtime           | Directions                                                           | Evidence                                                 |
 | -------- | ---------- | ------------------- | ----------------- | -------------------------------------------------------------------- | -------------------------------------------------------- |
-| `1.0`    | JavaScript | `@a2a-js/sdk@1.0.0` | Node.js `24.16.0` | official client ↔ A2A Mesh server; A2A Mesh client ↔ official server | blocking, streaming, auth challenge, retrieval, artifact |
-| `1.0`    | Python     | `a2a-sdk==1.1.2`    | Python `3.13.14`  | official client ↔ A2A Mesh server; A2A Mesh client ↔ official server | blocking, streaming, retrieval, cancellation, artifact   |
+| `1.0`    | JavaScript | `@a2a-js/sdk@1.3.0` | Node.js `24.16.0` | official client ↔ A2A Mesh server; A2A Mesh client ↔ official server | blocking, streaming, auth challenge, retrieval, artifact |
+| `1.0`    | Python     | `a2a-sdk==1.2.2`    | Python `3.13.14`  | official client ↔ A2A Mesh server; A2A Mesh client ↔ official server | blocking, streaming, retrieval, cancellation, artifact   |
 
 The reviewed source of truth is `tests/interop/live/versions.json`. The live runner also verifies a
 deliberately incompatible version and emits bounded, redacted diagnostics. See

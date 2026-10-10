@@ -14,10 +14,10 @@ The fixture matrix remains in `tests/interop/matrix.json`, and its report is wri
 
 | Client              | Server              | Verified flows                                                                                      |
 | ------------------- | ------------------- | --------------------------------------------------------------------------------------------------- |
-| `@a2a-js/sdk@1.0.0` | A2A Mesh            | Agent Card discovery, authentication challenge/retry, blocking submission, task retrieval, artifact |
-| A2A Mesh            | `@a2a-js/sdk@1.0.0` | streaming submitted/working/artifact/completed events and final task retrieval                      |
-| `a2a-sdk==1.1.2`    | A2A Mesh            | task creation, retrieval, and cancellation                                                          |
-| A2A Mesh            | `a2a-sdk==1.1.2`    | blocking and streaming completion, terminal task state, artifact                                    |
+| `@a2a-js/sdk@1.3.0` | A2A Mesh            | Agent Card discovery, authentication challenge/retry, blocking submission, task retrieval, artifact |
+| A2A Mesh            | `@a2a-js/sdk@1.3.0` | streaming submitted/working/artifact/completed events and final task retrieval                      |
+| `a2a-sdk==1.2.2`    | A2A Mesh            | task creation, retrieval, and cancellation                                                          |
+| A2A Mesh            | `a2a-sdk==1.2.2`    | blocking and streaming completion, terminal task state, artifact                                    |
 
 The live protocol target is `1.0`. A deliberate unsupported-version scenario must fail with a bounded diagnostic. Credentials are supplied only through process environment, and generated diagnostics redact authorization headers, API keys, cookies, and explicit secret values while bounding each captured stream to 16 KiB.
 
@@ -25,8 +25,8 @@ Pinned versions are reviewed in `tests/interop/live/versions.json`:
 
 - Node.js `24.16.0`
 - Python `3.13.14`
-- `@a2a-js/sdk@1.0.0`
-- `a2a-sdk==1.1.2`
+- `@a2a-js/sdk@1.3.0`
+- `a2a-sdk==1.2.2`
 
 Run one ecosystem locally with:
 

@@ -92,6 +92,9 @@ describe('init command', () => {
       });
 
       expect(existsSync(join(targetDir, 'package.json'))).toBe(true);
+      expect(readFileSync(join(targetDir, 'pnpm-workspace.yaml'), 'utf8')).toBe(
+        'allowBuilds:\n  esbuild: true\n',
+      );
       expect(existsSync(join(targetDir, 'src/researcher-agent.ts'))).toBe(true);
       expect(existsSync(join(targetDir, 'src/orchestrator-agent.ts'))).toBe(true);
       expect(existsSync(join(targetDir, 'src/index.ts'))).toBe(true);
@@ -131,6 +134,9 @@ describe('init command', () => {
       });
 
       expect(existsSync(join(targetDir, 'package.json'))).toBe(true);
+      expect(readFileSync(join(targetDir, 'pnpm-workspace.yaml'), 'utf8')).toBe(
+        'allowBuilds:\n  esbuild: true\n',
+      );
       expect(existsSync(join(targetDir, 'src/agent.ts'))).toBe(true);
       expect(existsSync(join(targetDir, 'src/index.ts'))).toBe(true);
       expect(existsSync(join(targetDir, 'Dockerfile'))).toBe(true);
