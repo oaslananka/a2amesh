@@ -210,8 +210,24 @@ function adjacentPrereleaseVersion(version, delta) {
     throw new Error(`cannot derive adjacent version from ${version}`);
   }
   const numeric = Number(version.slice(digitStart)) + delta;
-  if (numeric < 0) throw new Error(`cannot derive a lower version from ${version}`);
-  return `${version.slice(0, digitStart)}${numeric}`;
+  if (numeric >= 0) return version.slice(0, digitStart) + numeric;
+
+  // A stable release such as 0.19.0 cannot decrement its zero patch field.
+  // Carry to the prior minor (or major) for the isolated rollback fixture.
+  const stable = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.0$/.exec(version);
+  if (delta === -1 && stable) {
+    const major = Number(stable[1]);
+    const minor = Number(stable[2]);
+    if (minor > 0) return major + '.' + (minor - 1) + '.0';
+    if (major > 0) return major - 1 + '.0.0';
+    return '0.0.0-0';
+  }
+
+  // alpha is lower than alpha.0 according to SemVer prerelease ordering.
+  if (delta === -1 && version.includes('-') && version[digitStart - 1] === '.') {
+    return version.slice(0, digitStart - 1);
+  }
+  throw new Error('cannot derive a lower version from ' + version);
 }
 
 function resolveClaudeExecutable() {
