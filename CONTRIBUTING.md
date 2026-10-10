@@ -4,7 +4,7 @@ Thanks for helping improve A2A Mesh.
 
 ## Local workflow
 
-1. Use Node `24.16.0` and pnpm `11.8.0` by default. `mise.toml` owns the default Node.js version; Corepack and the root `packageManager` field own pnpm.
+1. Use Node `24.16.0` and pnpm `11.28.5` by default. `mise.toml` owns the default Node.js version; Corepack and the root `packageManager` field own pnpm.
 2. Run `mise trust`, `mise install`, and `mise reshim`, or install a supported Node.js version and run `corepack enable`.
 3. Run `corepack pnpm run toolchain:check`, then install dependencies with `corepack pnpm run setup`.
 4. Run focused tests while iterating.

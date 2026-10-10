@@ -11,7 +11,7 @@ Silver, Gold, foundation-grade, or production-maturity claim.
 - Review owner: `@oaslananka`
 - Last reviewed: **2026-07-28**
 - Language/runtime: TypeScript / Node.js / pnpm workspace
-- Package manager: `pnpm@11.8.0`
+- Package manager: `pnpm@11.28.5`
 - Target maturity: Professional OSS / Mature OSS
 - Gold claim: No
 

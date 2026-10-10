@@ -2,7 +2,7 @@
   "name": "a2amesh-workspace",
   "version": "0.1.0-alpha.0",
   "private": true,
-  "packageManager": "pnpm@11.8.0",
+  "packageManager": "pnpm@11.28.5",
   "author": "oaslananka",
   "homepage": "https://oaslananka.github.io/a2amesh/",
   "repository": {
