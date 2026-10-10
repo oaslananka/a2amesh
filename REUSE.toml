@@ -111,6 +111,12 @@ SPDX-License-Identifier = "Apache-2.0"
 
 
 [[annotations]]
+path = "patches/braces@3.0.3.patch"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 A2A Mesh contributors"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
 path = [
   "scripts/live-interop/*.d.mts",
   "scripts/mcp-compatibility.d.mts",

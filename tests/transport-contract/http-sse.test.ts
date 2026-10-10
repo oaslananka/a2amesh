@@ -48,6 +48,7 @@ class HttpSseContractServer extends A2AServer {
       },
       {
         allowUnresolvedHostnames: true,
+        outboundPolicy: { resolveHostname: async () => ['203.0.113.10'] },
         auth: {
           securitySchemes: [{ type: 'apiKey', id: 'api-key', in: 'header', name: 'x-api-key' }],
           apiKeys: { 'api-key': 'secret' },
