@@ -766,7 +766,7 @@ importers:
         version: 1.9.1
       eventsource:
         specifier: ^4.1.0
-        version: 4.1.0
+        version: 4.1.1
       express:
         specifier: ^5.2.1
         version: 5.2.1(supports-color@7.2.0)
@@ -3889,8 +3889,8 @@ packages:
     resolution: {integrity: sha512-CRT1WTyuQoD771GW56XEZFQ/ZoSfWid1alKGDYMmkt2yl8UXrVR4pspqWNEcqKvVIzg6PAltWjxcSSPrboA4iA==}
     engines: {node: '>=18.0.0'}
 
-  eventsource@4.1.0:
-    resolution: {integrity: sha512-2GuF51iuHX6A9xdTccMTsNb7VO0lHZihApxhvQzJB5A03DvHDd2FQepodbMaztPBmBcE/ox7o2gqaxGhYB9LhQ==}
+  eventsource@4.1.1:
+    resolution: {integrity: sha512-D6bTRWh6KahHTK/m4WnjPQyEinNPf9eFLEZSEoj7d6fTibspnAVYfzHvirL7u/aoX5d9YYfIkBVAhmigUELk9w==}
     engines: {node: '>=20.0.0'}
 
   execa@4.1.0:
@@ -5884,7 +5884,7 @@ snapshots:
     dependencies:
       '@a2amesh/protocol': file:packages/protocol
       '@opentelemetry/api': 1.9.1
-      eventsource: 4.1.0
+      eventsource: 4.1.1
       express: 5.2.1(supports-color@7.2.0)
       express-rate-limit: 8.5.2(express@5.2.1(supports-color@7.2.0))
       jose: 6.2.3
@@ -8829,7 +8829,7 @@ snapshots:
     dependencies:
       eventsource-parser: 3.1.0
 
-  eventsource@4.1.0:
+  eventsource@4.1.1:
     dependencies:
       eventsource-parser: 3.1.0
 
