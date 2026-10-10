@@ -1,11 +1,9 @@
 export interface RenovatePolicyInputs {
   config: Record<string, unknown>;
-  globalConfig: Record<string, unknown>;
-  workflow: string;
   repositoryLabels: Set<string>;
-  docsWorkflow: string;
-  dependencyReviewWorkflow: string;
-  dispatchScript: string;
+  ciWorkflow: string;
+  mergify: string;
+  hasLegacyRunner?: boolean;
 }
 
-export function validateRenovatePolicy(inputs: RenovatePolicyInputs): string[];
+export declare function validateRenovatePolicy(inputs: RenovatePolicyInputs): string[];

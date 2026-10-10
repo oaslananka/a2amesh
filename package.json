@@ -113,7 +113,6 @@
     "containers:check": "node scripts/check-container-config.mjs",
     "helm:check": "node scripts/check-helm-chart.mjs",
     "renovate:validate": "node scripts/check-renovate-config.mjs",
-    "renovate:dispatch:plan": "node scripts/dispatch-renovate-checks.mjs --dry-run",
     "release:state:release-please": "node scripts/release-state.mjs --mode release-please --json",
     "release:state:publish": "node scripts/release-state.mjs --mode publish --json",
     "test:coverage:ci": "pnpm run build && pnpm run test:coverage:ci:no-build",

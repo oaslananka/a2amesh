@@ -452,14 +452,14 @@ jobs:
           cache: 'false'
       - name: Validate workspace lockfile policy
         run: node scripts/check-workspace-declarations.mjs
-      - name: Detect repository-managed dependency branch
+      - name: Detect hosted Renovate dependency branch
         id: dependency-update
         run: |
-          if [[ "${DEPENDENCY_UPDATE_BRANCH}" == repository-managed-renovate/* ]]; then
+          if [[ "${DEPENDENCY_UPDATE_BRANCH}" == renovate/* ]]; then
             echo "run=true" >> "${GITHUB_OUTPUT}"
           else
             echo "run=false" >> "${GITHUB_OUTPUT}"
-            echo "Not a repository-managed Renovate branch; clean-store dependency validation is an explicit successful no-op."
+            echo "Not a hosted Renovate branch; clean-store dependency validation is an explicit successful no-op."
           fi
       - name: Verify clean checkout has no build artifacts
         if: steps.dependency-update.outputs.run == 'true'

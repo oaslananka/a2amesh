@@ -113,14 +113,14 @@ describe.skipIf(process.platform === 'win32')('required CI summary', () => {
     );
   });
 
-  it('keeps repository-managed dependency updates on an isolated clean-store validation lane', async () => {
+  it('keeps hosted Renovate dependency updates on an isolated clean-store validation lane', async () => {
     const workflow = await readFile(
       new URL('../../.github/workflows/ci.yml', import.meta.url),
       'utf8',
     );
 
     expect(workflow).toContain('name: CI / dependency-update');
-    expect(workflow).toContain('repository-managed-renovate/*');
+    expect(workflow).toContain('renovate/*');
     expect(workflow).toContain("cache: 'false'");
     expect(workflow).toContain('--store-dir "${RUNNER_TEMP}/pnpm-store"');
     expect(workflow).toContain(

@@ -1,84 +1,90 @@
 # Dependency update policy
 
-A2A Mesh runs Renovate from `.github/workflows/renovate.yml`. The workflow is repository-owned, uses a full-SHA-pinned official Renovate action, and targets only `oaslananka/a2amesh`.
-The workflow defaults to read-only repository access; write access to contents, issues, and pull requests is scoped only to the Renovate job.
+A2A Mesh uses the **Mend-hosted Renovate GitHub App** as its sole dependency-update
+producer for `oaslananka/a2amesh`. Renovate's configuration lives in
+[`renovate.json`](../../renovate.json); the hosted service owns the schedule,
+authentication, dependency branches and update pull requests. Do not re-enable
+a second repository-managed Renovate GitHub Actions runner.
 
-## Schedule and manual runs
+## Operational behavior
 
-Renovate runs every Monday, Wednesday, and Friday at `03:23 UTC` (`06:23 Europe/Istanbul`) and can also be started through **Actions → Renovate → Run workflow**.
+- The [hosted Dependency Dashboard](https://github.com/oaslananka/a2amesh/issues/348)
+  is the canonical place to approve major upgrades, inspect waiting updates
+  and review security fixes.
+- Routine updates wait for a minimum **three-day release age**; major upgrades
+  additionally require Dependency Dashboard approval.
+- Limit normal work to **two open Renovate PRs, two active Renovate branches,
+  two new PRs/hour and two commits/hour**. Security fixes can bypass upstream
+  rate limits and remain subject to the full repository security review.
+- Renovate does not automatically merge its own PRs. Mergify may merge eligible,
+  stable, low-risk **npm devDependency patch** updates created by
+  `renovate[bot]` on `renovate/*` only after protected exact-head checks pass.
+  Major updates, runtime changes, GitHub Actions, Docker and security updates
+  never inherit that approval.
+- The hosted App can read GitHub Dependabot alerts when the repository's
+  dependency graph, Dependabot alerts and App permission are enabled. Renovate's
+  `vulnerabilityAlerts` and `osvVulnerabilityAlerts` are enabled; GitHub
+  Dependabot security **PR generation remains disabled** to avoid duplicate
+  PR producers.
 
-To avoid six pending branches or a burst of CI runs, routine updates are restricted to **two concurrent branches**, **two open PRs**, **two new PRs per hour**, and **two commits per hour**. Renovate's minimum release age remains three days, and major updates still require Dashboard approval. Security fixes can bypass general Renovate rate limits according to upstream behavior; separate security gates and manual risk review remain authoritative. Existing bot branches are **not removed automatically** when lowering the limit; clean up old unreviewed branches before the next Renovate run.
+## Workspace and release contracts
 
-The repository-managed workflow is the **canonical update producer**, including its allowlisted post-upgrade sync scripts and exact-commit CI dispatch. A separately installed hosted Renovate GitHub App must not also manage this repository: exclude this repository from that App's GitHub installation settings while keeping its access to any unrelated repositories. The App-hosted Dashboard is not the repository-managed Dashboard. The repository config must remain enabled for the Actions runner, so do not set `enabled: false` in shared `renovate.json` merely to disable the hosted App.
+Internal `@a2amesh/*` packages are excluded: Release Please owns their linked
+versions. Other package changes must preserve the canonical pnpm workspace
+`link:` declarations, intentionally injected resolutions, exact direct package
+pins and matching lockfile overrides. The
+`CI / dependency-update` job runs on hosted `renovate/*` branches and performs
+workspace checks, an isolated clean-store installation, documentation/GC
+validation, a clean build, unit/integration tests and package dry-runs.
+Ordinary `pull_request` workflows run directly for the hosted App; a
+`GITHUB_TOKEN` PR-workflow approval/dispatch workaround is unnecessary.
 
-The workflow uses the repository `GITHUB_TOKEN`. Write access remains scoped to the Renovate job and is limited to:
+### Maintainer-reviewed exceptional updates
 
-- repository contents;
-- issues and pull requests;
-- workflow dispatches for required checks and approval of the genuine Scorecard pull-request run;
-- commit statuses used by Renovate’s three-day minimum-release-age gate.
+Mend-hosted Renovate does **not** guarantee execution of this repository's
+arbitrary `postUpgradeTasks`. No privileged `pull_request_target` checkout of
+PR code or new secret-bearing bot is used as a workaround. Existing project
+checks instead **fail closed** on inconsistent generated files.
 
-The repository `GITHUB_TOKEN` does not expose GitHub’s fine-grained Dependabot-alert permission, so Renovate does not query GitHub Dependabot alerts directly. OSV vulnerability alerts remain enabled for vulnerability-driven dependency updates. The workflow does not mount the Docker socket and does not receive publishing or deployment credentials.
+- pnpm toolchain updates require explicit Dashboard approval. When an
+  approved PR changes `tools/runtime-versions.json`, the maintainer must run
+  `node scripts/check-runtime-versions.mjs --write` on that PR branch and
+  include every generated version mirror before the protected CI can pass.
+  This includes engine ranges, workflow Node versions, scaffold metadata,
+  docs and Docker arguments. Do not bypass `check-runtime-versions` to merge.
+- A reviewed security update affecting an existing
+  `minimumReleaseAgeExclude` entry must reconcile that exact version-specific
+  exception. The retained `scripts/sync-dependency-policy.mjs --write`
+  helper consumes a **reviewed** `RENOVATE_POST_UPGRADE_COMMAND_DATA_FILE`
+  in the format documented in that script. Do not carry unrelated exceptions
+  forward or invent a new exception to evade the three-day age policy.
+  Security fixes without such exceptions need no special synchronization.
 
-GitHub creates `pull_request` workflow runs in an approval-required state for pull requests created with `GITHUB_TOKEN`. After Renovate finishes, `scripts/dispatch-renovate-checks.mjs` finds open `repository-managed-renovate/*` pull requests. It approves the genuine Scorecard pull-request run because Scorecard does not support branch-scoped `workflow_dispatch`, and it dispatches the remaining required CI, docs, security, CodeQL, and Dependency Review workflows on the exact head commit. The dispatcher verifies the head SHA before every approval or dispatch and never deploys the documentation site.
+GitHub Actions and container versions remain pinned; Vitest, Hono,
+OpenTelemetry, UI and documentation dependencies are grouped. The monthly
+lockfile maintenance policy, security-tool regex managers and pinned Codecov
+CLI mapping remain active. Repository-owned unpublished GHCR images are
+excluded.
 
-## Dependency Dashboard
+## Validation and operations
 
-Renovate maintains a **Dependency Dashboard** issue. Use it to:
-
-- approve major updates;
-- inspect updates held by the three-day release-age policy;
-- retry or rebase blocked updates;
-- review vulnerability-driven updates;
-- start an update that is intentionally pending.
-
-Major updates are not created until a maintainer approves them in the Dashboard. No Renovate pull request is automerged. If `main` changes while a Renovate run is active, Renovate exits with `repository-changed`; rerun the workflow after `main` stabilizes so Dashboard and remaining branch updates can finish.
-
-## Project-specific rules
-
-### Automated update ownership and workspace topology
-
-Renovate is the only automation allowed to open dependency manifest or lockfile pull requests for this repository. GitHub vulnerability alerts remain enabled for detection, while Dependabot automated security update pull requests remain disabled in the repository settings. Do not add an npm `package-ecosystem` entry to `.github/dependabot.yml` while Renovate owns manifest and lockfile updates.
-
-The canonical pnpm workspace topology is `link:` for internal workspace dependencies except for the explicitly reviewed injected resolutions enforced by `scripts/check-workspace-declarations.mjs`. Exact direct dependency pins that are also present in `pnpm-workspace.yaml` `overrides` must move together, and the lockfile override must match the workspace override. The same checker rejects partial version updates and unexpected `file:packages/...` importer rewrites.
-
-Renovate keeps `pnpmDedupe` enabled after lockfile updates. Repository-managed Renovate branches also pass `CI / dependency-update`, which validates the workspace contract and then installs from an isolated empty pnpm store before running documentation checks, garbage collection, a clean build, unit and integration tests, and package dry-runs. Other CI events take an explicit successful no-op for the expensive clean-store portion while still validating the static workspace contract.
-
-Release-age exceptions remain explicit, reviewed security decisions. For a Renovate vulnerability update, an existing version-specific `minimumReleaseAgeExclude` entry follows that security fix to the new version; the synchronizer never creates a new exception. Routine updates do not carry exceptions forward merely to bypass the normal release-age policy.
-
-- Internal `@a2amesh/*` packages are excluded. Release Please owns their linked versions.
-- npm releases wait at least three days before a normal update is proposed.
-- GitHub Actions and container dependencies remain pinned.
-- Vitest, Hono, OpenTelemetry, registry UI, docs-site, and security-tool updates are grouped intentionally.
-- Lockfile maintenance runs once per month.
-- Security-tool versions in `.github/workflows/security.yml` are mapped by explicit regex managers; the workflow itself does not need inline Renovate annotations.
-- Runtime versions remain governed by `tools/runtime-versions.json`. pnpm updates are grouped under the `pnpm toolchain` rule and run `scripts/check-runtime-versions.mjs --write` so workspace manifests, engine ranges, Docker arguments, generated scaffold metadata, documentation, and release preflight policy remain synchronized.
-- Repository-owned unpublished GHCR images are excluded because they are produced by this repository rather than consumed from an external release stream.
-
-## Local validation
-
-Run the repository contract validator:
+Validate the repository policy:
 
 ```bash
 corepack pnpm run renovate:validate
 ```
 
-Run Renovate's official strict validator with the repository-pinned version and Node 24:
+The hosted App validates Renovate configuration changes itself. Review its
+status checks and execution logs in the Mend Developer Portal, and verify CI
+results on the exact PR head. Local JSON policy checks do not substitute for
+the hosted service's validation.
 
-```bash
-docker run --rm --entrypoint renovate-config-validator \
-  -v "$PWD/renovate.json:/renovate.json:ro" \
-  ghcr.io/renovatebot/renovate:43.272.4 --strict /renovate.json
-```
+Do not use `.github/workflows/renovate.yml` or
+`renovate:dispatch:plan`: those belonged to the retired second runner. The
+previous Actions-managed Dashboard
+[#328](https://github.com/oaslananka/a2amesh/issues/328) is historical;
+[#348](https://github.com/oaslananka/a2amesh/issues/348) remains active.
 
-Preview missing required-check dispatches without starting workflows:
-
-```bash
-corepack pnpm run renovate:dispatch:plan
-```
-
-Configuration changes must also pass YAML, actionlint, zizmor, formatting, and the integration tests in `tests/integration/renovate-config.test.ts`, `tests/integration/renovate-dispatch.test.ts`, and `tests/integration/runtime-versions-script.test.ts`.
-
-## Vulnerability updates
-
-OSV vulnerability alerts remain enabled for vulnerability-driven dependency updates. Review the advisory, affected dependency path, available fix, lockfile changes, and full CI evidence before merge.
+If a required quality/security job fails, inspect that failed job before
+starting redundant CI. Only integrate with passing protected checks and the
+configured Mergify queue.

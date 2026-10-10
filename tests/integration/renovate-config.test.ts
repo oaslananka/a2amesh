@@ -1,550 +1,147 @@
-import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { validateRenovatePolicy } from '../../scripts/check-renovate-config.mjs';
 
-const labels = new Set([
-  'priority:P1',
-  'priority:P2',
-  'type:task',
-  'type:security',
-  'area:ci',
-  'area:deps',
-  'area:dx',
-  'status:triaged',
-]);
+const read = (path: string) => readFileSync(new URL('../../' + path, import.meta.url), 'utf8');
 
-function validConfig() {
+function fixture() {
+  const labels = new Set(
+    [...read('.github/labels.yml').matchAll(/^- name: ['"]([^'"]+)['"]$/gm)].map(
+      (match) => match[1] ?? '',
+    ),
+  );
   return {
-    baseBranchPatterns: ['main'],
-    timezone: 'Europe/Istanbul',
-    labels: ['area:deps', 'type:task'],
-    automerge: false,
-    prHourlyLimit: 2,
-    prConcurrentLimit: 2,
-    branchConcurrentLimit: 2,
-    commitHourlyLimit: 2,
-    minimumReleaseAge: '3 days',
-    internalChecksFilter: 'strict',
-    prCreation: 'not-pending',
-    postUpdateOptions: ['pnpmDedupe'],
-    lockFileMaintenance: { enabled: true },
-    dependencyDashboard: true,
-    dependencyDashboardTitle: 'Dependency Dashboard',
-    customManagers: [
-      {
-        customType: 'regex',
-        managerFilePatterns: ['/^\\.github\\/workflows\\/security\\.yml$/'],
-        matchStrings: ['GITLEAKS_VERSION'],
-        datasourceTemplate: 'github-releases',
-        depNameTemplate: 'gitleaks/gitleaks',
-      },
-      {
-        customType: 'regex',
-        managerFilePatterns: ['/^\\.github\\/workflows\\/security\\.yml$/'],
-        matchStrings: ['ACTIONLINT_VERSION'],
-        datasourceTemplate: 'github-releases',
-        depNameTemplate: 'rhysd/actionlint',
-      },
-      {
-        customType: 'regex',
-        managerFilePatterns: [
-          '/^\\.github\\/workflows\\/security\\.yml$/',
-          '/^\\.github\\/workflows\\/dependency-freshness\\.yml$/',
-        ],
-        matchStrings: [
-          'OSV_SCANNER_VERSION',
-          'releases/download/(?<currentValue>v?\\d+\\.\\d+\\.\\d+)/osv-scanner_linux_amd64',
-        ],
-        datasourceTemplate: 'github-releases',
-        depNameTemplate: 'google/osv-scanner',
-        versioningTemplate: 'loose',
-      },
-      {
-        customType: 'regex',
-        managerFilePatterns: ['/^\\.github\\/workflows\\/security\\.yml$/'],
-        matchStrings: ['ZIZMOR_VERSION'],
-        datasourceTemplate: 'github-releases',
-        depNameTemplate: 'zizmorcore/zizmor',
-      },
-      {
-        customType: 'regex',
-        managerFilePatterns: ['/^\\.github\\/workflows\\/ci\\.yml$/'],
-        matchStrings: ['CODECOV_CLI_VERSION'],
-        datasourceTemplate: 'github-releases',
-        depNameTemplate: 'codecov/codecov-cli',
-        versioningTemplate: 'loose',
-      },
-      {
-        customType: 'regex',
-        managerFilePatterns: ['/^\\.github\\/workflows\\/security\\.yml$/'],
-        matchStrings: ['SEMGREP_VERSION'],
-        datasourceTemplate: 'pypi',
-        depNameTemplate: 'semgrep',
-      },
-      {
-        customType: 'regex',
-        managerFilePatterns: ['/^tools\\/runtime-versions\\.json$/'],
-        matchStrings: ['"pnpm"'],
-        datasourceTemplate: 'npm',
-        depNameTemplate: 'pnpm',
-      },
-    ],
-    packageRules: [
-      {
-        matchPackageNames: ['/^@a2amesh\\//'],
-        enabled: false,
-      },
-      {
-        matchUpdateTypes: ['major'],
-        dependencyDashboardApproval: true,
-        automerge: false,
-        labels: ['priority:P1', 'type:task', 'area:deps'],
-      },
-      {
-        matchManagers: ['github-actions', 'dockerfile', 'docker-compose'],
-        pinDigests: true,
-        automerge: false,
-        labels: ['area:ci', 'area:deps', 'type:task'],
-      },
-      {
-        description: 'Synchronize reviewed release-age exceptions for vulnerability updates.',
-        matchManagers: ['npm'],
-        matchJsonata: ['$exists(vulnerabilityFixVersion)'],
-        postUpgradeTasks: {
-          commands: ['node scripts/sync-dependency-policy.mjs --write'],
-          dataFileTemplate:
-            '[{{#each upgrades}}{"depName":"{{{depName}}}","currentVersion":"{{{currentVersion}}}","newVersion":"{{{newVersion}}}","isVulnerabilityAlert":"{{{isVulnerabilityAlert}}}"}{{#unless @last}},{{/unless}}{{/each}}]',
-          fileFilters: ['pnpm-workspace.yaml'],
-          executionMode: 'branch',
-        },
-      },
-      {
-        groupName: 'pnpm toolchain',
-        matchPackageNames: ['pnpm'],
-        postUpgradeTasks: {
-          commands: ['node scripts/check-runtime-versions.mjs --write'],
-          fileFilters: ['**/*'],
-          executionMode: 'branch',
-        },
-      },
-      {
-        matchDatasources: ['docker'],
-        matchPackageNames: ['/^ghcr\\.io\\/oaslananka\\/a2amesh-/'],
-        enabled: false,
-      },
-    ],
-    vulnerabilityAlerts: {
-      enabled: false,
-    },
-    osvVulnerabilityAlerts: true,
+    config: JSON.parse(read('renovate.json')),
+    repositoryLabels: labels,
+    ciWorkflow: read('.github/workflows/ci.yml'),
+    mergify: read('.mergify.yml'),
   };
 }
 
-function validGlobalConfig() {
-  return {
-    platform: 'github',
-    repositories: ['oaslananka/a2amesh'],
-    onboarding: false,
-    requireConfig: 'required',
-    branchPrefix: 'repository-managed-renovate/',
-    allowedCommands: [
-      '^node scripts/check-runtime-versions\\.mjs --write$',
-      '^node scripts/sync-dependency-policy\\.mjs --write$',
-    ],
-  };
-}
-
-const validWorkflow = `permissions:
-  contents: read
-jobs:
-  validate:
-    name: Renovate / validate
-    steps:
-      - uses: renovatebot/github-action@3064367f740a1a91cca218698a63902689cce200 # v46.1.20
-        with:
-          configurationFile: renovate.json
-          docker-cmd-file: .github/renovate-validate.sh
-          renovate-version: 43.272.4
-          token: \${{ github.token }}
-  renovate:
-    needs: validate
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-      actions: write
-      statuses: write
-    steps:
-      - uses: renovatebot/github-action@3064367f740a1a91cca218698a63902689cce200 # v46.1.20
-        with:
-          renovate-version: 43.272.4
-          token: \${{ github.token }}
-      - run: node scripts/dispatch-renovate-checks.mjs
-`;
-
-const validDocsWorkflow = `workflow_dispatch:
-  inputs:
-    deploy:
-      type: boolean
-      default: false
-if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
-`;
-
-const validDependencyReviewWorkflow = `workflow_dispatch:
-  inputs:
-    base_ref:
-      required: true
-    head_ref:
-      required: true
-base-ref: \${{ github.event_name == 'workflow_dispatch' && inputs.base_ref || github.event.pull_request.base.sha }}
-head-ref: \${{ github.event_name == 'workflow_dispatch' && inputs.head_ref || github.event.pull_request.head.sha }}
-`;
-
-const validDispatchScript = `repository-managed-renovate/
-.github/rulesets/main.json
-required_status_checks
-'ci.yml': 'CI / '
-'docs.yml': 'Docs / '
-'security.yml': 'Security / '
-'codeql.yml': 'CodeQL / '
-'scorecard.yml': 'Scorecard / '
-'dependency-review.yml': 'Dependency Review / '
-action_required
-actions/runs/
-/approve
-gh workflow run
-`;
-
-describe('Renovate policy validation', () => {
-  it('accepts the project-specific least-privilege contract', () => {
-    expect(
-      validateRenovatePolicy({
-        config: validConfig(),
-        globalConfig: validGlobalConfig(),
-        workflow: validWorkflow,
-        repositoryLabels: labels,
-        docsWorkflow: validDocsWorkflow,
-        dependencyReviewWorkflow: validDependencyReviewWorkflow,
-        dispatchScript: validDispatchScript,
-      }),
-    ).toEqual([]);
+describe('hosted Renovate App policy', () => {
+  it('accepts the real App configuration and protected CI/Mergify contract', () => {
+    expect(validateRenovatePolicy(fixture())).toEqual([]);
   });
 
-  it('rejects unknown labels and automerge', () => {
-    const config = validConfig();
-    config.automerge = true;
-    config.labels = ['area:unknown'];
-
-    expect(
-      validateRenovatePolicy({
-        config,
-        globalConfig: validGlobalConfig(),
-        workflow: validWorkflow,
-        repositoryLabels: labels,
-        docsWorkflow: validDocsWorkflow,
-        dependencyReviewWorkflow: validDependencyReviewWorkflow,
-        dispatchScript: validDispatchScript,
-      }),
-    ).toEqual(
-      expect.arrayContaining([
-        'Renovate automerge must remain disabled',
-        'Unknown Renovate label: area:unknown',
-      ]),
+  it('rejects retaining the second repository-managed Renovate runner', () => {
+    expect(validateRenovatePolicy({ ...fixture(), hasLegacyRunner: true })).toContain(
+      'Repository-managed Renovate Action must not coexist with the hosted App',
     );
   });
 
-  it('rejects missing lockfile maintenance and tool-version extraction', () => {
-    const config = {
-      ...validConfig(),
-      lockFileMaintenance: undefined,
-      customManagers: [],
-    };
-
-    expect(
-      validateRenovatePolicy({
-        config,
-        globalConfig: validGlobalConfig(),
-        workflow: validWorkflow,
-        repositoryLabels: labels,
-        docsWorkflow: validDocsWorkflow,
-        dependencyReviewWorkflow: validDependencyReviewWorkflow,
-        dispatchScript: validDispatchScript,
-      }),
-    ).toEqual(
-      expect.arrayContaining([
-        'Renovate lockFileMaintenance must be enabled',
-        'Renovate must extract pinned security tool versions: GITLEAKS_VERSION, ACTIONLINT_VERSION, OSV_SCANNER_VERSION, ZIZMOR_VERSION, SEMGREP_VERSION',
-      ]),
-    );
-  });
-
-  it('requires Renovate to update the daily OSV literal pin', () => {
-    const config = validConfig();
-    const manager = config.customManagers.find(
-      (candidate) => candidate.depNameTemplate === 'google/osv-scanner',
-    );
-    if (!manager) throw new Error('OSV manager fixture missing');
-    manager.managerFilePatterns = manager.managerFilePatterns.filter(
-      (pattern) => !pattern.includes('dependency-freshness'),
-    );
-    manager.matchStrings = manager.matchStrings.filter(
-      (pattern) => !pattern.includes('releases/download/'),
-    );
-
-    expect(
-      validateRenovatePolicy({
-        config,
-        globalConfig: validGlobalConfig(),
-        workflow: validWorkflow,
-        repositoryLabels: labels,
-        docsWorkflow: validDocsWorkflow,
-        dependencyReviewWorkflow: validDependencyReviewWorkflow,
-        dispatchScript: validDispatchScript,
-      }),
-    ).toContain('Renovate must update the daily OSV-Scanner literal pin');
-  });
-
-  it('rejects missing vulnerability release-age synchronization', () => {
-    const config = validConfig();
-    config.packageRules = config.packageRules.filter(
-      (rule) =>
-        rule.postUpgradeTasks?.commands?.includes(
-          'node scripts/sync-dependency-policy.mjs --write',
-        ) !== true,
-    );
-    const globalConfig = validGlobalConfig();
-    globalConfig.allowedCommands = globalConfig.allowedCommands.filter(
-      (command) => !command.includes('sync-dependency-policy'),
-    );
-
-    expect(
-      validateRenovatePolicy({
-        config,
-        globalConfig,
-        workflow: validWorkflow,
-        repositoryLabels: labels,
-        docsWorkflow: validDocsWorkflow,
-        dependencyReviewWorkflow: validDependencyReviewWorkflow,
-        dispatchScript: validDispatchScript,
-      }),
-    ).toEqual(
-      expect.arrayContaining([
-        'Renovate vulnerability updates must synchronize reviewed release-age exceptions',
-        'Repository-managed Renovate must allow only the reviewed policy synchronizer commands',
-      ]),
-    );
-  });
-
-  it('rejects missing pnpm dedupe and vulnerability alert ownership', () => {
-    const config = validConfig();
-    config.postUpdateOptions = [];
-    config.vulnerabilityAlerts.enabled = true;
-    config.osvVulnerabilityAlerts = false;
-
-    expect(
-      validateRenovatePolicy({
-        config,
-        globalConfig: validGlobalConfig(),
-        workflow: validWorkflow,
-        repositoryLabels: labels,
-        docsWorkflow: validDocsWorkflow,
-        dependencyReviewWorkflow: validDependencyReviewWorkflow,
-        dispatchScript: validDispatchScript,
-      }),
-    ).toEqual(
-      expect.arrayContaining([
-        'Renovate must keep pnpmDedupe enabled after lockfile updates',
-        'Renovate GitHub vulnerability alerts must remain disabled when using GITHUB_TOKEN',
-        'Renovate OSV vulnerability alerts must remain enabled',
-      ]),
-    );
-  });
-
-  it('rejects on-demand npx execution for the official validator', () => {
-    const workflow = `${validWorkflow}
-run: npx --yes --package=renovate@43.272.4 renovate-config-validator`;
-
-    expect(
-      validateRenovatePolicy({
-        config: validConfig(),
-        globalConfig: validGlobalConfig(),
-        workflow,
-        repositoryLabels: labels,
-        docsWorkflow: validDocsWorkflow,
-        dependencyReviewWorkflow: validDependencyReviewWorkflow,
-        dispatchScript: validDispatchScript,
-      }),
-    ).toContain('Renovate workflow must validate with the pinned container instead of npx');
-  });
-
-  it('rejects write permissions at workflow scope', () => {
-    const workflow = validWorkflow.replace('contents: read', 'contents: write');
-
-    expect(
-      validateRenovatePolicy({
-        config: validConfig(),
-        globalConfig: validGlobalConfig(),
-        workflow,
-        repositoryLabels: labels,
-        docsWorkflow: validDocsWorkflow,
-        dependencyReviewWorkflow: validDependencyReviewWorkflow,
-        dispatchScript: validDispatchScript,
-      }),
-    ).toContain('Renovate workflow-level contents permission must remain read-only');
-  });
-
-  it('rejects missing Dashboard, dispatch permissions, and pnpm synchronization', () => {
-    const config = validConfig();
-    config.dependencyDashboard = false;
-    config.customManagers = config.customManagers.filter(
-      (manager) => manager.depNameTemplate !== 'pnpm',
-    );
-    config.packageRules = config.packageRules.filter((rule) => rule.groupName !== 'pnpm toolchain');
-    const globalConfig = validGlobalConfig();
-    globalConfig.allowedCommands = [];
-    const workflow = validWorkflow
-      .replace('      actions: write\n', '')
-      .replace('      statuses: write\n', '')
-      .replace('      - run: node scripts/dispatch-renovate-checks.mjs\n', '');
-
-    expect(
-      validateRenovatePolicy({
-        config,
-        globalConfig,
-        workflow,
-        repositoryLabels: labels,
-        docsWorkflow: validDocsWorkflow,
-        dependencyReviewWorkflow: validDependencyReviewWorkflow,
-        dispatchScript: validDispatchScript,
-      }),
-    ).toEqual(
-      expect.arrayContaining([
-        'Renovate Dependency Dashboard must be explicitly enabled',
-        'Renovate must extract the pnpm runtime source of truth',
-        'Renovate pnpm updates must run the runtime-version synchronizer',
-        'Repository-managed Renovate must allow only the reviewed policy synchronizer commands',
-        'Renovate job missing permission: actions: write',
-        'Renovate job missing permission: statuses: write',
-        'Renovate workflow must dispatch required checks after repository updates',
-      ]),
-    );
-  });
-
-  it('rejects broad repositories and unpinned workflow actions', () => {
-    const globalConfig = validGlobalConfig();
-    globalConfig.repositories = ['oaslananka/*'];
-
-    expect(
-      validateRenovatePolicy({
-        config: validConfig(),
-        globalConfig,
-        workflow: validWorkflow.replaceAll('3064367f740a1a91cca218698a63902689cce200', 'v46.1.20'),
-        repositoryLabels: labels,
-        docsWorkflow: validDocsWorkflow,
-        dependencyReviewWorkflow: validDependencyReviewWorkflow,
-        dispatchScript: validDispatchScript,
-      }),
-    ).toEqual(
-      expect.arrayContaining([
-        'Repository-managed Renovate must target only oaslananka/a2amesh',
-        'Renovate GitHub Action must be pinned to a full commit SHA',
-      ]),
-    );
-  });
-
-  it('rejects unbounded or oversized update queues', () => {
-    const config = validConfig();
-    config.prHourlyLimit = 6;
-    config.prConcurrentLimit = 6;
-    config.branchConcurrentLimit = 6;
-    config.commitHourlyLimit = 0;
-    expect(
-      validateRenovatePolicy({
-        config,
-        globalConfig: validGlobalConfig(),
-        workflow: validWorkflow,
-        repositoryLabels: labels,
-        docsWorkflow: validDocsWorkflow,
-        dependencyReviewWorkflow: validDependencyReviewWorkflow,
-        dispatchScript: validDispatchScript,
-      }),
-    ).toEqual(
+  it('keeps the two-lane queue and three-day release-age gate', () => {
+    const input = fixture();
+    input.config.prConcurrentLimit = 6;
+    input.config.branchConcurrentLimit = 6;
+    input.config.prHourlyLimit = 6;
+    input.config.commitHourlyLimit = 0;
+    input.config.minimumReleaseAge = '0 days';
+    expect(validateRenovatePolicy(input)).toEqual(
       expect.arrayContaining([
         'Renovate prHourlyLimit must be 2',
         'Renovate prConcurrentLimit must be 2',
         'Renovate branchConcurrentLimit must be 2',
         'Renovate commitHourlyLimit must be 2',
+        'Renovate minimumReleaseAge must be 3 days',
       ]),
     );
   });
 
-  it('routes supported Renovate patch PRs to Mergify with the actual repository bot identity', async () => {
-    const [mergify, renovateText] = await Promise.all([
-      readFile(new URL('../../.mergify.yml', import.meta.url), 'utf8'),
-      readFile(new URL('../../renovate.json', import.meta.url), 'utf8'),
-    ]);
-    const renovate = JSON.parse(renovateText) as {
-      automerge: boolean;
-      packageRules: Array<{
-        matchManagers?: string[];
-        matchDepTypes?: string[];
-        matchUpdateTypes?: string[];
-        matchCurrentVersion?: string;
-        addLabels?: string[];
-      }>;
-    };
-    const eligible = renovate.packageRules.filter((rule) =>
-      rule.addLabels?.includes('automerge:enabled'),
+  it('requires Github Dependabot and OSV vulnerability detection for the hosted App', () => {
+    const input = fixture();
+    input.config.vulnerabilityAlerts.enabled = false;
+    input.config.osvVulnerabilityAlerts = false;
+    expect(validateRenovatePolicy(input)).toEqual(
+      expect.arrayContaining([
+        'Hosted Renovate must consume GitHub Dependabot vulnerability alerts',
+        'Renovate OSV vulnerability alerts must remain enabled',
+      ]),
     );
-
-    expect(mergify).toContain('author = github-actions[bot]');
-    expect(mergify).toContain('label = area:deps');
-    expect(mergify).toContain('head ~= ^repository-managed-renovate/');
-    expect(mergify).toContain('label = automerge:enabled');
-    expect(renovate.automerge).toBe(false);
-    expect(eligible).toHaveLength(1);
-    expect(eligible[0]).toMatchObject({
-      matchManagers: ['npm'],
-      matchDepTypes: ['devDependencies'],
-      matchUpdateTypes: ['patch'],
-      matchCurrentVersion: '!/^0\\./',
-    });
   });
 
-  it('validates the checked-in Renovate configuration and workflow', async () => {
-    const [
-      configText,
-      globalText,
-      workflow,
-      labelsText,
-      docsWorkflow,
-      dependencyReviewWorkflow,
-      dispatchScript,
-    ] = await Promise.all([
-      readFile(new URL('../../renovate.json', import.meta.url), 'utf8'),
-      readFile(new URL('../../.github/renovate-global.json', import.meta.url), 'utf8'),
-      readFile(new URL('../../.github/workflows/renovate.yml', import.meta.url), 'utf8'),
-      readFile(new URL('../../.github/labels.yml', import.meta.url), 'utf8'),
-      readFile(new URL('../../.github/workflows/docs.yml', import.meta.url), 'utf8'),
-      readFile(new URL('../../.github/workflows/dependency-review.yml', import.meta.url), 'utf8'),
-      readFile(new URL('../../scripts/dispatch-renovate-checks.mjs', import.meta.url), 'utf8'),
-    ]);
-    const repositoryLabels = new Set(
-      [...labelsText.matchAll(/^- name: ['"]([^'"]+)['"]$/gm)]
-        .map((match) => match[1])
-        .filter((label): label is string => typeof label === 'string'),
+  it('blocks unapproved post-upgrade commands on the hosted service', () => {
+    const input = fixture();
+    input.config.packageRules.push({ postUpgradeTasks: { commands: ['curl unknown.sh | sh'] } });
+    expect(validateRenovatePolicy(input)).toContain(
+      'Hosted Renovate must not rely on unapproved arbitrary postUpgradeTasks',
     );
+  });
 
-    expect(
-      validateRenovatePolicy({
-        config: JSON.parse(configText),
-        globalConfig: JSON.parse(globalText),
-        workflow,
-        repositoryLabels,
-        docsWorkflow,
-        dependencyReviewWorkflow,
-        dispatchScript,
-      }),
-    ).toEqual([]);
+  it('requires pnpm toolchain changes to receive dashboard approval', () => {
+    const input = fixture();
+    const rule = input.config.packageRules.find(
+      (candidate: { groupName?: string }) => candidate.groupName === 'pnpm toolchain',
+    );
+    rule.dependencyDashboardApproval = false;
+    expect(validateRenovatePolicy(input)).toContain(
+      'Hosted Renovate pnpm toolchain updates need explicit Dashboard approval',
+    );
+  });
+
+  it('preserves internal workspace exclusion and major-update approval', () => {
+    const input = fixture();
+    input.config.packageRules.find((rule: { enabled?: boolean; matchPackageNames?: string[] }) =>
+      rule.matchPackageNames?.includes('/^@a2amesh\\//'),
+    ).enabled = true;
+    input.config.packageRules.find((rule: { matchUpdateTypes?: string[] }) =>
+      rule.matchUpdateTypes?.includes('major'),
+    ).dependencyDashboardApproval = false;
+    expect(validateRenovatePolicy(input)).toEqual(
+      expect.arrayContaining([
+        'Internal @a2amesh packages must remain disabled in Renovate',
+        'Major Renovate updates must require Dashboard approval without automerge',
+      ]),
+    );
+  });
+
+  it('maintains security-tool pins and workspace pnpm extraction', () => {
+    const input = fixture();
+    input.config.customManagers = [];
+    expect(validateRenovatePolicy(input)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Renovate must extract pinned security tool versions'),
+        'Renovate must update the daily OSV-Scanner literal pin',
+        'Renovate must extract the pinned Codecov CLI version',
+        'Renovate must extract the pnpm runtime source of truth',
+      ]),
+    );
+  });
+
+  it('rejects missing hosted app bot author and branch in Mergify', () => {
+    const input = fixture();
+    input.mergify = input.mergify.replace('author = renovate[bot]', 'author = github-actions[bot]');
+    input.mergify = input.mergify.replace('head ~= ^renovate/', 'head ~= ^other/');
+    expect(validateRenovatePolicy(input)).toEqual(
+      expect.arrayContaining([
+        'Hosted Renovate Mergify rule missing: author = renovate[bot]',
+        'Hosted Renovate Mergify rule missing: head ~= ^renovate/',
+      ]),
+    );
+  });
+
+  it('requires hosted app branches on isolated clean-install CI lane', () => {
+    const input = fixture();
+    input.ciWorkflow = input.ciWorkflow.replace('renovate/*', 'other/*');
+    expect(validateRenovatePolicy(input)).toContain(
+      'Hosted Renovate PRs must receive isolated clean-store dependency CI',
+    );
+  });
+
+  it('keeps automerge disabled in Renovate and restricts Mergify security exceptions', () => {
+    const input = fixture();
+    input.config.automerge = true;
+    input.mergify = input.mergify.replace('-label = type:security', '');
+    expect(validateRenovatePolicy(input)).toEqual(
+      expect.arrayContaining([
+        'Renovate automerge must remain disabled',
+        'Hosted Renovate Mergify rule missing: -label = type:security',
+      ]),
+    );
+  });
+
+  it('rejects labels not declared by the repository', () => {
+    const input = fixture();
+    input.config.labels = ['unregistered-label'];
+    expect(validateRenovatePolicy(input)).toContain('Unknown Renovate label: unregistered-label');
   });
 });

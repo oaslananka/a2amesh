@@ -18,9 +18,9 @@ merge_protections_settings:
   reporting_method: check-runs
   post_comment: false
   auto_merge_conditions:
-    - author = github-actions[bot]
+    - author = renovate[bot]
     - label = area:deps
-    - head ~= ^repository-managed-renovate/
+    - head ~= ^renovate/
     - base = main
     - label = automerge:enabled
     - -draft
