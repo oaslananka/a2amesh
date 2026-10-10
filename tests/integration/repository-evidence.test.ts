@@ -99,6 +99,37 @@ function localState() {
   };
 }
 
+function preparedSnapshot() {
+  const published = snapshot();
+  const evidence = {
+    ...published,
+    release: {
+      ...published.release,
+      publication_state: 'prepared-unpublished' as const,
+      source_version: '0.19.0',
+      active_release_pr: null,
+      latest_canonical_tag: {
+        name: '@a2amesh/runtime-v0.18.2',
+        commit: '8c3188ee32a56d0b890cd5483c4bf4c36d8c4be6',
+      },
+      latest_github_release: {
+        tag: '@a2amesh/runtime-v0.18.2',
+        name: 'A2A Mesh 0.18.2',
+        url: 'https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.18.2',
+        published_at: '2026-08-11T08:59:33Z',
+        prerelease: false,
+      },
+      npm: { ...published.release.npm, latest: '0.18.2' },
+    },
+  };
+  const state = localState();
+  for (const path of packagePaths) {
+    state.manifest[path] = '0.19.0';
+    state.packageVersions[path] = '0.19.0';
+  }
+  return { published, evidence, state };
+}
+
 describe('repository evidence', () => {
   it('selects the newest published prerelease when no stable release is available', () => {
     expect(
@@ -202,39 +233,17 @@ describe('repository evidence', () => {
     ).toEqual([]);
   });
 
-  it('accepts a prepared 0.19.0 source while npm and the last release remain 0.18.2', () => {
-    const published = snapshot();
-    const evidence = {
-      ...published,
-      release: {
-        ...published.release,
-        publication_state: 'prepared-unpublished' as const,
-        source_version: '0.19.0',
-        active_release_pr: null,
-        latest_canonical_tag: {
-          name: '@a2amesh/runtime-v0.18.2',
-          commit: '8c3188ee32a56d0b890cd5483c4bf4c36d8c4be6',
-        },
-        latest_github_release: {
-          tag: '@a2amesh/runtime-v0.18.2',
-          name: 'A2A Mesh 0.18.2',
-          url: 'https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.18.2',
-          published_at: '2026-08-11T08:59:33Z',
-          prerelease: false,
-        },
-        npm: { ...published.release.npm, latest: '0.18.2' },
-      },
-    };
-    const state = localState();
-    for (const path of packagePaths) {
-      state.manifest[path] = '0.19.0';
-      state.packageVersions[path] = '0.19.0';
-    }
+  it('accepts prepared source metadata separately from published npm and release evidence', () => {
+    const { evidence, state } = preparedSnapshot();
     expect(
       validateRepositoryEvidence(evidence, state, new Date('2026-07-30T00:00:00.000Z')),
     ).toEqual([]);
     expect(renderRepositoryEvidence(evidence)).toContain('prepared; not yet on npm');
+  });
 
+  it('rejects a prepared release with an active release PR or unmatched canonical tag', () => {
+    const { evidence, state, published } = preparedSnapshot();
+    const now = new Date('2026-07-30T00:00:00.000Z');
     expect(
       validateRepositoryEvidence(
         {
@@ -242,7 +251,7 @@ describe('repository evidence', () => {
           release: { ...evidence.release, active_release_pr: published.release.active_release_pr },
         },
         state,
-        new Date('2026-07-30T00:00:00.000Z'),
+        now,
       ),
     ).toContain(
       'Prepared-unpublished source must advance npm publication and have no active release PR',
@@ -258,7 +267,7 @@ describe('repository evidence', () => {
           },
         },
         state,
-        new Date('2026-07-30T00:00:00.000Z'),
+        now,
       ),
     ).toEqual(
       expect.arrayContaining([expect.stringContaining('must match @a2amesh/runtime-v0.18.2')]),
