@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import express from 'express';
 import { A2A_PROTOCOL_VERSION, AGENT_CARD_PATH, TaskState } from '@a2a-js/sdk';
 import { AgentEvent, DefaultRequestHandler, InMemoryTaskStore } from '@a2a-js/sdk/server';
@@ -167,7 +168,8 @@ const listener = app.listen(port, '127.0.0.1', () => {
       type: 'ready',
       participant: 'official-javascript-server',
       sdk: '@a2a-js/sdk',
-      sdkVersion: '1.0.0',
+      sdkVersion: JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+        .dependencies['@a2a-js/sdk'],
       protocolVersion: A2A_PROTOCOL_VERSION,
       url,
     })}\n`,
