@@ -37,10 +37,10 @@ describe('MCP 2026-07-28 compatibility contract', () => {
     expect(contract.protocolVersion).toBe('2026-07-28');
     expect(contract.stableSdkRange).toBe('^1.29.0');
     expect(contract.candidateSdk).toEqual({
-      client: '2.0.0',
-      core: '2.0.0',
+      client: '2.2.0',
+      core: '2.2.0',
       node: '2.0.0',
-      server: '2.0.0',
+      server: '2.2.0',
     });
     expect(contract.surfaces.map((surface) => surface.id)).toEqual(REQUIRED_SURFACES);
     expect(validateMcpNextContract(contract)).toEqual([]);
@@ -214,10 +214,10 @@ describe('MCP 2026-07-28 compatibility contract', () => {
     const lockfile = readFileSync(resolve(harnessDirectory, 'pnpm-lock.yaml'), 'utf8');
 
     expect(packageJson.dependencies).toMatchObject({
-      '@modelcontextprotocol/client': '2.0.0',
-      '@modelcontextprotocol/core': '2.0.0',
+      '@modelcontextprotocol/client': '2.2.0',
+      '@modelcontextprotocol/core': '2.2.0',
       '@modelcontextprotocol/node': '2.0.0',
-      '@modelcontextprotocol/server': '2.0.0',
+      '@modelcontextprotocol/server': '2.2.0',
     });
     expect(workspace).toContain("overrides:\n  '@hono/node-server': 2.0.12");
     expect(workspace).toContain("'@hono/node-server@2.0.12'");
