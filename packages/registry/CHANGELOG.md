@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.19.0](https://github.com/oaslananka/a2amesh/compare/@a2amesh/registry-v0.18.2...@a2amesh/registry-v0.19.0) (2026-10-10)
+
+
+### Bug Fixes
+
+* **deps:** restore security and documentation gates ([#351](https://github.com/oaslananka/a2amesh/issues/351)) ([d48d3aa](https://github.com/oaslananka/a2amesh/commit/d48d3aa8ac79f8800524a4f4f73bbdc029539e31))
+* **security:** resolve all GitHub security alert vulnerabilities ([#337](https://github.com/oaslananka/a2amesh/issues/337)) ([23a2024](https://github.com/oaslananka/a2amesh/commit/23a2024abc31664ccc2dd706b4dcf36d323ad82f))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @a2amesh/runtime bumped to 0.19.0
+
 ## [0.18.2](https://github.com/oaslananka/a2amesh/compare/@a2amesh/registry-v0.18.1...@a2amesh/registry-v0.18.2) (2026-08-11)
 
 
