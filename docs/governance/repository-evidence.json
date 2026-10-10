@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-09-21T18:00:00.000Z",
+  "observed_at": "2026-10-10T05:06:58.227Z",
   "refresh_cadence_days": 14,
   "repository": {
     "name": "oaslananka/a2amesh",
@@ -10,9 +10,9 @@
     "archived": false,
     "license": "Apache-2.0",
     "open_work": {
-      "issues": 2,
-      "pull_requests": 0,
-      "total": 2
+      "issues": 3,
+      "pull_requests": 8,
+      "total": 11
     }
   },
   "release": {
@@ -29,7 +29,7 @@
       "tag": "@a2amesh/runtime-v0.18.2",
       "name": "A2A Mesh 0.18.2",
       "url": "https://github.com/oaslananka/a2amesh/releases/tag/%40a2amesh/runtime-v0.18.2",
-      "published_at": "2026-09-13T20:06:23Z",
+      "published_at": "2026-08-11T08:59:33Z",
       "prerelease": false
     },
     "latest_canonical_tag": {
@@ -41,22 +41,27 @@
       "alpha": "0.18.0-alpha.1",
       "latest": "0.18.2"
     },
-    "active_release_pr": null
+    "active_release_pr": {
+      "number": 334,
+      "title": "chore: release main",
+      "url": "https://github.com/oaslananka/a2amesh/pull/334",
+      "proposed_version": "0.19.0"
+    }
   },
   "settings": [
     {
       "name": "Private vulnerability reporting",
       "value": "enabled",
       "owner": "@oaslananka",
-      "observed_at": "2026-08-10",
+      "observed_at": "2026-10-10",
       "refresh_cadence_days": 90,
       "source": "GitHub REST API: private-vulnerability-reporting"
     },
     {
       "name": "Security analysis features",
-      "value": "secret scanning enabled; push protection enabled; Dependabot security updates disabled",
+      "value": "secret scanning enabled; push protection enabled; Dependabot security updates enabled",
       "owner": "@oaslananka",
-      "observed_at": "2026-08-10",
+      "observed_at": "2026-10-10",
       "refresh_cadence_days": 90,
       "source": "GitHub REST API: GET /repos/oaslananka/a2amesh"
     },
@@ -64,7 +69,7 @@
       "name": "main branch protection",
       "value": "15 required status checks; strict updates enabled; 0 required approvals; stale-review dismissal enabled; code-owner review disabled; last-push approval disabled; admin enforcement enabled; force pushes blocked; deletion blocked",
       "owner": "@oaslananka",
-      "observed_at": "2026-08-10",
+      "observed_at": "2026-10-10",
       "refresh_cadence_days": 90,
       "source": "GitHub REST API: branch protection"
     },
@@ -72,7 +77,7 @@
       "name": "npm-publish environment",
       "value": "branches main; reviewers oaslananka; self-review allowed; 0 static environment secrets; OIDC trusted publishing",
       "owner": "@oaslananka",
-      "observed_at": "2026-08-10",
+      "observed_at": "2026-10-10",
       "refresh_cadence_days": 90,
       "source": "GitHub REST API: environments/npm-publish, branch policies, and environment secrets"
     }
@@ -85,5 +90,5 @@
     "npm": "npm registry metadata for @a2amesh/runtime",
     "source_versions": ".release-please-manifest.json and release-tracked package.json files"
   },
-  "facts_digest": "89734b68bb3ffc8f87e2adb7bc82214e81a4a5e4a7ede8107af437168d9a7b51"
+  "facts_digest": "9e19022404107d057e708860d7c688569ebc1059fbc45a3f842e836506222efb"
 }

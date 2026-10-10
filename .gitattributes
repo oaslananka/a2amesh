@@ -17,3 +17,6 @@
 *.tsx text eol=lf
 *.yaml text eol=lf
 *.yml text eol=lf
+
+# Unified diffs require a space prefix on blank context lines.
+*.patch whitespace=-blank-at-eol
