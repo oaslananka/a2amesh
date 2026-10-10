@@ -27,7 +27,7 @@
   ],
   "engines": {
     "node": ">=22.22.1 <25",
-    "pnpm": ">=11.28.5 <12"
+    "pnpm": ">=11 <12"
   },
   "scripts": {
     "setup": "node scripts/run-pnpm.mjs install --frozen-lockfile",
