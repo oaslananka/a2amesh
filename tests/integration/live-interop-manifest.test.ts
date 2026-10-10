@@ -11,11 +11,11 @@ const validManifest: LiveInteropManifest = {
   pythonVersion: '3.13.14',
   javascript: {
     package: '@a2a-js/sdk',
-    version: '1.0.0',
+    version: '1.3.0',
   },
   python: {
     package: 'a2a-sdk',
-    version: '1.1.2',
+    version: '1.2.2',
   },
 };
 

@@ -73,27 +73,64 @@ pnpm add @a2amesh/runtime
 
 ## Quickstart
 
-Scaffold a credential-free, loopback-only production golden path (2 A2A agents, Registry-backed discovery, SQLite task persistence, bounded MCP tool execution, and a single fail-closed verification pipeline):
+### Published stable package (`0.18.2`, verified 10 October 2026)
+
+The current npm `latest` package supports the **custom agent** scaffold.
+This flow was tested in a fresh directory, without cloning this repository:
 
 ```bash
-pnpm dlx @a2amesh/create-a2amesh my-demo --template production-demo
-cd my-demo
-pnpm install
-pnpm run dev
-# In another terminal:
-pnpm verify
+pnpm dlx @a2amesh/create-a2amesh@latest my-agent --adapter custom
+cd my-agent
+npm install
+npm run build
+npm run dev
 ```
 
 PowerShell:
 
 ```powershell
-pnpm dlx @a2amesh/create-a2amesh my-demo --template production-demo
-Set-Location my-demo
+pnpm dlx @a2amesh/create-a2amesh@latest my-agent --adapter custom
+Set-Location my-agent
+npm install
+npm run build
+npm run dev
+```
+
+`npm install` is intentional for this published scaffold: pnpm 11 rejects
+its unapproved `esbuild` lifecycle script. This custom scaffold does
+**not** contain a `pnpm verify` command.
+
+### Prepared source `0.19.0` (not yet on npm)
+
+The new credential-free `production-demo` generates two A2A agents,
+registry discovery, SQLite persistence and bounded MCP verification. It exists
+in source **but is not supported by npm `latest=0.18.2`**. After the
+guarded `0.19.0` release is published and its registry metadata verified:
+
+```bash
+pnpm dlx @a2amesh/create-a2amesh@0.19.0 my-demo --template production-demo
+cd my-demo
 pnpm install
-pnpm run dev
+cp .env.example .env
+pnpm dev
 # In another terminal:
 pnpm verify
 ```
+
+PowerShell (after publication):
+
+```powershell
+pnpm dlx @a2amesh/create-a2amesh@0.19.0 my-demo --template production-demo
+Set-Location my-demo
+pnpm install
+Copy-Item .env.example .env
+pnpm dev
+# Separate terminal:
+pnpm verify
+```
+
+This is release-candidate documentation, not a claim that `0.19.0`
+can currently be installed from npm.
 
 ## CLI Examples
 

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -6,6 +7,9 @@ import { startParticipant, type ParticipantHandle } from '../../scripts/live-int
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(import.meta.dirname, '../..');
+const liveVersions = JSON.parse(
+  readFileSync(path.join(root, 'tests/interop/live/versions.json'), 'utf8'),
+) as { javascript: { version: string }; python: { version: string } };
 const python = process.env['A2A_INTEROP_PYTHON'];
 const meshServer = path.join(root, 'tests/interop/live/mesh/server.mjs');
 const meshClient = path.join(root, 'tests/interop/live/mesh/client.mjs');
@@ -82,7 +86,7 @@ liveDescribe('live official Python SDK interoperability', () => {
     ).resolves.toMatchObject({
       direction: 'official-python-client->a2amesh-server',
       sdk: 'a2a-sdk',
-      sdkVersion: '1.1.2',
+      sdkVersion: liveVersions.python.version,
       protocolVersion: '1.0',
       state: 'TASK_STATE_CANCELED',
     });

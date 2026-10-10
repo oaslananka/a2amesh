@@ -568,19 +568,31 @@ export function scaffoldAgent(name: string, options: ScaffoldOptions): void {
   mkdirSync(dir, { recursive: true });
   mkdirSync(join(dir, 'src'), { recursive: true });
 
-  const template = options.template ?? (options.adapter as string === 'production-demo' ? 'production-demo' : 'custom');
+  // pnpm 11 blocks unapproved lifecycle scripts. The generated project
+  // needs esbuild's platform binary for tsx and Vitest. Scope narrowly.
+  writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'allowBuilds:\n  esbuild: true\n');
+
+  const template =
+    options.template ??
+    ((options.adapter as string) === 'production-demo' ? 'production-demo' : 'custom');
 
   if (template === 'production-demo') {
     mkdirSync(join(dir, 'tests'), { recursive: true });
     writeFileSync(join(dir, 'package.json'), renderProductionDemoPackageJson(name));
     writeFileSync(join(dir, 'tsconfig.json'), renderTsconfig());
-    writeFileSync(join(dir, '.env.example'), `A2A_API_KEY=${DEMO_SECRET_KEY}\nREGISTRY_TOKEN=production-demo-registry-token\n`);
+    writeFileSync(
+      join(dir, '.env.example'),
+      `A2A_API_KEY=${DEMO_SECRET_KEY}\nREGISTRY_TOKEN=production-demo-registry-token\n`,
+    );
     writeFileSync(
       join(dir, 'README.md'),
       `# ${name}\n\nCredential-free production-principles golden path scaffolded with A2A Mesh.\n\n## Quickstart\n\n1. \`pnpm install\`\n2. \`cp .env.example .env\`\n3. \`pnpm dev\`\n4. \`pnpm verify\`\n`,
     );
     writeFileSync(join(dir, 'src', 'researcher-agent.ts'), renderProductionDemoResearcherSource());
-    writeFileSync(join(dir, 'src', 'orchestrator-agent.ts'), renderProductionDemoOrchestratorSource());
+    writeFileSync(
+      join(dir, 'src', 'orchestrator-agent.ts'),
+      renderProductionDemoOrchestratorSource(),
+    );
     writeFileSync(join(dir, 'src', 'index.ts'), renderProductionDemoIndexSource());
     writeFileSync(join(dir, 'verify.ts'), renderProductionDemoVerifyScript());
     writeFileSync(join(dir, 'tests', 'demo.test.ts'), renderProductionDemoTest());
@@ -597,7 +609,10 @@ export function scaffoldAgent(name: string, options: ScaffoldOptions): void {
     }
   }
 
-  const runCmd = template === 'production-demo' ? 'pnpm install && pnpm dev (and pnpm verify in another terminal)' : 'pnpm install && pnpm dev';
+  const runCmd =
+    template === 'production-demo'
+      ? 'pnpm install && pnpm dev (and pnpm verify in another terminal)'
+      : 'pnpm install && pnpm dev';
 
   const output = [
     '\x1b[32mScaffold complete!\x1b[0m',
