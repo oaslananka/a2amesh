@@ -150,7 +150,7 @@ describe('verification pipeline', () => {
     }
 
     expect(restoreAction).toContain(
-      'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c',
+      'actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333',
     );
     expect(restoreAction).toContain('node scripts/build-artifact-manifest.mjs --verify');
     expect(restoreAction).toContain('node scripts/sync-injected-workspace-dist.mjs');
